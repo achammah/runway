@@ -1,0 +1,43 @@
+{
+ "room_frag": {
+  "x": 556,
+  "y": 616,
+  "w": 399,
+  "h": 266,
+  "err": 9.0,
+  "placed": false,
+  "note": "junk/duplicate layer, bg already has it"
+ },
+ "panel": {
+  "x": 56,
+  "y": 258,
+  "w": 1108,
+  "h": 614,
+  "err": 66.0,
+  "placed": true
+ },
+ "banner": {
+  "x": 1236,
+  "y": 184,
+  "w": 178,
+  "h": 119,
+  "err": 38.3,
+  "placed": true
+ },
+ "founder": {
+  "x": 1058,
+  "y": 344,
+  "w": 403,
+  "h": 621,
+  "err": 57.8,
+  "placed": true
+ },
+ "hourglass": {
+  "x": 950,
+  "y": 328,
+  "w": 153,
+  "h": 244,
+  "err": 30.8,
+  "placed": true
+ }
+}

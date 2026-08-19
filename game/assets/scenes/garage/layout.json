@@ -1,0 +1,66 @@
+{
+ "chart": {
+  "x": 1424,
+  "y": 216,
+  "w": 107,
+  "h": 208,
+  "err": 64.9,
+  "placed": true
+ },
+ "pizza": {
+  "x": 974,
+  "y": 710,
+  "w": 407,
+  "h": 235,
+  "err": 63.1,
+  "placed": true
+ },
+ "mug": {
+  "x": 848,
+  "y": 736,
+  "w": 124,
+  "h": 111,
+  "err": 30.6,
+  "placed": true
+ },
+ "crew_vest": {
+  "x": 1156,
+  "y": 308,
+  "w": 334,
+  "h": 410,
+  "err": 38.3,
+  "placed": true
+ },
+ "crew_headphones": {
+  "x": 728,
+  "y": 304,
+  "w": 177,
+  "h": 242,
+  "err": 55.9,
+  "placed": true
+ },
+ "whiteboard": {
+  "x": 378,
+  "y": 132,
+  "w": 343,
+  "h": 360,
+  "err": 98.5,
+  "placed": true
+ },
+ "founder": {
+  "x": 50,
+  "y": 318,
+  "w": 320,
+  "h": 507,
+  "err": 48.8,
+  "placed": true
+ },
+ "money": {
+  "x": 226,
+  "y": 612,
+  "w": 244,
+  "h": 102,
+  "err": 88.5,
+  "placed": true
+ }
+}

@@ -1,0 +1,22 @@
+{
+ "write_surfaces": {
+  "whiteboard": {
+   "x": 540,
+   "y": 284,
+   "w": 550,
+   "h": 240,
+   "rot": 0.0,
+   "lines": 3,
+   "align": "center"
+  },
+  "inventory": {
+   "x": 1150,
+   "y": 318,
+   "w": 107,
+   "h": 247,
+   "rot": 0.0,
+   "lines": 5,
+   "align": "center"
+  }
+ }
+}

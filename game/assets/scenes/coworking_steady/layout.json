@@ -1,0 +1,43 @@
+{
+ "room_dup": {
+  "x": 1136,
+  "y": 20,
+  "w": 403,
+  "h": 136,
+  "err": 106.4,
+  "placed": false,
+  "note": "junk/duplicate layer, bg already has it"
+ },
+ "booth": {
+  "x": 406,
+  "y": 128,
+  "w": 192,
+  "h": 328,
+  "err": 76.4,
+  "placed": true
+ },
+ "kanban": {
+  "x": 936,
+  "y": 108,
+  "w": 260,
+  "h": 173,
+  "err": 85.2,
+  "placed": true
+ },
+ "pennant": {
+  "x": 748,
+  "y": 108,
+  "w": 100,
+  "h": 75,
+  "err": 51.6,
+  "placed": true
+ },
+ "crew_group": {
+  "x": 16,
+  "y": 374,
+  "w": 1512,
+  "h": 646,
+  "err": 80.4,
+  "placed": true
+ }
+}

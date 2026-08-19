@@ -1,0 +1,27 @@
+{
+ "room_dup": {
+  "x": 348,
+  "y": 612,
+  "w": 299,
+  "h": 199,
+  "err": 90.9,
+  "placed": false,
+  "note": "junk/duplicate layer, bg already has it"
+ },
+ "press": {
+  "x": 588,
+  "y": 334,
+  "w": 820,
+  "h": 394,
+  "err": 179.9,
+  "placed": true
+ },
+ "founder": {
+  "x": 332,
+  "y": 304,
+  "w": 272,
+  "h": 441,
+  "err": 84.5,
+  "placed": true
+ }
+}

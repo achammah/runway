@@ -1,0 +1,61 @@
+{
+ "floor_frag": {
+  "x": 808,
+  "y": 884,
+  "w": 252,
+  "h": 112,
+  "err": 16.2,
+  "placed": false,
+  "note": "dup of room_bg content / misregistered"
+ },
+ "bigchart": {
+  "x": 926,
+  "y": 62,
+  "w": 289,
+  "h": 224,
+  "err": 46.6,
+  "placed": true
+ },
+ "chartwall": {
+  "x": 1244,
+  "y": 54,
+  "w": 266,
+  "h": 235,
+  "err": 146.8,
+  "placed": true
+ },
+ "meetingroom": {
+  "x": 892,
+  "y": 12,
+  "w": 502,
+  "h": 366,
+  "err": 130.1,
+  "placed": false,
+  "note": "dup of room_bg content / misregistered"
+ },
+ "snackbar": {
+  "x": 1100,
+  "y": 320,
+  "w": 234,
+  "h": 155,
+  "err": 92.4,
+  "placed": true
+ },
+ "crew_rows": {
+  "x": 606,
+  "y": 334,
+  "w": 751,
+  "h": 433,
+  "err": 196.6,
+  "placed": false,
+  "note": "dup of room_bg content / misregistered"
+ },
+ "foosball": {
+  "x": 92,
+  "y": 664,
+  "w": 685,
+  "h": 360,
+  "err": 64.1,
+  "placed": true
+ }
+}

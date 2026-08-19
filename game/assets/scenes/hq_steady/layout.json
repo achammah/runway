@@ -1,0 +1,50 @@
+{
+ "skyline": {
+  "x": 590,
+  "y": 36,
+  "w": 907,
+  "h": 459,
+  "err": 92.4,
+  "placed": true
+ },
+ "piechart": {
+  "x": 116,
+  "y": 108,
+  "w": 220,
+  "h": 241,
+  "err": 45.5,
+  "placed": true
+ },
+ "couches": {
+  "x": 720,
+  "y": 448,
+  "w": 607,
+  "h": 167,
+  "err": 62.9,
+  "placed": true
+ },
+ "audience": {
+  "x": 144,
+  "y": 550,
+  "w": 1125,
+  "h": 441,
+  "err": 119.2,
+  "placed": true
+ },
+ "founder": {
+  "x": 184,
+  "y": 316,
+  "w": 196,
+  "h": 235,
+  "err": 67.6,
+  "placed": true
+ },
+ "unicorn": {
+  "x": 1364,
+  "y": 468,
+  "w": 159,
+  "h": 400,
+  "err": 42.2,
+  "placed": true
+ }
+}

@@ -1,0 +1,51 @@
+{
+ "balcony_frag": {
+  "x": 0,
+  "y": 520,
+  "w": 249,
+  "h": 166,
+  "err": 60.6,
+  "placed": false,
+  "note": "junk/duplicate layer, bg already has it"
+ },
+ "photographers": {
+  "x": 60,
+  "y": 658,
+  "w": 1404,
+  "h": 344,
+  "err": 111.2,
+  "placed": true
+ },
+ "tickerwall": {
+  "x": 620,
+  "y": 4,
+  "w": 901,
+  "h": 322,
+  "err": 48.7,
+  "placed": true
+ },
+ "crew": {
+  "x": 762,
+  "y": 272,
+  "w": 692,
+  "h": 298,
+  "err": 58.5,
+  "placed": true
+ },
+ "founder": {
+  "x": 352,
+  "y": 212,
+  "w": 366,
+  "h": 357,
+  "err": 61.2,
+  "placed": true
+ },
+ "bell": {
+  "x": 198,
+  "y": 30,
+  "w": 372,
+  "h": 523,
+  "err": 165.2,
+  "placed": true
+ }
+}

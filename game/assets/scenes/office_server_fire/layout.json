@@ -1,0 +1,51 @@
+{
+ "bg_frag": {
+  "x": 1128,
+  "y": 856,
+  "w": 249,
+  "h": 146,
+  "err": 92.9,
+  "placed": false,
+  "note": "junk/duplicate layer, bg already has it"
+ },
+ "closet_fire": {
+  "x": 632,
+  "y": 172,
+  "w": 433,
+  "h": 541,
+  "err": 90.6,
+  "placed": true
+ },
+ "laptopshield": {
+  "x": 1222,
+  "y": 470,
+  "w": 245,
+  "h": 274,
+  "err": 39.8,
+  "placed": true
+ },
+ "bucketline": {
+  "x": 32,
+  "y": 538,
+  "w": 797,
+  "h": 331,
+  "err": 50.2,
+  "placed": true
+ },
+ "extinguisher": {
+  "x": 884,
+  "y": 430,
+  "w": 273,
+  "h": 297,
+  "err": 79.7,
+  "placed": true
+ },
+ "alarm": {
+  "x": 1032,
+  "y": 18,
+  "w": 269,
+  "h": 109,
+  "err": 28.9,
+  "placed": true
+ }
+}

@@ -1,0 +1,85 @@
+{
+ "write_surfaces": {
+  "whiteboard": {
+   "x": 1176,
+   "y": 409,
+   "w": 228,
+   "h": 164,
+   "rot": 0.0,
+   "lines": 3,
+   "align": "center"
+  },
+  "wallchart": {
+   "x": 130,
+   "y": 206,
+   "w": 134,
+   "h": 129,
+   "rot": 0.0,
+   "lines": 2
+  },
+  "ledger": {
+   "x": 649,
+   "y": 557,
+   "w": 106,
+   "h": 30,
+   "rot": 0.0,
+   "lines": 1
+  },
+  "sticky": {
+   "x": 235,
+   "y": 398,
+   "w": 33,
+   "h": 32,
+   "rot": 0.0,
+   "lines": 1
+  }
+ },
+ "money": {
+  "x": 124,
+  "y": 692,
+  "w": 202,
+  "h": 192,
+  "err": 55.9,
+  "placed": true
+ },
+ "product": {
+  "x": 1036,
+  "y": 608,
+  "w": 251,
+  "h": 200,
+  "err": 74.1,
+  "placed": true
+ },
+ "pizza": {
+  "x": 116,
+  "y": 540,
+  "w": 112,
+  "h": 133,
+  "err": 38.8,
+  "placed": true
+ },
+ "plant": {
+  "x": 4,
+  "y": 448,
+  "w": 150,
+  "h": 235,
+  "err": 92.4,
+  "placed": true
+ },
+ "litter": {
+  "x": 488,
+  "y": 492,
+  "w": 142,
+  "h": 105,
+  "err": 50.0,
+  "placed": true
+ },
+ "shelves": {
+  "x": 796,
+  "y": 504,
+  "w": 190,
+  "h": 93,
+  "err": 55.7,
+  "placed": true
+ }
+}

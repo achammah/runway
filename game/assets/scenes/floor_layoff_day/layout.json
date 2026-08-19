@@ -1,0 +1,51 @@
+{
+ "floor_frag": {
+  "x": 328,
+  "y": 632,
+  "w": 380,
+  "h": 124,
+  "err": 8.5,
+  "placed": false,
+  "note": "junk/duplicate layer, bg already has it"
+ },
+ "balloon": {
+  "x": 34,
+  "y": 396,
+  "w": 67,
+  "h": 197,
+  "err": 47.2,
+  "placed": true
+ },
+ "emptydesk": {
+  "x": 750,
+  "y": 600,
+  "w": 316,
+  "h": 366,
+  "err": 61.3,
+  "placed": true
+ },
+ "survivors": {
+  "x": 748,
+  "y": 282,
+  "w": 760,
+  "h": 610,
+  "err": 115.6,
+  "placed": true
+ },
+ "leavers": {
+  "x": 116,
+  "y": 284,
+  "w": 587,
+  "h": 359,
+  "err": 44.4,
+  "placed": true
+ },
+ "hr": {
+  "x": 30,
+  "y": 614,
+  "w": 446,
+  "h": 406,
+  "err": 49.7,
+  "placed": true
+ }
+}

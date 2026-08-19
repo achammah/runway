@@ -1,0 +1,37 @@
+{
+ "write_surfaces": {
+  "whiteboard": {
+   "x": 287,
+   "y": 257,
+   "w": 202,
+   "h": 142,
+   "rot": 0.0,
+   "lines": 2,
+   "align": "center"
+  },
+  "wallchart": {
+   "x": 705,
+   "y": 271,
+   "w": 134,
+   "h": 143,
+   "rot": 0.0,
+   "lines": 2
+  },
+  "ledger": {
+   "x": 980,
+   "y": 487,
+   "w": 90,
+   "h": 30,
+   "rot": 0.0,
+   "lines": 1
+  },
+  "sticky": {
+   "x": 553,
+   "y": 287,
+   "w": 26,
+   "h": 28,
+   "rot": 0.0,
+   "lines": 1
+  }
+ }
+}

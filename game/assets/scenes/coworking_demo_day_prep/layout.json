@@ -1,0 +1,44 @@
+{
+ "props_table": {
+  "x": 416,
+  "y": 940,
+  "w": 92,
+  "h": 50,
+  "err": 50.2,
+  "placed": false,
+  "note": "sparse frag, bg keeps it"
+ },
+ "screen": {
+  "x": 680,
+  "y": 40,
+  "w": 603,
+  "h": 501,
+  "err": 71.2,
+  "placed": true
+ },
+ "stickies": {
+  "x": 368,
+  "y": 148,
+  "w": 241,
+  "h": 75,
+  "err": 108.8,
+  "placed": false,
+  "note": "sparse frag, bg keeps it"
+ },
+ "audience": {
+  "x": 60,
+  "y": 528,
+  "w": 944,
+  "h": 403,
+  "err": 130.9,
+  "placed": true
+ },
+ "presenter": {
+  "x": 426,
+  "y": 236,
+  "w": 286,
+  "h": 345,
+  "err": 59.0,
+  "placed": true
+ }
+}

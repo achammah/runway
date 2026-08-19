@@ -1,0 +1,51 @@
+{
+ "room_frag": {
+  "x": 932,
+  "y": 192,
+  "w": 349,
+  "h": 232,
+  "err": 98.5,
+  "placed": false,
+  "note": "junk/duplicate layer, bg already has it"
+ },
+ "sleepingbag": {
+  "x": 908,
+  "y": 620,
+  "w": 621,
+  "h": 336,
+  "err": 45.4,
+  "placed": true
+ },
+ "whiteboard": {
+  "x": 430,
+  "y": 182,
+  "w": 187,
+  "h": 170,
+  "err": 88.1,
+  "placed": true
+ },
+ "chart": {
+  "x": 790,
+  "y": 196,
+  "w": 124,
+  "h": 181,
+  "err": 127.6,
+  "placed": true
+ },
+ "mugs": {
+  "x": 122,
+  "y": 536,
+  "w": 246,
+  "h": 92,
+  "err": 89.6,
+  "placed": true
+ },
+ "founder": {
+  "x": 564,
+  "y": 284,
+  "w": 314,
+  "h": 634,
+  "err": 96.0,
+  "placed": true
+ }
+}

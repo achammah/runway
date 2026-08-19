@@ -1,0 +1,165 @@
+{
+ "garage": {
+  "layers": [
+   "chart",
+   "pizza",
+   "mug",
+   "crew_vest",
+   "crew_headphones",
+   "whiteboard",
+   "founder",
+   "money"
+  ]
+ },
+ "garage_thriving": {
+  "layers": [
+   "room_dup",
+   "chart",
+   "whiteboard",
+   "money",
+   "crew_drum",
+   "pizza",
+   "crew_popper",
+   "crew_leap"
+  ]
+ },
+ "garage_starving": {
+  "layers": [
+   "room_dup",
+   "whiteboard",
+   "chart",
+   "crew_mug",
+   "money",
+   "crew_knees",
+   "pizzatower",
+   "crew_slump"
+  ]
+ },
+ "coworking_demo_day_prep": {
+  "layers": [
+   "props_table",
+   "screen",
+   "stickies",
+   "audience",
+   "presenter"
+  ]
+ },
+ "office_steady": {
+  "layers": [
+   "wall_frag",
+   "glassdoor",
+   "servercloset",
+   "beanbags",
+   "framed_dollar",
+   "watercooler",
+   "crew_group"
+  ]
+ },
+ "office_server_fire": {
+  "layers": [
+   "bg_frag",
+   "closet_fire",
+   "laptopshield",
+   "bucketline",
+   "extinguisher",
+   "alarm"
+  ]
+ },
+ "floor_steady": {
+  "layers": [
+   "floor_frag",
+   "bigchart",
+   "chartwall",
+   "meetingroom",
+   "snackbar",
+   "crew_rows",
+   "foosball"
+  ]
+ },
+ "floor_layoff_day": {
+  "layers": [
+   "floor_frag",
+   "balloon",
+   "emptydesk",
+   "survivors",
+   "leavers",
+   "hr"
+  ]
+ },
+ "hq_steady": {
+  "layers": [
+   "skyline",
+   "piechart",
+   "couches",
+   "audience",
+   "founder",
+   "unicorn"
+  ]
+ },
+ "nasdaq_bell": {
+  "layers": [
+   "balcony_frag",
+   "photographers",
+   "tickerwall",
+   "crew",
+   "founder",
+   "bell"
+  ]
+ },
+ "yc_interview": {
+  "layers": [
+   "room_frag",
+   "panel",
+   "banner",
+   "founder",
+   "hourglass"
+  ]
+ },
+ "yc_demo_day": {
+  "layers": [
+   "stage_frag",
+   "bunting",
+   "screen",
+   "founder",
+   "sidestage",
+   "audience"
+  ]
+ },
+ "press_ambush": {
+  "layers": [
+   "room_dup",
+   "press",
+   "founder"
+  ]
+ },
+ "garage_night_solo": {
+  "layers": [
+   "room_frag",
+   "sleepingbag",
+   "whiteboard",
+   "chart",
+   "mugs",
+   "founder"
+  ]
+ },
+ "coworking_steady": {
+  "layers": [
+   "room_dup",
+   "booth",
+   "kanban",
+   "pennant",
+   "crew_group"
+  ]
+ },
+ "garage_stage_steady": {
+  "layers": [
+   "write_surfaces",
+   "money",
+   "product",
+   "pizza",
+   "plant",
+   "litter",
+   "shelves"
+  ]
+ }
+}

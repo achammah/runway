@@ -1,0 +1,13 @@
+{
+ "write_surfaces": {
+  "inventory": {
+   "x": 227,
+   "y": 211,
+   "w": 104,
+   "h": 119,
+   "rot": 0.0,
+   "lines": 3,
+   "align": "center"
+  }
+ }
+}

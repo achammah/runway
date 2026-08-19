@@ -1,0 +1,148 @@
+{
+ "crew_1": {
+  "x": 195,
+  "y": 425,
+  "w": 210,
+  "h": 315,
+  "scale": 1.05,
+  "foot_x": 300,
+  "foot_y": 740,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "founder_mark": {
+  "x": 460,
+  "y": 405,
+  "w": 200,
+  "h": 300,
+  "scale": 1.0,
+  "foot_x": 560,
+  "foot_y": 705,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "crew_2": {
+  "x": 703,
+  "y": 394,
+  "w": 194,
+  "h": 291,
+  "scale": 0.97,
+  "foot_x": 800,
+  "foot_y": 685,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "crew_3": {
+  "x": 965,
+  "y": 387,
+  "w": 190,
+  "h": 285,
+  "scale": 0.95,
+  "foot_x": 1060,
+  "foot_y": 672,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "crew_4": {
+  "x": 1306,
+  "y": 380,
+  "w": 188,
+  "h": 282,
+  "scale": 0.94,
+  "foot_x": 1400,
+  "foot_y": 662,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "occ_desk_left": {
+  "x": 205,
+  "y": 563,
+  "w": 230,
+  "h": 187,
+  "kind": "occluder",
+  "z": "front",
+  "placed": true,
+  "note": "draws OVER the cast \u2014 the cast stands behind it",
+  "source": "scene-crop"
+ },
+ "occ_server": {
+  "x": 789,
+  "y": 307,
+  "w": 150,
+  "h": 443,
+  "kind": "occluder",
+  "z": "front",
+  "placed": true,
+  "note": "draws OVER the cast \u2014 the cast stands behind it",
+  "source": "scene-crop"
+ },
+ "occ_cabinet": {
+  "x": 1221,
+  "y": 504,
+  "w": 85,
+  "h": 246,
+  "kind": "occluder",
+  "z": "front",
+  "placed": true,
+  "note": "draws OVER the cast \u2014 the cast stands behind it",
+  "source": "scene-crop"
+ },
+ "occ_desk_right": {
+  "x": 1315,
+  "y": 546,
+  "w": 204,
+  "h": 204,
+  "kind": "occluder",
+  "z": "front",
+  "placed": true,
+  "note": "draws OVER the cast \u2014 the cast stands behind it",
+  "source": "scene-crop"
+ },
+ "write_surfaces": {
+  "whiteboard": {
+   "x": 449,
+   "y": 362,
+   "w": 110,
+   "h": 131,
+   "rot": 0.0,
+   "lines": 3,
+   "align": "center"
+  },
+  "inventory": {
+   "x": 230,
+   "y": 170,
+   "w": 141,
+   "h": 214,
+   "rot": 0.0,
+   "lines": 4,
+   "align": "center"
+  },
+  "ledger": {
+   "x": 495,
+   "y": 226,
+   "w": 136,
+   "h": 82,
+   "rot": 0.0,
+   "lines": 2,
+   "align": "center"
+  },
+  "wallchart": {
+   "x": 1243,
+   "y": 225,
+   "w": 102,
+   "h": 129,
+   "rot": 0.0,
+   "lines": 2,
+   "align": "center"
+  },
+  "sticky": {
+   "x": 1105,
+   "y": 160,
+   "w": 106,
+   "h": 61,
+   "rot": 0.0,
+   "lines": 2,
+   "align": "center"
+  }
+ }
+}

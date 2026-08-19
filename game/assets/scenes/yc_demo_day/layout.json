@@ -1,0 +1,52 @@
+{
+ "stage_frag": {
+  "x": 110,
+  "y": 190,
+  "w": 973,
+  "h": 425,
+  "err": 81.4,
+  "placed": false,
+  "note": "junk/duplicate layer, bg already has it"
+ },
+ "bunting": {
+  "x": 168,
+  "y": 748,
+  "w": 316,
+  "h": 57,
+  "err": 173.7,
+  "placed": false,
+  "note": "sparse frag"
+ },
+ "screen": {
+  "x": 468,
+  "y": 60,
+  "w": 429,
+  "h": 246,
+  "err": 35.5,
+  "placed": true
+ },
+ "founder": {
+  "x": 726,
+  "y": 384,
+  "w": 167,
+  "h": 197,
+  "err": 95.4,
+  "placed": true
+ },
+ "sidestage": {
+  "x": 288,
+  "y": 324,
+  "w": 75,
+  "h": 211,
+  "err": 80.5,
+  "placed": true
+ },
+ "audience": {
+  "x": 348,
+  "y": 658,
+  "w": 1100,
+  "h": 312,
+  "err": 150.2,
+  "placed": true
+ }
+}

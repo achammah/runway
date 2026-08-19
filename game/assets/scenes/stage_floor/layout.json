@@ -1,0 +1,139 @@
+{
+ "crew_1": {
+  "x": 205,
+  "y": 360,
+  "w": 204,
+  "h": 306,
+  "scale": 1.02,
+  "foot_x": 307,
+  "foot_y": 666,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "founder_mark": {
+  "x": 491,
+  "y": 399,
+  "w": 212,
+  "h": 318,
+  "scale": 1.06,
+  "foot_x": 597,
+  "foot_y": 717,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "crew_2": {
+  "x": 707,
+  "y": 330,
+  "w": 190,
+  "h": 285,
+  "scale": 0.95,
+  "foot_x": 802,
+  "foot_y": 615,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "crew_3": {
+  "x": 948,
+  "y": 318,
+  "w": 186,
+  "h": 279,
+  "scale": 0.93,
+  "foot_x": 1041,
+  "foot_y": 597,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "crew_4": {
+  "x": 1196,
+  "y": 371,
+  "w": 202,
+  "h": 303,
+  "scale": 1.01,
+  "foot_x": 1297,
+  "foot_y": 674,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "occ_desk_left": {
+  "x": 0,
+  "y": 480,
+  "w": 341,
+  "h": 310,
+  "kind": "occluder",
+  "z": "front",
+  "placed": true,
+  "note": "draws OVER the cast \u2014 the cast stands behind it",
+  "source": "scene-crop"
+ },
+ "occ_foosball": {
+  "x": 683,
+  "y": 427,
+  "w": 256,
+  "h": 363,
+  "kind": "occluder",
+  "z": "front",
+  "placed": true,
+  "note": "draws OVER the cast \u2014 the cast stands behind it",
+  "source": "scene-crop"
+ },
+ "occ_coffee": {
+  "x": 990,
+  "y": 410,
+  "w": 145,
+  "h": 380,
+  "kind": "occluder",
+  "z": "front",
+  "placed": true,
+  "note": "draws OVER the cast \u2014 the cast stands behind it",
+  "source": "scene-crop"
+ },
+ "occ_desk_right": {
+  "x": 1195,
+  "y": 470,
+  "w": 341,
+  "h": 320,
+  "kind": "occluder",
+  "z": "front",
+  "placed": true,
+  "note": "draws OVER the cast \u2014 the cast stands behind it",
+  "source": "scene-crop"
+ },
+ "write_surfaces": {
+  "wallchart": {
+   "x": 811,
+   "y": 186,
+   "w": 102,
+   "h": 129,
+   "rot": 0.0,
+   "lines": 2,
+   "align": "center"
+  },
+  "ledger": {
+   "x": 1247,
+   "y": 171,
+   "w": 136,
+   "h": 82,
+   "rot": 0.0,
+   "lines": 2,
+   "align": "center"
+  },
+  "inventory": {
+   "x": 164,
+   "y": 168,
+   "w": 125,
+   "h": 190,
+   "rot": 0.0,
+   "lines": 4,
+   "align": "center"
+  },
+  "sticky": {
+   "x": 977,
+   "y": 208,
+   "w": 106,
+   "h": 61,
+   "rot": 0.0,
+   "lines": 2,
+   "align": "center"
+  }
+ }
+}

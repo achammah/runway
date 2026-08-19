@@ -1,0 +1,59 @@
+{
+ "wall_frag": {
+  "x": 1068,
+  "y": 156,
+  "w": 249,
+  "h": 144,
+  "err": 53.7,
+  "placed": false,
+  "note": "junk/duplicate layer, bg already has it"
+ },
+ "glassdoor": {
+  "x": 4,
+  "y": 38,
+  "w": 337,
+  "h": 558,
+  "err": 95.7,
+  "placed": true
+ },
+ "servercloset": {
+  "x": 720,
+  "y": 124,
+  "w": 210,
+  "h": 276,
+  "err": 82.6,
+  "placed": true
+ },
+ "beanbags": {
+  "x": 1002,
+  "y": 220,
+  "w": 239,
+  "h": 168,
+  "err": 120.1,
+  "placed": true
+ },
+ "framed_dollar": {
+  "x": 1328,
+  "y": 110,
+  "w": 151,
+  "h": 100,
+  "err": 107.7,
+  "placed": true
+ },
+ "watercooler": {
+  "x": 1316,
+  "y": 256,
+  "w": 189,
+  "h": 359,
+  "err": 73.4,
+  "placed": true
+ },
+ "crew_group": {
+  "x": 390,
+  "y": 400,
+  "w": 996,
+  "h": 577,
+  "err": 194.7,
+  "placed": true
+ }
+}
