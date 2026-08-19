@@ -53,7 +53,8 @@ const EVENT_SCHEMA := {
 const ADJUDICATE_SCHEMA := {
 	"type": "object",
 	"additionalProperties": false,
-	"required": ["interpreted_as", "reality_check", "narration", "verdict", "effects"],
+	"required": ["interpreted_as", "reality_check", "narration", "verdict", "effects",
+		"headline", "scene", "cast"],
 	"properties": {
 		"interpreted_as": {"type": "string", "maxLength": 160},
 		"reality_check": {"type": "string", "maxLength": 240},
@@ -61,6 +62,40 @@ const ADJUDICATE_SCHEMA := {
 		# own screen while the art renders. 320 chars truncated it mid-sentence.
 		"narration": {"type": "string", "maxLength": 1400},
 		"verdict": {"type": "string", "enum": ["brilliant", "fine", "risky", "backfired"]},
+		# ONE CALL RETURNS THE WHOLE TURN: the text the player reads while the art
+		# renders, AND everything needed to build the scene. Splitting these into two
+		# calls would put a second round-trip on the critical path of every week.
+		"headline": {"type": "string", "maxLength": 90},
+		"scene": {
+			"type": "object", "additionalProperties": false,
+			"required": ["family", "place", "time", "condition", "framing", "novel_place", "beat"],
+			"properties": {
+				"family": {"type": "string", "enum": ["home_retreat", "scrappy_workspace",
+					"legit_workspace", "money", "customer", "institutional", "transit",
+					"social", "body_mind", "endings"]},
+				"place": {"type": "string", "maxLength": 40},
+				"time": {"type": "string", "enum": ["day", "night", "small_hours"]},
+				"condition": {"type": "string", "enum": ["thriving", "steady", "in_the_red"]},
+				"framing": {"type": "string", "enum": ["wide", "medium"]},
+				# filled ONLY when the library will not hold this place. The director
+				# generates a new empty room from it, then keeps it.
+				"novel_place": {"type": "string", "maxLength": 220},
+				"beat": {"type": "string", "maxLength": 160},
+			},
+		},
+		"cast": {
+			"type": "array", "minItems": 0, "maxItems": 5,
+			"items": {
+				"type": "object", "additionalProperties": false,
+				"required": ["who", "mood", "doing"],
+				"properties": {
+					"who": {"type": "string", "enum": ["founder", "sales", "business", "tech",
+						"hustler", "idea_friend"]},
+					"mood": {"type": "string", "enum": ["fine", "burnt", "gone"]},
+					"doing": {"type": "string", "maxLength": 70},
+				},
+			},
+		},
 		"effects": {
 			"type": "array", "minItems": 0, "maxItems": 3,
 			"items": {
