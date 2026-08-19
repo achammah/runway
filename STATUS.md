@@ -23,7 +23,7 @@ labels. That must never be the recovery path again. Git now covers this too.
 | Authored events | 65 |
 | Full run | reaches all five eras: garage → coworking → office → floor → hq |
 | Runtime | **37 errors per full run** (see BUG-04) and **an infinite loop** (BUG-05) |
-| Scene art | 3,129 PNGs, 0 damaged (`tools/scene_pipeline.py verify`) |
+| Scene art | 3,574 PNGs, 0 damaged (`tools/scene_pipeline.py verify`) |
 | Loops | 8 empty-stage loops, 48 frames each |
 | Cast | 27 sprites: 4 founders × 5 cofounder types × fine / burnt / gone |
 | Crew geometry | 25 crew marks + 20 occluders across 5 eras |
