@@ -29,3 +29,7 @@ restored-*/
 *.log
 
 .DS_Store
+
+# python bytecode
+__pycache__/
+*.pyc

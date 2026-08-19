@@ -50,7 +50,11 @@ const SHEET_SIZE := Vector2(PAPER_SIZE_TEX.x * SCALE, PAPER_SIZE_TEX.y * SCALE)
 
 # margins inside the paper: clear of the torn left edge and of the curled corner
 const MARGIN_X := 70.0
-const CURL_INSET := 28.0       # the bottom-right corner peels up off the sheet
+# The bottom-right corner peels up off the sheet. Walking the flap's drawn edge
+# row by row and mapping it into sheet space: it bites in to x 481 at y 710 and
+# x 468 by y 758, so the exit row on the last rule has to stop well short of the
+# column edge. An earlier guess of 28 put the arrow's tip on the fold.
+const CURL_INSET := 52.0
 const TEXT_W := SHEET_SIZE.x - 2.0 * MARGIN_X
 const ICON_COL := 74.0
 const ICON_PX := 58.0
@@ -540,11 +544,13 @@ class ChainIcon:
 				_slab(Rect2(7, 8, 44, 31), cream, 3.2)
 				draw_line(Vector2(13, 29), Vector2(45, 29), Color("6E8CA0"), 3.6)
 				draw_line(Vector2(3, 46), Vector2(55, 46), INK, 3.6)
-			3:  # the people around it — two heads, shoulder to shoulder
+			3:  # the people in it — two faces, shoulder to shoulder, like the
+				# crew row in the reference book
 				for i in 2:
-					var cx := 19.0 + i * 21.0
-					_blob(Vector2(cx, 34), Vector2(13, 15), Color("F4B942"), 3.0, i * 2.3)
-					_blob(Vector2(cx, 16), Vector2(10, 10), cream, 3.0, i * 1.4)
+					var cx := 18.0 + i * 22.0
+					_blob(Vector2(cx, 29), Vector2(13, 16), cream, 3.2, i * 1.7)
+					draw_circle(Vector2(cx - 5, 25), 2.6, INK)
+					draw_circle(Vector2(cx + 5, 25), 2.6, INK)
 			4:  # night zero — the bulb over the bench
 				_blob(Vector2(29, 23), Vector2(16, 17), Color("F4B942"), 3.2)
 				draw_line(Vector2(21, 41), Vector2(37, 41), INK, 3.2)
