@@ -31,13 +31,18 @@ FRAMINGS = ["wide", "medium"]
 #   episodic  places visited once or twice in a run    -> 1-2 variants
 CORE, SECONDARY, EPISODIC = "core", "secondary", "episodic"
 
+# THE DESCRIPTION MUST NAME ONLY THE PLACE AND ITS OBJECTS — NEVER A PERSON OR AN
+# ACTION. A pilot generated a creature on the sofa despite "EMPTY OF PEOPLE",
+# because the text said "a laptop balanced on a knee": a knee implies a body and
+# outweighs the instruction. 17 of 73 entries had this. Rooms must arrive empty,
+# because any occupant here DOUBLES against the composited cast.
 # family -> [(place, tier, what the room is, the objects that must be in it)]
 PLACES = {
  # where you sleep when it is going badly. The retreat ladder IS the failure curve.
  "home_retreat": [
-   ("parents_livingroom", SECONDARY, "a suburban living room with a floral sofa, a laptop balanced on a knee", "sofa, side table, family photos, laptop"),
+   ("parents_livingroom", SECONDARY, "a suburban living room with a floral sofa and a laptop left open on the cushion", "sofa, side table, family photos, laptop"),
    ("childhood_bedroom", SECONDARY, "a small bedroom kept exactly as it was at seventeen, posters still up", "single bed, desk, posters, trophy shelf"),
-   ("partner_flat", SECONDARY, "someone else's tidy flat with a laptop open on the kitchen table", "kitchen table, plants, tidy shelves"),
+   ("partner_flat", SECONDARY, "a tidy flat with houseplants and a laptop open on the kitchen table", "kitchen table, plants, tidy shelves"),
    ("friends_couch", EPISODIC, "a friend's cluttered lounge with a rolled sleeping bag by the couch", "couch, sleeping bag, games console"),
    ("own_flat_empty", SECONDARY, "a flat with the furniture sold, a mattress on the floor and a monitor on a box", "mattress, boxes, single monitor"),
    ("car_backseat", EPISODIC, "the back seat of a car at night, laptop glow, fast food wrappers", "car seats, laptop, wrappers"),
@@ -48,8 +53,8 @@ PLACES = {
    ("garage", CORE, "a suburban garage converted into a workshop", "workbench, pegboard, whiteboard, crate, garage door"),
    ("basement_office", CORE, "a windowless office basement with pipes overhead and strip lighting", "pipes, strip lights, folding tables, damp patch"),
    ("old_hangar", CORE, "a vast disused aircraft hangar with a tiny desk island in the middle", "hangar doors, girders, lone desk cluster, forklift"),
-   ("storage_unit", SECONDARY, "a rented storage unit with a roller door, run as an office", "roller door, shelving, stacked boxes, camping lamp"),
-   ("back_of_shop", SECONDARY, "the stockroom behind a small shop, doubling as a workspace", "stock shelves, till boxes, back door"),
+   ("storage_unit", SECONDARY, "a rented storage unit with a roller door, a desk and a camping lamp among the shelving", "roller door, shelving, stacked boxes, camping lamp"),
+   ("back_of_shop", SECONDARY, "the stockroom behind a small shop, a desk wedged between the stock shelves", "stock shelves, till boxes, back door"),
    ("church_hall", EPISODIC, "a rented church hall with stacked chairs and a trestle table", "stacked chairs, trestle table, high windows"),
    ("university_lab", SECONDARY, "a corner of a university lab with borrowed equipment", "lab bench, equipment, cable trays"),
    ("shipping_container", EPISODIC, "a shipping container fitted out as an office", "container walls, small window, heater"),
@@ -77,26 +82,26 @@ PLACES = {
    ("pitch_stage", CORE, "a pitch stage with a mic stand and a huge screen", "stage, mic stand, screen, front row"),
    ("demo_day", CORE, "a demo day hall, rows of seats, a bright stage", "rows of chairs, stage, banner"),
    ("family_office", EPISODIC, "a discreet family office with panelled walls", "panelled walls, antique desk"),
-   ("penthouse_party", EPISODIC, "a penthouse full of people who might invest", "floor to ceiling glass, bar, crowd"),
-   ("video_call_wall", SECONDARY, "a wall of faces on a video call, seen from behind the laptop", "monitor grid of faces, desk edge"),
+   ("penthouse_party", EPISODIC, "a penthouse with floor to ceiling glass, a bar and abandoned glasses", "floor to ceiling glass, bar, abandoned glasses"),
+   ("video_call_wall", SECONDARY, "a desk with a large monitor filling the frame, its screen a grid of empty video-call tiles", "monitor, empty call tiles, desk edge"),
  ],
  # where revenue actually lives
  "customer": [
-   ("trade_show_booth", CORE, "a trade show booth on a busy hall floor", "booth, banner, leaflet table, lanyard crowd"),
+   ("trade_show_booth", CORE, "a trade show booth on a hall floor, aisles empty", "booth, banner, leaflet table, carpet aisle"),
    ("client_warehouse", SECONDARY, "a client's warehouse with racking and a forklift", "racking, pallets, forklift, clipboard"),
    ("retail_floor", SECONDARY, "a shop floor with a till and shelves", "till, shelves, shopping baskets"),
-   ("hospital_ward", EPISODIC, "a hospital corridor where the product is being trialled", "trolley, ward doors, notice board"),
+   ("hospital_ward", EPISODIC, "a hospital corridor with a trolley, ward doors and a notice board", "trolley, ward doors, notice board"),
    ("factory_line", SECONDARY, "a factory line with conveyor and safety markings", "conveyor, safety lines, control panel"),
    ("farm_yard", EPISODIC, "a muddy farmyard with a barn and a pickup", "barn, pickup, mud, fence"),
-   ("restaurant_kitchen", EPISODIC, "a working restaurant kitchen at service", "pass, steel counters, tickets"),
-   ("construction_site", EPISODIC, "a construction site with scaffolding and a site hut", "scaffolding, site hut, hi-vis"),
+   ("restaurant_kitchen", EPISODIC, "a restaurant kitchen with a steel pass, counters and a rail of order tickets", "pass, steel counters, ticket rail"),
+   ("construction_site", EPISODIC, "a construction site with scaffolding, a site hut and stacked materials", "scaffolding, site hut, stacked materials"),
    ("school_classroom", EPISODIC, "a classroom where the software is being piloted", "desks, whiteboard, posters"),
  ],
  # the boring rooms that end companies
  "institutional": [
    ("lawyer_office", SECONDARY, "a lawyer's office lined with case files", "shelves of files, heavy desk, chairs"),
    ("accountant_office", SECONDARY, "an accountant's cramped office of ring binders", "ring binders, calculator, small desk"),
-   ("courtroom", EPISODIC, "a small courtroom with benches and a raised bench", "benches, raised bench, flag"),
+   ("courtroom", EPISODIC, "a small empty courtroom with benches and a raised judge's bench", "benches, raised bench, flag"),
    ("patent_office", EPISODIC, "a patent office counter with numbered tickets", "counter, ticket machine, notices"),
    ("immigration_office", EPISODIC, "an immigration waiting room of plastic chairs", "plastic chairs, number screen, forms"),
    ("tax_office", EPISODIC, "a tax office interview room, bare and grey", "bare table, two chairs, filing cabinet"),
@@ -109,15 +114,15 @@ PLACES = {
    ("rental_car", EPISODIC, "a rental car parked outside a client's building", "dashboard, windscreen, coffee cup"),
    ("hotel_room", SECONDARY, "a chain hotel room used as an office", "bed, desk, blackout curtain, kettle"),
    ("motel_room", EPISODIC, "a cheap motel room with a flickering sign outside", "twin bed, neon through curtain"),
-   ("conference_hotel_lobby", SECONDARY, "a conference hotel lobby full of lanyards", "lobby chairs, lanyard crowd, banner"),
+   ("conference_hotel_lobby", SECONDARY, "a conference hotel lobby with low chairs, a sponsor banner and a lanyard table", "lobby chairs, sponsor banner, lanyard table"),
  ],
  # where the company follows you
  "social": [
-   ("launch_party", SECONDARY, "a launch party with a banner and cheap wine", "banner, drinks table, crowd"),
-   ("industry_mixer", EPISODIC, "an industry mixer of small talk and name badges", "high tables, name badges, bar"),
-   ("wedding_reception", EPISODIC, "a wedding reception where someone asks how it is going", "round tables, string lights, dance floor"),
-   ("funeral", EPISODIC, "a funeral, dark coats and a quiet room", "pews, flowers, dark coats"),
-   ("family_dinner", SECONDARY, "a family dinner table mid-conversation", "dining table, dishes, relatives"),
+   ("launch_party", SECONDARY, "a room set for a launch party: banner, drinks table, unopened bottles", "banner, drinks table, unopened bottles"),
+   ("industry_mixer", EPISODIC, "an industry mixer room with high tables, a bar and a sheet of unclaimed name badges", "high tables, name badges, bar"),
+   ("wedding_reception", EPISODIC, "a wedding reception room with round tables, string lights and an empty dance floor", "round tables, string lights, dance floor"),
+   ("funeral", EPISODIC, "a quiet chapel with pews and flowers at the front", "pews, flowers, order of service"),
+   ("family_dinner", SECONDARY, "a family dining table laid for dinner, dishes served and chairs pushed back", "dining table, dishes, pushed-back chairs"),
    ("school_reunion", EPISODIC, "a school reunion in a hired hall", "hall, name tags, old photos"),
  ],
  # the cost the founder pays
@@ -130,12 +135,12 @@ PLACES = {
  ],
  # how it stops
  "endings": [
-   ("nasdaq_bell", CORE, "an exchange balcony with the bell and a crowd below", "balcony, bell, ticker wall, crowd"),
+   ("nasdaq_bell", CORE, "an exchange balcony with the bell and the ticker wall, the floor below empty", "balcony, bell, ticker wall, railing"),
    ("signing_room", SECONDARY, "an acquisition signing room with pens and a thick contract", "long table, contract, pens, water"),
    ("empty_office_cleared", CORE, "an office being cleared: boxes, dust rectangles where desks were", "boxes, dust marks, stripped cables"),
    ("returned_laptops", SECONDARY, "a storage room of returned laptops in labelled boxes", "shelves, labelled boxes, laptops"),
-   ("liquidation_auction", EPISODIC, "an auction of office furniture with lot numbers", "lot stickers, stacked chairs, auctioneer"),
-   ("press_conference", EPISODIC, "a press conference with microphones and a backdrop", "microphones, backdrop, seated press"),
+   ("liquidation_auction", EPISODIC, "a hall of office furniture carrying lot stickers, chairs stacked in rows", "lot stickers, stacked chairs, rostrum"),
+   ("press_conference", EPISODIC, "a press conference room: microphones on a lectern, a branded backdrop, rows of empty chairs", "lectern, microphones, backdrop, empty chairs"),
  ],
 }
 

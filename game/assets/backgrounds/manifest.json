@@ -7,7 +7,7 @@
   "time": "day",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a suburban living room with a floral sofa, a laptop balanced on a knee",
+  "description": "a suburban living room with a floral sofa and a laptop left open on the cushion",
   "objects": "sofa, side table, family photos, laptop"
  },
  {
@@ -18,7 +18,7 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "a suburban living room with a floral sofa, a laptop balanced on a knee",
+  "description": "a suburban living room with a floral sofa and a laptop left open on the cushion",
   "objects": "sofa, side table, family photos, laptop"
  },
  {
@@ -29,7 +29,7 @@
   "time": "day",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a suburban living room with a floral sofa, a laptop balanced on a knee",
+  "description": "a suburban living room with a floral sofa and a laptop left open on the cushion",
   "objects": "sofa, side table, family photos, laptop"
  },
  {
@@ -40,7 +40,7 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a suburban living room with a floral sofa, a laptop balanced on a knee",
+  "description": "a suburban living room with a floral sofa and a laptop left open on the cushion",
   "objects": "sofa, side table, family photos, laptop"
  },
  {
@@ -51,7 +51,7 @@
   "time": "night",
   "condition": "steady",
   "framing": "wide",
-  "description": "a suburban living room with a floral sofa, a laptop balanced on a knee",
+  "description": "a suburban living room with a floral sofa and a laptop left open on the cushion",
   "objects": "sofa, side table, family photos, laptop"
  },
  {
@@ -62,7 +62,7 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a suburban living room with a floral sofa, a laptop balanced on a knee",
+  "description": "a suburban living room with a floral sofa and a laptop left open on the cushion",
   "objects": "sofa, side table, family photos, laptop"
  },
  {
@@ -139,7 +139,7 @@
   "time": "day",
   "condition": "thriving",
   "framing": "wide",
-  "description": "someone else's tidy flat with a laptop open on the kitchen table",
+  "description": "a tidy flat with houseplants and a laptop open on the kitchen table",
   "objects": "kitchen table, plants, tidy shelves"
  },
  {
@@ -150,7 +150,7 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "someone else's tidy flat with a laptop open on the kitchen table",
+  "description": "a tidy flat with houseplants and a laptop open on the kitchen table",
   "objects": "kitchen table, plants, tidy shelves"
  },
  {
@@ -161,7 +161,7 @@
   "time": "day",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "someone else's tidy flat with a laptop open on the kitchen table",
+  "description": "a tidy flat with houseplants and a laptop open on the kitchen table",
   "objects": "kitchen table, plants, tidy shelves"
  },
  {
@@ -172,7 +172,7 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "someone else's tidy flat with a laptop open on the kitchen table",
+  "description": "a tidy flat with houseplants and a laptop open on the kitchen table",
   "objects": "kitchen table, plants, tidy shelves"
  },
  {
@@ -183,7 +183,7 @@
   "time": "night",
   "condition": "steady",
   "framing": "wide",
-  "description": "someone else's tidy flat with a laptop open on the kitchen table",
+  "description": "a tidy flat with houseplants and a laptop open on the kitchen table",
   "objects": "kitchen table, plants, tidy shelves"
  },
  {
@@ -194,7 +194,7 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "someone else's tidy flat with a laptop open on the kitchen table",
+  "description": "a tidy flat with houseplants and a laptop open on the kitchen table",
   "objects": "kitchen table, plants, tidy shelves"
  },
  {
@@ -964,7 +964,7 @@
   "time": "day",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a rented storage unit with a roller door, run as an office",
+  "description": "a rented storage unit with a roller door, a desk and a camping lamp among the shelving",
   "objects": "roller door, shelving, stacked boxes, camping lamp"
  },
  {
@@ -975,7 +975,7 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "a rented storage unit with a roller door, run as an office",
+  "description": "a rented storage unit with a roller door, a desk and a camping lamp among the shelving",
   "objects": "roller door, shelving, stacked boxes, camping lamp"
  },
  {
@@ -986,7 +986,7 @@
   "time": "day",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a rented storage unit with a roller door, run as an office",
+  "description": "a rented storage unit with a roller door, a desk and a camping lamp among the shelving",
   "objects": "roller door, shelving, stacked boxes, camping lamp"
  },
  {
@@ -997,7 +997,7 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a rented storage unit with a roller door, run as an office",
+  "description": "a rented storage unit with a roller door, a desk and a camping lamp among the shelving",
   "objects": "roller door, shelving, stacked boxes, camping lamp"
  },
  {
@@ -1008,7 +1008,7 @@
   "time": "night",
   "condition": "steady",
   "framing": "wide",
-  "description": "a rented storage unit with a roller door, run as an office",
+  "description": "a rented storage unit with a roller door, a desk and a camping lamp among the shelving",
   "objects": "roller door, shelving, stacked boxes, camping lamp"
  },
  {
@@ -1019,7 +1019,7 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a rented storage unit with a roller door, run as an office",
+  "description": "a rented storage unit with a roller door, a desk and a camping lamp among the shelving",
   "objects": "roller door, shelving, stacked boxes, camping lamp"
  },
  {
@@ -1030,7 +1030,7 @@
   "time": "day",
   "condition": "thriving",
   "framing": "wide",
-  "description": "the stockroom behind a small shop, doubling as a workspace",
+  "description": "the stockroom behind a small shop, a desk wedged between the stock shelves",
   "objects": "stock shelves, till boxes, back door"
  },
  {
@@ -1041,7 +1041,7 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "the stockroom behind a small shop, doubling as a workspace",
+  "description": "the stockroom behind a small shop, a desk wedged between the stock shelves",
   "objects": "stock shelves, till boxes, back door"
  },
  {
@@ -1052,7 +1052,7 @@
   "time": "day",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "the stockroom behind a small shop, doubling as a workspace",
+  "description": "the stockroom behind a small shop, a desk wedged between the stock shelves",
   "objects": "stock shelves, till boxes, back door"
  },
  {
@@ -1063,7 +1063,7 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "the stockroom behind a small shop, doubling as a workspace",
+  "description": "the stockroom behind a small shop, a desk wedged between the stock shelves",
   "objects": "stock shelves, till boxes, back door"
  },
  {
@@ -1074,7 +1074,7 @@
   "time": "night",
   "condition": "steady",
   "framing": "wide",
-  "description": "the stockroom behind a small shop, doubling as a workspace",
+  "description": "the stockroom behind a small shop, a desk wedged between the stock shelves",
   "objects": "stock shelves, till boxes, back door"
  },
  {
@@ -1085,7 +1085,7 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "the stockroom behind a small shop, doubling as a workspace",
+  "description": "the stockroom behind a small shop, a desk wedged between the stock shelves",
   "objects": "stock shelves, till boxes, back door"
  },
  {
@@ -3307,8 +3307,8 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "a penthouse full of people who might invest",
-  "objects": "floor to ceiling glass, bar, crowd"
+  "description": "a penthouse with floor to ceiling glass, a bar and abandoned glasses",
+  "objects": "floor to ceiling glass, bar, abandoned glasses"
  },
  {
   "id": "money/penthouse_party/night_in_the_red_wide",
@@ -3318,8 +3318,8 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a penthouse full of people who might invest",
-  "objects": "floor to ceiling glass, bar, crowd"
+  "description": "a penthouse with floor to ceiling glass, a bar and abandoned glasses",
+  "objects": "floor to ceiling glass, bar, abandoned glasses"
  },
  {
   "id": "money/penthouse_party/night_thriving_wide",
@@ -3329,8 +3329,8 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a penthouse full of people who might invest",
-  "objects": "floor to ceiling glass, bar, crowd"
+  "description": "a penthouse with floor to ceiling glass, a bar and abandoned glasses",
+  "objects": "floor to ceiling glass, bar, abandoned glasses"
  },
  {
   "id": "money/video_call_wall/day_thriving_wide",
@@ -3340,8 +3340,8 @@
   "time": "day",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a wall of faces on a video call, seen from behind the laptop",
-  "objects": "monitor grid of faces, desk edge"
+  "description": "a desk with a large monitor filling the frame, its screen a grid of empty video-call tiles",
+  "objects": "monitor, empty call tiles, desk edge"
  },
  {
   "id": "money/video_call_wall/day_steady_wide",
@@ -3351,8 +3351,8 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "a wall of faces on a video call, seen from behind the laptop",
-  "objects": "monitor grid of faces, desk edge"
+  "description": "a desk with a large monitor filling the frame, its screen a grid of empty video-call tiles",
+  "objects": "monitor, empty call tiles, desk edge"
  },
  {
   "id": "money/video_call_wall/day_in_the_red_wide",
@@ -3362,8 +3362,8 @@
   "time": "day",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a wall of faces on a video call, seen from behind the laptop",
-  "objects": "monitor grid of faces, desk edge"
+  "description": "a desk with a large monitor filling the frame, its screen a grid of empty video-call tiles",
+  "objects": "monitor, empty call tiles, desk edge"
  },
  {
   "id": "money/video_call_wall/night_thriving_wide",
@@ -3373,8 +3373,8 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a wall of faces on a video call, seen from behind the laptop",
-  "objects": "monitor grid of faces, desk edge"
+  "description": "a desk with a large monitor filling the frame, its screen a grid of empty video-call tiles",
+  "objects": "monitor, empty call tiles, desk edge"
  },
  {
   "id": "money/video_call_wall/night_steady_wide",
@@ -3384,8 +3384,8 @@
   "time": "night",
   "condition": "steady",
   "framing": "wide",
-  "description": "a wall of faces on a video call, seen from behind the laptop",
-  "objects": "monitor grid of faces, desk edge"
+  "description": "a desk with a large monitor filling the frame, its screen a grid of empty video-call tiles",
+  "objects": "monitor, empty call tiles, desk edge"
  },
  {
   "id": "money/video_call_wall/night_in_the_red_wide",
@@ -3395,8 +3395,8 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a wall of faces on a video call, seen from behind the laptop",
-  "objects": "monitor grid of faces, desk edge"
+  "description": "a desk with a large monitor filling the frame, its screen a grid of empty video-call tiles",
+  "objects": "monitor, empty call tiles, desk edge"
  },
  {
   "id": "customer/trade_show_booth/day_thriving_wide",
@@ -3406,8 +3406,8 @@
   "time": "day",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/trade_show_booth/day_thriving_medium",
@@ -3417,8 +3417,8 @@
   "time": "day",
   "condition": "thriving",
   "framing": "medium",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/trade_show_booth/day_steady_wide",
@@ -3428,8 +3428,8 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/trade_show_booth/day_steady_medium",
@@ -3439,8 +3439,8 @@
   "time": "day",
   "condition": "steady",
   "framing": "medium",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/trade_show_booth/day_in_the_red_wide",
@@ -3450,8 +3450,8 @@
   "time": "day",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/trade_show_booth/day_in_the_red_medium",
@@ -3461,8 +3461,8 @@
   "time": "day",
   "condition": "in_the_red",
   "framing": "medium",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/trade_show_booth/night_thriving_wide",
@@ -3472,8 +3472,8 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/trade_show_booth/night_thriving_medium",
@@ -3483,8 +3483,8 @@
   "time": "night",
   "condition": "thriving",
   "framing": "medium",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/trade_show_booth/night_steady_wide",
@@ -3494,8 +3494,8 @@
   "time": "night",
   "condition": "steady",
   "framing": "wide",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/trade_show_booth/night_steady_medium",
@@ -3505,8 +3505,8 @@
   "time": "night",
   "condition": "steady",
   "framing": "medium",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/trade_show_booth/night_in_the_red_wide",
@@ -3516,8 +3516,8 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/trade_show_booth/night_in_the_red_medium",
@@ -3527,8 +3527,8 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "medium",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/trade_show_booth/small_hours_thriving_wide",
@@ -3538,8 +3538,8 @@
   "time": "small_hours",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/trade_show_booth/small_hours_thriving_medium",
@@ -3549,8 +3549,8 @@
   "time": "small_hours",
   "condition": "thriving",
   "framing": "medium",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/trade_show_booth/small_hours_steady_wide",
@@ -3560,8 +3560,8 @@
   "time": "small_hours",
   "condition": "steady",
   "framing": "wide",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/trade_show_booth/small_hours_steady_medium",
@@ -3571,8 +3571,8 @@
   "time": "small_hours",
   "condition": "steady",
   "framing": "medium",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/trade_show_booth/small_hours_in_the_red_wide",
@@ -3582,8 +3582,8 @@
   "time": "small_hours",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/trade_show_booth/small_hours_in_the_red_medium",
@@ -3593,8 +3593,8 @@
   "time": "small_hours",
   "condition": "in_the_red",
   "framing": "medium",
-  "description": "a trade show booth on a busy hall floor",
-  "objects": "booth, banner, leaflet table, lanyard crowd"
+  "description": "a trade show booth on a hall floor, aisles empty",
+  "objects": "booth, banner, leaflet table, carpet aisle"
  },
  {
   "id": "customer/client_warehouse/day_thriving_wide",
@@ -3736,7 +3736,7 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "a hospital corridor where the product is being trialled",
+  "description": "a hospital corridor with a trolley, ward doors and a notice board",
   "objects": "trolley, ward doors, notice board"
  },
  {
@@ -3747,7 +3747,7 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a hospital corridor where the product is being trialled",
+  "description": "a hospital corridor with a trolley, ward doors and a notice board",
   "objects": "trolley, ward doors, notice board"
  },
  {
@@ -3758,7 +3758,7 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a hospital corridor where the product is being trialled",
+  "description": "a hospital corridor with a trolley, ward doors and a notice board",
   "objects": "trolley, ward doors, notice board"
  },
  {
@@ -3868,8 +3868,8 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "a working restaurant kitchen at service",
-  "objects": "pass, steel counters, tickets"
+  "description": "a restaurant kitchen with a steel pass, counters and a rail of order tickets",
+  "objects": "pass, steel counters, ticket rail"
  },
  {
   "id": "customer/restaurant_kitchen/night_in_the_red_wide",
@@ -3879,8 +3879,8 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a working restaurant kitchen at service",
-  "objects": "pass, steel counters, tickets"
+  "description": "a restaurant kitchen with a steel pass, counters and a rail of order tickets",
+  "objects": "pass, steel counters, ticket rail"
  },
  {
   "id": "customer/restaurant_kitchen/night_thriving_wide",
@@ -3890,8 +3890,8 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a working restaurant kitchen at service",
-  "objects": "pass, steel counters, tickets"
+  "description": "a restaurant kitchen with a steel pass, counters and a rail of order tickets",
+  "objects": "pass, steel counters, ticket rail"
  },
  {
   "id": "customer/construction_site/day_steady_wide",
@@ -3901,8 +3901,8 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "a construction site with scaffolding and a site hut",
-  "objects": "scaffolding, site hut, hi-vis"
+  "description": "a construction site with scaffolding, a site hut and stacked materials",
+  "objects": "scaffolding, site hut, stacked materials"
  },
  {
   "id": "customer/construction_site/night_in_the_red_wide",
@@ -3912,8 +3912,8 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a construction site with scaffolding and a site hut",
-  "objects": "scaffolding, site hut, hi-vis"
+  "description": "a construction site with scaffolding, a site hut and stacked materials",
+  "objects": "scaffolding, site hut, stacked materials"
  },
  {
   "id": "customer/construction_site/night_thriving_wide",
@@ -3923,8 +3923,8 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a construction site with scaffolding and a site hut",
-  "objects": "scaffolding, site hut, hi-vis"
+  "description": "a construction site with scaffolding, a site hut and stacked materials",
+  "objects": "scaffolding, site hut, stacked materials"
  },
  {
   "id": "customer/school_classroom/day_steady_wide",
@@ -4099,7 +4099,7 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "a small courtroom with benches and a raised bench",
+  "description": "a small empty courtroom with benches and a raised judge's bench",
   "objects": "benches, raised bench, flag"
  },
  {
@@ -4110,7 +4110,7 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a small courtroom with benches and a raised bench",
+  "description": "a small empty courtroom with benches and a raised judge's bench",
   "objects": "benches, raised bench, flag"
  },
  {
@@ -4121,7 +4121,7 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a small courtroom with benches and a raised bench",
+  "description": "a small empty courtroom with benches and a raised judge's bench",
   "objects": "benches, raised bench, flag"
  },
  {
@@ -4528,8 +4528,8 @@
   "time": "day",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a conference hotel lobby full of lanyards",
-  "objects": "lobby chairs, lanyard crowd, banner"
+  "description": "a conference hotel lobby with low chairs, a sponsor banner and a lanyard table",
+  "objects": "lobby chairs, sponsor banner, lanyard table"
  },
  {
   "id": "transit/conference_hotel_lobby/day_steady_wide",
@@ -4539,8 +4539,8 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "a conference hotel lobby full of lanyards",
-  "objects": "lobby chairs, lanyard crowd, banner"
+  "description": "a conference hotel lobby with low chairs, a sponsor banner and a lanyard table",
+  "objects": "lobby chairs, sponsor banner, lanyard table"
  },
  {
   "id": "transit/conference_hotel_lobby/day_in_the_red_wide",
@@ -4550,8 +4550,8 @@
   "time": "day",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a conference hotel lobby full of lanyards",
-  "objects": "lobby chairs, lanyard crowd, banner"
+  "description": "a conference hotel lobby with low chairs, a sponsor banner and a lanyard table",
+  "objects": "lobby chairs, sponsor banner, lanyard table"
  },
  {
   "id": "transit/conference_hotel_lobby/night_thriving_wide",
@@ -4561,8 +4561,8 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a conference hotel lobby full of lanyards",
-  "objects": "lobby chairs, lanyard crowd, banner"
+  "description": "a conference hotel lobby with low chairs, a sponsor banner and a lanyard table",
+  "objects": "lobby chairs, sponsor banner, lanyard table"
  },
  {
   "id": "transit/conference_hotel_lobby/night_steady_wide",
@@ -4572,8 +4572,8 @@
   "time": "night",
   "condition": "steady",
   "framing": "wide",
-  "description": "a conference hotel lobby full of lanyards",
-  "objects": "lobby chairs, lanyard crowd, banner"
+  "description": "a conference hotel lobby with low chairs, a sponsor banner and a lanyard table",
+  "objects": "lobby chairs, sponsor banner, lanyard table"
  },
  {
   "id": "transit/conference_hotel_lobby/night_in_the_red_wide",
@@ -4583,8 +4583,8 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a conference hotel lobby full of lanyards",
-  "objects": "lobby chairs, lanyard crowd, banner"
+  "description": "a conference hotel lobby with low chairs, a sponsor banner and a lanyard table",
+  "objects": "lobby chairs, sponsor banner, lanyard table"
  },
  {
   "id": "social/launch_party/day_thriving_wide",
@@ -4594,8 +4594,8 @@
   "time": "day",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a launch party with a banner and cheap wine",
-  "objects": "banner, drinks table, crowd"
+  "description": "a room set for a launch party: banner, drinks table, unopened bottles",
+  "objects": "banner, drinks table, unopened bottles"
  },
  {
   "id": "social/launch_party/day_steady_wide",
@@ -4605,8 +4605,8 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "a launch party with a banner and cheap wine",
-  "objects": "banner, drinks table, crowd"
+  "description": "a room set for a launch party: banner, drinks table, unopened bottles",
+  "objects": "banner, drinks table, unopened bottles"
  },
  {
   "id": "social/launch_party/day_in_the_red_wide",
@@ -4616,8 +4616,8 @@
   "time": "day",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a launch party with a banner and cheap wine",
-  "objects": "banner, drinks table, crowd"
+  "description": "a room set for a launch party: banner, drinks table, unopened bottles",
+  "objects": "banner, drinks table, unopened bottles"
  },
  {
   "id": "social/launch_party/night_thriving_wide",
@@ -4627,8 +4627,8 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a launch party with a banner and cheap wine",
-  "objects": "banner, drinks table, crowd"
+  "description": "a room set for a launch party: banner, drinks table, unopened bottles",
+  "objects": "banner, drinks table, unopened bottles"
  },
  {
   "id": "social/launch_party/night_steady_wide",
@@ -4638,8 +4638,8 @@
   "time": "night",
   "condition": "steady",
   "framing": "wide",
-  "description": "a launch party with a banner and cheap wine",
-  "objects": "banner, drinks table, crowd"
+  "description": "a room set for a launch party: banner, drinks table, unopened bottles",
+  "objects": "banner, drinks table, unopened bottles"
  },
  {
   "id": "social/launch_party/night_in_the_red_wide",
@@ -4649,8 +4649,8 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a launch party with a banner and cheap wine",
-  "objects": "banner, drinks table, crowd"
+  "description": "a room set for a launch party: banner, drinks table, unopened bottles",
+  "objects": "banner, drinks table, unopened bottles"
  },
  {
   "id": "social/industry_mixer/day_steady_wide",
@@ -4660,7 +4660,7 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "an industry mixer of small talk and name badges",
+  "description": "an industry mixer room with high tables, a bar and a sheet of unclaimed name badges",
   "objects": "high tables, name badges, bar"
  },
  {
@@ -4671,7 +4671,7 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "an industry mixer of small talk and name badges",
+  "description": "an industry mixer room with high tables, a bar and a sheet of unclaimed name badges",
   "objects": "high tables, name badges, bar"
  },
  {
@@ -4682,7 +4682,7 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "an industry mixer of small talk and name badges",
+  "description": "an industry mixer room with high tables, a bar and a sheet of unclaimed name badges",
   "objects": "high tables, name badges, bar"
  },
  {
@@ -4693,7 +4693,7 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "a wedding reception where someone asks how it is going",
+  "description": "a wedding reception room with round tables, string lights and an empty dance floor",
   "objects": "round tables, string lights, dance floor"
  },
  {
@@ -4704,7 +4704,7 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a wedding reception where someone asks how it is going",
+  "description": "a wedding reception room with round tables, string lights and an empty dance floor",
   "objects": "round tables, string lights, dance floor"
  },
  {
@@ -4715,7 +4715,7 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a wedding reception where someone asks how it is going",
+  "description": "a wedding reception room with round tables, string lights and an empty dance floor",
   "objects": "round tables, string lights, dance floor"
  },
  {
@@ -4726,8 +4726,8 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "a funeral, dark coats and a quiet room",
-  "objects": "pews, flowers, dark coats"
+  "description": "a quiet chapel with pews and flowers at the front",
+  "objects": "pews, flowers, order of service"
  },
  {
   "id": "social/funeral/night_in_the_red_wide",
@@ -4737,8 +4737,8 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a funeral, dark coats and a quiet room",
-  "objects": "pews, flowers, dark coats"
+  "description": "a quiet chapel with pews and flowers at the front",
+  "objects": "pews, flowers, order of service"
  },
  {
   "id": "social/funeral/night_thriving_wide",
@@ -4748,8 +4748,8 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a funeral, dark coats and a quiet room",
-  "objects": "pews, flowers, dark coats"
+  "description": "a quiet chapel with pews and flowers at the front",
+  "objects": "pews, flowers, order of service"
  },
  {
   "id": "social/family_dinner/day_thriving_wide",
@@ -4759,8 +4759,8 @@
   "time": "day",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a family dinner table mid-conversation",
-  "objects": "dining table, dishes, relatives"
+  "description": "a family dining table laid for dinner, dishes served and chairs pushed back",
+  "objects": "dining table, dishes, pushed-back chairs"
  },
  {
   "id": "social/family_dinner/day_steady_wide",
@@ -4770,8 +4770,8 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "a family dinner table mid-conversation",
-  "objects": "dining table, dishes, relatives"
+  "description": "a family dining table laid for dinner, dishes served and chairs pushed back",
+  "objects": "dining table, dishes, pushed-back chairs"
  },
  {
   "id": "social/family_dinner/day_in_the_red_wide",
@@ -4781,8 +4781,8 @@
   "time": "day",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a family dinner table mid-conversation",
-  "objects": "dining table, dishes, relatives"
+  "description": "a family dining table laid for dinner, dishes served and chairs pushed back",
+  "objects": "dining table, dishes, pushed-back chairs"
  },
  {
   "id": "social/family_dinner/night_thriving_wide",
@@ -4792,8 +4792,8 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a family dinner table mid-conversation",
-  "objects": "dining table, dishes, relatives"
+  "description": "a family dining table laid for dinner, dishes served and chairs pushed back",
+  "objects": "dining table, dishes, pushed-back chairs"
  },
  {
   "id": "social/family_dinner/night_steady_wide",
@@ -4803,8 +4803,8 @@
   "time": "night",
   "condition": "steady",
   "framing": "wide",
-  "description": "a family dinner table mid-conversation",
-  "objects": "dining table, dishes, relatives"
+  "description": "a family dining table laid for dinner, dishes served and chairs pushed back",
+  "objects": "dining table, dishes, pushed-back chairs"
  },
  {
   "id": "social/family_dinner/night_in_the_red_wide",
@@ -4814,8 +4814,8 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a family dinner table mid-conversation",
-  "objects": "dining table, dishes, relatives"
+  "description": "a family dining table laid for dinner, dishes served and chairs pushed back",
+  "objects": "dining table, dishes, pushed-back chairs"
  },
  {
   "id": "social/school_reunion/day_steady_wide",
@@ -5089,8 +5089,8 @@
   "time": "day",
   "condition": "thriving",
   "framing": "wide",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/nasdaq_bell/day_thriving_medium",
@@ -5100,8 +5100,8 @@
   "time": "day",
   "condition": "thriving",
   "framing": "medium",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/nasdaq_bell/day_steady_wide",
@@ -5111,8 +5111,8 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/nasdaq_bell/day_steady_medium",
@@ -5122,8 +5122,8 @@
   "time": "day",
   "condition": "steady",
   "framing": "medium",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/nasdaq_bell/day_in_the_red_wide",
@@ -5133,8 +5133,8 @@
   "time": "day",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/nasdaq_bell/day_in_the_red_medium",
@@ -5144,8 +5144,8 @@
   "time": "day",
   "condition": "in_the_red",
   "framing": "medium",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/nasdaq_bell/night_thriving_wide",
@@ -5155,8 +5155,8 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/nasdaq_bell/night_thriving_medium",
@@ -5166,8 +5166,8 @@
   "time": "night",
   "condition": "thriving",
   "framing": "medium",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/nasdaq_bell/night_steady_wide",
@@ -5177,8 +5177,8 @@
   "time": "night",
   "condition": "steady",
   "framing": "wide",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/nasdaq_bell/night_steady_medium",
@@ -5188,8 +5188,8 @@
   "time": "night",
   "condition": "steady",
   "framing": "medium",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/nasdaq_bell/night_in_the_red_wide",
@@ -5199,8 +5199,8 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/nasdaq_bell/night_in_the_red_medium",
@@ -5210,8 +5210,8 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "medium",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/nasdaq_bell/small_hours_thriving_wide",
@@ -5221,8 +5221,8 @@
   "time": "small_hours",
   "condition": "thriving",
   "framing": "wide",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/nasdaq_bell/small_hours_thriving_medium",
@@ -5232,8 +5232,8 @@
   "time": "small_hours",
   "condition": "thriving",
   "framing": "medium",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/nasdaq_bell/small_hours_steady_wide",
@@ -5243,8 +5243,8 @@
   "time": "small_hours",
   "condition": "steady",
   "framing": "wide",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/nasdaq_bell/small_hours_steady_medium",
@@ -5254,8 +5254,8 @@
   "time": "small_hours",
   "condition": "steady",
   "framing": "medium",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/nasdaq_bell/small_hours_in_the_red_wide",
@@ -5265,8 +5265,8 @@
   "time": "small_hours",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/nasdaq_bell/small_hours_in_the_red_medium",
@@ -5276,8 +5276,8 @@
   "time": "small_hours",
   "condition": "in_the_red",
   "framing": "medium",
-  "description": "an exchange balcony with the bell and a crowd below",
-  "objects": "balcony, bell, ticker wall, crowd"
+  "description": "an exchange balcony with the bell and the ticker wall, the floor below empty",
+  "objects": "balcony, bell, ticker wall, railing"
  },
  {
   "id": "endings/signing_room/day_thriving_wide",
@@ -5617,8 +5617,8 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "an auction of office furniture with lot numbers",
-  "objects": "lot stickers, stacked chairs, auctioneer"
+  "description": "a hall of office furniture carrying lot stickers, chairs stacked in rows",
+  "objects": "lot stickers, stacked chairs, rostrum"
  },
  {
   "id": "endings/liquidation_auction/night_in_the_red_wide",
@@ -5628,8 +5628,8 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "an auction of office furniture with lot numbers",
-  "objects": "lot stickers, stacked chairs, auctioneer"
+  "description": "a hall of office furniture carrying lot stickers, chairs stacked in rows",
+  "objects": "lot stickers, stacked chairs, rostrum"
  },
  {
   "id": "endings/liquidation_auction/night_thriving_wide",
@@ -5639,8 +5639,8 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "an auction of office furniture with lot numbers",
-  "objects": "lot stickers, stacked chairs, auctioneer"
+  "description": "a hall of office furniture carrying lot stickers, chairs stacked in rows",
+  "objects": "lot stickers, stacked chairs, rostrum"
  },
  {
   "id": "endings/press_conference/day_steady_wide",
@@ -5650,8 +5650,8 @@
   "time": "day",
   "condition": "steady",
   "framing": "wide",
-  "description": "a press conference with microphones and a backdrop",
-  "objects": "microphones, backdrop, seated press"
+  "description": "a press conference room: microphones on a lectern, a branded backdrop, rows of empty chairs",
+  "objects": "lectern, microphones, backdrop, empty chairs"
  },
  {
   "id": "endings/press_conference/night_in_the_red_wide",
@@ -5661,8 +5661,8 @@
   "time": "night",
   "condition": "in_the_red",
   "framing": "wide",
-  "description": "a press conference with microphones and a backdrop",
-  "objects": "microphones, backdrop, seated press"
+  "description": "a press conference room: microphones on a lectern, a branded backdrop, rows of empty chairs",
+  "objects": "lectern, microphones, backdrop, empty chairs"
  },
  {
   "id": "endings/press_conference/night_thriving_wide",
@@ -5672,7 +5672,7 @@
   "time": "night",
   "condition": "thriving",
   "framing": "wide",
-  "description": "a press conference with microphones and a backdrop",
-  "objects": "microphones, backdrop, seated press"
+  "description": "a press conference room: microphones on a lectern, a branded backdrop, rows of empty chairs",
+  "objects": "lectern, microphones, backdrop, empty chairs"
  }
 ]
