@@ -10,6 +10,9 @@ game/.env
 game/assets/*
 !game/assets/fonts/
 !game/assets/ui/
+!game/assets/backgrounds/
+game/assets/backgrounds/*
+!game/assets/backgrounds/manifest.json
 # layout.json is NOT generated art. Crew marks, occluder rects and write_surfaces
 # are hand-authored from measurements taken off each image and cannot be recovered
 # by rerunning anything — 28K of irreplaceable data sitting inside 5.4GB of
