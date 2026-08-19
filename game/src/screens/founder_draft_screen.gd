@@ -55,8 +55,8 @@ var _add_cf_btn: Button
 var _fund_btns: Array = []
 var _bag: Array[String] = []
 var _bag_btns: Dictionary = {}
-var _name_edit: LineEdit
-var _idea_edit: LineEdit
+var _name_edit: PaperInput
+var _idea_edit: PaperInput
 var _donut: Control
 var _summary: Label
 var _launch: Button
@@ -259,21 +259,6 @@ func _style_button(b: Button, col: Color, fsize: int) -> void:
 	sd.border_color = Color(0.6, 0.58, 0.52)
 	b.add_theme_stylebox_override("disabled", sd)
 
-func _style_line(le: LineEdit, fsize: int) -> void:
-	le.add_theme_font_override("font", _font)
-	le.add_theme_font_size_override("font_size", fsize)
-	le.add_theme_color_override("font_color", PALETTE["ink"])
-	var st := StyleBoxFlat.new()
-	st.bg_color = Color.WHITE
-	st.border_color = PALETTE["ink"]
-	st.set_border_width_all(4)
-	st.set_corner_radius_all(12)
-	st.content_margin_left = 14
-	st.content_margin_top = 8
-	st.content_margin_bottom = 8
-	le.add_theme_stylebox_override("normal", st)
-	le.add_theme_stylebox_override("focus", st)
-
 func _juice(b: Button) -> void:
 	b.pivot_offset = b.size / 2.0
 	b.mouse_entered.connect(func():
@@ -414,7 +399,12 @@ func _build_select() -> Control:
 	# roster: fighting-game dock at the bottom
 	var row_w := _archs.size() * 134 - 14
 	var x0 := (1536 - row_w) / 2.0
-	var dock := _panel(Vector2(x0 - 24, DOCK_BAND_TOP), Vector2(row_w + 48, 150), Color(0.07, 0.07, 0.07, 0.75), Color(PALETTE["cream"], 0.5))
+	var dock := PaperEdge.new()
+	dock.size = Vector2(row_w + 48, 150)
+	dock.position = Vector2(x0 - 24, DOCK_BAND_TOP)
+	dock.thick = 4.0
+	dock.lean = 3
+	dock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	page.add_child(dock)
 	for i in _archs.size():
 		var chip := Button.new()
@@ -475,7 +465,7 @@ func _select(i: int, animate_swap: bool = true) -> void:
 	for c in _chips.size():
 		var chip: Button = _chips[c]
 		var selected := c == _sel_i
-		chip.modulate = Color.WHITE if selected else Color(1, 1, 1, 0.45)
+		chip.modulate = Color.WHITE if selected else Color(0.62, 0.62, 0.62, 1.0)
 		var target_y := 842.0 if selected else 862.0
 		var ct := create_tween()
 		ct.tween_property(chip, "position:y", target_y, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -657,45 +647,34 @@ func _build_name() -> Control:
 	wsh.size = Vector2(180, 30)
 	page.add_child(wsh)
 
-	var panel := _panel(Vector2(470, 250), Vector2(800, 470), Color(0.09, 0.09, 0.09, 0.94), PALETTE["cream"])
-	page.add_child(panel)
-	var name_lbl := _dlabel("THE NAME", 24, PALETTE["yellow"])
-	name_lbl.position = Vector2(150, 36)
-	name_lbl.size = Vector2(500, 34)
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(name_lbl)
-	_name_edit = LineEdit.new()
-	_name_edit.position = Vector2(150, 76)
-	_name_edit.size = Vector2(500, 74)
-	_name_edit.max_length = 24
-	_name_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_style_line(_name_edit, 40)
-	panel.add_child(_name_edit)
-	var idea_lbl := _label("WHAT IT DOES — the world will hold you to this", 26, PALETTE["yellow"])
-	idea_lbl.position = Vector2(60, 196)
-	idea_lbl.size = Vector2(680, 34)
-	idea_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(idea_lbl)
-	_idea_edit = LineEdit.new()
-	_idea_edit.position = Vector2(60, 236)
-	_idea_edit.size = Vector2(680, 64)
-	_idea_edit.max_length = 80
-	_idea_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_style_line(_idea_edit, 26)
-	panel.add_child(_idea_edit)
+	_name_edit = PaperInput.new()
+	_name_edit.setup("THE NAME", "Mossflow", 44)
+	_name_edit.position = Vector2(560, 300)
+	_name_edit.set_deferred("size", Vector2(660, 132))
+	page.add_child(_name_edit)
+
+	_idea_edit = PaperInput.new()
+	_idea_edit.setup("WHAT IT DOES — the world will hold you to this",
+		"an app that walks your dog, badly", 34)
+	_idea_edit.position = Vector2(500, 470)
+	_idea_edit.set_deferred("size", Vector2(780, 124))
+	page.add_child(_idea_edit)
+
 	var reroll := Button.new()
-	reroll.text = "🎰  SPIN THE IDEA MACHINE"
-	reroll.position = Vector2(200, 340)
-	reroll.size = Vector2(400, 64)
-	reroll.pivot_offset = Vector2(200, 32)
+	reroll.text = "SPIN THE IDEA MACHINE"
+	reroll.position = Vector2(690, 636)
+	reroll.size = Vector2(400, 68)
+	reroll.pivot_offset = Vector2(200, 34)
 	_style_button(reroll, PALETTE["yellow"], 26)
+	_paper_card(reroll)
 	_juice(reroll)
 	reroll.pressed.connect(_spin_idea)
-	panel.add_child(reroll)
-	var hintl := _label("or type your own. braver.", 24, Color(PALETTE["cream"], 0.65))
-	hintl.position = Vector2(300, 416)
-	panel.add_child(hintl)
+	page.add_child(reroll)
+	var hintl := _label("or type your own. braver.", 24, Color(PALETTE["cream"], 0.7))
+	hintl.position = Vector2(760, 716)
+	page.add_child(hintl)
 	_reroll_idea()
+	_name_edit.grab_write_focus()
 
 	var back := Button.new()
 	back.text = "←"
@@ -731,8 +710,8 @@ func _spin_idea() -> void:
 func _reroll_idea() -> void:
 	var r := RandomNumberGenerator.new()
 	r.randomize()
-	_name_edit.text = NAME_A[r.randi_range(0, NAME_A.size() - 1)] + NAME_B[r.randi_range(0, NAME_B.size() - 1)]
-	_idea_edit.text = "%s %s for %s" % [IDEA_PRE[r.randi_range(0, IDEA_PRE.size() - 1)], IDEA_FORM[r.randi_range(0, IDEA_FORM.size() - 1)], IDEA_FOR[r.randi_range(0, IDEA_FOR.size() - 1)]]
+	_name_edit.set_value(NAME_A[r.randi_range(0, NAME_A.size() - 1)] + NAME_B[r.randi_range(0, NAME_B.size() - 1)])
+	_idea_edit.set_value("%s %s for %s" % [IDEA_PRE[r.randi_range(0, IDEA_PRE.size() - 1)], IDEA_FORM[r.randi_range(0, IDEA_FORM.size() - 1)], IDEA_FOR[r.randi_range(0, IDEA_FOR.size() - 1)]])
 
 # ---------- SCREEN 3: THE FOUNDING ----------
 
@@ -1218,30 +1197,41 @@ func _build_bag_page() -> Control:
 		gi += 1
 
 	# detail panel — what the thing is FOR
-	var dp := _panel(Vector2(730, 180), Vector2(430, 520), Color(0.08, 0.08, 0.08, 0.9), Color(0, 0, 0, 0))
+	var dp := Control.new()
+	dp.position = Vector2(730, 180)
+	dp.size = Vector2(430, 520)
+	dp.rotation = 0.007
 	page.add_child(dp)
+	var dp_sheet := PaperEdge.new()
+	dp_sheet.size = dp.size
+	dp_sheet.thick = 4.0
+	dp_sheet.lean = 4
+	dp_sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dp.add_child(dp_sheet)
 	_bagd_art = TextureRect.new()
 	_bagd_art.size = Vector2(190, 190)
 	_bagd_art.position = Vector2(120, 26)
 	_bagd_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_bagd_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	dp.add_child(_bagd_art)
-	_bagd_name = _dlabel("", 34, PALETTE["yellow"])
+	_bagd_name = _dlabel("", 34, PALETTE["ink"])
 	_bagd_name.position = Vector2(30, 232)
 	_bagd_name.size = Vector2(370, 50)
 	_bagd_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	dp.add_child(_bagd_name)
-	var rule := ColorRect.new()
+	var rule := HandRule.new()
+	rule.length = 120.0
 	rule.color = PALETTE["coral"]
-	rule.position = Vector2(155, 288)
-	rule.size = Vector2(120, 4)
+	rule.size = Vector2(120, 14)
+	rule.position = Vector2(155, 284)
+	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dp.add_child(rule)
-	_bagd_blurb = _label("", 27, PALETTE["cream"])
+	_bagd_blurb = _label("", 27, PALETTE["ink"])
 	_bagd_blurb.position = Vector2(36, 310)
 	_bagd_blurb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_wrap(_bagd_blurb, 360.0)
 	dp.add_child(_bagd_blurb)
-	_bagd_cost = _label("", 24, PALETTE["blue"])
+	_bagd_cost = _label("", 24, Color(PALETTE["ink"], 0.6))
 	_bagd_cost.position = Vector2(36, 452)
 	_bagd_cost.size = Vector2(360, 34)
 	_bagd_cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1261,8 +1251,8 @@ func _build_bag_page() -> Control:
 	page.add_child(box)
 	_box_anchor = box.position + Vector2(115, 90)
 	_packed_row = HBoxContainer.new()
-	_packed_row.position = Vector2(1160, 700)
-	_packed_row.add_theme_constant_override("separation", 6)
+	_packed_row.position = Vector2(1150, 690)
+	_packed_row.add_theme_constant_override("separation", 14)
 	page.add_child(_packed_row)
 
 	_bag_summary = _label("", 28, Color(PALETTE["cream"], 0.9))
@@ -1452,7 +1442,7 @@ func _toggle_bag(id: String, cost: int, btn: Button) -> void:
 			if ResourceLoader.exists(cp):
 				chip.icon = load(cp)
 				chip.expand_icon = true
-			chip.custom_minimum_size = Vector2(56, 56)
+			chip.custom_minimum_size = Vector2(104, 104)
 			chip.tooltip_text = "take it back out"
 			chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 			var chip_id := String(bid)
@@ -1526,7 +1516,7 @@ func _refresh_capline() -> void:
 	if _surfaces and _surfaces.has("sticky"):
 		_surfaces.write("sticky", "YOU KEEP", "%.0f%%" % founder_pct)
 	if _money_preview:
-		_money_preview.text = "You'd keep %.0f%% of %s · ~$%s in the bank on day one" % [founder_pct, _name_edit.text.strip_edges() if _name_edit else "the company", _fmt_money(cash)] if not _sel_fund.is_empty() else "pick one — the donut remembers forever"
+		_money_preview.text = "You'd keep %.0f%% of %s · ~$%s in the bank on day one" % [founder_pct, _name_edit.value() if _name_edit else "the company", _fmt_money(cash)] if not _sel_fund.is_empty() else "pick one — the donut remembers forever"
 	if _slots_label:
 		var used := 0
 		for bid in _bag:
@@ -1537,7 +1527,7 @@ func _refresh_capline() -> void:
 	if _bag_summary:
 		var n_cf: int = _cofounders.size()
 		_bag_summary.text = "%s · %s · %d %s · you keep %.0f%% · ~$%s day one" % [
-			_name_edit.text.strip_edges() if _name_edit else "?", String(_sel_arch.get("name", "?")),
+			_name_edit.value() if _name_edit else "?", String(_sel_arch.get("name", "?")),
 			n_cf, "cofounder" if n_cf == 1 else "cofounders", founder_pct, _fmt_money(cash)]
 	if _launch:
 		var blocked := ""
@@ -1847,8 +1837,8 @@ func _do_launch() -> void:
 		"archetype": _sel_arch,
 		"cofounders": cfs,
 		"funding": _sel_fund,
-		"company_name": _name_edit.text.strip_edges(),
-		"company_idea": _idea_edit.text.strip_edges(),
+		"company_name": _name_edit.value(),
+		"company_idea": _idea_edit.value(),
 		"biz_what": _biz_what,
 		"biz_who": _biz_who,
 		"items": _bag.duplicate(),
