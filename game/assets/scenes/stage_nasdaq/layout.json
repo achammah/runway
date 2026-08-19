@@ -9,5 +9,71 @@
    "lines": 2,
    "align": "center"
   }
+ },
+ "crew_1": {
+  "x": 308,
+  "y": 248,
+  "w": 184,
+  "h": 276,
+  "scale": 0.92,
+  "foot_x": 400,
+  "foot_y": 524,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "founder_mark": {
+  "x": 470,
+  "y": 250,
+  "w": 180,
+  "h": 270,
+  "scale": 0.9,
+  "foot_x": 560,
+  "foot_y": 520,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "crew_2": {
+  "x": 842,
+  "y": 256,
+  "w": 176,
+  "h": 264,
+  "scale": 0.88,
+  "foot_x": 930,
+  "foot_y": 520,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "crew_3": {
+  "x": 1000,
+  "y": 254,
+  "w": 180,
+  "h": 270,
+  "scale": 0.9,
+  "foot_x": 1090,
+  "foot_y": 524,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "crew_4": {
+  "x": 150,
+  "y": 300,
+  "w": 200,
+  "h": 300,
+  "scale": 1.0,
+  "foot_x": 250,
+  "foot_y": 600,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "occ_dais": {
+  "x": 285,
+  "y": 505,
+  "w": 944,
+  "h": 195,
+  "kind": "occluder",
+  "z": "front",
+  "placed": true,
+  "note": "draws OVER the cast \u2014 the cast stands behind it",
+  "source": "scene-crop"
  }
 }

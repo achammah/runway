@@ -18,5 +18,93 @@
    "lines": 5,
    "align": "center"
   }
+ },
+ "founder_mark": {
+  "x": 430,
+  "y": 308,
+  "w": 180,
+  "h": 270,
+  "scale": 0.9,
+  "foot_x": 520,
+  "foot_y": 578,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "crew_1": {
+  "x": 612,
+  "y": 314,
+  "w": 176,
+  "h": 264,
+  "scale": 0.88,
+  "foot_x": 700,
+  "foot_y": 578,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "crew_2": {
+  "x": 792,
+  "y": 314,
+  "w": 176,
+  "h": 264,
+  "scale": 0.88,
+  "foot_x": 880,
+  "foot_y": 578,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "crew_3": {
+  "x": 225,
+  "y": 385,
+  "w": 210,
+  "h": 315,
+  "scale": 1.05,
+  "foot_x": 330,
+  "foot_y": 700,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "crew_4": {
+  "x": 1095,
+  "y": 385,
+  "w": 210,
+  "h": 315,
+  "scale": 1.05,
+  "foot_x": 1200,
+  "foot_y": 700,
+  "kind": "crew_mark",
+  "placed": true
+ },
+ "occ_stage_front": {
+  "x": 259,
+  "y": 575,
+  "w": 882,
+  "h": 145,
+  "kind": "occluder",
+  "z": "front",
+  "placed": true,
+  "note": "draws OVER the cast \u2014 the cast stands behind it",
+  "source": "scene-crop"
+ },
+ "occ_chairs_left": {
+  "x": 60,
+  "y": 641,
+  "w": 420,
+  "h": 139,
+  "kind": "occluder",
+  "z": "front",
+  "placed": true,
+  "note": "draws OVER the cast \u2014 the cast stands behind it",
+  "source": "scene-crop"
+ },
+ "occ_chairs_right": {
+  "x": 990,
+  "y": 641,
+  "w": 470,
+  "h": 139,
+  "kind": "occluder",
+  "z": "front",
+  "placed": true,
+  "note": "draws OVER the cast \u2014 the cast stands behind it",
+  "source": "scene-crop"
  }
 }

@@ -194,9 +194,41 @@ def place(room, only=None, preview=False):
     print(f"{room}: {len(chosen)} composited into {len(targets)} image(s)")
 
 
+def place_at(room, name, x, y, w):
+    """Composite one surface at an explicit rect, for sites flatness cannot find.
+
+    The hq is the case: it is a glass box, and the only believable places left
+    for paper are ON the glass — which flatness rejects as 'not wall' and which
+    no automatic rule would choose. Real offices stick notes to glass.
+    """
+    d = f"{SCENES}/{room}"
+    layout = json.load(open(f"{d}/layout.json"))
+    sp = Image.open(f"{SCENES}/{SURFACES[name]['sprite']}/sprite.png").convert("RGBA")
+    h = max(1, round(sp.height * w / sp.width))
+    targets = [f"{d}/scene.png"] + sorted(
+        f"{d}/anim/{f}" for f in os.listdir(f"{d}/anim") if f.endswith(".png"))
+    piece = sp.resize((w, h), Image.LANCZOS)
+    for t in targets:
+        im = Image.open(t).convert("RGBA")
+        ow, oh = im.size
+        work = im.resize(CANVAS, Image.LANCZOS) if (ow, oh) != CANVAS else im
+        work.alpha_composite(piece, (x, y))
+        out = work.resize((ow, oh), Image.LANCZOS) if (ow, oh) != CANVAS else work
+        out.convert("RGB").save(t)
+    fx0, fy0, fx1, fy1 = SURFACES[name]["face"]
+    layout.setdefault("write_surfaces", {})[name] = {
+        "x": round(x + w * fx0), "y": round(y + h * fy0),
+        "w": round(w * (fx1 - fx0)), "h": round(h * (fy1 - fy0)),
+        "rot": 0.0, "lines": SURFACES[name]["lines"], "align": "center"}
+    json.dump(layout, open(f"{d}/layout.json", "w"), indent=1)
+    print(f"{room}: {name} forced to ({x},{y}) {w}x{h} across {len(targets)} image(s)")
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
-    if args[1:2] == ["--erase"]:
+    if args[1:2] == ["--at"]:
+        place_at(args[0], args[2], int(args[3]), int(args[4]), int(args[5]))
+    elif args[1:2] == ["--erase"]:
         erase(args[0], tuple(int(v) for v in args[2:6]))
     else:
         pv = "--preview" in args

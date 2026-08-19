@@ -116,6 +116,26 @@
    "rot": 0.0,
    "lines": 2,
    "align": "center"
+  },
+  "sticky": {
+   "x": 560,
+   "y": 189,
+   "w": 99,
+   "h": 57,
+   "rot": 0.0,
+   "lines": 2,
+   "align": "center"
+  },
+  "glass_wall": {
+   "x": 700,
+   "y": 168,
+   "w": 130,
+   "h": 138,
+   "rot": 0.0,
+   "lines": 3,
+   "align": "center",
+   "no_clear": true,
+   "note": "marker on glass; sits above the skyline, never flooded"
   }
  }
 }

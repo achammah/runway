@@ -100,6 +100,27 @@ ROOMS = {
          ("occ_coffee",     990, 410, 145, 105),
          ("occ_desk_right",1195, 470, 341, 265)],
     ),
+    # Moment stages the picker can return (bell, yc_demo_day). The crew stand UP
+    # on the platform, so those marks are smaller — the platform is further from
+    # camera than the floor in front of it.
+    "stage_nasdaq": (
+        [("crew_1",       400, 524, 0.92),
+         ("founder_mark", 560, 520, 0.90),   # beside the bell, the one ringing it
+         ("crew_2",       930, 520, 0.88),
+         ("crew_3",      1090, 524, 0.90),
+         ("crew_4",       250, 600, 1.00)],  # down on the floor, off the dais
+        [("occ_dais", 285, 505, 944, 195)],
+    ),
+    "stage_yc": (
+        [("founder_mark", 520, 578, 0.90),   # at the microphone
+         ("crew_1",       700, 578, 0.88),
+         ("crew_2",       880, 578, 0.88),
+         ("crew_3",       330, 700, 1.05),   # in the seating, front of house
+         ("crew_4",      1200, 700, 1.05)],
+        [("occ_stage_front", 259, 575, 882, 145),
+         ("occ_chairs_left",  60, 641, 420, 139),
+         ("occ_chairs_right", 990, 641, 470, 139)],
+    ),
     "stage_hq": (
         # crew_2 stands up on the little stage — the deepest, smallest mark
         [("crew_1",       256, 700, 1.04),
