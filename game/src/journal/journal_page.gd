@@ -64,6 +64,10 @@ const MARGIN_BOT := 44.0
 
 ## Two sizes. There is no third. The owner's defect was "different font size and
 ## style, the actual font doesn't integrate well as if it was written".
+## The page's anatomy, in printed rules. 17 rules fit inside the sheet's margins,
+## so this allocation is what the paper can physically hold.
+const ZONE_RULES := {"title": 3, "body": 4, "ending": 7, "controls": 2}
+
 const SIZE_TITLE := 64
 const SIZE_BODY := 34
 const GAP := 22.0
@@ -80,13 +84,15 @@ var _spans: Array = []            ## [[y, left, right], ...] normalised, measure
 var _zone: Dictionary = {}        ## name -> [y0, y1] normalised
 var _rules: Dictionary = {}       ## the PRINTED ruling: {first, pitch} normalised
 var _usable := Vector2.ZERO       ## writable area inside the sheet's margins
+var _zone_px: Dictionary = {}     ## name -> [top, bottom] in sheet-local pixels
 var _cursor: Dictionary = {}      ## name -> current y in page-local pixels
 var _input: TextEdit
 
 func build(title_text: String, scene_id: String = "") -> void:
 	_font = load(HAND)
+	# FULL_RECT already drives the size; assigning it as well warns that the size
+	# will be overridden after _ready() and fights the anchor system.
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	size = Vector2(1536, 1024)
 
 	var doc: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(ZONES_PATH))
 	_spans = doc.get("spans", [])
@@ -131,8 +137,19 @@ func build(title_text: String, scene_id: String = "") -> void:
 	tex.add_child(space)
 
 	_usable = Vector2(SHEET_SIZE.x - 2.0 * MARGIN_X, SHEET_SIZE.y - MARGIN_TOP - MARGIN_BOT)
-	for z in _zone.keys():
-		_cursor[z] = MARGIN_TOP + _zone_frac(z) * _usable.y
+	# ZONES ARE MEASURED IN PRINTED RULES, not in fractions of the artwork.
+	# Fractions of the art gave the title 103px while a 64px title needs two rules
+	# plus its gap — 107 — so every page opened by overrunning its own first zone.
+	# Rules are the unit the page is actually built on, so allocate in rules and
+	# every boundary lands on one.
+	var pitch := rule_pitch()
+	var y0 := (float(_rules.get("first", 0.17784)) * ART_PX.y - PAPER_ORIGIN_TEX.y) * SCALE
+	var y := y0
+	for z in ZONE_RULES.keys():
+		var h: float = float(ZONE_RULES[z]) * pitch
+		_cursor[z] = y
+		_zone_px[z] = [y, y + h]
+		y += h
 
 	if title_text != "":
 		title(title_text)
@@ -146,19 +163,10 @@ func build(title_text: String, scene_id: String = "") -> void:
 func span_at(_y: float) -> Vector2:
 	return Vector2(MARGIN_X, SHEET_SIZE.x - MARGIN_X)
 
-## Where a zone starts, as a fraction of the usable height.
-func _zone_frac(zone: String) -> float:
-	var band: Array = _zone.get(zone, [0.0, 1.0])
-	var top: float = float(_zone.get("title", [0.082, 0.199])[0])
-	var bot: float = float(_zone.get("controls", [0.800, 0.917])[1])
-	return clampf((float(band[0]) - top) / max(bot - top, 0.001), 0.0, 1.0)
-
 func zone_bottom(zone: String) -> float:
-	var band: Array = _zone.get(zone, [0.0, 1.0])
-	var top: float = float(_zone.get("title", [0.082, 0.199])[0])
-	var bot: float = float(_zone.get("controls", [0.800, 0.917])[1])
-	var f: float = clampf((float(band[1]) - top) / max(bot - top, 0.001), 0.0, 1.0)
-	return MARGIN_TOP + f * _usable.y
+	if _zone_px.has(zone):
+		return float((_zone_px[zone] as Array)[1])
+	return SHEET_SIZE.y - MARGIN_BOT
 
 ## How much of a zone is still free. A page that returns <= 0 is holding too much
 ## and should be split rather than shrunk.
@@ -175,7 +183,7 @@ func line(text: String, faint: bool = false, zone: String = "body") -> void:
 
 ## A row of selectable icons. State is drawn and choosing is a pen mark — never a
 ## button, never a bordered chip. `items` is [{id, text, tex(optional)}].
-func icon_row(items: Array, cell := Vector2(150, 150), zone: String = "ending") -> Control:
+func icon_row(items: Array, cell := Vector2(124, 116), zone: String = "ending") -> Control:
 	var y: float = _cursor.get(zone, 0.0)
 	var sp := span_at(y + cell.y * 0.5)
 	var avail: float = sp.y - sp.x
@@ -276,7 +284,10 @@ func write_field(prompt: String = "...or write what you actually do", zone: Stri
 	# So the page hands it the keyboard the moment it opens. Clicking a choice does
 	# not steal it back, because choices are picked with the mouse.
 	_input.call_deferred("grab_focus")
-	_cursor[zone] = y + hgt + GAP
+	# do not let the trailing gap push past the boundary: it is space AFTER the
+	# last element, not space the element needs. That alone reported the ending
+	# zone overrunning by 2px on every page.
+	_cursor[zone] = min(y + hgt + GAP, zone_bottom(zone))
 	_overrun(zone)
 	return _input
 
@@ -287,7 +298,11 @@ func written_text() -> String:
 ## what you want to do). Composing it here means no page can forget the written
 ## move or bury the question.
 func ask(situation: String, options: Array, allow_write: bool = true) -> Control:
-	line(situation)
+	# The question goes in BODY. It is prose, and putting it in ENDING meant the
+	# shell's own anatomy — question + choice row + written move — measured 436px
+	# into a 256px zone, which is what produced overrun warnings on nearly every
+	# page. ENDING carries the payload only.
+	line(situation, false, "body")
 	var row := icon_row(options)
 	if allow_write:
 		write_field()

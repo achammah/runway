@@ -75,12 +75,49 @@ def _fit(cut, scene, rect):
     return best
 
 
+def cut(room, names):
+    """Cut each occluder straight out of the scene at its authored rect.
+
+    Matching a decomposed cutout back onto the art turned out to be the wrong
+    problem three times over: the global search was too slow to finish, hand
+    rects were not pixel-accurate enough to overlay a duplicate, and the seeded
+    search rejects every candidate on colour (err 81-136) because the cutouts
+    come back inpainted and upscaled, so they no longer match their own scene.
+
+    None of that is necessary. The occluder is drawn over a loop that already
+    contains the furniture, and the furniture does not move — so a rectangular
+    crop of the scene at the authored rect IS the occluder, aligned perfectly by
+    construction. The cast composites at a crew mark, this rect is drawn back on
+    top, and whatever of the cast falls inside it goes behind the furniture.
+
+    The rect must hug the furniture: anything else it covers is also redrawn.
+    """
+    d = f"{GAME}/assets/scenes/{room}"
+    layout = json.load(open(f"{d}/layout.json"))
+    scene = Image.open(f"{d}/scene.png").convert("RGBA").resize((1536, 1024), Image.LANCZOS)
+    for name in names:
+        r = layout.get(name)
+        if not r:
+            print(f"{name}: no authored rect, skipped")
+            continue
+        x, y, w, h = int(r["x"]), int(r["y"]), int(r["w"]), int(r["h"])
+        scene.crop((x, y, x + w, y + h)).save(f"{d}/{name}.png")
+        r.update({"placed": True, "z": "front", "source": "scene-crop"})
+        r.pop("err", None)
+        r.pop("from", None)
+        print(f"{name:16s} cut {w}x{h} at ({x},{y}) from scene")
+    json.dump(layout, open(f"{d}/layout.json", "w"), indent=1)
+
+
 def build(room, names):
     d = f"{GAME}/assets/scenes/{room}"
     layout = json.load(open(f"{d}/layout.json"))
     scene = Image.open(f"{d}/scene.png").convert("RGB").resize((1536, 1024), Image.LANCZOS)
+    # .endswith(".png") matters: Godot writes a layer_1.png.import sidecar next to
+    # every texture, and a startswith-only glob feeds that to PIL and dies.
     layers = sorted(f for f in os.listdir(d)
-                    if f.startswith("layer_") and not f.startswith("layer_0"))
+                    if f.startswith("layer_") and f.endswith(".png")
+                    and not f.startswith("layer_0"))
     cuts = {}
     for f in layers:
         im = Image.open(f"{d}/{f}").convert("RGBA")
@@ -114,4 +151,4 @@ def build(room, names):
 
 
 if __name__ == "__main__":
-    build(sys.argv[1], sys.argv[2:])
+    cut(sys.argv[1], sys.argv[2:])

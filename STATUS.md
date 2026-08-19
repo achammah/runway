@@ -47,7 +47,7 @@ Severity: **P0** blocks play · **P1** breaks the core experience · **P2** visi
 | BUG-08 | P2 | Choice captions wrap to 3 lines and print through the line below; `icon_row` used a fixed caption strip. | MAIN | **fixed**, needs verify |
 | BUG-09 | P2 | Body text advanced two ruled lines instead of one, opening a blank line between wrapped lines. | MAIN | **fixed** |
 | BUG-10 | P3 | Room still uses floating plates for cash/equity/company name instead of `SceneSurfaces`. | LANE-JOURNAL | next |
-| BUG-11 | P2 | **Stages have only ONE usable writing surface each**, not five. Other paper was drawn at decoration scale (coworking kanban cards are 23×27px; two lines of 26px type needs ~60px). | LANE-SCENES | plan proposed, needs go |
+| BUG-11 | P2 | **Stages have only ONE usable writing surface each**, not five. Other paper was drawn at decoration scale (coworking kanban cards are 23×27px; two lines of 26px type needs ~60px). | LANE-SCENES | **fixed** — blank surfaces composited into the still + all 48 frames: garage 5, office 5, coworking 4, floor 4. hq is 2: it is a glass box with almost no solid wall |
 | BUG-12 | P2 | `clear_surfaces` inset of 8% strands a ring of un-wiped scribble; 3% is correct for clearing while 8% remains right for writing. Contract needs both numbers. | MAIN | open |
 | BUG-13 | P3 | Roster dock is the last dark slab on the select screen; should be paper or sit on a surface in the stage. | LANE-FLOW | open |
 | BUG-14 | P3 | Warning glyphs survive on PART-TIME / NO VESTING chips. Judgement call: they label a state rather than predict an outcome. **Owner decision needed.** | LANE-FLOW | awaiting owner |
@@ -91,9 +91,9 @@ Severity: **P0** blocks play · **P1** breaks the core experience · **P2** visi
 - [x] A-02 27 cast sprites with contact shadows
 - [x] A-03 25 crew marks with per-mark scale + 20 occluders
 - [x] A-04 `write_surfaces` annotated and cleared on 5 stages
-- [ ] A-05 Composite blank surface sprites so each room has 4–5 usable faces (BUG-11)
-- [ ] A-06 Finish garage occluder placement — size cutouts to authored rects instead of a 1px×11-scale brute-force search that ran over an hour
-- [ ] A-07 Inventory board on every scene, largest face, 3+ lines
+- [x] A-05 Composite blank surface sprites so each room has 4–5 usable faces (BUG-11)
+- [x] A-06 Garage occluders done, and all 20 across 5 rooms — a matched cutout was the wrong problem: the occluder is drawn over a loop that already contains the furniture, and the furniture does not move, so a crop of the scene at the authored rect aligns perfectly by construction
+- [x] A-07 Inventory board on every scene, largest face, 3+ lines (portrait corkboard, 4 lines; hq/nasdaq/yc reuse the face already annotated there)
 
 ### Engine and tooling
 - [x] T-01 Verified downloads + `verify` gate

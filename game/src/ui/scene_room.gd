@@ -147,8 +147,11 @@ func breathe(names: Array) -> void:
 		var tr: TextureRect = _layers.get(name)
 		if tr == null:
 			continue
+		# A looping tween whose first step has ZERO duration makes Godot spin:
+		# "ERROR: Infinite loop detected" out of tween.cpp, which froze full runs.
+		# The stagger interval was 0.35*i, and i is 0 for the first layer.
 		var tw := create_tween().set_loops()
-		tw.tween_interval(0.35 * i)
+		tw.tween_interval(0.35 * float(i) + 0.05)
 		tw.tween_property(tr, "scale", Vector2(1.004, 0.988), 1.15).set_trans(Tween.TRANS_SINE)
 		tw.tween_property(tr, "scale", Vector2.ONE, 1.15).set_trans(Tween.TRANS_SINE)
 		i += 1

@@ -335,6 +335,7 @@ func _process(_delta: float) -> void:
 		if state.week != _last_saved_week:
 			_last_saved_week = state.week
 			SaveSystem.save_run(state, record)
+			_check_exit()
 		if state.cash < 0:
 			music.play("in_the_red")
 			music.set_stem("")
@@ -560,6 +561,42 @@ func _next_chapter() -> void:
 	g.setup(state, content, rng, record, generator)
 	g.done.connect(_after_grind)
 	_swap(g)
+
+## A RUN MUST BE ABLE TO END IN SUCCESS.
+## The IPO was gated on the Act-1 victory signal, which stops firing once Act One
+## is cleared — so a company that reached the top floor could never end at all.
+## The owner played to WEEK 69 at HQ with $4M and the game simply kept going.
+## Success is now checked every week the run advances, and no run can outlive the
+## cap. Called from _process on a week change, so it does not depend on any
+## screen remembering to raise a signal.
+const RUN_WEEK_CAP := 78
+
+func _check_exit() -> void:
+	if state == null or state.dead or _era_overlay != null:
+		return
+	if state.has_flag("exit_taken"):
+		return
+	var reason := ""
+	if state.era == "hq" and state.valuation() >= 25_000_000 and state.traction >= 70:
+		reason = "ipo"                     # the company is genuinely public-ready
+	elif state.week >= RUN_WEEK_CAP:
+		# no run runs forever. Whatever it has built by now IS the ending.
+		reason = "ipo" if (state.era == "hq" and state.cash > 0) else "timeout"
+	if reason == "":
+		return
+	state.flags.append("exit_taken")
+	if reason == "timeout":
+		_to_autopsy({"death": "THE LONG HAUL — %d weeks in, the story ran out before the money did." % state.week}, "")
+		return
+	if OS.get_environment("RUNWAY_SHOT") == "":
+		music.play("title")
+		music.set_stem("")
+		var fin := FinaleScreen.new()
+		fin.setup(state, "ipo")
+		fin.done.connect(func(): _to_autopsy({"victory": true}, "ipo"))
+		_swap(fin)
+	else:
+		_to_autopsy({"victory": true}, "ipo")
 
 func _to_autopsy(result: Dictionary, exit_kind: String = "") -> void:
 	var headline: String

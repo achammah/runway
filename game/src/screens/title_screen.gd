@@ -141,7 +141,7 @@ func _ready() -> void:
 		_root.add_child(e)
 		var dur := rng.randf_range(1.6, 3.2)
 		var tw := create_tween().set_loops()
-		tw.tween_interval(rng.randf_range(0.0, 2.0))
+		tw.tween_interval(rng.randf_range(0.05, 2.0))   # never 0: a looping tween with a zero-length step spins
 		tw.tween_property(e, "modulate:a", rng.randf_range(0.5, 0.9), dur * 0.2)
 		tw.parallel().tween_property(e, "position:y", ey - rng.randf_range(90.0, 190.0), dur)
 		tw.parallel().tween_property(e, "position:x", ex + rng.randf_range(-40.0, 40.0), dur)
