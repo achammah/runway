@@ -57,7 +57,9 @@ const ADJUDICATE_SCHEMA := {
 	"properties": {
 		"interpreted_as": {"type": "string", "maxLength": 160},
 		"reality_check": {"type": "string", "maxLength": 240},
-		"narration": {"type": "string", "maxLength": 320},
+		# THE WEEK'S SCENE, not a caption: 120-180 words in 3-4 paragraphs, read on its
+		# own screen while the art renders. 320 chars truncated it mid-sentence.
+		"narration": {"type": "string", "maxLength": 1400},
 		"verdict": {"type": "string", "enum": ["brilliant", "fine", "risky", "backfired"]},
 		"effects": {
 			"type": "array", "minItems": 0, "maxItems": 3,
@@ -178,7 +180,8 @@ func request_json(system_prompt: String, user_prompt: String, schema: Dictionary
 		])
 		body = {
 			"model": director_model if opts.get("director", false) else model,
-			"max_tokens": int(opts.get("max_tokens", 700)),
+			# a 180-word narration plus the other fields does not fit in 700
+			"max_tokens": int(opts.get("max_tokens", 1400)),
 			"system": system_prompt,
 			"messages": [{"role": "user", "content": user_prompt}],
 			"output_config": {"format": {"type": "json_schema", "schema": schema}},
