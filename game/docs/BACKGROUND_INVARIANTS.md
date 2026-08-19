@@ -98,6 +98,71 @@ rewording to describe the *place* only — "a floral sofa with a laptop left ope
 on the cushion" — or the library will ship rooms with uninvited occupants that
 then double against the composited cast.
 
+## The two detectors, measured against hand-authored ground truth
+
+Scored against the faces and occluders I annotated by hand on the seven stages,
+matched by IoU at a 0.5 threshold.
+
+### write_surfaces detector — READY
+
+`tools/detect_surfaces.py --eval`
+
+| metric | value |
+|---|---|
+| recall | **18/25 = 72%** |
+| recall on faces above the two-line size floor | **18/20 = 90%** |
+| mean IoU | 0.64 |
+| false positives across 7 rooms | 3 |
+
+Five of the seven misses are `sticky` — three overlapping notes, each
+individually below the 58px needed for two lines of 26px type. The detector is
+being *stricter than I was by hand*, which is the correct direction.
+
+Two things mattered more than any threshold:
+
+- **Working resolution.** At 384px a 2px felt-pen outline averages away, the
+  face leaks into the wall through the gap, and the merged region touches the
+  image border and is discarded. Recall was **20%** for that reason alone; at
+  768px with a gradient-aware barrier it is 72%.
+- **A size cap.** The floor is also pale, flat and rectangular, and in the garage
+  a dark line along the bottom edge sealed it, so it returned as one enormous
+  "face". Capping span at two thirds of the width cut false positives from 9 to 3.
+
+### occluder detector — NOT READY, and its errors are dangerous
+
+`tools/detect_occluders.py --eval`
+
+| metric | value |
+|---|---|
+| recall | **3/24 = 12%** |
+| mean IoU | 0.23 |
+
+Horizontal localisation actually works — proposals matched `occ_desk_left`
+(x196-452 against a true x205-435) and `occ_desk_right` closely. What fails is
+vertical extent and completeness.
+
+**But the geometric score is not the reason to hold it back.** Because an
+occluder is a crop of the scene, an over-tall rect is harmless: it redraws
+identical pixels. An over-WIDE one is not. Measured by compositing the cast and
+then the proposals over three rooms:
+
+| room | crew marks erased outright |
+|---|---|
+| stage_office | crew_1 (100% covered) |
+| stage_garage | crew_4 (100%) |
+| stage_floor | crew_1 (75%), crew_4 (81%) |
+
+**4 of 15 crew marks deleted.** A false positive in the surface detector wastes
+an annotation; a false positive here removes a character from the scene. The
+failure is silent — the room still looks fine, there is simply one fewer
+founder in it.
+
+**Recommendation for the batch: run the surface detector automatically, and do
+not auto-apply occluders.** Occlusion is a quality nicety, not a requirement —
+the functional test shows a cast standing on open floor reads perfectly well.
+Ship the 516 without occluders, and add them later behind a check that no
+proposal covers more than about a quarter of any crew mark.
+
 ## What is still hand-authored, and what that costs
 
 - **Occluders.** Currently cut from a hand-authored rect. The cut itself is
