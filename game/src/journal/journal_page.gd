@@ -95,6 +95,10 @@ func build(title_text: String, scene_id: String = "") -> void:
 		room = SceneRoom.new()
 		room.load_scene(scene_id)
 		add_child(room)
+		# The page is the subject; the room is where you are. Owner: "the paper log
+		# should come simply on top of a scene and we need to have a dark overlay on
+		# scene". Without this the sheet competes with the art behind it.
+		room.dim(0.45)
 
 	var tex := TextureRect.new()
 	# flags BEFORE size. Setting size first locks the minimum size and the image

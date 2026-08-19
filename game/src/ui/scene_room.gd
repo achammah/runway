@@ -29,11 +29,19 @@ func load_scene(p_scene_id: String) -> bool:
 	# A scene is renderable from ANY of: the inpainted base (layers can move on
 	# top of it), the flat still, or its animation loop. Requiring room_bg alone
 	# silently rejected a dozen produced scenes.
+	# WHICH BASE, AND WHETHER LAYERS MAY BE DRAWN ON IT.
+	# room_bg.png is the INPAINTED plate: the cast has been painted out of it, so the
+	# cutouts belong on top. scene.png is the FULL composed painting and already
+	# contains everyone. Drawing the cutouts over scene.png renders every character
+	# TWICE — that is the doubled crew and the ghost cowlicks in the room.
 	var base_path := ""
+	var layers_allowed := false
 	if ResourceLoader.exists(dir + "/room_bg.png"):
 		base_path = dir + "/room_bg.png"
+		layers_allowed = true
 	elif ResourceLoader.exists(dir + "/scene.png"):
 		base_path = dir + "/scene.png"
+		layers_allowed = false
 	elif not ResourceLoader.exists(dir + "/anim/frame_01.png"):
 		push_warning("SceneRoom: nothing renderable for " + scene_id)
 		return false
@@ -68,8 +76,12 @@ func load_scene(p_scene_id: String) -> bool:
 		add_child(av)
 		_layers["anim"] = av
 		set_process(true)
+	# A full-scene animation loop is the whole picture too: layers over it double
+	# the cast exactly the way layers over scene.png do.
+	if not _anim_frames.is_empty():
+		layers_allowed = false
 	var layout_path := dir + "/layout.json"
-	if not FileAccess.file_exists(layout_path):
+	if not layers_allowed or not FileAccess.file_exists(layout_path):
 		return true
 	var layout = JSON.parse_string(FileAccess.get_file_as_string(layout_path))
 	if not (layout is Dictionary):
@@ -93,6 +105,19 @@ func load_scene(p_scene_id: String) -> bool:
 		add_child(tr)
 		_layers[name] = tr
 	return true
+
+## Darken the room so something laid over it (the log book) reads as the subject.
+## The owner asked for exactly this: "the paper log should come simply on top of a
+## scene and we need to have a dark overlay on scene". Call after load_scene().
+func dim(amount: float = 0.45) -> void:
+	var v := ColorRect.new()
+	v.name = "dim_veil"
+	v.color = Color(0.06, 0.05, 0.07, clampf(amount, 0.0, 1.0))
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.size = Vector2(1536, 1024)
+	v.set_deferred("size", Vector2(1536, 1024))
+	add_child(v)
+	move_child(v, get_child_count() - 1)   # above the room, below whatever comes next
 
 func _process(delta: float) -> void:
 	if _anim_frames.is_empty() or not _layers.has("anim"):

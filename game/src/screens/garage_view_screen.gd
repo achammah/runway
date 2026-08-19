@@ -926,9 +926,9 @@ func _page_consequences() -> void:
 	if heard != "":
 		_jp.line("They heard: %s" % heard)
 	if narration != "":
-		_jp.line(narration)
+		_jp.line(narration, false, "body" if _jp.room_left("body") > 100.0 else "ending")
 	if reality != "":
-		_jp.line(reality, true)
+		_jp.line(reality, true, "body" if _jp.room_left("body") > 60.0 else "ending")
 	var chips: Array = []
 	var dec_log: Array = _last_outcome.get("dec_log", [])
 	for k in dec_log.size():
@@ -936,8 +936,9 @@ func _page_consequences() -> void:
 		if not c.is_empty():
 			chips.append(c)
 	if chips.is_empty():
-		_jp.line("Nothing measurable moved.", true, "ending")
-	else:
+		if _jp.room_left("ending") > 60.0:
+			_jp.line("Nothing measurable moved.", true, "ending")
+	elif _jp.room_left("ending") > 150.0:
 		_jp.line("What it cost you:", false, "ending")
 		_jp.icon_row(chips.slice(0, 4), _row_cell("ending", mini(chips.size(), 4)))
 
@@ -1078,7 +1079,8 @@ func _page_decision() -> void:
 		_pending_choice = ch
 		_sfx["cash"].play()
 		_lock_button())
-	_jp.ask(String(_current_event.get("title", "")) + " — what do you do?", opts, false)
+	_jp.line(String(_current_event.get("title", "")) + " — what do you do?")
+	_jp.icon_row(opts, _row_cell("ending", opts.size(), 150.0))
 	var te := _jp.write_field()
 	te.text = String(_free_text.get(4, ""))
 	_wire_free(te)
