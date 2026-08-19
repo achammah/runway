@@ -1,0 +1,68 @@
+{
+ "crew_1": {
+  "x": 154,
+  "y": 379,
+  "w": 236,
+  "h": 354,
+  "scale": 1.18,
+  "foot_x": 272,
+  "foot_y": 733,
+  "kind": "crew_mark",
+  "placed": true,
+  "derived": true
+ },
+ "crew_2": {
+  "x": 582,
+  "y": 356,
+  "w": 211,
+  "h": 316,
+  "scale": 1.054,
+  "foot_x": 688,
+  "foot_y": 672,
+  "kind": "crew_mark",
+  "placed": true,
+  "derived": true
+ },
+ "founder_mark": {
+  "x": 819,
+  "y": 333,
+  "w": 186,
+  "h": 278,
+  "scale": 0.928,
+  "foot_x": 912,
+  "foot_y": 611,
+  "kind": "crew_mark",
+  "placed": true,
+  "derived": true
+ },
+ "crew_3": {
+  "x": 998,
+  "y": 356,
+  "w": 211,
+  "h": 316,
+  "scale": 1.054,
+  "foot_x": 1104,
+  "foot_y": 672,
+  "kind": "crew_mark",
+  "placed": true,
+  "derived": true
+ },
+ "crew_4": {
+  "x": 1242,
+  "y": 379,
+  "w": 236,
+  "h": 354,
+  "scale": 1.18,
+  "foot_x": 1360,
+  "foot_y": 733,
+  "kind": "crew_mark",
+  "placed": true,
+  "derived": true
+ },
+ "ground_line": {
+  "y": 528,
+  "fraction": 0.5156,
+  "kind": "measurement",
+  "note": "wall/floor junction, measured not assumed"
+ }
+}
