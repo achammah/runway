@@ -198,5 +198,49 @@ func _init() -> void:
 	assert(gen._validate_arcs({"arcs": [{"arc_id": "x", "kind": "rival", "premise": "p", "actors": ["A"],
 		"beats": [{"era": "moonbase", "directive": "d"}], "escalation_rule": "r"}]}).is_empty(), "bad era must reject")
 	print("run director OK")
+
+	# EVERY SCRIPT MUST ACTUALLY PARSE.
+	# This suite exercised the core systems and never loaded a screen, so it printed
+	# SMOKE PASS while garage_view_screen.gd had four parse errors and the game
+	# crashed on launch the moment the draft finished. A gate that is green while the
+	# game is unplayable is worse than no gate. Walk src/ and load everything.
+	var broken: Array = []
+	var checked := 0
+	var stack: Array = ["res://src"]
+	while not stack.is_empty():
+		var d: String = stack.pop_back()
+		var da := DirAccess.open(d)
+		if da == null:
+			continue
+		da.list_dir_begin()
+		var f := da.get_next()
+		while f != "":
+			if da.current_is_dir():
+				if not f.begins_with("."):
+					stack.append(d + "/" + f)
+			elif f.ends_with(".gd"):
+				var path := d + "/" + f
+				checked += 1
+				# load() hands back a GDScript object even when the file failed to
+				# parse, so a null check silently passes broken scripts. reload() is
+				# accurate but FAILS on any script this suite already instantiated,
+				# which flagged four healthy core scripts. get_instance_base_type()
+				# is empty only when the parse actually failed, and it disturbs
+				# nothing that is already live.
+				var sc = load(path)
+				if sc == null:
+					broken.append(path)
+				elif sc is GDScript and String((sc as GDScript).get_instance_base_type()) == "":
+					broken.append(path)
+			f = da.get_next()
+		da.list_dir_end()
+	if not broken.is_empty():
+		print("SMOKE FAIL — %d of %d scripts do not parse:" % [broken.size(), checked])
+		for b in broken:
+			print("   ", b)
+		quit(1)
+		return          # quit() is deferred; without this the suite prints SMOKE PASS anyway
+	print("scripts OK — %d parsed" % checked)
+
 	print("SMOKE PASS")
 	quit(0)

@@ -925,12 +925,17 @@ func _page_consequences() -> void:
 		_jp.line("You said: \"%s\"" % said)
 	if heard != "":
 		_jp.line("They heard: %s" % heard)
+	var verdict := String(_last_outcome.get("verdict", "")).strip_edges()
+	if verdict != "":
+		_jp.line("The world called it %s." % verdict.to_lower())
 	if narration != "":
 		_jp.line(narration, false, "body" if _jp.room_left("body") > 100.0 else "ending")
 	if reality != "":
 		_jp.line(reality, true, "body" if _jp.room_left("body") > 60.0 else "ending")
 	var chips: Array = []
 	var dec_log: Array = _last_outcome.get("dec_log", [])
+	if dec_log.is_empty():
+		dec_log = _last_outcome.get("log", [])
 	for k in dec_log.size():
 		var c := _effect_chip(String(dec_log[k]), k)
 		if not c.is_empty():

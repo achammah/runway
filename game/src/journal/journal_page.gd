@@ -49,8 +49,10 @@ const ART_PX := Vector2(1095.0, 1462.0)
 const PAGE_SIZE := Vector2(719.0, 960.0)      # the art's exact aspect: no shear
 const PAGE_POS := Vector2(408.0, 32.0)
 const PAGE_TILT := -0.012                     # a hair of lean on top of the drawn one
-const PAPER_ORIGIN_TEX := Vector2(76.0, 150.0)
-const PAPER_SIZE_TEX := Vector2(884.0, 1237.0)
+# Re-measured on THE LAST PAGE: 884 wrongly counted the sheets drawn BEHIND the
+# page as part of it, which is why the right margin read tighter than the left.
+const PAPER_ORIGIN_TEX := Vector2(74.0, 152.0)
+const PAPER_SIZE_TEX := Vector2(858.0, 1232.0)
 const PAPER_TILT := -0.069                    # the lean drawn INTO the paper
 const SCALE := PAGE_SIZE.x / ART_PX.x
 const SHEET_POS := Vector2(PAPER_ORIGIN_TEX.x * SCALE, PAPER_ORIGIN_TEX.y * SCALE)
