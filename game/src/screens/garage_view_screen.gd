@@ -808,12 +808,24 @@ var _jp: JournalPage
 ## Fit a row to the space the zone actually has left, and to how many things share
 ## it. Width matters as much as height: a caption box wider than the column step
 ## overlaps its neighbour, which is what clipped "Enterprise" to "Enterpris".
+const WRITE_FIELD_H := 280.0   ## prompt + two-to-four ruled lines + the gap after
+
+## Returns Vector2.ZERO when the row genuinely does not fit; callers skip it.
+func _row_fits(zone: String, reserve: float) -> bool:
+	return _jp.room_left(zone) - reserve > 64.0
+
 func _row_cell(zone: String, n: int, reserve: float = 0.0) -> Vector2:
 	var free: float = _jp.room_left(zone) - reserve
 	var sp := _jp.span_at(_jp.zone_bottom(zone) - 60.0)
 	var avail: float = maxf(sp.y - sp.x, 320.0)
 	return Vector2(clampf(avail / float(maxi(n, 1)) - 10.0, 90.0, 190.0),
-		clampf(free - 10.0, 84.0, 152.0))
+		clampf(free - 10.0, 64.0, 152.0))
+
+## Place a line where there is still room for it. BODY does not cascade into
+## ENDING, so a line that overruns BODY draws on top of ENDING's first element
+## (the faint write prompt). Choosing the zone up front is the fix.
+func _say(text: String, faint: bool = false) -> void:
+	_jp.line(text, faint, "body" if _jp.room_left("body") > 76.0 else "ending")
 
 func _tex(path: String) -> Texture2D:
 	var p := path if path.begins_with("res://") else "res://assets/sprites/%s.png" % path
@@ -922,16 +934,16 @@ func _page_consequences() -> void:
 		_week_state()
 		return
 	if said != "":
-		_jp.line("You said: \"%s\"" % said)
+		_say("You said: \"%s\"" % said)
 	if heard != "":
-		_jp.line("They heard: %s" % heard)
+		_say("They heard: %s" % heard)
 	var verdict := String(_last_outcome.get("verdict", "")).strip_edges()
 	if verdict != "":
-		_jp.line("The world called it %s." % verdict.to_lower())
+		_say("The world called it %s." % verdict.to_lower())
 	if narration != "":
-		_jp.line(narration, false, "body" if _jp.room_left("body") > 100.0 else "ending")
+		_say(narration)
 	if reality != "":
-		_jp.line(reality, true, "body" if _jp.room_left("body") > 60.0 else "ending")
+		_say(reality, true)
 	var chips: Array = []
 	var dec_log: Array = _last_outcome.get("dec_log", [])
 	if dec_log.is_empty():
@@ -1006,7 +1018,8 @@ func _page_people() -> void:
 		{"id": "g:equip", "tex": _tex("itm_laptop"), "text": "new gear"},
 	]
 	_jp.line("Give one of them something this week.", false, "ending")
-	_jp.icon_row(gifts, _row_cell("ending", gifts.size(), 132.0))
+	if _row_fits("ending", WRITE_FIELD_H):
+		_jp.icon_row(gifts, _row_cell("ending", gifts.size(), WRITE_FIELD_H))
 	var gte := _jp.write_field()
 	gte.text = String(_free_text.get(1, ""))
 	_wire_free(gte)
@@ -1021,7 +1034,8 @@ func _page_work() -> void:
 			moves.append({"id": "%s|%s" % [dept, pid], "tex": _tex(String(WORK_ICONS.get(pid, "itm_laptop"))),
 				"text": String(WORK_SHORT.get(pid, pr["label"]))})
 	_jp.icon_row(moves.slice(0, 3), _row_cell("body", 3), "body")
-	_jp.icon_row(moves.slice(3, 6), _row_cell("ending", 3, 132.0))
+	if _row_fits("ending", WRITE_FIELD_H):
+		_jp.icon_row(moves.slice(3, 6), _row_cell("ending", 3, WRITE_FIELD_H))
 	_jp.choice_made.connect(func(id: String):
 		if not "|" in id:
 			return
@@ -1085,7 +1099,8 @@ func _page_decision() -> void:
 		_sfx["cash"].play()
 		_lock_button())
 	_jp.line(String(_current_event.get("title", "")) + " — what do you do?")
-	_jp.icon_row(opts, _row_cell("ending", opts.size(), 150.0))
+	if _row_fits("ending", WRITE_FIELD_H):
+		_jp.icon_row(opts, _row_cell("ending", opts.size(), WRITE_FIELD_H))
 	var te := _jp.write_field()
 	te.text = String(_free_text.get(4, ""))
 	_wire_free(te)
