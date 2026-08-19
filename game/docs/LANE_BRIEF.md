@@ -9,6 +9,34 @@ You own ONE screen (or one tightly related screen group). You take it from its c
 - NEVER `pkill`; NEVER touch `game/.env`, `prompts/`, `music/`, or another lane's screen script; PROJECT_LOG.md is append-only.
 - Patch discipline: python anchored replaces with `assert old in s` on EVERY anchor, one write at the end, re-grep to confirm. Godot trap: configure autowrap/expand BEFORE size; assign texture LAST or `set_deferred("size", …)`.
 
+## GIT — every change is tracked, per lane (owner law 2026-08-19)
+
+Repo: https://github.com/achammah/runway (public). `game/.env` and all generated art
+are gitignored; NEVER commit either, and never commit a key.
+
+All lanes share ONE working directory, so lanes cannot sit on separate branches
+simultaneously — a checkout would yank the tree out from under every other lane. So the
+convention is tagged commits on `main`, which gives the same traceability:
+
+    ./snapshot.sh                                  # before any splice that deletes code
+    git add <ONLY the files you own>               # never `git add -A`
+    git commit -m "[LANE-NAME] what changed and why"
+    git pull --rebase origin main
+    git push origin main
+
+RULES:
+- Stage your OWN files by name. `git add -A` will sweep up other lanes' in-flight edits.
+- Commit once per completed unit of work, not once per round. The message says WHY.
+- `git pull --rebase` before pushing; other lanes are pushing too.
+- Run the smoke gate before every commit: `godot --headless --path . --script tests/smoke.gd`
+  must print `scripts OK` AND `SMOKE PASS`. It now parse-checks all 26 scripts, because it
+  used to pass while the game was uncompilable.
+- If a commit of yours breaks the build, fix forward immediately; other lanes are blocked.
+
+Lanes spawned in an isolated worktree open a real PR instead:
+    git checkout -b lane/<name> && git push -u origin lane/<name>
+    gh pr create --fill --base main
+
 ## The bar (the owner's words, hold to them)
 "AAA / award-winning indie game screen, not a SaaS form." "Text is small" is a defect. "Assembled, not organic" is a defect. "Doesn't feel like a video game screen people understand and want to interact with" is a defect. Every element must look INTENDED: sized to the art, integrated into the illustration (text wraps to paper shapes, HUD sits on drawn plates, nothing floats on a void), animated where a real game would animate it (hover, select, transitions, ambient life).
 
