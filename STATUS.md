@@ -69,40 +69,34 @@ Severity: **P0** blocks play · **P1** breaks the core experience · **P2** visi
 
 ---
 
-## 3. TASKS
+## 3. TASKS — the DAG now running
 
-### Content and systems
-- [ ] C-01 Week page opens with the consequence chain (BUG-01)
-- [ ] C-02 Quiet weeks get an honest line, never a bare status page
-- [ ] C-03 Enforce max 4 cofounders **and** no duplicate types — done in the picker, verify in a run
-- [x] C-04 Cast locked: 4 archetypes (dropout cut), 5 cofounder types incl. THE IDEA FRIEND as a pure trap
-- [x] C-05 Structure ladder extended to four cofounders (0/30/45/55/62% equity)
+**Critical path is L1 (516 backgrounds), ~17 min at measured throughput** (31 img/min,
+12-way, no degradation). Everything else is code and fits inside that window.
 
-### The journal
-- [x] J-01 `JournalPage` shell owns geometry, two type sizes, four zones, and `ask()`
-- [x] J-02 Text sits on the printed rules (17 rules, 44.9px pitch, two independent measurements agreed)
-- [x] J-03 Pivot split into three sheets
-- [ ] J-04 Migrate THE PEOPLE and THE WORK fully onto the shell
-- [ ] J-05 Zones cascade so an overrun never lands on the next zone (BUG-03)
-- [ ] J-06 Room behind the page uses `SceneRoomPicker` so it changes with the era
+### WAVE 1 — running now, all parallel, one file each
 
-### Scenes and art
-- [x] A-01 8 empty-stage loops
-- [x] A-02 27 cast sprites with contact shadows
-- [x] A-03 25 crew marks with per-mark scale + 20 occluders
-- [x] A-04 `write_surfaces` annotated and cleared on 5 stages
-- [x] A-05 Composite blank surface sprites so each room has 4–5 usable faces (BUG-11)
-- [x] A-06 Garage occluders done, and all 20 across 5 rooms — a matched cutout was the wrong problem: the occluder is drawn over a loop that already contains the furniture, and the furniture does not move, so a crop of the scene at the authored rect aligns perfectly by construction
-- [x] A-07 Inventory board on every scene, largest face, 3+ lines (portrait corkboard, 4 lines; hq/nasdaq/yc reuse the face already annotated there)
+| Lane | Owns (exclusive) | Tasks |
+|---|---|---|
+| **L1 BATCH** | `assets/backgrounds/**`, `tools/gen_backgrounds.py` | Generate all 516 EMPTY rooms from the manifest at 12-way. Verified downloads (`_fetch`, never `urlretrieve`). Resumable. `verify` must report 0 damaged. Read 6 samples and confirm nobody is in them. |
+| **L2 ROOM** | `src/screens/garage_view_screen.gd` | **Blocker: the room has no people.** Build the crew array from run state and call `SceneRoom.populate()`. Then BUG-10: cash/equity/company onto `SceneSurfaces` instead of floating plates. Then era rooms via `SceneRoomPicker`. |
+| **L4 LOOP** | `src/main.gd` | Wire the generative week: lock → DM → `make_scene()` starts immediately → reading beat shows the consequence text → scene opens. Every failure path keeps the previous room. Hard ceiling on the wait. Also BUG-15: harnesses must stop polluting the player profile. |
+| **L5 DRAFT** | `src/screens/founder_draft_screen.gd` | The last two plates (item tiles, archetype chips). Audit every remaining `StyleBoxFlat`/`Panel`/`ColorRect`. Confirm no `LineEdit` survives. Re-verify the select-screen overlaps and BUG-06. |
+| **L6 LASTPAGE** | `src/screens/autopsy_screen.gd` | Migrate THE LAST PAGE onto the shared `JournalPage` shell so it inherits rule-snapping, the corrected 858px paper quad and the one-rule line advance. Keep its chain-compression, which is better than the shell's. |
+| **MAIN** | `src/journal/journal_page.gd`, `src/ui/*`, `STATUS.md`, prompts | DM prompt (done), library injection (done), journal zone overrun, commits, tracker. |
 
-### Engine and tooling
-- [x] T-01 Verified downloads + `verify` gate
-- [x] T-02 `clear_surfaces` wipes declared faces across base image and all 48 anim frames
-- [x] T-03 `SceneSurfaces` writes state onto drawn objects
-- [x] T-04 `play.sh`, `snapshot.sh`
-- [ ] T-05 `SceneRoom` per-layer animation, so a layer can loop while the room base stays still
+### WAVE 2 — needs L1's output
+| Lane | Depends | Tasks |
+|---|---|---|
+| **L7 ANNOTATE** | L1 | Surface detector over all 516 (90% recall on faces above the size floor), then `clear_surfaces`, then `auto_marks.py` for crew marks. **No occluders**: 12% recall, and an over-wide proposal silently deleted 4 of 15 crew marks in the functional test. |
+| **L8 INDEX** | L1 | Build the runtime index `SceneDirector.resolve()` reads; prove every facet combination either resolves or correctly reports a miss. |
 
----
+### WAVE 3
+| **L9 QA** | L1-L8 | Full playthrough, read every capture. Confirm: people in the room, text input works, a scene appears each week, the run can end. Blockers only. |
+
+### Deliberately NOT doing
+- **Occluders in this batch** — measured 12% recall; a false positive removes a founder from the room and nothing flags it. Occlusion is a nicety; a missing character is a bug.
+- **Per-week video** — 106s+ per loop, impossible per turn. Ambient loops stay pre-built.
 
 ## 4. Standing constraints
 
