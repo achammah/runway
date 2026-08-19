@@ -14,6 +14,25 @@ extends RefCounted
 ## lane has not produced yet degrades to its era's steady scene, never to a
 ## blank screen.
 
+## The annotated stages: empty rooms with crew marks, foreground occluders and
+## blank write_surfaces. These are what the game should load.
+##
+## They are EMPTY on purpose. The cast is composited on top from sprites, so a
+## room with crew painted into it shows those painted figures AND the sprites —
+## the doubled-cast bug. Mood is therefore carried by the cast (fine / burnt /
+## gone) and by the numbers written on the surfaces, NOT by swapping to a
+## differently-painted room.
+const ERA_STAGE := {
+	"garage": "stage_garage",
+	"coworking": "stage_coworking",
+	"office": "stage_office",
+	"floor": "stage_floor",
+	"hq": "stage_hq",
+}
+
+## Legacy painted rooms, kept only as the last rung of the fallback ladder: they
+## have the crew painted in, so they are a blank-screen insurance policy rather
+## than something we want to land on.
 const ERA_BASE := {
 	"garage": "garage",
 	"coworking": "coworking_steady",
@@ -28,13 +47,13 @@ const MOMENT_SCENES := {
 	"layoff": "floor_layoff_day",
 	"press_ambush": "press_ambush",
 	"yc_interview": "yc_interview",
-	"yc_demo_day": "yc_demo_day",
+	"yc_demo_day": "stage_yc",
 	"demo_day_prep": "coworking_demo_day_prep",
 	"launch_day": "launch_day",
 	"pivot_night": "pivot_night",
 	"hackathon": "hackathon_night",
 	"first_customer": "first_customer_call",
-	"bell": "nasdaq_bell",
+	"bell": "stage_nasdaq",
 }
 
 ## A scene exists if ANY of its renderable pieces is on disk: the inpainted
@@ -70,6 +89,11 @@ static func scene_id_for(state: GameState) -> String:
 	var era := String(state.era)
 	var mood := mood_for(state)
 	var candidates: Array[String] = []
+	# 1. an annotated stage dressed for this mood, once one exists
+	candidates.append("stage_%s_%s" % [era, mood])
+	# 2. the era's annotated stage — the normal answer
+	candidates.append(String(ERA_STAGE.get(era, "stage_garage")))
+	# 3-5. legacy painted rooms, only if no stage is on disk
 	match mood:
 		"starving":
 			candidates.append("%s_starving" % era)
@@ -78,6 +102,7 @@ static func scene_id_for(state: GameState) -> String:
 		"night":
 			candidates.append("garage_night_solo")
 	candidates.append(String(ERA_BASE.get(era, "garage")))
+	candidates.append("stage_garage")
 	candidates.append("garage")
 	for c in candidates:
 		if has_scene(c):
