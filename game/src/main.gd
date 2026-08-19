@@ -31,6 +31,8 @@ func _ready() -> void:
 		_fullrun(OS.get_environment("RUNWAY_FULLRUN"))
 	elif OS.get_environment("RUNWAY_LANEWIRE") != "":
 		_shoot_lane_screens(OS.get_environment("RUNWAY_LANEWIRE"))
+	elif OS.get_environment("RUNWAY_READING") != "":
+		_shoot_reading_beat(OS.get_environment("RUNWAY_READING"))
 
 ## I2 — integration autopilot: plays a REAL run end-to-end through the actual
 ## screens (draft picks, weekly journal locks, era transitions, death/exit),
@@ -129,6 +131,32 @@ func _fullrun(dir: String) -> void:
 ## Screen harness for the wiring lane: renders THE MOVE and THE EXIT against a
 ## synthetic company so both beats can be reviewed without waiting for a run to
 ## reach hq. Never runs in a player build — it is env-gated.
+## Renders THE READING BEAT against a real adjudication, so the screen that carries
+## the whole wait can be reviewed without playing to it. Three shots: the moment it
+## opens, mid-reveal, and fully revealed.
+func _shoot_reading_beat(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	await get_tree().create_timer(0.6).timeout
+	var l := LoadingScreen.new()
+	l.begin("WEEK 7")
+	add_child(l)
+	l.say("You said", "I stop building features and phone every single person who ever signed up, one by one, and just ask them what they actually need.")
+	l.say("They heard", "You call the eight people who signed up and ask what would make voice-based tax help worth using.")
+	l.say("", "At 9:12, you sit beside the savings jar with a legal pad and begin dialing. The first number goes to voicemail. The second belongs to Mara, who says she does not want a subscription box for taxes; she wants someone to tell her which envelope matters.")
+	l.say("", "By lunch, five people have answered. Two want reminders, one wants a plain-language checklist, and another asks whether the voice can hear panic. Your tired Tech cofounder quietly removes a feature from the roadmap without making eye contact.")
+	l.say("", "Nothing has gone viral. Nothing has been automated. But the product now has a problem small enough to solve, which is more than it had on Monday.")
+	l.say("", "The eighth caller says they would pay if it stopped sounding like a tax podcast. This is, unfortunately, useful.")
+	await get_tree().create_timer(1.2).timeout
+	await _shot(dir, "read_01_opens")
+	await get_tree().create_timer(7.0).timeout
+	await _shot(dir, "read_02_midway")
+	await get_tree().create_timer(14.0).timeout
+	l.report(1.0)
+	await get_tree().create_timer(2.0).timeout
+	await _shot(dir, "read_03_full")
+	print("READING BEAT DONE: 3 shots")
+	get_tree().quit()
+
 func _shoot_lane_screens(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	await get_tree().create_timer(0.8).timeout

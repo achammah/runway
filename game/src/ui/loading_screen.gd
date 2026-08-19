@@ -45,11 +45,16 @@ const MIN_LIFE := 2.0
 ## Roughly how fast a person reads this kind of prose, in characters per second.
 ## Used only to PACE the reveal, never to hold the player once they are done.
 const READ_CPS := 22.0
+## The card, and the band at its foot that text may never enter.
+const CARD_H := 868.0
+const FOOTER_H := 96.0
+const TEXT_H := CARD_H - 126.0 - FOOTER_H
 
 var _font: Font
 var _card: Control
 var _col: VBoxContainer
 var _bar: _PenLine
+var _scroll: ScrollContainer
 var _t := 0.0
 var _target := 0.0
 var _done := false
@@ -85,22 +90,33 @@ func begin(week_label: String) -> void:
 	t.set_deferred("size", Vector2(1080, 0))
 	_card.add_child(t)
 
+	# THE TEXT MUST NEVER REACH THE FOOTER. Laid out free, six beats overran the card
+	# and the progress stroke printed straight through a paragraph — the strikethrough
+	# bug class. So the column is clipped inside a scroller with a reserved footer band
+	# below it, and it scrolls itself as beats arrive.
+	_scroll = ScrollContainer.new()
+	_scroll.position = Vector2(96, 126)
+	_scroll.set_deferred("size", Vector2(888, TEXT_H))
+	_scroll.clip_contents = true
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	_scroll.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_card.add_child(_scroll)
+
 	_col = VBoxContainer.new()
-	_col.position = Vector2(96, 130)
 	_col.custom_minimum_size = Vector2(888, 0)
-	_col.set_deferred("size", Vector2(888, 620))
 	_col.add_theme_constant_override("separation", 22)
 	_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_card.add_child(_col)
+	_scroll.add_child(_col)
 
 	_bar = _PenLine.new()
 	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_bar.position = Vector2(160, 786)
+	_bar.position = Vector2(160, CARD_H - FOOTER_H + 22.0)
 	_bar.set_deferred("size", Vector2(760, 26))
 	_card.add_child(_bar)
 
 	_ready_hint = _mk("the week is still developing...", SIZE_LABEL, Color(INK, 0.4), HORIZONTAL_ALIGNMENT_CENTER)
-	_ready_hint.position = Vector2(0, 818)
+	_ready_hint.position = Vector2(0, CARD_H - FOOTER_H + 54.0)
 	_ready_hint.custom_minimum_size = Vector2(1080, 0)
 	_ready_hint.set_deferred("size", Vector2(1080, 0))
 	_card.add_child(_ready_hint)
@@ -163,9 +179,15 @@ func _reveal(beat: Dictionary) -> void:
 	b.custom_minimum_size = Vector2(888, 0)
 	block.add_child(b)
 	block.modulate.a = 0.0
-	block.position.y += 10
 	var tw := create_tween()
 	tw.tween_property(block, "modulate:a", 1.0, 0.32)
+	# keep the newest beat in view: the reader follows the pen down the page
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if is_instance_valid(_scroll):
+		var to: float = maxf(0.0, _col.size.y - _scroll.size.y)
+		var st := create_tween()
+		st.tween_property(_scroll, "scroll_vertical", int(to), 0.45).set_trans(Tween.TRANS_SINE)
 
 func _mk(text: String, sz: int, col: Color, align: int) -> Label:
 	var l := Label.new()
