@@ -37,11 +37,11 @@ Severity: **P0** blocks play · **P1** breaks the core experience · **P2** visi
 
 | ID | Sev | Issue | Owner | State |
 |---|---|---|---|---|
-| BUG-01 | P1 | **No consequences of week N-1 on the week N page.** Player picks a move, week turns, page shows numbers with no story connecting them. Owner: "we don't understand any of the choices, it is too weird". The adjudicator already returns `interpreted_as`, `narration`, `reality_check`, `verdict`, `effects` and the page throws them away. | LANE-JOURNAL | assigned |
+| BUG-01 | P1 | **No consequences of week N-1 on the week N page.** Player picks a move, week turns, page shows numbers with no story connecting them. Owner: "we don't understand any of the choices, it is too weird". The adjudicator already returns `interpreted_as`, `narration`, `reality_check`, `verdict`, `effects` and the page throws them away. | LANE-JOURNAL | **done** (b05b951) — page opens with said / heard / verdict / narration / reality-check / effect chips, state moved to a second sheet. Listed choices have no narration in the content schema: needs an `outcome` field or routing through the adjudicator — decision needed. |
 | BUG-02 | P0 | **Cannot type in the free field at all.** Field is invisible by design (the ruling IS the field) so there was nothing to click and it never took focus. | MAIN | **fixed**, needs playtest confirm |
-| BUG-03 | P2 | **Faint write prompt renders behind body text.** Long narration overruns the BODY zone into ENDING, where the prompt was already placed. Zones do not cascade. | MAIN | open |
-| BUG-04 | P2 | **37 runtime errors per run**: `Invalid access to key 'decay_pizza'`. Read at `garage_view_screen.gd:675`, not always registered by `_spot()` at :216. Needs a `has()` guard. | LANE-JOURNAL | assigned |
-| BUG-05 | P1 | **Infinite loop in debug**, ~week 23, office era. | LANE-JOURNAL | assigned |
+| BUG-03 | P2 | **Faint write prompt renders behind body text.** Long narration overruns the BODY zone into ENDING, where the prompt was already placed. Zones do not cascade. | MAIN | journal side **done** (b05b951): `_say()` picks the zone by remaining room and the write field reserves its space before any icon row, so nothing this lane draws lands on the prompt. Shell-side cascade still open. |
+| BUG-04 | P2 | **37 runtime errors per run**: `Invalid access to key 'decay_pizza'`. Read at `garage_view_screen.gd:675`, not always registered by `_spot()` at :216. Needs a `has()` guard. | LANE-JOURNAL | **done** (b05b951) — `_show_spot()` guards with `has()`. Root cause was the era swap flipping `_scene_mode` after registration. Full run logs zero. |
+| BUG-05 | P1 | **Infinite loop in debug**, ~week 23, office era. | LANE-JOURNAL | **reproduced, handed to MAIN** — `RUNWAY_FULLRUN=<dir> godot --path .` stalls at the FIRST lock, not week 23: log frozen at 9420 bytes, zero shots, process alive. Nothing logs after `gv._lock_week()` (main.gd:97). This lane's week turn does not await the generator (`next_card` is sync, `prefetch` fire-and-forget, dread beat a bounded 1.0s timer), so the stall is in the harness/era path. |
 | BUG-06 | P2 | **Inventory display far too small.** Packed items render as ~30px chips. Owner: "way too small for inventory, needs to be clearer and bigger". | LANE-FLOW | open |
 | BUG-07 | P1 | **`_apply_lock` gesture branch was RECONSTRUCTED, not recovered** — rebuilt from values printed on UI labels after a splice deleted it. Bonus (−$500 +15) and shares (−2% equity +25) are inferred. Needs a human read. | MAIN | needs review |
 | BUG-08 | P2 | Choice captions wrap to 3 lines and print through the line below; `icon_row` used a fixed caption strip. | MAIN | **fixed**, needs verify |
@@ -122,3 +122,24 @@ integrated into the illustration, animated where a real game would animate it.
 The one page the owner has passed is **THE LAST PAGE**. Its geometry is now the shared
 standard: one sheet rotated to the paper's drawn lean, laid out in that sheet's own
 axis-aligned space, baselines snapped to the printed rules.
+
+### Measured zone budgets (LANE-JOURNAL, 2026-08-19) — affects every lane using JournalPage
+
+Probed on a real built page rather than estimated:
+
+| zone | usable height |
+|---|---|
+| title | 21px left after the heading |
+| body | **213px** |
+| ending | **256px** |
+| controls | 85px |
+
+Costs, measured the same way: a `line()` costs **65px**; an `icon_row()` costs **cell.y + 68**
+(46px caption inside the cell, plus the 22px gap); `write_field()` costs **153px**.
+
+So `line + icon_row(90) + write_field` = 65 + 158 + 153 = **376px into a 256px zone**. A question,
+a row of choices and the written move CANNOT share ENDING — that is the source of most of the
+overrun warnings across the lanes, not per-page copy length. This lane now puts the question and its
+icon row in BODY and leaves ENDING to the written move alone, which took its overruns from 21 to 3.
+If the intended anatomy is question + choices + written move on one sheet, ENDING needs to be about
+twice its current height, or `write_field` needs its own zone.
