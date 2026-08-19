@@ -1,0 +1,125 @@
+{
+  "project": "RUNWAY! — Original Soundtrack Prompt System",
+  "generator": "Suno (v4+). Style prompt goes in the Style field (HARD LIMIT 500 characters — all prompts below comply); ALWAYS enable the Instrumental toggle.",
+  "design_thesis": "One sonic identity, many moods — the musical equivalent of the game's locked 7-color palette. Every track shares the same key family, the same tempo grid, the same instrument palette, and the same mix character; only mood, energy tier, and arrangement focus change. Modern and upbeat production carried by classical lead voices (piano, trumpet): a contemporary indie-game score with the deadpan charm of 60 Seconds! and the melodic stickiness of Plants vs. Zombies — never retro pastiche, never orchestral bombast.",
+  "sonic_identity": {
+    "key_family": "F major, with D minor (relative) for dread and loss — every track lives in this family so any two tracks can crossfade without clashing",
+    "tempo_grid": "96 BPM for EVERY loop. Energy comes from feel, not tempo: half-time feel = calm (garage), straight 8ths = bright (title, selection), sparse rubato allowed only in stings. One BPM means in-game crossfades between screens always lock.",
+    "instrument_palette": [
+      "felt piano (intimate, close-miked) — the workhorse; bright grand piano accents for lifts",
+      "trumpet, lightly muted or flugel-soft — the melodic lead voice, played warm and precise, never brassy-epic",
+      "upright bass or round clean electric bass — the pulse",
+      "tight modern drum kit — brushes at low energy, crisp sticks + rimshots at high energy; always dry and punchy",
+      "marimba + glockenspiel — playful accents and countermelodies (the game's whimsy DNA)",
+      "subtle synth pluck/pulse — quiet rhythmic glue that keeps it modern; never a synth lead",
+      "finger snaps / soft claps — human momentum, used sparingly"
+    ],
+    "mix_character": "small room, dry, intimate, modern-clean with a hint of warmth; no big reverbs, no cinematic swells, no lo-fi tape mud; slightly humanized timing so it feels hand-played, matching the hand-drawn wobbly ink art",
+    "melodic_identity": "THE RUNWAY MOTIF — one short, hummable, optimistic-but-slightly-worried melodic hook introduced by the title theme. It must feel like hurrying somewhere hopeful. All other loops are derived from the title generation via Suno Cover so the motif DNA carries through the whole OST.",
+    "always_avoid": "vocals or lyrics of any kind, choir, epic orchestra, EDM drops, dubstep, 8-bit chiptune, heavy distortion, sad strings melodrama, elevator-jazz noodling, long intros or fade-outs (loops must cut clean)"
+  },
+  "suno_workflow_for_consistency": [
+    "1. Generate 01_title first. Pick the take whose melody you love — this take IS the franchise motif.",
+    "2. Every other loop: use Suno COVER on the chosen title take, replacing the Style field with that track's suno_style_prompt below. Cover preserves melodic DNA while changing mood/arrangement — this is the consistency weapon.",
+    "3. Overlay stems (whistle/hum): also Cover of the title take, with the stem prompts below — they produce a solo performance of the motif to layer IN-GAME on top of any loop (same key, same BPM, so they sit on everything).",
+    "4. Ask for ~2 minutes per loop; find the seamless loop point in a DAW (bar-aligned at 96 BPM = 2.5s per bar). Prompts request loop-friendly writing (no intro, no outro, ends on the turnaround) but the final cut is yours.",
+    "5. Keep generations organized as <track_id>_takeN.mp3; the chosen title take is canon — never regenerate it later or the family drifts."
+  ],
+  "tracks": [
+    {
+      "id": "01_title",
+      "scene": "Title screen — the founder sprinting down a burning runway of money; papers tumbling; hand-lettered logo",
+      "in_game_role": "First impression + franchise motif carrier. Loops behind the living title painting.",
+      "mood": "upbeat, hopeful, slightly reckless — running toward something great that is probably on fire",
+      "energy_tier": "3/4 — bright and driving but not frantic",
+      "arrangement_focus": "trumpet states the motif over driving felt piano eighths; marimba answers; snaps + tight kit push forward; bright grand accents on the turnarounds",
+      "structure_for_loop": "A (motif) → A' (motif + countermelody) → B (piano lift, trumpet rests) → turnaround that lands back on A. No intro, no outro.",
+      "suno_style_prompt": "instrumental video game main theme, seamless loop, modern upbeat indie game music, hopeful and mischievous, catchy short trumpet melody over driving felt piano eighths, marimba countermelody, upright bass, tight dry drums with rimshots and finger snaps, glockenspiel sparkle, subtle synth pluck, small-room modern production, 96 BPM, F major, sprinting toward a bright future that is on fire, no vocals, no orchestra, no chiptune, no intro, no fade-out"
+    },
+    {
+      "id": "02_selection",
+      "scene": "Founder draft — character select stage, naming the company, building the crew, cap-table choices",
+      "in_game_role": "Menu/selection family. Lighter sibling of the title: anticipation, window-shopping your future self.",
+      "mood": "curious, bouncy, optimistic, a little cheeky — trying on identities",
+      "energy_tier": "2/4 — lighter than title, still moving",
+      "arrangement_focus": "marimba and felt piano lead in conversation; trumpet only teases short fragments of the motif; brushes instead of sticks; snaps carry the groove",
+      "structure_for_loop": "AABA with tiny variations; every 8 bars a small glockenspiel wink",
+      "suno_style_prompt": "instrumental video game menu theme, seamless loop, playful modern character-select music, curious and bouncy, marimba and felt piano call-and-response, short soft trumpet fragments, upright bass, brushed drums with finger snaps, glockenspiel accents, subtle synth pluck, light airy modern production, 96 BPM, F major, cheeky window-shopping-for-your-destiny feeling, no vocals, no orchestra, no intro, no fade-out"
+    },
+    {
+      "id": "03_garage",
+      "scene": "The garage — main in-game room and weekly journal; heard ~90% of playtime",
+      "in_game_role": "THE long-haul loop. Must survive 200 consecutive repeats without fatigue. Light head-nod groove.",
+      "mood": "focused, warm, quietly determined — 2am work that still believes in itself",
+      "energy_tier": "1.5/4 — present but never demanding attention",
+      "arrangement_focus": "half-time head-nod groove; felt piano plays sparse chords, motif appears rarely and only as a half-speed fragment; marimba keeps a soft pattern; brushes whisper; lots of space between phrases",
+      "structure_for_loop": "long 16-bar cycles with micro-variations; at least 30% of bars are groove-only (no melody) so the ear never wears out",
+      "suno_style_prompt": "instrumental video game background loop, calm focused work music, warm and quietly determined, half-time head-nod groove, 96 BPM, sparse intimate felt piano chords with space, soft marimba pattern, round upright bass, whisper brushed drums, rare distant soft trumpet fragment, subtle synth pulse, minimal unobtrusive modern production, F major, loops forever without fatigue, mostly groove with rare melody, no vocals, no busy soloing, no intro, no fade-out"
+    },
+    {
+      "id": "04_in_the_red",
+      "scene": "Starvation state — cash below zero, weeks-in-red counter ticking, room vignette pulsing red",
+      "in_game_role": "Dread variant of 03_garage (generate as a COVER of the chosen garage take so the two crossfade invisibly when the money runs out).",
+      "mood": "uneasy, ticking, holding-your-breath — the same room, but the walls know",
+      "energy_tier": "1.5/4 — same low energy, darker color",
+      "arrangement_focus": "same groove skeleton shifted toward D minor; bass moves to sparse repeated notes like a countdown; piano chords hollow out; marimba becomes a dry tick like a clock; one worried muted trumpet bend per cycle",
+      "structure_for_loop": "same 16-bar skeleton as garage; tension never resolves — the loop ends leaning forward",
+      "suno_style_prompt": "instrumental video game background loop, tense quiet money-running-out variation of a cozy work theme, uneasy and ticking, D minor, half-time groove, 96 BPM, sparse hollow felt piano, repeated single bass notes like a countdown, dry marimba ticking like a clock, whisper brushed drums, one worried muted trumpet bend per phrase, low synth pulse, restrained modern production, suspense without horror, no vocals, no strings melodrama, no intro, no fade-out"
+    },
+    {
+      "id": "05_last_page",
+      "scene": "Autopsy — THE LAST PAGE: the journal on a dark table, DIED stamp, the causal chain",
+      "in_game_role": "Death/epilogue loop. Sad-funny, short (60-90s), gentle — the player should smile, then press RUN IT BACK.",
+      "mood": "bittersweet, wry, tender — a eulogy that can't keep a straight face",
+      "energy_tier": "1/4",
+      "arrangement_focus": "solo felt piano carries a slowed, slightly wrong-noted reading of the motif; glockenspiel answers like a small consolation; brushes barely there; ends warm, not tragic",
+      "structure_for_loop": "one A phrase, one B sigh, turnaround; rubato edges allowed but the loop still closes cleanly",
+      "suno_style_prompt": "instrumental video game game-over theme, seamless gentle loop, sad and funny at once, tender solo felt piano playing a slow slightly clumsy melody, small glockenspiel answers, faint brushed drums, warm upright bass long notes, D minor drifting to F major at the turnaround, 96 BPM half-time with rubato edges, consoling not tragic, a eulogy that cannot keep a straight face, no vocals, no strings melodrama, no intro, no fade-out"
+    }
+  ],
+  "stings": [
+    {
+      "id": "st_lock_week",
+      "use": "LOCK THE WEEK pressed — page turns, lights dip",
+      "length": "2-3 seconds",
+      "suno_style_prompt": "instrumental video game sound sting, 2 seconds, decisive warm felt piano chord with a quick marimba flourish and one finger snap, F major, dry small-room, the punctuation mark of committing to a decision, no vocals"
+    },
+    {
+      "id": "st_victory",
+      "use": "Era gate reached (MVP alive) / milestone moments",
+      "length": "4-6 seconds",
+      "suno_style_prompt": "instrumental video game victory sting, 5 seconds, bright joyful trumpet and grand piano fanfare fragment with glockenspiel sparkle and a snap, F major, modern punchy small-band sound, triumphant but charming not epic, no vocals"
+    },
+    {
+      "id": "st_death",
+      "use": "The moment of death, before THE LAST PAGE loop starts",
+      "length": "4-6 seconds",
+      "suno_style_prompt": "instrumental video game defeat sting, 5 seconds, a felt piano phrase that starts confident and deflates into two wrong notes and a soft low upright bass thud, D minor, dry and intimate, comically deflating like air leaving a balloon with dignity, no vocals"
+    },
+    {
+      "id": "st_pivot",
+      "use": "THE PIVOT confirmed — the company becomes something else",
+      "length": "3-4 seconds",
+      "suno_style_prompt": "instrumental video game sting, 3 seconds, rising marimba and piano whirl landing on a bright unresolved trumpet note, F major unresolved, the sound of spinning to face a new direction, modern dry production, no vocals"
+    }
+  ],
+  "overlay_stems": {
+    "note": "Per owner decision: main tracks are STRICTLY instrumental. These are separate solo human-sound stems of the motif, generated apart, to be layered IN-GAME on top of any loop when wanted (same key F major, same 96 BPM, so they sit on everything). Generate as Suno COVER of the chosen 01_title take.",
+    "stems": [
+      {
+        "id": "stem_whistle",
+        "suno_style_prompt": "solo casual whistling of a short catchy melody, completely alone, no instruments, no backing, relaxed and slightly smug like whistling on the walk to work, dry close recording, 96 BPM, F major, loop-friendly, nothing but the whistle"
+      },
+      {
+        "id": "stem_hum",
+        "suno_style_prompt": "solo soft absent-minded humming of a short catchy melody, one voice alone, no instruments, no backing, warm and low like humming while typing late at night, dry close recording, 96 BPM, F major, loop-friendly, nothing but the hum"
+      }
+    ]
+  },
+  "in_game_wiring_notes": [
+    "All loops share 96 BPM + F/Dm family → crossfade any screen transition over 1-2 bars (2.5-5s) and it will always sound intentional.",
+    "04_in_the_red is a state-swap of 03_garage: crossfade on cash<0, crossfade back on recovery — the player FEELS the money without a single UI element.",
+    "The existing synthesized menu_loop.wav becomes a placeholder to delete once 02_selection is generated.",
+    "Stems (whistle/hum) are mood dials: e.g., layer stem_whistle over 03_garage when morale > 75 — the founder literally whistles while they work; kill it below 40."
+  ]
+}

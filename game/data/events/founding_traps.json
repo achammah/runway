@@ -1,0 +1,121 @@
+{
+  "events": [
+    {
+      "id": "evt_resentment_vested",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 6,
+      "requires": {"flags_all": ["trap_underpaid_cofounder"], "flags_none": ["trap_no_vesting", "resentment_resolved"]},
+      "title": "The Split Comes Up Again",
+      "body": "Your cofounder saw the cap table again. 'I work the same hours as you.' They're right, and you both know it. The silence does the negotiating.",
+      "choices": [
+        {"label": "Regrant them a fair split.", "effects": [{"op": "equity_delta", "v": -10}, {"op": "set_flag", "v": "resentment_resolved"}, {"op": "clear_flag", "v": "trap_underpaid_cofounder"}, {"op": "morale_delta", "v": 12}]},
+        {"label": "'We agreed. It's done.'", "effects": [{"op": "morale_delta", "v": -8}, {"op": "arm_timebomb", "weeks": 3, "event": "evt_walkout_vested"}]}
+      ]
+    },
+    {
+      "id": "evt_resentment_unvested",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 6,
+      "requires": {"flags_all": ["trap_underpaid_cofounder", "trap_no_vesting"], "flags_none": ["resentment_resolved"]},
+      "title": "The Split Comes Up Again",
+      "body": "Your cofounder saw the cap table again. 'I work the same hours as you.' There's no vesting schedule. There's no cliff. There is only vibes.",
+      "choices": [
+        {"label": "Regrant them a fair split.", "effects": [{"op": "equity_delta", "v": -10}, {"op": "set_flag", "v": "resentment_resolved"}, {"op": "clear_flag", "v": "trap_underpaid_cofounder"}, {"op": "morale_delta", "v": 12}]},
+        {"label": "'We agreed. It's done.'", "effects": [{"op": "morale_delta", "v": -8}, {"op": "arm_timebomb", "weeks": 3, "event": "evt_walkout_unvested"}]}
+      ]
+    },
+    {
+      "id": "evt_walkout_vested",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 0,
+      "requires": {},
+      "title": "They're Out",
+      "body": "Cardboard box, two mugs, the good keyboard. Because you set up vesting with a cliff, their unvested shares come back to the company. It still hurts. But it's clean.",
+      "choices": [
+        {"label": "Recover the equity. Rebuild.", "effects": [{"op": "equity_delta", "v": 8}, {"op": "product_delta", "v": -10}, {"op": "morale_delta", "v": -10}, {"op": "clear_flag", "v": "has_cofounder"}]},
+        {"label": "Beg them to stay. Publicly.", "effects": [{"op": "morale_delta", "v": -15}, {"op": "hype_delta", "v": -5}, {"op": "set_flag", "v": "begged_once"}]}
+      ]
+    },
+    {
+      "id": "evt_walkout_unvested",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 0,
+      "requires": {},
+      "title": "They're Out. The Shares Aren't.",
+      "body": "They left on Tuesday. Their equity stays forever, because nobody set up vesting. Somewhere out there, a stranger owns a chunk of everything you will ever build.",
+      "choices": [
+        {"label": "Lawyer up. Burn cash.", "effects": [{"op": "cash_delta", "v": -4000}, {"op": "product_delta", "v": -8}, {"op": "morale_delta", "v": -8}, {"op": "clear_flag", "v": "has_cofounder"}]},
+        {"label": "Live with the ghost equity.", "effects": [{"op": "product_delta", "v": -10}, {"op": "morale_delta", "v": -14}, {"op": "set_flag", "v": "ghost_equity"}, {"op": "clear_flag", "v": "has_cofounder"}]}
+      ]
+    },
+    {
+      "id": "evt_part_timer",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 5,
+      "requires": {"flags_all": ["trap_part_timer_rich"]},
+      "title": "Slack Status: Away",
+      "body": "Launch week. Your part-time cofounder — the one with real equity — has a wedding, then a work offsite, then 'a thing'. Their commit history is a haiku.",
+      "choices": [
+        {"label": "Demand full-time or exit.", "effects": [{"op": "morale_delta", "v": -5}, {"op": "arm_timebomb", "weeks": 2, "event": "evt_walkout_unvested"}, {"op": "clear_flag", "v": "trap_part_timer_rich"}]},
+        {"label": "Cover for them. Again.", "effects": [{"op": "product_delta", "v": -6}, {"op": "morale_delta", "v": -10}]}
+      ]
+    },
+    {
+      "id": "evt_idea_guy",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 5,
+      "requires": {"flags_all": ["trap_idea_tax"]},
+      "title": "The Idea Person Has Notes",
+      "body": "They don't code. They don't sell. They had the idea, they own a slice, and they've just forwarded you a 14-slide vision deck titled 'Pivot?'.",
+      "choices": [
+        {"label": "Buy them out now.", "effects": [{"op": "cash_delta", "v": -5000}, {"op": "equity_delta", "v": 6}, {"op": "clear_flag", "v": "trap_idea_tax"}, {"op": "morale_delta", "v": 8}]},
+        {"label": "'Great deck!' (ignore)", "effects": [{"op": "morale_delta", "v": -6}, {"op": "hype_delta", "v": 2}]}
+      ]
+    },
+    {
+      "id": "evt_too_many_cooks",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 5,
+      "requires": {"flags_all": ["trap_too_many_cooks"]},
+      "title": "The Four-Founder Standup",
+      "body": "Deciding the button color took ninety minutes and two votes. There are more founders than users. Every decision is a senate hearing.",
+      "choices": [
+        {"label": "Declare yourself CEO. Firmly.", "effects": [{"op": "morale_delta", "v": -6}, {"op": "product_delta", "v": 6}, {"op": "clear_flag", "v": "trap_too_many_cooks"}, {"op": "set_flag", "v": "ceo_declared"}]},
+        {"label": "Keep the democracy.", "effects": [{"op": "product_delta", "v": -6}, {"op": "morale_delta", "v": 4}]}
+      ]
+    },
+    {
+      "id": "evt_healthy_team",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 3,
+      "requires": {"flags_all": ["healthy_split"], "flags_none": ["healthy_paid_out"]},
+      "title": "It's... Working?",
+      "body": "Fair split, vesting, everyone full-time. Tonight your cofounder fixed your worst bug and left snacks on your desk. This is what the essays meant.",
+      "choices": [
+        {"label": "Say thank you out loud.", "effects": [{"op": "morale_delta", "v": 12}, {"op": "product_delta", "v": 4}, {"op": "set_flag", "v": "healthy_paid_out"}]},
+        {"label": "Nod. Keep shipping.", "effects": [{"op": "morale_delta", "v": 6}, {"op": "product_delta", "v": 6}, {"op": "set_flag", "v": "healthy_paid_out"}]}
+      ]
+    },
+    {
+      "id": "evt_majority_lost",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 4,
+      "requires": {"flags_all": ["trap_lost_majority"]},
+      "title": "You Counted Again",
+      "body": "On paper it's still your company. On the cap table, it stopped being your company somewhere around the second handshake. Everyone else combined outvotes you.",
+      "choices": [
+        {"label": "Negotiate back 5% (owe favors).", "effects": [{"op": "equity_delta", "v": 5}, {"op": "morale_delta", "v": -5}, {"op": "set_flag", "v": "owes_favors"}, {"op": "clear_flag", "v": "trap_lost_majority"}]},
+        {"label": "Ignore it. Grow faster.", "effects": [{"op": "hype_delta", "v": 3}, {"op": "morale_delta", "v": -3}]}
+      ]
+    }
+  ]
+}

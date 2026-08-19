@@ -1,0 +1,301 @@
+{
+  "reasoning": "Brief identifies as illustration — a character concept lineup for the game's four founder archetypes, hand-drawn, not photography. Style keyword mappings identical to the locked title-screen prompt: 'hand-drawn Xiaohei-style' maps to style.medium: illustration, style.rendering_technique: pencil rendered as wobbly felt-pen ink line with flat fills, texture.special: [uneven line weight, intentional overshoots]; 'colorful simple' maps to the locked RUNWAY! 7-color palette on paper cream #F2EAD3 with every hex pinned in technical_rules.strict_preserve. Subject type determination: four original IP creatures (fictional, Xiaohei-descended) — no real person block; each typed as character sharing one canonical body description (solid black bean body, white dot eyes, thin stick limbs, deadpan) with differentiation ONLY through props and one accessory each, which is itself the design rule being validated: if four identical bodies read as four distinct characters through props alone, the entire 360-image character workload collapses. Prop assignments derived from the PRD archetypes: The Hacker = laptop + energy drink cans, The Hustler = necktie + two phones, The Dropout = backwards cap + skateboard, The Ex-FAANG PM = lanyard badge + coffee cup with sticky notes. Each creature performs a small characteristic action rather than posing — Xiaohei law: the creature acts, never decorates. exact_text: the four archetype names, mapped verbatim into text_rendering.elements as hand-lettered labels under each character. Composition: single row of four on flat cream, generous whitespace, no panel borders — this is a character sheet the artist and future prompts will reference. Ambiguities resolved: 16:9 to match the game's native ratio and allow side-by-side comparison; names lettered in ink black with one coral accent underline each rather than colored text, to keep the sheet quiet. Operation: text_to_image. No reference images. negative_prompt covers the style's failure modes: cuteness, gradients, vector cleanliness, 3D, anime, panel frames. CHARACTER v2 LOCK applied (matches concept_01): single cowlick spike, permanent forward lean, mismatched white oval eyes, tiny cream sneakers with one untied lace — with two archetype-level expressive exceptions written into the descriptions: the Dropout's lean reads as slouch, and the Ex-FAANG PM stands straight with both laces tied (discipline as the joke).",
+  "prompt": {
+    "meta": {
+      "task": "generate",
+      "image_category": "illustration",
+      "style_name": "RUNWAY! hand-drawn deadpan ink — founder archetype lineup",
+      "aspect_ratio": "16:9",
+      "resolution": "2K",
+      "inspiration": [
+        "Xiaohei absurdist body illustration IP — solid black creature, white dot eyes, deadpan earnestness",
+        "video game character-select lineups drawn as a naive whiteboard sketch",
+        "startup satire archetypes — HBO Silicon Valley energy, drawn flat and calm"
+      ]
+    },
+    "reference_images": [],
+    "operation": {
+      "type": "text_to_image"
+    },
+    "subjects": [
+      {
+        "id": "subject_1",
+        "type": "character",
+        "description": "THE HACKER — the base founder creature sitting cross-legged, an open laptop balanced on its lap, typing with both thin arms, three empty energy drink cans stacked in a small wobbly pyramid beside it",
+        "position": "first from left, evenly spaced in a row of four",
+        "size_in_frame": "each creature roughly 35% of frame height, all four on one shared ground line",
+        "relationship_to_others": "same species, same size, same deadpan stare — distinguished only by props",
+        "character": {
+          "source": "The Hacker — founder archetype from the game RUNWAY!, original IP descended from the Xiaohei illustration IP",
+          "style": "cartoon",
+          "description": "Identical base creature: solid ink-black wobbly bean body leaning slightly forward (perpetually mid-hustle, even standing still), a single ink cowlick spike on the head, two blank white oval eyes subtly mismatched (left a touch bigger), no mouth, thin stick limbs, tiny paper-cream sneakers with ink outlines (one lace untied), completely deadpan. Sits cross-legged (still somehow leaning forward), typing on a muted blue laptop with tiny code squiggles on the screen, cowlick bent from being slept on. A pyramid of three sunny yellow energy drink cans at its side. No hoodie, no clothing beyond the sneakers — the laptop and cans carry the whole identity.",
+          "consistency_rule": "identical base body to all other RUNWAY! characters — solid black forward-leaning bean, single cowlick spike, mismatched white oval eyes, tiny cream sneakers, deadpan; only props, one accessory, and pose differ"
+        }
+      },
+      {
+        "id": "subject_2",
+        "type": "character",
+        "description": "THE HUSTLER — the base founder creature mid-stride, wearing a single coral necktie, holding one phone to where an ear would be and a second phone at arm's length, clearly on two calls at once",
+        "position": "second from left",
+        "size_in_frame": "same as subject_1",
+        "relationship_to_others": "same species, props-only differentiation",
+        "character": {
+          "source": "The Hustler — founder archetype from the game RUNWAY!, original IP descended from the Xiaohei illustration IP",
+          "style": "cartoon",
+          "description": "Identical base creature: solid ink-black wobbly bean body leaning slightly forward (perpetually mid-hustle, even standing still), a single ink cowlick spike on the head, two blank white oval eyes subtly mismatched (left a touch bigger), no mouth, thin stick limbs, tiny paper-cream sneakers with ink outlines (one lace untied), completely deadpan. One coral #E86A5C necktie — its only garment beyond the sneakers, drawn as a simple flat triangle-and-band, flying back with the walking speed. Caught mid-fast-walk, one thin arm pressing a muted blue phone against the side of its head, the other arm extended holding a second phone. Two or three tiny ink motion lines behind it; cowlick swept back.",
+          "consistency_rule": "identical base body to all other RUNWAY! characters — solid black forward-leaning bean, single cowlick spike, mismatched white oval eyes, tiny cream sneakers, deadpan; only props, one accessory, and pose differ — the coral tie is this archetype's permanent accessory across all future assets"
+        }
+      },
+      {
+        "id": "subject_3",
+        "type": "character",
+        "description": "THE DROPOUT — the base founder creature wearing a backwards sage-green cap, standing on a skateboard with one foot, carrying a bulging backpack with a rolled diploma sticking out of the top, unimpressed",
+        "position": "third from left",
+        "size_in_frame": "same as subject_1",
+        "relationship_to_others": "same species, props-only differentiation",
+        "character": {
+          "source": "The Dropout — founder archetype from the game RUNWAY!, original IP descended from the Xiaohei illustration IP",
+          "style": "cartoon",
+          "description": "Identical base creature: solid ink-black wobbly bean body leaning slightly forward (perpetually mid-hustle, even standing still), a single ink cowlick spike on the head, two blank white oval eyes subtly mismatched (left a touch bigger), no mouth, thin stick limbs, tiny paper-cream sneakers with ink outlines (one lace untied), completely deadpan. Backwards flat cap in sage green #8FA582 with the cowlick spike poking out through the cap's snapback gap, one sneakered foot resting on a small coral skateboard, a sunny yellow backpack slung on its back with a rolled white paper diploma poking out. Posture loose and slouchy — the one character whose forward lean reads as slacking rather than hustling — but the stare is the same blank stare as everyone else.",
+          "consistency_rule": "identical base body to all other RUNWAY! characters — solid black forward-leaning bean, single cowlick spike, mismatched white oval eyes, tiny cream sneakers, deadpan; only props, one accessory, and pose differ — the backwards sage cap is this archetype's permanent accessory across all future assets"
+        }
+      },
+      {
+        "id": "subject_4",
+        "type": "character",
+        "description": "THE EX-FAANG PM — the base founder creature standing very upright, wearing a lanyard badge, holding a coffee cup in one hand while sticking a small yellow sticky note onto an invisible wall at eye height with the other, a few sticky notes already floating in a neat grid beside it",
+        "position": "fourth from left",
+        "size_in_frame": "same as subject_1",
+        "relationship_to_others": "same species, props-only differentiation",
+        "character": {
+          "source": "The Ex-FAANG PM — founder archetype from the game RUNWAY!, original IP descended from the Xiaohei illustration IP",
+          "style": "cartoon",
+          "description": "Identical base creature: solid ink-black wobbly bean body leaning slightly forward (perpetually mid-hustle, even standing still), a single ink cowlick spike on the head, two blank white oval eyes subtly mismatched (left a touch bigger), no mouth, thin stick limbs, tiny paper-cream sneakers with ink outlines (one lace untied), completely deadpan. A white lanyard around its neck ending in a small muted blue rectangular badge. One arm holds a cream coffee cup with a tiny steam squiggle; the other presses a sunny yellow sticky note into the air, where a tidy 2x2 grid of yellow sticky notes already floats. The only character fighting the species' forward lean by standing almost straight — and the only one with BOTH sneaker laces neatly tied. Cowlick combed but still standing.",
+          "consistency_rule": "identical base body to all other RUNWAY! characters — solid black forward-leaning bean, single cowlick spike, mismatched white oval eyes, tiny cream sneakers, deadpan; only props, one accessory, and pose differ — the lanyard badge is this archetype's permanent accessory across all future assets"
+        }
+      }
+    ],
+    "environment": {
+      "setting": "abstract",
+      "location": "no location — flat character-sheet void",
+      "time_of_day": "unspecified",
+      "background": {
+        "type": "solid",
+        "color": "#F2EAD3",
+        "description": "flat warm paper-cream #F2EAD3 filling the entire frame edge to edge — no floor line except a short wobbly ink dash under each creature's feet, no walls, no scenery",
+        "blur_level": "none"
+      },
+      "foreground_elements": [],
+      "props": [
+        {
+          "item": "short ground dashes",
+          "position": "one hand-drawn horizontal ink dash under each character",
+          "material": "ink line",
+          "description": "the only grounding element — keeps the sheet floating and clean",
+          "importance": "accent"
+        }
+      ],
+      "surface": "none"
+    },
+    "composition": {
+      "shot_type": "full_body",
+      "framing": "symmetrical",
+      "angle": "eye_level",
+      "perspective": "flat frontal character-sheet view, zero perspective depth, all four creatures on one implied baseline",
+      "depth_of_field": "deep",
+      "focus_point": "all four characters equally sharp",
+      "layers": {
+        "foreground": "the four creatures and their props",
+        "midground": "hand-lettered name labels under each creature",
+        "background": "flat cream void"
+      },
+      "negative_space": {
+        "position": "top quarter of the frame and between characters",
+        "size": "large — at least 35% of the frame stays empty cream",
+        "purpose": "character-sheet clarity; each silhouette must read in isolation"
+      },
+      "crop_rules": "equal horizontal spacing between the four characters; no character or label within 5% of frame edges",
+      "multi_panel": {
+        "enabled": false
+      }
+    },
+    "style": {
+      "medium": "illustration",
+      "rendering_technique": "pencil",
+      "aesthetic": [
+        "hand-drawn ink line art with visible wobble",
+        "flat fills only — zero gradients, zero soft shadows",
+        "deadpan absurdist character sheet",
+        "colorful but restrained — max 7 colors on screen",
+        "clean, sparse, silhouette-first — every character must read at 64px"
+      ],
+      "artistic_reference": [
+        "Xiaohei body-illustration IP line quality",
+        "thick uneven ink outline 3 to 6 px at working resolution",
+        "props drawn chunky and simple, readable before the eye finds details"
+      ],
+      "texture": {
+        "grain": "none",
+        "surface_quality": "flat matte paper, clean digital flats behind hand-wobbled ink lines",
+        "special": [
+          "slightly uneven line weight as if drawn quickly with a felt pen",
+          "small overshoots at line corners kept intentionally"
+        ]
+      },
+      "design_system": "RUNWAY! locked style v1 — ink line + flat fills + 7-color palette on paper cream"
+    },
+    "color": {
+      "palette": {
+        "primary": "#1E1E1E",
+        "secondary": "#E86A5C",
+        "accent": "#F4B942",
+        "shadow": "#8FA582",
+        "highlight": "#FFFFFF",
+        "background": "#F2EAD3",
+        "named_colors": [
+          "Paper cream #F2EAD3 — background void, coffee cup, all eight tiny sneakers",
+          "Ink black #1E1E1E — all outlines, all four creature bodies, name lettering",
+          "Coral #E86A5C — Hustler's tie, Dropout's skateboard, one accent underline per name label",
+          "Sunny yellow #F4B942 — energy drink cans, backpack, sticky notes",
+          "Sage green #8FA582 — Dropout's cap",
+          "Muted blue #6E8CA0 — laptop, phones, lanyard badge",
+          "White #FFFFFF — mismatched oval eyes, lanyard cord, diploma roll"
+        ]
+      },
+      "grading": "none — flat unmodulated fills, colors exactly as specified",
+      "temperature": "warm",
+      "saturation": "vivid",
+      "mood_keywords": [
+        "deadpan",
+        "playful",
+        "satirical",
+        "orderly",
+        "characterful"
+      ]
+    },
+    "text_rendering": {
+      "enabled": true,
+      "strategy": "all text hand-lettered as part of the drawing — wobbly felt-pen capitals, copied character-for-character, one label centered under each character",
+      "elements": [
+        {
+          "id": "text_1",
+          "content": "THE HACKER",
+          "role": "label",
+          "font_style": "hand-lettered small capitals, slightly uneven baseline",
+          "size": "small",
+          "weight": "bold",
+          "color": "#1E1E1E",
+          "position": "centered under subject_1, below its ground dash",
+          "treatment": "plain lettering with a single short coral #E86A5C underline stroke",
+          "language": "English"
+        },
+        {
+          "id": "text_2",
+          "content": "THE HUSTLER",
+          "role": "label",
+          "font_style": "hand-lettered small capitals, slightly uneven baseline",
+          "size": "small",
+          "weight": "bold",
+          "color": "#1E1E1E",
+          "position": "centered under subject_2, below its ground dash",
+          "treatment": "plain lettering with a single short coral #E86A5C underline stroke",
+          "language": "English"
+        },
+        {
+          "id": "text_3",
+          "content": "THE DROPOUT",
+          "role": "label",
+          "font_style": "hand-lettered small capitals, slightly uneven baseline",
+          "size": "small",
+          "weight": "bold",
+          "color": "#1E1E1E",
+          "position": "centered under subject_3, below its ground dash",
+          "treatment": "plain lettering with a single short coral #E86A5C underline stroke",
+          "language": "English"
+        },
+        {
+          "id": "text_4",
+          "content": "THE EX-FAANG PM",
+          "role": "label",
+          "font_style": "hand-lettered small capitals, slightly uneven baseline",
+          "size": "small",
+          "weight": "bold",
+          "color": "#1E1E1E",
+          "position": "centered under subject_4, below its ground dash",
+          "treatment": "plain lettering with a single short coral #E86A5C underline stroke",
+          "language": "English"
+        }
+      ]
+    },
+    "technical_rules": {
+      "strict_preserve": [
+        "all four bodies IDENTICAL — solid ink black #1E1E1E forward-leaning bean shape, single ink cowlick spike, two blank white #FFFFFF oval eyes subtly mismatched (left slightly bigger), thin stick limbs, tiny paper-cream #F2EAD3 sneakers with ink outlines; differentiation comes ONLY from props, accessory, and pose (plus the two written exceptions: the PM stands straight with tied laces)",
+        "expressions MUST be identically deadpan on all four — no smiles, no eyebrows, no emoji faces",
+        "all outlines hand-wobbled and uneven — never smooth vector curves",
+        "flat fills ONLY — no gradients, no soft shadows, no 3D shading",
+        "background MUST be flat paper cream #F2EAD3 edge to edge with no scenery",
+        "palette locked to exactly: #F2EAD3, #1E1E1E, #E86A5C, #F4B942, #8FA582, #6E8CA0, #FFFFFF — no additional colors",
+        "the four name labels rendered character-for-character exactly as specified, one per character, correctly paired",
+        "no panel borders, no boxes around characters — open character sheet"
+      ],
+      "forbidden_elements": [
+        "real company logos or brand names",
+        "human characters",
+        "panel frames or grid boxes",
+        "typeset fonts",
+        "speech bubbles",
+        "drop shadows",
+        "extra characters beyond the four"
+      ],
+      "forbidden_styles": [
+        "kawaii cute mascot style",
+        "children's picture book style",
+        "3D render",
+        "vector flat corporate illustration",
+        "PPT infographic",
+        "photorealism",
+        "anime"
+      ],
+      "single_object_rule": false,
+      "no_text_rule": false,
+      "no_logo_rule": true,
+      "watermark": false
+    },
+    "output_format": {
+      "primary": "image",
+      "secondary": "none",
+      "variants": 1,
+      "contact_sheet": {
+        "enabled": false
+      }
+    },
+    "usage_context": {
+      "platform": "web",
+      "audience": "internal art direction — this sheet becomes the character reference for all future RUNWAY! asset prompts",
+      "purpose": "validate the core character-design bet: four identical deadpan black creatures made distinct by props alone; if this reads, the entire character asset workload collapses to prop variations",
+      "themes": [
+        "founder archetypes",
+        "startup satire",
+        "character select",
+        "deadpan absurdism"
+      ],
+      "usage_notes": "Inferences made: 16:9 chosen for side-by-side comparison at the game's native ratio. Prop kits derived from the PRD archetype table — Hacker (build-focused: laptop, energy drinks), Hustler (sell-focused: tie, two phones), Dropout (speed-focused: cap, skateboard, abandoned diploma), Ex-FAANG PM (process-focused: lanyard, coffee, sticky-note grid). Each character performs its identity as an action rather than posing, per the Xiaohei rule that the creature must do the work, not decorate. The archetype names are lettered in ink with coral underlines rather than colored text to keep the sheet quiet and let silhouettes dominate."
+    },
+    "negative_prompt": [
+      "gradients",
+      "soft shadows",
+      "3D render",
+      "kawaii cute mascot",
+      "children's book illustration",
+      "smooth vector lines",
+      "photorealistic",
+      "anime style",
+      "PPT infographic look",
+      "panel borders or boxes",
+      "real brand logos",
+      "human figures",
+      "different body shapes between characters",
+      "facial expressions other than deadpan dot eyes"
+    ]
+  }
+}

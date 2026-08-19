@@ -1,0 +1,58 @@
+{
+  "events": [
+    {
+      "id": "evt_linkedin_like",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 7,
+      "requires": {"flags_all": ["posted_publicly"], "flags_none": ["dm_sent"]},
+      "title": "Someone Liked The Post",
+      "body": "A VP of Operations at a mid-size company liked your build-log post. Then re-read it. Then followed you. The cursor hovers over their name.",
+      "choices": [
+        {"label": "DM them. Politely feral.", "effects": [{"op": "set_flag", "v": "dm_sent"}, {"op": "traction_delta", "v": 2}, {"op": "morale_delta", "v": 3}]},
+        {"label": "Reply publicly. Peacock a little.", "effects": [{"op": "hype_delta", "v": 4}, {"op": "set_flag", "v": "dm_sent"}]},
+        {"label": "Play it cool. Do nothing.", "effects": [{"op": "morale_delta", "v": -2}]}
+      ]
+    },
+    {
+      "id": "evt_demo_champion",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 6,
+      "requires": {"flags_all": ["did_demos"], "flags_none": ["champion_used"]},
+      "title": "The Demo Had A Fan",
+      "body": "Someone from last week's demo call keeps emailing follow-up questions at 11pm. Either they love it or they're building a competitor. Possibly both.",
+      "choices": [
+        {"label": "Offer them a pilot deal.", "effects": [{"op": "set_flag", "v": "champion_used"}, {"op": "traction_delta", "v": 3}, {"op": "cash_delta", "v": 400}]},
+        {"label": "Ask for three intros first.", "effects": [{"op": "set_flag", "v": "champion_used"}, {"op": "hype_delta", "v": 3}, {"op": "traction_delta", "v": 1}]},
+        {"label": "Ghost them. Suspicious.", "effects": [{"op": "morale_delta", "v": -3}]}
+      ]
+    },
+    {
+      "id": "evt_invoice_ghost",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 5,
+      "requires": {"flags_all": ["chased_invoices"], "flags_none": ["invoice_settled"]},
+      "title": "The Invoice Answers Back",
+      "body": "The customer you chased for payment replies: 'happy to pay — also, we have thoughts.' Attached: a nine-point feature demand list.",
+      "choices": [
+        {"label": "Take the money AND the list.", "effects": [{"op": "set_flag", "v": "invoice_settled"}, {"op": "cash_delta", "v": 600}, {"op": "product_delta", "v": -4}]},
+        {"label": "Money first. List 'soon'.", "effects": [{"op": "set_flag", "v": "invoice_settled"}, {"op": "cash_delta", "v": 600}, {"op": "morale_delta", "v": -2}, {"op": "arm_timebomb", "weeks": 3, "event": "evt_churn_knock"}]}
+      ]
+    },
+    {
+      "id": "evt_churn_knock",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 0,
+      "requires": {},
+      "title": "The 'Soon' Came Due",
+      "body": "The customer whose feature list you shelved just churned, loudly, in a public forum your other customers read.",
+      "choices": [
+        {"label": "Apologize publicly, fix it.", "effects": [{"op": "traction_delta", "v": -2}, {"op": "product_delta", "v": 3}, {"op": "morale_delta", "v": -3}]},
+        {"label": "Let it blow over.", "effects": [{"op": "traction_delta", "v": -3}, {"op": "hype_delta", "v": -4}]}
+      ]
+    }
+  ]
+}

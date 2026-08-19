@@ -1,0 +1,144 @@
+openapi: 3.0.3
+info:
+  title: Layer Decomposition (Seedream)
+  description: |
+    Decompose any image into separate layers (character, objects, background, text,
+    effects) using ByteDance Seedream v5 Pro on AtlasCloud. Start a decomposition job,
+    then poll the prediction until it completes; outputs are PNG layer URLs with
+    transparency, plus a clean inpainted base image.
+  version: 1.0.0
+servers:
+  - url: https://api.atlascloud.ai
+    description: AtlasCloud API
+paths:
+  /api/v1/model/generateImage:
+    post:
+      summary: Start a layer-decomposition job
+      description: |
+        Submits an image for layer decomposition. Returns a prediction id immediately
+        (async, recommended) unless enable_sync_mode is true, in which case the call
+        waits for the result. Poll the prediction id with getPrediction until status
+        is "completed"; outputs[0] is the base image, the rest are transparent PNG layers.
+      operationId: startLayerDecomposition
+      tags: [Layer Decomposition]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, image]
+              properties:
+                model:
+                  type: string
+                  enum: ["bytedance/seedream-v5.0-pro/layer-decomposition"]
+                  default: "bytedance/seedream-v5.0-pro/layer-decomposition"
+                  description: Model identifier. Always use the default.
+                image:
+                  type: string
+                  format: uri
+                  description: URL of the image to decompose into layers.
+                prompt:
+                  type: string
+                  description: |
+                    Optional instruction describing which elements to split into layers,
+                    e.g. "Decompose into separate layers: (1) the character, (2) the fire,
+                    (3) the background, (4) the text". Numbered element lists work well.
+                size:
+                  type: string
+                  enum: [auto, 1K, 1.5K, 2K]
+                  default: auto
+                  description: Output resolution tier.
+                output_format:
+                  type: string
+                  enum: [jpeg, png]
+                  default: png
+                  description: File format of the base image (layers are always PNG with alpha).
+                enable_sync_mode:
+                  type: boolean
+                  default: false
+                  description: If true, waits for the result before returning (jobs take 60-120s).
+                enable_base64_output:
+                  type: boolean
+                  default: false
+                  description: If true, outputs are base64 strings instead of URLs. Keep false.
+            examples:
+              decompose:
+                summary: Decompose a game scene
+                value:
+                  model: "bytedance/seedream-v5.0-pro/layer-decomposition"
+                  image: "https://example.com/scene.png"
+                  prompt: "Decompose into separate layers: (1) the character, (2) the fire, (3) the background, (4) the title text"
+                  size: "2K"
+                  output_format: "png"
+      responses:
+        '200':
+          description: Job accepted (or completed when sync mode is on)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictionEnvelope'
+  /api/v1/model/prediction/{predictionId}:
+    get:
+      summary: Get decomposition job status and results
+      description: |
+        Returns the job status. When status is "completed", outputs contains the result
+        URLs — outputs[0] is the recomposed/base image, subsequent entries are the
+        individual transparent PNG layers (cropped to content). Download promptly;
+        URLs are not permanent. Poll every 3-5 seconds while status is "processing".
+      operationId: getPrediction
+      tags: [Layer Decomposition]
+      parameters:
+        - name: predictionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The prediction id returned by startLayerDecomposition.
+      responses:
+        '200':
+          description: Current job state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictionEnvelope'
+components:
+  schemas:
+    PredictionEnvelope:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              description: Prediction id used for polling.
+            model:
+              type: string
+            status:
+              type: string
+              enum: [processing, completed, failed]
+            outputs:
+              type: array
+              items:
+                type: string
+                format: uri
+              description: Result URLs when completed. First is the base image, rest are transparent PNG layers.
+            error:
+              type: string
+            executionTime:
+              type: number
+  securitySchemes:
+    AtlasCloudApiKey:
+      type: http
+      scheme: bearer
+      description: AtlasCloud API key as Bearer token.
+security:
+  - AtlasCloudApiKey: []
+tags:
+  - name: Layer Decomposition
+    description: Split images into animatable layers with Seedream v5 Pro.

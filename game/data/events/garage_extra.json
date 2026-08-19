@@ -1,0 +1,60 @@
+{
+	"events": [
+		{
+			"id": "evt_acquihire_nibble",
+			"tier": "authored",
+			"era": ["garage"],
+			"weight": 1,
+			"requires": {"product_gte": 40, "traction_gte": 8, "hype_gte": 10, "week_gte": 10, "flags_none": ["acquired_exit", "offer_cooldown", "no_more_offers"]},
+			"title": "The Nibble",
+			"body": "An email from a mid-size company you've never heard of. 'Love what you're building. Ever thought about doing it here?' Attached: a number. It is not a large number. It is, however, a number.",
+			"choices": [
+				{
+					"label": "Take it. A number is a number.",
+					"effects": [{"op": "accept_acquisition", "v": 0.3}]
+				},
+				{
+					"label": "Decline politely. Screenshot it.",
+					"effects": [{"op": "hype_delta", "v": 5}, {"op": "morale_delta", "v": 6}, {"op": "set_flag", "v": "turned_down_offer"}, {"op": "set_flag", "v": "offer_cooldown"}, {"op": "arm_timebomb", "weeks": 6, "event": "evt_suitors_return"}]
+				}
+			]
+		},
+		{
+			"id": "evt_suitors_return",
+			"tier": "authored",
+			"era": ["garage", "coworking", "office", "floor", "hq"],
+			"weight": 0,
+			"title": "The Suitors Circle Back",
+			"body": "Six weeks of silence, then three 'just checking in' emails in one morning. Word got around that you said no once, which apparently makes you interesting. Corp dev people are like cats: wanting them gone is the attractant.",
+			"choices": [
+				{
+					"label": "Crack the door back open.",
+					"effects": [{"op": "clear_flag", "v": "offer_cooldown"}, {"op": "hype_delta", "v": 3}]
+				},
+				{
+					"label": "Building, not selling. Ever.",
+					"effects": [{"op": "clear_flag", "v": "offer_cooldown"}, {"op": "set_flag", "v": "no_more_offers"}, {"op": "morale_delta", "v": 5}]
+				}
+			]
+		},
+		{
+			"id": "evt_first_dollar",
+			"tier": "authored",
+			"era": ["garage"],
+			"weight": 4,
+			"requires": {"product_gte": 30, "traction_gte": 2, "flags_none": ["first_revenue"]},
+			"title": "The First Dollar",
+			"body": "Someone paid. On purpose. With their own card. You refresh the dashboard four times to make sure it isn't a test charge. It isn't. It's $29.",
+			"choices": [
+				{
+					"label": "Frame it. Literally.",
+					"effects": [{"op": "set_flag", "v": "first_revenue"}, {"op": "morale_delta", "v": 10}, {"op": "cash_delta", "v": 29}]
+				},
+				{
+					"label": "Refund it. It's not ready.",
+					"effects": [{"op": "morale_delta", "v": -6}, {"op": "product_delta", "v": 4}, {"op": "set_flag", "v": "perfectionist_streak"}]
+				}
+			]
+		}
+	]
+}

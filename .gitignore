@@ -1,0 +1,31 @@
+# SECRETS — never, under any circumstance
+game/.env
+*.env
+*key.txt
+
+# GENERATED ART. assets/scenes alone is 5.4GB, and all of it is reproducible from
+# tools/scene_pipeline.py. Excluded so that a lane's PR shows the code and data it
+# changed instead of drowning in binaries.
+# ignore ALL generated art, then allow back only what the UI cannot run without
+game/assets/*
+!game/assets/fonts/
+!game/assets/ui/
+music/
+*.wav
+*.mp3
+*.mp4
+
+# Godot regenerates these with `godot --headless --path . --import`
+*.import
+game/.godot/
+game/.import/
+
+# local safety-net snapshots (snapshot.sh) and anything restored from one
+.snapshots/
+restored-*/
+
+# lane scratch
+/tmp/
+*.log
+
+.DS_Store

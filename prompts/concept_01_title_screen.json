@@ -1,0 +1,271 @@
+{
+  "reasoning": "Brief identifies as illustration — a hand-drawn game title screen, not photography and not a slide. Style direction 'colorful, simple, hand-drawn, Xiaohei IP' maps to: style.medium: illustration, style.rendering_technique: pencil/hand-drawn line art rendered as 'hand drawn ink line with flat fills', style.aesthetic: [wobbly ink line, flat fills, deadpan absurdist, indie game key art], texture.special: [slightly uneven boiling line, visible hand wobble]. 'Colorful' maps to a locked 7-color palette on warm paper-cream ground rather than the Xiaohei article default of pure white — background #F2EAD3, ink #1E1E1E, coral #E86A5C, sage #8FA582, sunny yellow #F4B942, muted blue #6E8CA0, white #FFFFFF reserved for the character's dot eyes. brand palette treated as locked: every color listed in technical_rules.strict_preserve, no gradients or soft shadows permitted. Subject type determination: the founder is a fictional original IP creature (Xiaohei-descended), not a real person — no block triggered; typed as character with a full canonical description (small solid-black creature, white round dot eyes, thin legs, deadpan expression, slightly irregular hand-drawn outline) plus a consistency_rule so every future asset matches. Core metaphor chosen for the title screen: the literal runway — an airport runway paved with giant dollar bills burning away behind the running founder (burn rate made physical), founder calmly sprinting while carrying a laptop and a potted houseplant (the game's scramble verb and its deadpan comedy in one image). The creature performs the core action, never decorates. exact_text provided: 'RUNWAY!', 'You don't build a startup. You survive one.', 'PRESS ANY KEY' — mapped verbatim character-for-character into text_rendering.elements with hand-lettered treatment; title is part of the drawing, not a typeset overlay. Ambiguity resolved: 16:9 chosen as the game's native screen ratio; documented in usage_context.usage_notes. Operation: text_to_image. No reference images provided. negative_prompt populated with the failure modes of this style: cute kawaii mascot, gradients, 3D render, vector-clean lines, PPT infographic, photorealism. CHARACTER v2 LOCK (user-approved): four ownable marks differentiate our creature from the Xiaohei reference while preserving blank deadpan simplicity — (1) a single wobbly ink cowlick spike on the head, (2) a permanent slight forward lean (perpetually mid-hustle, even at rest), (3) blank white OVAL eyes subtly mismatched with the left a touch bigger (a whisper of sleep deprivation), (4) tiny paper-cream sneakers with ink outlines, one lace permanently untied. The cowlick and lace double as in-game status channels (cowlick droops with burnout, stands tall at milestones).",
+  "prompt": {
+    "meta": {
+      "task": "generate",
+      "image_category": "illustration",
+      "style_name": "RUNWAY! hand-drawn deadpan ink — title key art",
+      "aspect_ratio": "16:9",
+      "resolution": "2K",
+      "inspiration": [
+        "Xiaohei absurdist body illustration IP — solid black creature, white dot eyes, deadpan earnestness",
+        "hand-drawn indie game key art with flat fills and wobbly ink outlines",
+        "dark-comedy startup satire — HBO Silicon Valley energy drawn as a naive sketch"
+      ]
+    },
+    "reference_images": [],
+    "operation": {
+      "type": "text_to_image"
+    },
+    "subjects": [
+      {
+        "id": "subject_1",
+        "type": "character",
+        "description": "The Founder — a small solid-black hand-drawn creature, cowlick spike blown flat by the speed, sprinting in its tiny cream sneakers (one lace whipping loose) along a runway of giant dollar bills, calmly clutching an open laptop under one thin arm and a small potted houseplant in the other, three loose papers fluttering off behind it",
+        "position": "center-left of frame, running toward the right, occupying roughly one third of frame height",
+        "size_in_frame": "medium — clearly the protagonist but leaving room for the hand-lettered title above",
+        "relationship_to_others": "alone; the fire and flying term sheets behind it are environment, not characters",
+        "character": {
+          "source": "The Founder — original IP creature for the game RUNWAY!, descended from the Xiaohei illustration IP",
+          "style": "cartoon",
+          "description": "A small solid ink-black creature with a slightly irregular, hand-wobbled bean-shaped body, leaning hard forward into the sprint — this creature leans slightly forward even at rest, but right now it means it. A single wobbly ink cowlick spike sticks up from the top of its head, blown flat backward by the speed. Two blank white OVAL eyes, subtly mismatched — the left a touch bigger than the right — a whisper of sleep deprivation; expression completely deadpan despite the emergency. No mouth or a single tiny flat line, no eyebrows, no emoji face. Thin stick legs in a full comic mid-air stride, each ending in a tiny paper-cream oval sneaker with an ink outline, one lace whipping loose behind it. Thin stick arms: one pinning an open laptop against its body, the other cradling a small potted houseplant. No clothing beyond the sneakers. It is earnest and calm, like a low-key employee evacuating according to procedure.",
+          "consistency_rule": "match this creature design exactly in all future RUNWAY! assets — solid ink-black body, blank white oval eyes with the left slightly bigger, ONE cowlick spike on the head, permanent slight forward lean, thin stick limbs, tiny paper-cream sneakers with one untied lace, deadpan expression, wobbly hand-drawn outline; characters are differentiated only by carried props and one accessory, never by body shape or facial expression; the cowlick is a status channel (droops with burnout, stands tall at milestones)"
+        }
+      }
+    ],
+    "environment": {
+      "setting": "outdoor",
+      "location": "an airport-style runway drawn as a naive sketch, but the tarmac is paved with giant overlapping dollar bills; the bills behind the running creature are burning away",
+      "time_of_day": "unspecified",
+      "weather": "clear",
+      "background": {
+        "type": "solid",
+        "color": "#F2EAD3",
+        "description": "flat warm paper-cream #F2EAD3 ground filling the entire background — no texture, no gradient, no sky detail beyond one small wobbly hand-drawn sun circle in muted blue line near the top right",
+        "blur_level": "none"
+      },
+      "foreground_elements": [
+        "the leading edge of the dollar-bill runway stretching ahead of the creature toward the right edge of frame, drawn in sage green #8FA582 flat fill with ink outlines",
+        "two dashed runway center-line marks in ink"
+      ],
+      "props": [
+        {
+          "item": "burning dollar bills",
+          "position": "behind the creature, left third of frame — the runway it already crossed",
+          "material": "flat sage green #8FA582 bills with ink outlines, consumed by flat coral #E86A5C and sunny yellow #F4B942 hand-drawn flame shapes",
+          "description": "the runway literally burning away behind the founder — burn rate made physical; flames are simple wobbly triangular licks, flat fills only",
+          "importance": "hero"
+        },
+        {
+          "item": "flying term-sheet papers",
+          "position": "three small white-cream rectangles with squiggle ink lines, tumbling in the air behind the creature",
+          "material": "flat fill, ink outline",
+          "description": "loose papers escaping the fire, suggesting chaos left behind",
+          "importance": "accent"
+        },
+        {
+          "item": "open laptop",
+          "position": "under the creature's left arm",
+          "material": "muted blue #6E8CA0 flat fill with ink outline, tiny code squiggles on screen",
+          "description": "the one thing the founder chose to save",
+          "importance": "supporting"
+        },
+        {
+          "item": "potted houseplant",
+          "position": "cradled in the creature's right arm",
+          "material": "sage green #8FA582 leaves, coral #E86A5C pot, ink outlines",
+          "description": "the absurd second rescue choice — sentimental over rational, played completely straight",
+          "importance": "supporting"
+        }
+      ],
+      "surface": "dollar-bill tarmac"
+    },
+    "composition": {
+      "shot_type": "wide",
+      "framing": "rule_of_thirds",
+      "angle": "eye_level",
+      "perspective": "flat side-view with naive sketch perspective — no vanishing point realism, everything drawn as a child-genius whiteboard sketch",
+      "depth_of_field": "deep",
+      "focus_point": "the running creature and the flames directly behind it",
+      "layers": {
+        "foreground": "unburnt dollar-bill runway ahead of the creature",
+        "midground": "the sprinting founder creature with laptop and houseplant, flames and tumbling papers behind it",
+        "background": "flat paper-cream field, hand-lettered title dominating the upper half, one small wobbly sun"
+      },
+      "negative_space": {
+        "position": "upper half around the title and lower right ahead of the runner",
+        "size": "large — at least 30% of the frame stays quiet flat cream",
+        "purpose": "keeps the key art clean, readable at thumbnail size, and gives the title room to breathe"
+      },
+      "crop_rules": "nothing important within 5% of frame edges; title fully inside the top half",
+      "multi_panel": {
+        "enabled": false
+      }
+    },
+    "style": {
+      "medium": "illustration",
+      "rendering_technique": "pencil",
+      "aesthetic": [
+        "hand-drawn ink line art with visible wobble",
+        "flat fills only — zero gradients, zero soft shadows",
+        "deadpan absurdist product-sketch feel",
+        "colorful but restrained — max 7 colors on screen",
+        "indie game key art, clean and sparse, wildly imaginative but not childish"
+      ],
+      "artistic_reference": [
+        "Xiaohei body-illustration IP line quality",
+        "thick uneven ink outline 3 to 6 px at working resolution",
+        "2-frame boiling-line hand-drawn energy captured in a single still"
+      ],
+      "texture": {
+        "grain": "none",
+        "surface_quality": "flat matte paper, clean digital flats behind hand-wobbled ink lines",
+        "special": [
+          "slightly uneven line weight as if drawn quickly with a felt pen",
+          "small imperfections and overshoots at line corners kept intentionally"
+        ]
+      },
+      "design_system": "RUNWAY! locked style v1 — ink line + flat fills + 7-color palette on paper cream"
+    },
+    "color": {
+      "palette": {
+        "primary": "#1E1E1E",
+        "secondary": "#E86A5C",
+        "accent": "#F4B942",
+        "shadow": "#8FA582",
+        "highlight": "#FFFFFF",
+        "background": "#F2EAD3",
+        "named_colors": [
+          "Paper cream #F2EAD3 — background, entire ground field, the creature's tiny sneakers",
+          "Ink black #1E1E1E — all outlines, the creature's body, title lettering",
+          "Coral #E86A5C — flames, houseplant pot, the exclamation mark of the title",
+          "Sunny yellow #F4B942 — inner flame licks, small accents",
+          "Sage green #8FA582 — dollar-bill runway, plant leaves",
+          "Muted blue #6E8CA0 — laptop, sun outline, tagline lettering",
+          "White #FFFFFF — the creature's mismatched oval eyes only"
+        ]
+      },
+      "grading": "none — flat unmodulated fills, colors exactly as specified",
+      "temperature": "warm",
+      "saturation": "vivid",
+      "mood_keywords": [
+        "deadpan",
+        "playful",
+        "urgent but calm",
+        "satirical",
+        "inviting"
+      ]
+    },
+    "text_rendering": {
+      "enabled": true,
+      "strategy": "all text is hand-lettered as part of the drawing itself — wobbly felt-pen lettering, never typeset fonts, copied character-for-character",
+      "elements": [
+        {
+          "id": "text_1",
+          "content": "RUNWAY!",
+          "role": "title",
+          "font_style": "hand-lettered — big bouncy uneven capital letters drawn with a thick felt pen, each letter slightly rotated, baseline wobbling",
+          "size": "hero — spans roughly 60% of frame width",
+          "weight": "very bold",
+          "color": "#1E1E1E ink black letters with the exclamation mark in coral #E86A5C",
+          "position": "upper center of the frame, floating on the cream background above the scene",
+          "treatment": "solid flat lettering, tiny hand-drawn motion tick marks around the exclamation mark",
+          "language": "English"
+        },
+        {
+          "id": "text_2",
+          "content": "You don't build a startup. You survive one.",
+          "role": "subtitle",
+          "font_style": "small casual handwriting, single line",
+          "size": "small",
+          "weight": "regular",
+          "color": "#6E8CA0",
+          "position": "directly under the title, centered",
+          "treatment": "plain handwriting, no box, no underline",
+          "language": "English"
+        },
+        {
+          "id": "text_3",
+          "content": "PRESS ANY KEY",
+          "role": "label",
+          "font_style": "small hand-lettered capitals",
+          "size": "very small",
+          "weight": "regular",
+          "color": "#1E1E1E",
+          "position": "bottom center, well clear of the runway drawing",
+          "treatment": "plain, slightly wobbly, as if scribbled last",
+          "language": "English"
+        }
+      ]
+    },
+    "technical_rules": {
+      "strict_preserve": [
+        "character body MUST be solid ink black #1E1E1E with two blank white #FFFFFF OVAL eyes subtly mismatched (left slightly bigger), ONE ink cowlick spike on top of the head, a permanent forward lean, and tiny paper-cream #F2EAD3 sneakers with ink outlines (one lace untied) — no other facial features, no eyebrows, no blush, no emoji expression",
+        "expression MUST stay deadpan and calm despite the fire — the comedy is the calmness",
+        "all outlines hand-wobbled and uneven — never smooth vector curves",
+        "flat fills ONLY — no gradients, no soft shadows, no 3D shading, no texture noise",
+        "background MUST be flat paper cream #F2EAD3 edge to edge",
+        "palette locked to exactly: #F2EAD3, #1E1E1E, #E86A5C, #F4B942, #8FA582, #6E8CA0, #FFFFFF — no additional colors",
+        "all three text strings rendered character-for-character exactly as specified",
+        "no real currency design on the bills — generic dollar-bill rectangles with a circle and squiggles, no faces, no denominations"
+      ],
+      "forbidden_elements": [
+        "real company logos or brand names",
+        "human characters",
+        "realistic fire or smoke",
+        "typeset fonts",
+        "speech bubbles",
+        "drop shadows"
+      ],
+      "forbidden_styles": [
+        "kawaii cute mascot style",
+        "children's picture book style",
+        "3D render",
+        "vector flat corporate illustration",
+        "PPT infographic",
+        "photorealism",
+        "anime"
+      ],
+      "single_object_rule": false,
+      "no_text_rule": false,
+      "no_logo_rule": true,
+      "watermark": false
+    },
+    "output_format": {
+      "primary": "image",
+      "secondary": "none",
+      "variants": 1,
+      "contact_sheet": {
+        "enabled": false
+      }
+    },
+    "usage_context": {
+      "platform": "web",
+      "audience": "Steam roguelike and management-sim players, streamers, startup workers",
+      "purpose": "title screen key art for the game RUNWAY! and the master style-lock test image — every visual decision here becomes law for 600+ future assets",
+      "themes": [
+        "startup satire",
+        "burn rate",
+        "survival comedy",
+        "deadpan absurdism"
+      ],
+      "usage_notes": "Inferences made: 16:9 chosen as the game's native screen ratio since the brief did not specify. The burning-money runway metaphor was invented for this image — it fuses the game's title, its core resource (cash runway), and its scramble verb (grab and run) into one readable scene. Paper cream replaces the Xiaohei article-standard pure white deliberately: this is game key art, not an article illustration, and cream is the game's locked background identity. If this image approves, the character consistency_rule and the 7-color palette become the style constitution for all future prompts."
+    },
+    "negative_prompt": [
+      "gradients",
+      "soft shadows",
+      "3D render",
+      "kawaii cute mascot",
+      "children's book illustration",
+      "smooth vector lines",
+      "photorealistic",
+      "anime style",
+      "PPT infographic look",
+      "real brand logos",
+      "realistic currency",
+      "human figures",
+      "cluttered composition",
+      "textured paper grain"
+    ]
+  }
+}

@@ -1,0 +1,685 @@
+{
+	"events": [
+		{
+			"id": "evt_series_a",
+			"tier": "authored",
+			"era": [
+				"office",
+				"floor"
+			],
+			"weight": 6,
+			"requires": {
+				"flags_all": [
+					"pmf",
+					"seed_raised"
+				],
+				"flags_none": [
+					"series_a"
+				]
+			},
+			"title": "The A",
+			"body": "A partner — an actual partner, the kind with a Wikipedia stub — wants to lead your A. $8M. The catch arrives on slide two of THEIR deck about YOUR company: a board seat, and 'a conversation about experienced leadership.'",
+			"choices": [
+				{
+					"label": "Take it. Seat and all.",
+					"effects": [
+						{
+							"op": "raise_round",
+							"v": "series_a"
+						},
+						{
+							"op": "cash_delta",
+							"v": 500000
+						},
+						{
+							"op": "dilute_pct",
+							"v": 20
+						},
+						{
+							"op": "investor_board_seat"
+						},
+						{
+							"op": "hype_delta",
+							"v": 10
+						}
+					]
+				},
+				{
+					"label": "Counter: money, no seat.",
+					"effects": [
+						{
+							"op": "raise_round",
+							"v": "series_a"
+						},
+						{
+							"op": "cash_delta",
+							"v": 350000
+						},
+						{
+							"op": "dilute_pct",
+							"v": 16
+						},
+						{
+							"op": "morale_delta",
+							"v": 5
+						}
+					]
+				},
+				{
+					"label": "Pass. Default alive.",
+					"effects": [
+						{
+							"op": "set_flag",
+							"v": "walked_from_a"
+						},
+						{
+							"op": "morale_delta",
+							"v": -4
+						},
+						{
+							"op": "hype_delta",
+							"v": -5
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_foosball_war",
+			"tier": "authored",
+			"era": [
+				"floor"
+			],
+			"weight": 4,
+			"requires": {
+				"staff_gte": 3
+			},
+			"title": "The Foosball Question",
+			"body": "Someone bought a foosball table 'for culture.' Engineering says the clacking is violence. Sales says the clacking is culture. There is now a Slack channel called #foosball-neutrality with 14 members and a manifesto.",
+			"choices": [
+				{
+					"label": "Keep it. Culture is loud.",
+					"effects": [
+						{
+							"op": "morale_delta",
+							"v": 6
+						},
+						{
+							"op": "product_delta",
+							"v": -3
+						}
+					]
+				},
+				{
+					"label": "Meeting room B. Door closed.",
+					"effects": [
+						{
+							"op": "morale_delta",
+							"v": 2
+						},
+						{
+							"op": "product_delta",
+							"v": 2
+						}
+					]
+				},
+				{
+					"label": "Sell it. This is a business.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": 300
+						},
+						{
+							"op": "morale_delta",
+							"v": -7
+						},
+						{
+							"op": "set_flag",
+							"v": "fun_is_cancelled"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_layoffs_loom",
+			"tier": "authored",
+			"era": [
+				"floor"
+			],
+			"weight": 3,
+			"requires": {
+				"cash_lte": 80000,
+				"staff_gte": 4
+			},
+			"title": "The Spreadsheet With Names In It",
+			"body": "Finance made a spreadsheet. Column A is names. Column F is 'impact if released.' You hired every name in column A. Some of them have desk plants. The math says three names; the math does not have desk plants.",
+			"choices": [
+				{
+					"label": "Cut deep once. Survive.",
+					"effects": [
+						{
+							"op": "fire_role",
+							"v": "support"
+						},
+						{
+							"op": "fire_role",
+							"v": "junior engineer"
+						},
+						{
+							"op": "morale_delta",
+							"v": -12
+						},
+						{
+							"op": "cash_delta",
+							"v": 35000
+						},
+						{
+							"op": "set_flag",
+							"v": "did_layoffs"
+						}
+					]
+				},
+				{
+					"label": "Across-the-board pay cuts.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": 8000
+						},
+						{
+							"op": "morale_delta",
+							"v": -8
+						},
+						{
+							"op": "arm_timebomb",
+							"weeks": 4,
+							"event": "evt_paycut_exodus"
+						}
+					]
+				},
+				{
+					"label": "Nobody. Find the money.",
+					"effects": [
+						{
+							"op": "morale_delta",
+							"v": 6
+						},
+						{
+							"op": "weight_future",
+							"v": "evt_bridge_or_down"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_paycut_exodus",
+			"tier": "authored",
+			"era": [
+				"floor",
+				"hq"
+			],
+			"weight": 0,
+			"title": "The Quiet Job Hunt",
+			"body": "Pay cuts bought a month and cost the room its faith. Three laptops now angle away from the aisle. Marcus updated his profile to 'open to interesting conversations,' which everyone knows is code.",
+			"choices": [
+				{
+					"label": "Counter-offer the leavers.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": -60000
+						},
+						{
+							"op": "morale_delta",
+							"v": 4
+						}
+					]
+				},
+				{
+					"label": "Let them go with grace.",
+					"effects": [
+						{
+							"op": "fire_role",
+							"v": "senior engineer"
+						},
+						{
+							"op": "morale_delta",
+							"v": -4
+						},
+						{
+							"op": "product_delta",
+							"v": -5
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_bridge_or_down",
+			"tier": "authored",
+			"era": [
+				"floor"
+			],
+			"weight": 0,
+			"title": "Bridge, Or Down",
+			"body": "Your lead investor offers a bridge: fast money, ugly terms. The alternative is a down round — new money at a lower price, which the tech press covers the way tabloids cover divorces.",
+			"choices": [
+				{
+					"label": "The bridge. Ugly is fine.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": 300000
+						},
+						{
+							"op": "dilute_pct",
+							"v": 12
+						},
+						{
+							"op": "investor_board_seat"
+						},
+						{
+							"op": "morale_delta",
+							"v": -3
+						}
+					]
+				},
+				{
+					"label": "Down round. Take the story.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": 450000
+						},
+						{
+							"op": "dilute_pct",
+							"v": 25
+						},
+						{
+							"op": "hype_delta",
+							"v": -12
+						},
+						{
+							"op": "set_flag",
+							"v": "down_round"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_rival_poaches",
+			"tier": "authored",
+			"era": [
+				"floor"
+			],
+			"weight": 3,
+			"requires": {
+				"staff_gte": 2
+			},
+			"title": "The Rival Sends Flowers",
+			"body": "Your best engineer got flowers at the office. The card is from your rival's recruiter: 'No pressure. The offer letter is in your inbox. The flowers are just flowers.' The flowers are not just flowers.",
+			"choices": [
+				{
+					"label": "Match the offer. Keep them.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": -40000
+						},
+						{
+							"op": "morale_delta",
+							"v": 3
+						}
+					]
+				},
+				{
+					"label": "Equity refresh instead.",
+					"effects": [
+						{
+							"op": "equity_delta",
+							"v": -2
+						},
+						{
+							"op": "morale_delta",
+							"v": 5
+						}
+					]
+				},
+				{
+					"label": "Wish them well.",
+					"effects": [
+						{
+							"op": "fire_role",
+							"v": "senior engineer"
+						},
+						{
+							"op": "product_delta",
+							"v": -6
+						},
+						{
+							"op": "morale_delta",
+							"v": -5
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_board_agenda",
+			"tier": "authored",
+			"era": [
+				"floor",
+				"hq"
+			],
+			"weight": 3,
+			"requires": {
+				"flags_all": [
+					"board_control_lost"
+				],
+				"flags_none": [
+					"coup_survived"
+				]
+			},
+			"title": "Item Six: 'Leadership'",
+			"body": "The board agenda arrives. Items one through five are numbers. Item six is 'Leadership Discussion (closed session).' Closed, you understand slowly, means closed to you. Your own conference room, and you'll be in the hallway.",
+			"choices": [
+				{
+					"label": "Rally allies before the vote.",
+					"effects": [
+						{
+							"op": "morale_delta",
+							"v": -5
+						},
+						{
+							"op": "arm_timebomb",
+							"weeks": 2,
+							"event": "evt_board_coup"
+						}
+					]
+				},
+				{
+					"label": "Deliver numbers so good it dies.",
+					"effects": [
+						{
+							"op": "product_delta",
+							"v": 5
+						},
+						{
+							"op": "traction_delta",
+							"v": 20
+						},
+						{
+							"op": "morale_delta",
+							"v": -6
+						},
+						{
+							"op": "arm_timebomb",
+							"weeks": 2,
+							"event": "evt_board_coup"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_board_coup",
+			"tier": "authored",
+			"era": [
+				"floor",
+				"hq"
+			],
+			"weight": 0,
+			"title": "The Closed Session",
+			"body": "Forty minutes in the hallway. The vending machine hums. The door opens and the partner says your name with a comma after it, which is how firings begin. But the vote was close, and votes can be re-counted.",
+			"choices": [
+				{
+					"label": "Fight. Call every shareholder.",
+					"effects": [
+						{
+							"op": "set_flag",
+							"v": "coup_survived"
+						},
+						{
+							"op": "morale_delta",
+							"v": 8
+						},
+						{
+							"op": "hype_delta",
+							"v": -6
+						},
+						{
+							"op": "cash_delta",
+							"v": -150000
+						}
+					]
+				},
+				{
+					"label": "Negotiate: stay as 'founder.'",
+					"effects": [
+						{
+							"op": "set_flag",
+							"v": "coup_survived"
+						},
+						{
+							"op": "equity_delta",
+							"v": -5
+						},
+						{
+							"op": "morale_delta",
+							"v": -10
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_series_b",
+			"tier": "authored",
+			"era": [
+				"hq"
+			],
+			"weight": 4,
+			"requires": {
+				"flags_all": [
+					"series_a"
+				],
+				"flags_none": [
+					"series_b"
+				]
+			},
+			"title": "The B Is a Formality, They Say",
+			"body": "The B 'prices itself,' says a banker who materialized in your lobby. $40M. Growth-stage investors ask different questions: not 'what do you dream' but 'what is your net revenue retention, to one decimal.'",
+			"choices": [
+				{
+					"label": "Raise it. Go bigger.",
+					"effects": [
+						{
+							"op": "raise_round",
+							"v": "series_b"
+						},
+						{
+							"op": "cash_delta",
+							"v": 2000000
+						},
+						{
+							"op": "dilute_pct",
+							"v": 15
+						},
+						{
+							"op": "investor_board_seat"
+						},
+						{
+							"op": "hype_delta",
+							"v": 8
+						}
+					]
+				},
+				{
+					"label": "Skip it. Profitability play.",
+					"effects": [
+						{
+							"op": "set_flag",
+							"v": "profitability_play"
+						},
+						{
+							"op": "morale_delta",
+							"v": 4
+						},
+						{
+							"op": "hype_delta",
+							"v": -4
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_unicorn_party",
+			"tier": "authored",
+			"era": [
+				"hq"
+			],
+			"weight": 3,
+			"requires": {
+				"flags_all": [
+					"series_b"
+				],
+				"hype_gte": 30
+			},
+			"title": "Someone Said the U Word",
+			"body": "A funding database now lists your valuation with a b— no, you can't say it either. Marketing wants a party with an ice sculpture of the logo. Finance points out the ice sculpture costs one junior salary.",
+			"choices": [
+				{
+					"label": "Throw the party. Ice and all.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": -120000
+						},
+						{
+							"op": "morale_delta",
+							"v": 10
+						},
+						{
+							"op": "hype_delta",
+							"v": 8
+						}
+					]
+				},
+				{
+					"label": "Cake in the kitchen. Back to work.",
+					"effects": [
+						{
+							"op": "morale_delta",
+							"v": 3
+						},
+						{
+							"op": "set_flag",
+							"v": "humble_unicorn"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_acquisition_hq",
+			"tier": "authored",
+			"era": [
+				"hq"
+			],
+			"weight": 1,
+			"requires": {
+				"hype_gte": 30,
+				"week_gte": 30,
+				"flags_none": [
+					"acquired_exit",
+					"offer_cooldown",
+					"no_more_offers"
+				]
+			},
+			"title": "The Strategic Conversation",
+			"body": "A tech giant's SVP requests 'a strategic conversation.' Their last four strategic conversations became press releases. The number they float would end the game — your game, specifically, the one you're playing right now.",
+			"choices": [
+				{
+					"label": "Sell. Ring the bell early.",
+					"effects": [
+						{
+							"op": "accept_acquisition",
+							"v": 0.85
+						}
+					]
+				},
+				{
+					"label": "'We're going public.' Hang up.",
+					"effects": [
+						{
+							"op": "hype_delta",
+							"v": 10
+						},
+						{
+							"op": "morale_delta",
+							"v": 6
+						},
+						{
+							"op": "set_flag",
+							"v": "ipo_track"
+						},
+						{
+							"op": "set_flag",
+							"v": "no_more_offers"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_press_ambush",
+			"tier": "authored",
+			"era": [
+				"hq"
+			],
+			"weight": 3,
+			"requires": {
+				"hype_gte": 20
+			},
+			"title": "'Care to Comment?'",
+			"body": "A reporter has 'a story running tomorrow' about your churned enterprise customer. Their email has that lawyered calm. Comms drafts three responses: contrite, combative, and one that is somehow both.",
+			"choices": [
+				{
+					"label": "Get ahead. Publish first.",
+					"effects": [
+						{
+							"op": "hype_delta",
+							"v": -5
+						},
+						{
+							"op": "morale_delta",
+							"v": 4
+						},
+						{
+							"op": "traction_delta",
+							"v": -25
+						}
+					]
+				},
+				{
+					"label": "No comment. Weather it.",
+					"effects": [
+						{
+							"op": "hype_delta",
+							"v": -10
+						},
+						{
+							"op": "product_delta",
+							"v": 3
+						}
+					]
+				}
+			]
+		}
+	]
+}
