@@ -1122,7 +1122,13 @@ func _page_situation() -> void:
 ## ── the decision: circle one, or write your own ──────────────────────────
 func _page_decision() -> void:
 	if _current_event.is_empty():
-		_jp.line("Nothing to decide. Lock the week and let it run.")
+		# A QUIET WEEK STILL TAKES A WRITTEN MOVE. Returning here left the decision
+		# page with no field at all, so on any week without an event the player
+		# could not write anything — and the written move is the whole game.
+		_jp.line("Nothing came for you this week. So what do you do with it?")
+		var qte := _jp.write_field()
+		qte.text = String(_free_text.get(4, ""))
+		_wire_free(qte)
 		_lock_button()
 		return
 	var opts: Array = []

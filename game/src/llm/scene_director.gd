@@ -33,7 +33,9 @@ const MANIFEST := "res://assets/backgrounds/manifest.json"
 const CACHE_DIR := "user://generated_scenes"
 ## Facets are dropped in this order until a background matches. Framing first
 ## because it matters least; family last because it is the story.
-const DROP_ORDER := ["framing", "time", "condition", "place", "family"]
+## Droppable in this order. `place` and `family` are deliberately absent: losing them
+## means the library has nothing for this situation, which is a MISS, not a fallback.
+const DROP_ORDER := ["framing", "time", "condition"]
 
 var _entries: Array = []
 var _http: HTTPRequest
@@ -47,12 +49,21 @@ func _init(tree: SceneTree) -> void:
 			_entries = d
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(CACHE_DIR))
 
-## Pick a background by facets. Returns {id, dropped} — `dropped` names the first
-## facet that had to be given up, or "exact". Never returns empty while the library
-## has a single entry, because a scene must always resolve.
+## THE BACKGROUND IS NOT THE SCENE.
+## A background is an EMPTY ROOM from the pre-generated library. A scene is made on
+## the spot: that room + this week's characters + their mood + the situation, composed
+## in one edit. So resolving a background is only the first half of a turn.
+##
+## And the library will not always hold the right room. `family` and `place` carry the
+## story — a founder who has moved back to a childhood bedroom cannot be shown a
+## coworking floor because the lighting facets matched. So those two are NOT droppable:
+## if they do not match, this returns miss=true and the director generates a brand new
+## background for the situation, then composes on it, then keeps it.
+## Time, condition and framing ARE droppable: a room at the wrong hour is still the
+## right room.
 func resolve(want: Dictionary) -> Dictionary:
 	if _entries.is_empty():
-		return {"id": "", "dropped": "empty_library"}
+		return {"id": "", "dropped": "empty_library", "miss": true}
 	var have := want.duplicate()
 	var order: Array = [""] + DROP_ORDER
 	for drop in order:
@@ -65,8 +76,10 @@ func resolve(want: Dictionary) -> Dictionary:
 					ok = false
 					break
 			if ok:
-				return {"id": String(e.get("id", "")), "dropped": (drop if drop != "" else "exact")}
-	return {"id": String((_entries[0] as Dictionary).get("id", "")), "dropped": "fallback"}
+				return {"id": String(e.get("id", "")), "dropped": (drop if drop != "" else "exact"),
+						"miss": false}
+	# nothing in the library is in the right place: this situation needs a new room
+	return {"id": "", "dropped": "no_fit", "miss": true}
 
 ## The prompt that paints the cast into the room. Everything the model must not do
 ## is stated as a prohibition, because "keep the room the same" is the instruction
@@ -116,6 +129,127 @@ func compose(background_url: String, cast_urls: Array, cast: Array, beat: String
 		"output_format": "png",
 	}
 	_run(body, out_name)
+
+## THE FULL TURN. This is the entry point the week loop calls.
+##
+##   1. try the library for a background that is in the RIGHT PLACE
+##   2. if nothing fits, GENERATE A NEW BACKGROUND for this situation first,
+##      and keep it, so the library grows and the next run gets it free
+##   3. compose the scene on that background: characters, mood, situation
+##
+## `want` is the DM's facets. `novel_desc` is the DM's own description of the place,
+## used only when the library misses. `cast` and `cast_urls` are this week's crew.
+func make_scene(want: Dictionary, novel_desc: String, cast: Array, cast_urls: Array,
+		beat: String, out_name: String) -> void:
+	var pick := resolve(want)
+	var bg_url := ""
+	if bool(pick.get("miss", true)):
+		# nowhere in the library is the right place — build the room itself
+		progress.emit(0.03)
+		bg_url = await _generate_background(novel_desc, want, out_name)
+		if bg_url == "":
+			failed.emit("could not generate a background for this situation")
+			return
+	else:
+		bg_url = _url_for(String(pick["id"]))
+	compose(bg_url, cast_urls, cast, beat, out_name)
+
+## Generate a brand new EMPTY room for a situation the library does not cover, and
+## remember it. The room must arrive empty: the cast is composited afterwards, so a
+## person painted in here would double against the sprites.
+func _generate_background(desc: String, want: Dictionary, out_name: String) -> String:
+	var key := _atlas_key()
+	if key == "":
+		return ""
+	var lit := {"day": "flat daylight", "night": "warm lamplight against dark windows",
+			"small_hours": "a single cold light source, everything else in shadow"}
+	var cond := {"thriving": "well kept, full shelves, good kit, a sense of money",
+			"steady": "lived in, ordinary, neither rich nor desperate",
+			"in_the_red": "fraying: bare shelves, unpaid notices, a dead plant, litter"}
+	var prompt := ("A wide establishing shot of %s. Lit by %s. The place is %s. "
+			% [desc, lit.get(String(want.get("time", "day")), "flat daylight"),
+			   cond.get(String(want.get("condition", "steady")), "ordinary")]
+			+ "COMPLETELY EMPTY OF PEOPLE: no characters, no figures, no creatures, "
+			+ "nobody at all — the room is unoccupied. Describe only the place and its "
+			+ "objects. Include at least four blank surfaces that can be written on: a "
+			+ "whiteboard or chalkboard, a sheet or chart pinned up, a clipboard or open "
+			+ "ledger lying flat, and a cluster of sticky notes — each COMPLETELY BLANK, "
+			+ "no writing or marks on them, drawn nearly flat-on to the camera. "
+			+ "Keep the top tenth and bottom seventh of the frame calm and uncluttered, "
+			+ "and the middle of the lowest quarter especially empty. "
+			+ "Flat hand-drawn cartoon, wobbly felt-pen ink outlines, flat fills, no "
+			+ "gradients, no text anywhere. Palette only: ink #1E1E1E, coral #E86A5C, "
+			+ "yellow #F4B942, sage #8FA582, blue #6E8CA0, cream #F2EAD3, white, warm grey.")
+	var http := HTTPRequest.new()
+	_tree.root.add_child(http)
+	var err := http.request("https://api.atlascloud.ai/api/v1/model/generateImage",
+			PackedStringArray(["Content-Type: application/json", "Authorization: Bearer " + key]),
+			HTTPClient.METHOD_POST, JSON.stringify({
+				"model": "bytedance/seedream-v5.0-pro/text-to-image",
+				"prompt": prompt, "size": "2K", "output_format": "png"}))
+	if err != OK:
+		http.queue_free()
+		return ""
+	var res: Array = await http.request_completed
+	http.queue_free()
+	var parsed = JSON.parse_string((res[3] as PackedByteArray).get_string_from_utf8())
+	if not (parsed is Dictionary):
+		return ""
+	var jid := String((((parsed as Dictionary).get("data", {})) as Dictionary).get("id", ""))
+	if jid == "":
+		return ""
+	for i in 90:
+		await _tree.create_timer(2.0).timeout
+		var h2 := HTTPRequest.new()
+		_tree.root.add_child(h2)
+		if h2.request("https://api.atlascloud.ai/api/v1/model/prediction/" + jid,
+				PackedStringArray(["Authorization: Bearer " + key]), HTTPClient.METHOD_GET) != OK:
+			h2.queue_free()
+			continue
+		var r2: Array = await h2.request_completed
+		h2.queue_free()
+		var p2 = JSON.parse_string((r2[3] as PackedByteArray).get_string_from_utf8())
+		if not (p2 is Dictionary):
+			continue
+		var d2: Dictionary = (p2 as Dictionary).get("data", {})
+		progress.emit(minf(0.12, 0.03 + float(i) * 0.002))
+		if String(d2.get("status", "")) in ["completed", "succeeded"]:
+			var outs: Array = d2.get("outputs", [])
+			if outs.is_empty():
+				return ""
+			# keep it: the library grows, and this place is free next time
+			_remember(String(outs[0]), want, out_name)
+			return String(outs[0])
+		if String(d2.get("status", "")) == "failed":
+			return ""
+	return ""
+
+## Record a newly generated background so the library covers this place from now on.
+func _remember(url: String, want: Dictionary, out_name: String) -> void:
+	var e := want.duplicate()
+	e["id"] = "generated/%s" % out_name
+	e["url"] = url
+	e["generated"] = true
+	_entries.append(e)
+	var path := "%s/library_additions.json" % CACHE_DIR
+	var have: Array = []
+	if FileAccess.file_exists(path):
+		var d = JSON.parse_string(FileAccess.get_file_as_string(path))
+		if d is Array:
+			have = d
+	have.append(e)
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(have))
+		f.close()
+
+func _url_for(id: String) -> String:
+	for e in _entries:
+		if String((e as Dictionary).get("id", "")) == id:
+			var u := String((e as Dictionary).get("url", ""))
+			if u != "":
+				return u
+	return "res://assets/backgrounds/%s.png" % id
 
 func _run(body: Dictionary, out_name: String) -> void:
 	# progress is REPORTED, never faked: the pen stroke on the reading beat moves

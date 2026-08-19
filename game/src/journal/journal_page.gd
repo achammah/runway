@@ -277,19 +277,39 @@ func write_field(prompt: String = "...or write what you actually do", zone: Stri
 	_input.set_deferred("size", Vector2(sp.y - sp.x, hgt))
 	_input.mouse_filter = Control.MOUSE_FILTER_STOP
 	space.add_child(_input)
-	_input.text_changed.connect(func() -> void: written.emit(_input.text))
+	var nib := _WriteHint.new()
+	nib.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	nib.position = Vector2(sp.x, y)
+	nib.set_deferred("size", Vector2(sp.y - sp.x, hgt))
+	space.add_child(nib)
+	space.move_child(nib, max(space.get_child_count() - 2, 0))
+	_input.text_changed.connect(func() -> void:
+		nib.written = _input.text.strip_edges() != ""
+		nib.queue_redraw()
+		written.emit(_input.text))
 	# THE FIELD IS INVISIBLE BY DESIGN — no box, no border, the ruling IS the field.
 	# That makes it undiscoverable unless it already has focus, which is why the
 	# owner reported "I actually cannot write at all": there was nothing to aim at.
 	# So the page hands it the keyboard the moment it opens. Clicking a choice does
 	# not steal it back, because choices are picked with the mouse.
 	_input.call_deferred("grab_focus")
+	# CLICKING ANYWHERE ON THE SHEET PUTS THE PEN IN YOUR HAND. The field has no
+	# box by design, so its exact hit area is invisible and the owner reported it
+	# as impossible to select. The whole page now routes a click into the field,
+	# which also means a mis-click can never leave the player with nowhere to type.
+	if not gui_input.is_connected(_focus_writing):
+		gui_input.connect(_focus_writing)
+	mouse_filter = Control.MOUSE_FILTER_STOP
 	# do not let the trailing gap push past the boundary: it is space AFTER the
 	# last element, not space the element needs. That alone reported the ending
 	# zone overrunning by 2px on every page.
 	_cursor[zone] = min(y + hgt + GAP, zone_bottom(zone))
 	_overrun(zone)
 	return _input
+
+func _focus_writing(ev: InputEvent) -> void:
+	if ev is InputEventMouseButton and ev.pressed and _input != null and is_instance_valid(_input):
+		_input.grab_focus()
 
 func written_text() -> String:
 	return _input.text.strip_edges() if _input != null else ""
@@ -425,6 +445,25 @@ func _arrow(pos: Vector2, forward: bool) -> Button:
 	b.add_child(a)
 	space.add_child(b)
 	return b
+
+## Marks the writing area as a writing area: the rule you write on, and a pen nib
+## resting at its start until you have written something.
+class _WriteHint:
+	extends Control
+	var written := false
+	func _draw() -> void:
+		var pitch: float = max(size.y * 0.5, 30.0)
+		var y := pitch - 6.0
+		while y < size.y:
+			var pts := PackedVector2Array()
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 17
+			for i in 33:
+				pts.append(Vector2(size.x * float(i) / 32.0, y + rng.randf_range(-1.0, 1.0)))
+			draw_polyline(pts, Color(JournalPage.PEN, 0.30), 2.5, true)
+			y += pitch
+		if not written:
+			draw_circle(Vector2(2.0, pitch - 10.0), 4.0, Color(JournalPage.PEN, 0.75))
 
 class _PenCircle:
 	extends Control

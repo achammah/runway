@@ -19,6 +19,10 @@ var _layers: Dictionary = {}   # name -> TextureRect
 var _anim_frames: Array = []   # full-scene loop frames (owner mandate: scenes feel alive)
 var _anim_t := 0.0
 const ANIM_FPS := 12.0
+var _layout: Dictionary = {}
+var _marks: Dictionary = {}       # name -> {foot_x, foot_y, scale, ...}
+var _occluders: Dictionary = {}   # name -> rect that draws OVER the cast
+var _cast: Array = []             # the TextureRects currently standing in the room
 
 func load_scene(p_scene_id: String) -> bool:
 	scene_id = p_scene_id
@@ -81,14 +85,31 @@ func load_scene(p_scene_id: String) -> bool:
 	if not _anim_frames.is_empty():
 		layers_allowed = false
 	var layout_path := dir + "/layout.json"
-	if not layers_allowed or not FileAccess.file_exists(layout_path):
+	if not FileAccess.file_exists(layout_path):
 		return true
 	var layout = JSON.parse_string(FileAccess.get_file_as_string(layout_path))
 	if not (layout is Dictionary):
 		return true
+	_layout = layout
 	for name in layout:
 		var row: Dictionary = layout[name]
 		if not bool(row.get("placed", true)):
+			continue
+		var kind := String(row.get("kind", ""))
+		# A CREW MARK IS AN ANCHOR, NOT A PICTURE. It says where a character stands;
+		# the cast is composited onto it by populate().
+		if kind == "crew_mark":
+			_marks[name] = row
+			continue
+		# An OCCLUDER is a crop of the room's own furniture that must draw OVER the
+		# cast, so a character stands behind the desk instead of on it. It is held
+		# back here and added after the cast in populate().
+		if kind == "occluder":
+			_occluders[name] = row
+			continue
+		# Legacy character cutouts only belong on an inpainted base; drawing them
+		# over a full painting renders every character twice.
+		if not layers_allowed:
 			continue
 		var png := "%s/%s.png" % [dir, name]
 		if not ResourceLoader.exists(png):
@@ -105,6 +126,89 @@ func load_scene(p_scene_id: String) -> bool:
 		add_child(tr)
 		_layers[name] = tr
 	return true
+
+## PUT THE CREW IN THE ROOM.
+##
+## The annotated stages are generated EMPTY on purpose — a room with crew painted
+## into it shows those figures AND the composited sprites, which is the doubled-cast
+## bug. So the cast is placed here, at the marks the scene declares, and the room
+## looked empty until this existed.
+##
+## `crew` is [{sprite: "cast_hacker_fine", mood: "fine"}, ...]. The first entry takes
+## founder_mark; the rest fill crew_1..crew_4 in order. Every sprite is FOOT-ANCHORED
+## to the mark's foot point and scaled by the mark's own scale, because marks further
+## back in the room are smaller — a uniform scale is what makes a composite read as
+## pasted. Occluders are then re-added on top so the cast stands behind the furniture.
+func populate(crew: Array) -> void:
+	for c in _cast:
+		if is_instance_valid(c):
+			c.queue_free()
+	_cast.clear()
+	var order: Array = ["founder_mark", "crew_1", "crew_2", "crew_3", "crew_4"]
+	var i := 0
+	for spec in crew:
+		if i >= order.size():
+			break
+		var mark_name: String = order[i]
+		i += 1
+		if not _marks.has(mark_name):
+			continue
+		var mark: Dictionary = _marks[mark_name]
+		var sprite := String((spec as Dictionary).get("sprite", ""))
+		var png := "res://assets/scenes/%s/sprite.png" % sprite
+		if not ResourceLoader.exists(png):
+			continue
+		var tex: Texture2D = load(png)
+		var sc := float(mark.get("scale", 1.0))
+		var h := float(mark.get("h", 300.0)) * sc
+		var w := h * (float(tex.get_width()) / maxf(float(tex.get_height()), 1.0))
+		var tr := TextureRect.new()
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tr.texture = tex
+		# foot-anchored: the mark names where the FEET land, not the top-left
+		var fx := float(mark.get("foot_x", float(mark.get("x", 0.0)) + float(mark.get("w", 0.0)) * 0.5))
+		var fy := float(mark.get("foot_y", float(mark.get("y", 0.0)) + float(mark.get("h", 0.0))))
+		tr.position = Vector2(fx - w * 0.5, fy - h)
+		tr.set_deferred("size", Vector2(w, h))
+		tr.pivot_offset = Vector2(w * 0.5, h)      # squash and breathe from the feet
+		add_child(tr)
+		_layers[mark_name + "_cast"] = tr
+		_cast.append(tr)
+	_raise_occluders()
+	# idle life, free and state-reactive: a burnt-out cofounder breathes slower
+	var names: Array = []
+	for k in _layers:
+		if String(k).ends_with("_cast"):
+			names.append(k)
+	breathe(names)
+
+## Occluders must sit above the cast, so they are (re)added last.
+func _raise_occluders() -> void:
+	var dir := "res://assets/scenes/%s" % scene_id
+	for name in _occluders:
+		var row: Dictionary = _occluders[name]
+		var png := "%s/%s.png" % [dir, name]
+		if not ResourceLoader.exists(png):
+			continue
+		var old_layer: TextureRect = _layers.get(name)
+		if old_layer != null and is_instance_valid(old_layer):
+			old_layer.queue_free()
+		var tr := TextureRect.new()
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_SCALE
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tr.texture = load(png)
+		tr.position = Vector2(float(row.get("x", 0)), float(row.get("y", 0)))
+		var sz := Vector2(float(row.get("w", 0)), float(row.get("h", 0)))
+		tr.set_deferred("size", sz)
+		add_child(tr)
+		_layers[name] = tr
+
+## Which marks this scene offers — a screen can ask before it builds a crew.
+func mark_count() -> int:
+	return _marks.size()
 
 ## Darken the room so something laid over it (the log book) reads as the subject.
 ## The owner asked for exactly this: "the paper log should come simply on top of a
