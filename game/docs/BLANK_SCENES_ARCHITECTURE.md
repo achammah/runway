@@ -148,3 +148,32 @@ Same pipeline per pack: generate empty → verify empty → slots → ambient �
    516 ≈ $77 one-time) — era cores first
 6. DM prompt nudge (PA): `doing` should use recognizable activity verbs
 7. Batch packs toward 1000+
+
+
+## 7. THE DERIVE PIPELINE (v2.1 — the integration fix, proven on a pilot)
+
+The owner rejected the first assembled pilot: hand-authored slots on scenes generated
+empty read as pasted. The fix inverts the order — **blank scenes are DERIVED from
+populated ones**, so integration is correct by construction:
+
+1. Generate the scene WITH characters in it (compose). The model integrates them
+   natively: scale, perspective, lighting, occlusion all correct.
+2. MEASURE the characters (ink-mass bounding boxes): their foot points and heights
+   become the slots.
+3. ERASE them (seedream edit: "remove every character, keep everything else
+   identical"). The result is the blank scene — same furniture, same light.
+4. THE RESIDENT POSE: each character is also CUT OUT as the pixel-difference between
+   populated and blank. The cut carries its own contact shadow, and where furniture
+   hid the body the cut has a furniture-shaped hole — so compositing it back
+   reproduces the occlusion automatically, with zero occluder authoring.
+
+Measured on the pilot (small office, three characters):
+- resident poses: pixel-perfect by definition
+- PORTABLE poses: standing/walking poses from the library port cleanly into measured
+  stand slots (the presenter read near-identical to the model's own composition)
+- seated/lying library poses do NOT port on foot-anchoring — chair geometry varies.
+  Seated slots therefore use resident poses, or seat-anchored poses matched to a
+  canonical chair geometry class.
+
+Cost per derived scene: 2 generations + 1 optional ambient loop (~$0.60 all-in),
+still one-time. The deliverable at ~/Downloads/runway-one-scene shows every stage.
