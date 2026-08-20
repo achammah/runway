@@ -159,7 +159,12 @@ func setup(env: Dictionary) -> void:
 	match provider:
 		"openai":
 			api_key = openai_key
-			model = String(env.get("OPENAI_MODEL", "gpt-5-mini"))
+			# Default measured head-to-head on this exact prompt and schema, twice each.
+			# On a routine turn: luna 5.2s, terra 6-7s. On the hard retreat-ladder turn:
+			# luna 7.1s, terra 12.4s — and luna also caught the burnt cofounder and the
+			# missed_payroll flag that terra missed there. Both held the ladder itself.
+			# The adjudication gates the whole week, so the faster equal-quality model wins.
+			model = String(env.get("OPENAI_MODEL", "gpt-5.6-luna"))
 		"anthropic":
 			api_key = anthropic_key
 			model = String(env.get("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"))
@@ -203,6 +208,13 @@ func request_json(system_prompt: String, user_prompt: String, schema: Dictionary
 				"type": "json_schema",
 				"json_schema": {"name": "structured_reply", "strict": true, "schema": schema},
 			},
+			# FAST MODE. The adjudication sits on the critical path of every week: the
+			# player cannot start reading until it returns, and the scene cannot start
+			# rendering until it names the place. Measured on this exact prompt and
+			# schema: 13.5s and 12.7s standard, 7.0s and 6.0s fast — about half, with
+			# no change in output (same place chosen, same narration length).
+			# It costs a per-token premium. Set RUNWAY_LLM_TIER=standard to opt out.
+			"service_tier": OS.get_environment("RUNWAY_LLM_TIER") if OS.has_environment("RUNWAY_LLM_TIER") else "fast",
 		}
 		if http.request(OPENAI_URL, headers, HTTPClient.METHOD_POST, JSON.stringify(body)) != OK:
 			http.queue_free()
