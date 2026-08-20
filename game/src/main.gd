@@ -33,6 +33,8 @@ func _ready() -> void:
 		_autopilot()
 	elif OS.get_environment("RUNWAY_FULLRUN") != "":
 		_fullrun(OS.get_environment("RUNWAY_FULLRUN"))
+	elif OS.get_environment("RUNWAY_FINALE_SHOT") != "":
+		_finale_probe(OS.get_environment("RUNWAY_FINALE_SHOT"))
 	elif OS.get_environment("RUNWAY_LANEWIRE") != "":
 		_shoot_lane_screens(OS.get_environment("RUNWAY_LANEWIRE"))
 	elif OS.get_environment("RUNWAY_READING") != "":
@@ -43,6 +45,45 @@ func _ready() -> void:
 ## I2 — integration autopilot: plays a REAL run end-to-end through the actual
 ## screens (draft picks, weekly journal locks, era transitions, death/exit),
 ## screenshotting every few weeks. Proves the systems hold hands.
+## Deterministic endgame check: force a public-ready company at HQ, let the real
+## _check_exit fire, and photograph the IPO ceremony and the last page — the one
+## path long soaks only hit by luck.
+func _finale_probe(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	await get_tree().create_timer(1.0).timeout
+	state = GameState.new()
+	record = RunRecord.new()
+	record.seed_value = 7
+	rng = SeededRng.new(7)
+	state.company_name = "Blobsworth"
+	state.company_idea = "compliance software with feelings"
+	state.era = "hq"
+	state.week = 60
+	state.cash = 2_000_000
+	state.traction = 120
+	state.product = 95
+	state.morale = 70
+	state.hype = 60
+	state.founder_pct = 41.0
+	var g := GarageViewScreen.new()
+	g.setup(state, content, rng, record, generator)
+	g.done.connect(_after_grind)
+	_swap(g)
+	await get_tree().create_timer(1.0).timeout
+	# _check_exit runs from _process; give it a few frames, then photograph
+	var cap := 20
+	while not (_screen is FinaleScreen) and cap > 0:
+		cap -= 1
+		await get_tree().create_timer(0.3).timeout
+	await get_tree().create_timer(1.4).timeout
+	await _shot(dir, "finale_ipo")
+	if _screen is FinaleScreen:
+		(_screen as FinaleScreen).done.emit()
+	await get_tree().create_timer(1.6).timeout
+	await _shot(dir, "last_page_ipo")
+	print("FINALE PROBE DONE: screen=%s" % (_screen.get_class() if _screen != null else "none"))
+	get_tree().quit()
+
 func _fullrun(dir: String) -> void:
 	# BUG-15: no clear_run() here. A test run must not delete the game the owner has
 	# in progress — and it does not need to, because _start_run always starts fresh

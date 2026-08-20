@@ -94,7 +94,8 @@ func span_at(y: float) -> Vector2:
 # ------------------------------------------------------------------ the writing
 func _write_body() -> void:
 	line(_fit(_compress(headline.split("\n")[0]), CAUSE_LINES))
-	line("you walked away with $%s" % _fmt(state.payout_today() if state else 0))
+	line("you walked away with $%s" % _fmt(state.ceremony_payout
+			if state and state.ceremony_payout > 0 else (state.payout_today() if state else 0)))
 
 ## The chain: one drawn icon and one handwritten line per beat, filling the ENDING
 ## zone and nothing beyond it. Beats are measured in PRINTED RULES, because that is

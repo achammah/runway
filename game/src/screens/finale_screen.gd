@@ -49,6 +49,9 @@ func _score() -> void:
 		mult *= 1.1
 		bonuses.append(["PIVOTED AND LIVED", "×1.1", PALETTE["coral"]])
 	final_payout = int(base * mult)
+	# the number the bell promised IS the number the book records
+	state.set_flag("ceremony_payout")
+	state.ceremony_payout = final_payout
 
 func _ready() -> void:
 	_font = load("res://assets/fonts/Baloo2-Bold.ttf")

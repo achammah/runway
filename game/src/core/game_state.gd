@@ -16,6 +16,7 @@ var biz_who: String = "Consumer"      # Enterprise | SMB | Consumer
 var funding_id: String = "bootstrap"  # bootstrap | fnf | angel
 var pivots: int = 0
 var last_outcome: Dictionary = {}     # last week's story, so a resumed run remembers
+var ceremony_payout: int = 0          # the finale's multiplied figure; the book honors it
 var weeks_in_red: int = 0                 # money IS the food — 3 weeks starved = dead
 var history: Array = []                   # {week:int, entry:String} — everything the player did
 var cofounders: Array = []   # {role, commitment, equity, vesting}
