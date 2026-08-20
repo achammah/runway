@@ -947,6 +947,59 @@ func _turn_in_flight() -> bool:
 ## write surfaces still land on the surfaces they were measured on. A scene
 ## composed somewhere else is a DIFFERENT room, so the handwriting stands down and
 ## the plates take over rather than writing the cash total across a stranger's wall.
+## THE STATUS BOARD LIVES IN THE PICTURE (owner design). Every V2-generated
+## scene carries two blank surfaces AT CONTRACT POSITIONS — whiteboard in the
+## upper-left quarter, pinned sheet in the upper-right — so the game writes the
+## week\'s numbers straight onto the room\'s own furniture in the founder\'s hand.
+var _contract_ink: Control
+
+func _mark_contract_surfaces(on: bool) -> void:
+	if _contract_ink != null and is_instance_valid(_contract_ink):
+		_contract_ink.queue_free()
+		_contract_ink = null
+	if not on:
+		return
+	var ink := Control.new()
+	ink.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ink.size = Vector2(1536, 1024)
+	var net := state.burn_per_week()
+	var weeks := 999 if net <= 0 else maxi(0, int(floor(float(state.cash) / float(net))))
+	var wb := [
+		["$%s" % _fmt(state.cash), 46, Color("1E1E1E")],
+		[("%d weeks left" % weeks) if weeks < 999 else "cash positive", 30, Color("E86A5C")],
+	]
+	var y := 120.0
+	for row in wb:
+		var l := Label.new()
+		l.add_theme_font_override("font", _font)
+		l.add_theme_font_size_override("font_size", int(row[1]))
+		l.add_theme_color_override("font_color", row[2])
+		l.text = String(row[0])
+		l.position = Vector2(96, y)
+		l.rotation = -0.02
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ink.add_child(l)
+		y += float(row[1]) * 1.3
+	var sheet := [
+		"%d customers" % state.traction,
+		"%d on payroll" % (state.cofounders.size() + state.employees.size()),
+		"%d%% yours" % int(state.founder_pct),
+	]
+	var sy := 110.0
+	for t in sheet:
+		var l2 := Label.new()
+		l2.add_theme_font_override("font", _font)
+		l2.add_theme_font_size_override("font_size", 26)
+		l2.add_theme_color_override("font_color", Color("1E1E1E"))
+		l2.text = String(t)
+		l2.position = Vector2(1160, sy)
+		l2.rotation = 0.015
+		l2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ink.add_child(l2)
+		sy += 34.0
+	_room.add_child(ink)
+	_contract_ink = ink
+
 func adopt_composed(path: String, aligned: bool = false) -> bool:
 	var tex: Texture2D = null
 	if path.begins_with("res://"):
@@ -973,6 +1026,7 @@ func adopt_composed(path: String, aligned: bool = false) -> bool:
 	_composed.texture = tex
 	_composed.visible = true
 	_composed_path = path
+	_mark_contract_surfaces(path.contains("gen_scenes_v2"))
 	# An assembled room's faces were measured on the LIBRARY scene, so no composed
 	# image can ever be aligned to them.
 	_surf_aligned = aligned and not _assembled
