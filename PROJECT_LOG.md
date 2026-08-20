@@ -139,3 +139,29 @@ hand, nothing built yet. The map, for whoever resumes it:
   fallback floor. Opening scene inputs all exist on GameState: company_idea,
   cofounders, funding_id, cash (type + cofounder + pitch + capital).
 - Measured: GPT medium ~55s/$0.07 (fits the narration reading beat), high ~140s.
+
+## 2026-08-20 (night) — The 60-second week + fully-generative scenes SHIPPED
+The owner's redesign, live end to end and soak-proven:
+- JOURNAL: two spreads. Spread 0 = the world's reply (DM narration first, margin
+  verdict, headline on paper, delta strip with the week's CHANGES, crew doodles).
+  Spread 1 = standing context + situation + "So — what do you do?" + one clean
+  writing area (ghost prompt, scroll-tracking coral ruling, two-slot floor).
+  ONE press commits: write → adjudicate → apply → beat. Payload rides the
+  outcome dict (same-frame-race proof). ~330 lines of five-spread code removed.
+- THEATER: lock drops a drawn curtain (fabric whoosh, scalloped valance,
+  breathing "the world considers your week…", 12s failsafe); the beat WRITES
+  itself with paper scratch and is click-skippable; skip never skips a render.
+- SCENES: fully generative (GPT medium via middleware `referenceImages`),
+  instruction JSON + character refs + frame law with CONTRACT STATUS SURFACES
+  (blank whiteboard UL, pinned sheet UR) that the game inks with cash/runway/
+  customers/payroll/equity. Founding-day and moving-day scenes generated with
+  the crew. Change-beat cadence + exact-repeat cache. Library rooms = fallback.
+  The DM's staging vocabulary opened to the whole world (novel places are
+  first-class — it staged a therapy clinic and an industry mixer unprompted).
+- ICONS: 20 journal doodles generated + layer-decomposed (bean-blob crew law).
+- SOAK: two silent hangs root-caused to ONE freed-instance touch of the game
+  screen during an era move killing the harness coroutine; guarded. 41 live
+  weeks clean, zero journal warnings. Balance retuned for one-move weeks
+  (±3000/±15 + "your effects carry seven days"); pace soak in flight.
+- Resume remembers last week's story (state.last_outcome). Service is the
+  fourth WHAT. HUD money chip yields to inked walls.
