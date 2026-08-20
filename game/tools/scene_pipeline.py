@@ -282,6 +282,18 @@ def generate(sid, prompt, quality="high"):
 MIDDLEWARE_EDIT = "https://nano-banana-production-e03b.up.railway.app/edit-image-openai"
 REFS_PATH = f"{GAME}/assets/scenes/refs.json"
 
+# refs.json is a shared read-modify-write cache. Uploading in parallel LOST 18 of 27
+# entries: each worker read the whole dict, uploaded, and wrote the whole dict back, so
+# every write but the last was clobbered — and the run still reported "27 available, 0
+# failed" because each worker saw its own success. Merge on write instead of replacing,
+# so a concurrent upload can only ever add.
+def _refs_merge(ref, url):
+    have = _refs_cache()
+    have[ref] = url
+    with open(REFS_PATH, "w") as f:
+        json.dump(have, f, indent=1)
+    return url
+
 def _refs_cache():
     return json.load(open(REFS_PATH)) if os.path.exists(REFS_PATH) else {}
 
@@ -297,9 +309,9 @@ def _resolve_ref(ref):
     assert os.path.exists(path), f"ref not found: {path}"
     url = _permanent_url(path)
     assert url, f"asset upload failed for {ref}"
-    cache[ref] = url
-    json.dump(cache, open(REFS_PATH, "w"), indent=1)
-    return url
+    # merge, never replace: the dict was read before a slow upload, so writing it whole
+    # back discards anything another worker added meanwhile
+    return _refs_merge(ref, url)
 
 def variant(sid, prompt, refs, quality="high", engine="seedream"):
     """JSON prompt + reference images -> new on-model image (the consistency method)."""
