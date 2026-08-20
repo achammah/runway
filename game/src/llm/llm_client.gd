@@ -185,7 +185,8 @@ func enabled() -> bool:
 ## Never blocks; each call is independent.
 func request_json(system_prompt: String, user_prompt: String, schema: Dictionary, cb: Callable, opts: Dictionary = {}) -> void:
 	if not enabled():
-		cb.call({})
+		if cb.is_valid():
+			cb.call({})
 		return
 	var http := HTTPRequest.new()
 	add_child(http)
@@ -218,7 +219,8 @@ func request_json(system_prompt: String, user_prompt: String, schema: Dictionary
 		}
 		if http.request(OPENAI_URL, headers, HTTPClient.METHOD_POST, JSON.stringify(body)) != OK:
 			http.queue_free()
-			cb.call({})
+			if cb.is_valid():
+				cb.call({})
 	elif provider == "anthropic":
 		headers = PackedStringArray([
 			"Content-Type: application/json",
@@ -235,17 +237,20 @@ func request_json(system_prompt: String, user_prompt: String, schema: Dictionary
 		}
 		if http.request(ANTHROPIC_URL, headers, HTTPClient.METHOD_POST, JSON.stringify(body)) != OK:
 			http.queue_free()
-			cb.call({})
+			if cb.is_valid():
+				cb.call({})
 
 func _on_completed(result: int, code: int, _h: PackedStringArray, body: PackedByteArray, http: HTTPRequest, cb: Callable) -> void:
 	http.queue_free()
 	if result != HTTPRequest.RESULT_SUCCESS or code < 200 or code >= 300:
 		push_warning("LLM request failed (result=%d http=%d)" % [result, code])
-		cb.call({})
+		if cb.is_valid():
+			cb.call({})
 		return
 	var parsed = JSON.parse_string(body.get_string_from_utf8())
 	if parsed == null:
-		cb.call({})
+		if cb.is_valid():
+			cb.call({})
 		return
 	var text := ""
 	if provider == "openai":
@@ -257,4 +262,5 @@ func _on_completed(result: int, code: int, _h: PackedStringArray, body: PackedBy
 			if block.get("type", "") == "text":
 				text += String(block.get("text", ""))
 	var data = JSON.parse_string(text)
-	cb.call(data if data is Dictionary else {})
+	if cb.is_valid():
+		cb.call(data if data is Dictionary else {})

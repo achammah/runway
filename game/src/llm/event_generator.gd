@@ -33,7 +33,7 @@ const ARC_KINDS := ["rival", "press", "cofounder", "investor", "customer"]
 func generate_arcs(state: GameState, cb: Callable = Callable()) -> void:
 	if disabled or not llm.enabled():
 		if cb.is_valid():
-			cb.call([])
+				cb.call([])
 		return
 	var user := "Run state:\n" + JSON.stringify(state.to_digest())
 	if not state.arcs.is_empty():
@@ -45,7 +45,8 @@ func generate_arcs(state: GameState, cb: Callable = Callable()) -> void:
 func _on_arcs(result: Dictionary, state: GameState, cb: Callable) -> void:
 	var arcs := _ingest_arcs(state, result)
 	if cb.is_valid():
-		cb.call(arcs)
+		if cb.is_valid():
+			cb.call(arcs)
 
 ## Validates director output and stores it on state. Returns stored arcs ([] on reject).
 func _ingest_arcs(state: GameState, data: Dictionary) -> Array:
@@ -140,13 +141,16 @@ static func keyless_adjudication() -> Dictionary:
 ## key at all, or {} when a live call came back empty or failed its validator.
 func adjudicate(state: GameState, ev: Dictionary, player_text: String, cb: Callable) -> void:
 	if not llm.enabled():
-		cb.call(keyless_adjudication())
+		if cb.is_valid():
+			cb.call(keyless_adjudication())
 		return
 	llm.request_json(_adjudicate_prompt, compose_adjudicate_user(state, ev, player_text), LlmClient.ADJUDICATE_SCHEMA, func(result: Dictionary):
 		if result.is_empty() or not _validate_effects(result.get("effects", []), true):
-			cb.call({})
+			if cb.is_valid():
+				cb.call({})
 		else:
-			cb.call(result))
+			if cb.is_valid():
+				cb.call(result))
 
 ## The invisible seam: generated card if pooled, else authored.
 func next_card(state: GameState, content: ContentDb, rng: SeededRng) -> Dictionary:
