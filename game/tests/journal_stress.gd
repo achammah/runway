@@ -83,6 +83,7 @@ func _go() -> void:
 	await create_timer(0.6).timeout
 	for i in 5:
 		screen._page_i = i
+		print("SPREAD %d composing" % i)
 		screen._show_spread()
 		await create_timer(0.45).timeout
 		await RenderingServer.frame_post_draw

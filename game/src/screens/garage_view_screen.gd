@@ -1715,10 +1715,16 @@ func _page_people() -> void:
 		elif id.begins_with("g:"):
 			_pending_people[picked[0]] = id.substr(2)
 			_sfx["cash"].play())
+	# A CROWDED SHEET TRADES PICTURES FOR ROOM TO WRITE. With a full crew the
+	# faces row is tall, and a second row of drawings under it pushed the written
+	# move onto the page curl — the one defect this book may never have. So when
+	# the sheet is short of a full drawing row plus two ruled writing lines, the
+	# gifts keep their pen circles and captions and give up their pictures.
+	var lean: bool = _jp.room_to_fence("ending") < JournalPage.ICON_MIN_H + 210.0
 	var gifts := [
-		{"id": "g:pay", "tex": _tex("itm_savings_jar"), "text": "a bonus"},
-		{"id": "g:shares", "tex": _tex("itm_idea_napkin"), "text": "a slice"},
-		{"id": "g:equip", "tex": _tex("itm_laptop"), "text": "new gear"},
+		{"id": "g:pay", "tex": null if lean else _tex("itm_savings_jar"), "text": "a bonus"},
+		{"id": "g:shares", "tex": null if lean else _tex("itm_idea_napkin"), "text": "a slice"},
+		{"id": "g:equip", "tex": null if lean else _tex("itm_laptop"), "text": "new gear"},
 	]
 	_jp.line("Give one of them something this week.", false, "ending")
 	# 56 drew the bonus, the slice and the gear at TEN pixels. This row shares what

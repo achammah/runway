@@ -87,6 +87,22 @@ const INK := Color("1E1E1E")
 const PEN := Color("E86A5C")
 const FAINT := Color(Color("1E1E1E"), 0.45)
 
+## THE PAGE IS WRITTEN, NOT PRINTED. Every element used to pop in fully formed,
+## which reads as a text engine filling a template. Now the page plays in the way
+## a hand fills a sheet: lines appear left to right behind a travelling nib,
+## drawings fade up in order, and the ruled writing line arrives last, ready.
+## One click anywhere skips the whole performance — a reader is never held.
+## Chars per second. Body writes at a quick hand; the big title is LETTERED, so
+## it goes slower per glyph. Both exist only to be felt, not waited on: the page
+## budget below caps the total and scales everything to fit it.
+const WRITE_CPS := 80.0
+const TITLE_CPS := 34.0
+const REVEAL_BUDGET := 3.6      ## the longest any page may spend arriving
+const ICON_IN := 0.16           ## one drawing's fade-up
+const ICON_STAGGER := 0.06      ## the beat between neighbours in a row
+
+var instant := false            ## re-reading an old page: everything is already ink
+
 var space: Control                ## page-local content space; everything lands here
 var room: SceneRoom               ## the live animated room behind the sheet
 
@@ -102,8 +118,23 @@ var _zone_px: Dictionary = {}     ## name -> [top, bottom] in sheet-local pixels
 var _cursor: Dictionary = {}      ## name -> current y in page-local pixels
 var _input: TextEdit
 
+var _tag := ""                    ## the page's title, so a warning names its page
+var _seq: Array = []              ## the performance, in the order content was added
+var _revealing := false           ## the page is still arriving; a click skips it
+var _reveal_queued := false
+var _reveal_tw: Tween
+var _pen: _PenTip
+var _wrote: Dictionary = {}       ## zone -> content actually landed there
+
 func build(title_text: String, scene_id: String = "") -> void:
 	_font = load(HAND)
+	# Harnesses photograph pages the instant they compose, so a page that is still
+	# writing itself in would fail every wrap/overflow check it is actually passing.
+	# The switch is environmental and deterministic: capture rigs set it, players
+	# never see it.
+	if OS.get_environment("RUNWAY_INSTANT_PAGES") == "1":
+		instant = true
+	_tag = title_text
 	# FULL_RECT already drives the size; assigning it as well warns that the size
 	# will be overridden after _ready() and fights the anchor system.
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -200,27 +231,49 @@ func zone_bottom(zone: String) -> float:
 func writable_bottom() -> float:
 	return _paper_bot if _paper_bot > 0.0 else SHEET_SIZE.y - MARGIN_BOT
 
-## ZONES CASCADE. A zone's nominal start is a rule position, but if the zone ABOVE it
-## wrote past that rule the content must move down rather than land on top of it —
-## which is how the choice captions ended up printing straight through the "...or write
-## what you actually do" prompt. Called before anything is added to a zone.
+## ZONES CASCADE — in BOTH directions. Down: content in a zone whose neighbour above
+## overran moves down rather than landing on top of it (the choice captions once
+## printed straight through the writing prompt). And UP: a zone whose neighbours
+## above are still EMPTY floats up to the first free rule — five blank rules between
+## the title and the week's text was dead paper that then pushed the writing prompt
+## off the bottom, the worst possible trade on a page whose whole point is writing.
 const _ZONE_ORDER := ["title", "body", "ending", "controls"]
 
 func _cascade(zone: String) -> void:
 	var idx := _ZONE_ORDER.find(zone)
 	if idx <= 0:
 		return
-	var floor_y: float = float(_cursor.get(zone, 0.0))
+	var floor_y := 0.0
 	for i in idx:
 		var above: String = _ZONE_ORDER[i]
-		floor_y = maxf(floor_y, float(_cursor.get(above, 0.0)))
-	if floor_y > float(_cursor.get(zone, 0.0)):
-		_cursor[zone] = _snap(floor_y)
+		if bool(_wrote.get(above, false)):
+			floor_y = maxf(floor_y, float(_cursor.get(above, 0.0)))
+	if bool(_wrote.get(zone, false)):
+		# the zone is already flowing: it may only ever be pushed DOWN
+		_cursor[zone] = _snap(maxf(float(_cursor.get(zone, 0.0)), floor_y))
+	elif floor_y > 0.0:
+		# first write into this zone: land on the first free rule, up or down
+		_cursor[zone] = _snap(maxf(floor_y, _top_pad))
+	# nothing written anywhere above: the nominal start stands
+
+## The last two printed rules belong to CONTROLS — the lock line and the page-turn
+## arrows — and nothing else may ever reach them. This is the fence that stops a
+## worst-case page from striking its own prompt through with the writing rule.
+func _hard_floor() -> float:
+	return writable_bottom() - 2.0 * rule_pitch()
 
 ## How much of a zone is still free. A page that returns <= 0 is holding too much
 ## and should be split rather than shrunk.
 func room_left(zone: String = "ending") -> float:
 	return zone_bottom(zone) - float(_cursor.get(zone, 0.0))
+
+## The paper that is REALLY left before the controls fence, after every cascade —
+## the number a host must consult before adding a drawing row. room_left() answers
+## against the zone's printed budget; this answers against the sheet itself, which
+## is the difference between "the plan had room" and "the page has room".
+func room_to_fence(zone: String = "ending") -> float:
+	_cascade(zone)
+	return _hard_floor() - _snap(float(_cursor.get(zone, 0.0)))
 
 # ---------- content ----------
 
@@ -246,11 +299,17 @@ func icon_row(items: Array, cell := Vector2(124, 116), zone: String = "ending") 
 	# is what let "Buy fans. Boring. Works." wrap to three lines and print straight
 	# through the line below it, and what clipped "Enterprise" to "Enterpris".
 	# Captions are drawn at the COLUMN width (not the nominal cell width) so two
-	# neighbours can never overlap, and the row grows to fit the tallest one.
+	# neighbours can never overlap, and the row grows to fit the tallest one —
+	# TO A POINT. Three wrapped lines is where a caption stops being a label and
+	# starts being the paragraph that shoves the writing field off the sheet, so
+	# the shell cuts it there with an ellipsis. (The card schema caps labels at 48
+	# chars; only content that already broke its contract can ever be cut.)
 	var cap_w: float = maxf(step - 14.0, 60.0)
+	var caps := PackedStringArray()
 	var cap_h := 0.0
 	for it0 in items:
-		var t0 := String((it0 as Dictionary).get("text", ""))
+		var t0 := _cap_lines(String((it0 as Dictionary).get("text", "")), cap_w)
+		caps.append(t0)
 		cap_h = maxf(cap_h, _font.get_multiline_string_size(
 				t0, HORIZONTAL_ALIGNMENT_CENTER, cap_w, SIZE_BODY).y)
 	cap_h = maxf(cap_h, SIZE_BODY * 1.2)
@@ -270,11 +329,20 @@ func icon_row(items: Array, cell := Vector2(124, 116), zone: String = "ending") 
 	var icon_h := 0.0
 	if draws_icon:
 		icon_h = maxf(cell.y - cap_h - CAP_GAP, ICON_MIN_H)
+		# THE ROW GIVES BEFORE THE PAGE DOES. When the row's bottom would cross the
+		# controls fence, the DRAWINGS compress toward their floor first — a smaller
+		# jar is a jar, but a prompt on the room is a broken page.
+		var over: float = (y + icon_h + CAP_GAP + cap_h) - _hard_floor()
+		if over > 0.0:
+			icon_h = maxf(icon_h - over, ICON_MIN_H)
 	cell = Vector2(cap_w, icon_h + (CAP_GAP if draws_icon else 0.0) + cap_h)
 
 	var row := Control.new()
 	row.position = Vector2(0, y)
 	row.set_deferred("size", Vector2(_page.x, cell.y))
+	# The full-width band must never swallow a click meant for the page (the skip)
+	# or for a slot. IGNORE on the container leaves the slots as the only targets.
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	space.add_child(row)
 
 	for i in items.size():
@@ -282,8 +350,13 @@ func icon_row(items: Array, cell := Vector2(124, 116), zone: String = "ending") 
 		var slot := Control.new()
 		slot.position = Vector2(x0 + step * i, 0)
 		slot.set_deferred("size", cell)
-		slot.mouse_filter = Control.MOUSE_FILTER_STOP
+		# An option that has not been inked yet cannot be chosen — and a click while
+		# the page is still arriving must SKIP the arrival, which only works if the
+		# page itself hears it. The sequencer hands the click back at reveal.
+		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE if not instant else Control.MOUSE_FILTER_STOP
 		slot.set_meta("id", String(it.get("id", str(i))))
+		if not instant:
+			slot.modulate = Color(1, 1, 1, 0)
 		row.add_child(slot)
 		var mark := _PenCircle.new()
 		mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -305,7 +378,7 @@ func icon_row(items: Array, cell := Vector2(124, 116), zone: String = "ending") 
 		cap.add_theme_font_size_override("font_size", SIZE_BODY)
 		cap.add_theme_color_override("font_color", INK)
 		cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cap.text = String(it.get("text", ""))
+		cap.text = caps[i]
 		cap.custom_minimum_size = Vector2(cap_w, 0)
 		cap.position = Vector2(0, cell.y - cap_h)
 		cap.set_deferred("size", Vector2(cap_w, cap_h))
@@ -315,7 +388,10 @@ func icon_row(items: Array, cell := Vector2(124, 116), zone: String = "ending") 
 			if e is InputEventMouseButton and e.pressed:
 				_select(row, id))
 
+	if not instant:
+		_enqueue({"kind": "icons", "row": row})
 	_cursor[zone] = y + cell.y + GAP
+	_wrote[zone] = true
 	_overrun(zone)
 	return row
 
@@ -323,7 +399,13 @@ func icon_row(items: Array, cell := Vector2(124, 116), zone: String = "ending") 
 ## actually do and the world adjudicates it. Deliberately NOT a widget: no box, no
 ## border, no fill. The ruled line IS the field and the typing looks handwritten.
 func write_field(prompt: String = "...or write what you actually do", zone: String = "ending") -> TextEdit:
-	line(prompt, true, zone)
+	_cascade(zone)
+	# When the sheet is nearly spent, the PROMPT is the line that steps aside — the
+	# ruled hint and the resting nib already say "write here", and a prompt printed
+	# on the page curl said something worse about the whole book.
+	var room_now: float = _hard_floor() - _snap(float(_cursor.get(zone, 0.0)))
+	if room_now >= _line_advance(SIZE_BODY) + rule_pitch() * 2.0:
+		line(prompt, true, zone)
 	_cascade(zone)
 	var y: float = _cursor.get(zone, 0.0)
 	var sp := span_at(y + SIZE_BODY)
@@ -343,10 +425,13 @@ func write_field(prompt: String = "...or write what you actually do", zone: Stri
 	# Give the writing area a real height: it must be a big, obvious place to write,
 	# not a one-line slot. Two ruled lines minimum, more when the page has room.
 	var hgt: float = maxf(rule_pitch() * 2.0, minf(rule_pitch() * 4.0, zone_bottom(zone) - y - 8.0))
-	# ...but the paper wins over the zone. When the page above has cascaded so far that
-	# two ruled lines no longer fit, the field takes what is left rather than printing
-	# the player's own writing onto the room behind the book. _overrun then says so.
-	hgt = minf(hgt, maxf(writable_bottom() - y - 8.0, rule_pitch()))
+	# ...but the CONTROLS FENCE wins over the zone: the field stops at the hard floor
+	# so the lock line and the arrows always keep their two rules. It still never
+	# drops under 1.2 rules — the written move is the game's core and a zero-height
+	# input is the one cut this page may never make; ask() budgets so it cannot come
+	# to that, and if a host composes past every budget the field crosses the fence
+	# and _overrun says so, which is the honest failure.
+	hgt = maxf(minf(hgt, _hard_floor() - y - 8.0), rule_pitch() * 1.2)
 	_input.position = Vector2(sp.x, y)
 	_input.custom_minimum_size = Vector2(sp.y - sp.x, hgt)
 	_input.set_deferred("size", Vector2(sp.y - sp.x, hgt))
@@ -373,9 +458,15 @@ func write_field(prompt: String = "...or write what you actually do", zone: Stri
 	# THE FIELD IS INVISIBLE BY DESIGN — no box, no border, the ruling IS the field.
 	# That makes it undiscoverable unless it already has focus, which is why the
 	# owner reported "I actually cannot write at all": there was nothing to aim at.
-	# So the page hands it the keyboard the moment it opens. Clicking a choice does
-	# not steal it back, because choices are picked with the mouse.
-	_input.call_deferred("grab_focus")
+	# So the page hands it the keyboard the moment it opens — or, when the page is
+	# still writing itself in, the moment the ruled line arrives; grabbing focus
+	# under a half-written page would let typed ink land above the pen.
+	if instant:
+		_input.call_deferred("grab_focus")
+	else:
+		_input.modulate = Color(1, 1, 1, 0)
+		nib.modulate = Color(1, 1, 1, 0)
+		_enqueue({"kind": "field", "field": _input, "nib": nib})
 	# CLICKING ANYWHERE ON THE SHEET PUTS THE PEN IN YOUR HAND. The field has no
 	# box by design, so its exact hit area is invisible and the owner reported it
 	# as impossible to select. The whole page now routes a click into the field,
@@ -389,12 +480,159 @@ func write_field(prompt: String = "...or write what you actually do", zone: Stri
 	# though — clamping to the boundary outright hid a field that really did end
 	# below it, and a hidden overflow is the one the player sees on the room.
 	_cursor[zone] = minf(y + hgt + GAP, maxf(zone_bottom(zone), y + hgt))
+	_wrote[zone] = true
 	_overrun(zone)
 	return _input
 
 func _focus_writing(ev: InputEvent) -> void:
-	if ev is InputEventMouseButton and ev.pressed and _input != null and is_instance_valid(_input):
+	if not (ev is InputEventMouseButton and ev.pressed):
+		return
+	# The first click on an arriving page finishes the writing; it never also
+	# chooses, focuses, or turns anything. The reader asked for the page, not
+	# an accidental decision.
+	if _revealing:
+		_finish_reveal()
+		return
+	if _input != null and is_instance_valid(_input):
 		_input.grab_focus()
+
+# ---------- the performance: the page writes itself in ----------
+
+func _enqueue(item: Dictionary) -> void:
+	_seq.append(item)
+	if not _reveal_queued:
+		_reveal_queued = true
+		# Hosts compose a page synchronously right after build(), so one deferred
+		# hop lands after the LAST element and the whole page plays as one hand.
+		call_deferred("_play_reveal")
+
+func _play_reveal() -> void:
+	if _seq.is_empty() or _revealing:
+		return
+	_revealing = true
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	if not gui_input.is_connected(_focus_writing):
+		gui_input.connect(_focus_writing)
+	_pen = _PenTip.new()
+	_pen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pen.set_deferred("size", Vector2(26, 26))
+	_pen.visible = false
+	space.add_child(_pen)
+	# The budget scales the hand, never the page: a long page writes faster,
+	# a short one savours it, and nothing ever takes longer than the budget.
+	var total := 0.0
+	for it in _seq:
+		total += _item_secs(it)
+	var speed: float = maxf(total / REVEAL_BUDGET, 1.0)
+	_reveal_tw = create_tween()
+	for it in _seq:
+		var secs: float = _item_secs(it) / speed
+		match String(it.get("kind", "")):
+			"line":
+				var l: Label = it["label"]
+				_reveal_tw.tween_callback(_pen_show.bind(true))
+				_reveal_tw.tween_method(_write_line.bind(l, int(it["sz"])), 0.0, 1.0, secs)
+			"icons":
+				var row: Control = it["row"]
+				_reveal_tw.tween_callback(_pen_show.bind(false))
+				var slots := row.get_children()
+				for i in slots.size():
+					var s := slots[i] as Control
+					# one parallel step, staggered by per-tweener delay: neighbours
+					# arrive on a beat, and the step ends when the last one lands
+					var tw := _reveal_tw.parallel() if i > 0 else _reveal_tw
+					tw.tween_property(s, "modulate:a", 1.0, ICON_IN) \
+							.set_delay(ICON_STAGGER * float(i)).set_trans(Tween.TRANS_SINE)
+				_reveal_tw.tween_callback(_wake_row.bind(row))
+			"field":
+				_reveal_tw.tween_callback(_pen_show.bind(false))
+				_reveal_tw.tween_property(it["field"] as Control, "modulate:a", 1.0, secs)
+				_reveal_tw.parallel().tween_property(it["nib"] as Control, "modulate:a", 1.0, secs)
+				_reveal_tw.tween_callback((it["field"] as Control).grab_focus)
+			"fade":
+				_reveal_tw.tween_property(it["node"] as Control, "modulate:a", 1.0, secs)
+				_reveal_tw.tween_callback(_wake_row.bind(it["node"] as Control))
+	_reveal_tw.tween_callback(_finish_reveal)
+
+## One written line under the pen: the ink advances and the nib rides its tip.
+func _write_line(r: float, l: Label, sz: int) -> void:
+	if not is_instance_valid(l):
+		return
+	l.visible_ratio = r
+	if _pen != null and is_instance_valid(_pen):
+		var shown := l.text.substr(0, int(ceil(r * l.text.length())))
+		var w := _font.get_string_size(shown, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
+		_pen.position = l.position + Vector2(w + 2.0, _font.get_ascent(sz) - 22.0)
+
+func _pen_show(on: bool) -> void:
+	if _pen != null and is_instance_valid(_pen):
+		_pen.visible = on
+
+## An element becomes interactive the moment it is fully ink — never before.
+## Choice rows wake their slots and stay transparent themselves; a lone control
+## (a page-turn arrow) wakes directly.
+func _wake_row(row: Control) -> void:
+	var woke_slot := false
+	for s in row.get_children():
+		if s is Control and (s as Control).has_meta("id"):
+			(s as Control).mouse_filter = Control.MOUSE_FILTER_STOP
+			woke_slot = true
+	if not woke_slot:
+		row.mouse_filter = Control.MOUSE_FILTER_STOP
+
+## Everything lands NOW: ink, drawings, the field, the keyboard. Also the only
+## exit — the sequence funnels here whether it played out or was skipped.
+func _finish_reveal() -> void:
+	if _reveal_tw != null and _reveal_tw.is_valid():
+		_reveal_tw.kill()
+	for it in _seq:
+		match String(it.get("kind", "")):
+			"line":
+				var l: Label = it["label"]
+				if is_instance_valid(l):
+					l.visible_ratio = 1.0
+			"icons":
+				var row: Control = it["row"]
+				if is_instance_valid(row):
+					for s in row.get_children():
+						if s is Control:
+							(s as Control).modulate.a = 1.0
+					_wake_row(row)
+			"field":
+				var f: Control = it["field"]
+				var nb: Control = it["nib"]
+				if is_instance_valid(f):
+					f.modulate.a = 1.0
+					if _revealing:
+						f.grab_focus()
+				if is_instance_valid(nb):
+					nb.modulate.a = 1.0
+			"fade":
+				var nd: Control = it["node"]
+				if is_instance_valid(nd):
+					nd.modulate.a = 1.0
+					_wake_row(nd)
+	_seq.clear()
+	_revealing = false
+	if _pen != null and is_instance_valid(_pen):
+		_pen.queue_free()
+		_pen = null
+
+## How long an element deserves at an unhurried hand, before the page budget.
+func _item_secs(it: Dictionary) -> float:
+	match String(it.get("kind", "")):
+		"line":
+			var l: Label = it["label"]
+			var cps: float = TITLE_CPS if int(it["sz"]) == SIZE_TITLE else WRITE_CPS
+			return maxf(float(l.text.length()) / cps, 0.12)
+		"icons":
+			var row: Control = it["row"]
+			return ICON_IN + ICON_STAGGER * float(row.get_child_count())
+		"field":
+			return 0.22
+		"fade":
+			return 0.18
+	return 0.1
 
 func written_text() -> String:
 	return _input.text.strip_edges() if _input != null else ""
@@ -402,16 +640,61 @@ func written_text() -> String:
 ## THE SHAPE EVERY PAGE ENDS IN (owner: each page states the situation, then asks
 ## what you want to do). Composing it here means no page can forget the written
 ## move or bury the question.
+##
+## THE ANSWER SPACE IS RESERVED FIRST. The old order let a long situation spend
+## the whole sheet and leave the choices and the written move to fight over the
+## curl of the paper. Now the row and the field are measured BEFORE the prose is
+## laid, the prose gets what remains (and is cut to it, mid-story, with an
+## ellipsis — a trimmed anecdote is a smaller loss than a missing answer), and
+## the page always ends the way the game is played: with room to act.
 func ask(situation: String, options: Array, allow_write: bool = true) -> Control:
-	# The question goes in BODY. It is prose, and putting it in ENDING meant the
-	# shell's own anatomy — question + choice row + written move — measured 436px
-	# into a 256px zone, which is what produced overrun warnings on nearly every
-	# page. ENDING carries the payload only.
-	line(situation, false, "body")
+	_cascade("body")
+	var pitch := rule_pitch()
+	var start: float = _snap(float(_cursor.get("body", 0.0)))
+	var reserve: float = _row_estimate(options) + GAP
+	if allow_write:
+		# the "...or write" prompt line, then at least two ruled lines of field
+		reserve += _line_advance(SIZE_BODY) + GAP + pitch * 2.0 + GAP
+	var avail: float = _hard_floor() - start - reserve
+	var fit: int = maxi(int(floor(avail / _line_advance(SIZE_BODY))), 2)
+	var lines := _wrap_lines(situation, SIZE_BODY)
+	var told := situation
+	if lines.size() > fit:
+		var kept := lines.slice(0, fit)
+		var lastl := String(kept[fit - 1])
+		var cut := lastl.rfind(" ")
+		kept[fit - 1] = (lastl.substr(0, cut) if cut > 24 else lastl) + " …"
+		told = " ".join(kept)
+		push_warning("JournalPage: situation trimmed from %d to %d rules so the answer space survives."
+				% [lines.size(), fit])
+	line(told, false, "body")
 	var row := icon_row(options)
 	if allow_write:
 		write_field()
 	return row
+
+## What an icon_row of these items WILL measure, computed the same way icon_row
+## computes it — the budget and the build can never disagree.
+func _row_estimate(items: Array) -> float:
+	if items.is_empty():
+		return 0.0
+	var sp := span_at(0.0)
+	var avail: float = sp.y - sp.x
+	var n: int = maxi(items.size(), 1)
+	var step: float = minf(124.0 + 28.0, avail / float(n))
+	var cap_w: float = maxf(step - 14.0, 60.0)
+	var cap_h := 0.0
+	var draws := false
+	for it in items:
+		var d: Dictionary = it
+		cap_h = maxf(cap_h, _font.get_multiline_string_size(
+				_cap_lines(String(d.get("text", "")), cap_w),
+				HORIZONTAL_ALIGNMENT_CENTER, cap_w, SIZE_BODY).y)
+		if d.get("tex") != null:
+			draws = true
+	cap_h = maxf(cap_h, SIZE_BODY * 1.2)
+	var icon_h: float = maxf(116.0 - cap_h - CAP_GAP, ICON_MIN_H) if draws else 0.0
+	return icon_h + (CAP_GAP if draws else 0.0) + cap_h
 
 ## THE OVERVIEW PAGE: reads the run back to the player in their own hand, then asks
 ## what to do next.
@@ -448,26 +731,71 @@ func _shaped(text: String, sz: int, col: Color, zone: String, align: int) -> voi
 	# advancing by whole rules is what makes it read as handwriting.
 	var y: float = _snap(float(_cursor.get(zone, 0.0)))
 	var lh: float = _line_advance(sz)
-	var words := text.split(" ", false)
-	var cur := ""
-	var i := 0
-	while i < words.size():
+	# Content stops at the fence; only the controls band itself may use it. A line
+	# that will not fit is CUT, with an ellipsis on the last line that did — prose
+	# is the one thing on this page that can lose a tail and still work. The
+	# alternative was the writing prompt printed onto the room, every stress run.
+	var fence: float = writable_bottom() if zone == "controls" else _hard_floor()
+	var lines := _wrap_lines(text, sz, align)
+	var placed_any := false
+	var last: Label = null
+	for li in lines.size():
+		if y + lh > fence + 0.5 and placed_any:
+			if last != null:
+				var t := last.text
+				var cut := t.rfind(" ")
+				last.text = (t.substr(0, cut) if cut > 24 else t) + " …"
+			push_warning("JournalPage: %s cut %d line%s at the paper's fence — shorten this copy."
+					% [zone, lines.size() - li, "" if lines.size() - li == 1 else "s"])
+			break
 		var sp := span_at(y + lh * 0.5)
-		var avail: float = sp.y - sp.x
-		var trial: String = words[i] if cur == "" else cur + " " + words[i]
-		if _font.get_string_size(trial, align, -1, sz).x <= avail or cur == "":
-			cur = trial
-			i += 1
-		else:
-			_place(cur, sz, col, sp, y, lh, align)
-			y += lh
-			cur = ""
-	if cur != "":
-		var sp2 := span_at(y + lh * 0.5)
-		_place(cur, sz, col, sp2, y, lh, align)
+		last = _place_l(lines[li], sz, col, sp, y, lh, align)
+		placed_any = true
 		y += lh
 	_cursor[zone] = y + GAP
+	_wrote[zone] = true
 	_overrun(zone)
+
+## A caption capped at three wrapped lines, cut with an ellipsis past that.
+const CAP_MAX_LINES := 3
+
+func _cap_lines(text: String, w: float) -> String:
+	var words := text.split(" ", false)
+	var out := PackedStringArray()
+	var cur := ""
+	for wd in words:
+		var trial: String = String(wd) if cur == "" else cur + " " + String(wd)
+		if _font.get_string_size(trial, HORIZONTAL_ALIGNMENT_CENTER, -1, SIZE_BODY).x <= w or cur == "":
+			cur = trial
+		else:
+			out.append(cur)
+			cur = String(wd)
+			if out.size() == CAP_MAX_LINES:
+				break
+	if out.size() < CAP_MAX_LINES and cur != "":
+		out.append(cur)
+	elif cur != "" and out.size() == CAP_MAX_LINES:
+		out[CAP_MAX_LINES - 1] = String(out[CAP_MAX_LINES - 1]) + " …"
+	return "\n".join(out)
+
+## Greedy wrap against the constant writable span — one shared implementation, so
+## measuring for a budget and placing for real can never disagree.
+func _wrap_lines(text: String, sz: int, align: int = HORIZONTAL_ALIGNMENT_LEFT) -> PackedStringArray:
+	var out := PackedStringArray()
+	var sp := span_at(0.0)
+	var avail: float = sp.y - sp.x
+	var words := text.split(" ", false)
+	var cur := ""
+	for w in words:
+		var trial: String = String(w) if cur == "" else cur + " " + String(w)
+		if _font.get_string_size(trial, align, -1, sz).x <= avail or cur == "":
+			cur = trial
+		else:
+			out.append(cur)
+			cur = String(w)
+	if cur != "":
+		out.append(cur)
+	return out
 
 ## Pitch of the printed ruling, in SHEET-local pixels.
 func rule_pitch() -> float:
@@ -502,17 +830,29 @@ func _line_advance(sz: int) -> float:
 		return _font.get_height(sz) * 1.08
 	return pitch * max(1.0, ceil(_font.get_height(sz) * 0.78 / pitch))
 
-func _place(text: String, sz: int, col: Color, sp: Vector2, y: float, lh: float, align: int) -> void:
+func _place_l(text: String, sz: int, col: Color, sp: Vector2, y: float, lh: float, align: int) -> Label:
 	var l := Label.new()
 	l.add_theme_font_override("font", _font)
 	l.add_theme_font_size_override("font_size", sz)
 	l.add_theme_color_override("font_color", col)
-	l.horizontal_alignment = align
+	# A centred label re-centres itself around every character it reveals, so the
+	# words would slide while being written. Centring is done HERE once — measure,
+	# park the label at the centred x, and let it reveal left-to-right like every
+	# other written line. The hand starts where the word will start.
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	var x := sp.x
+	if align == HORIZONTAL_ALIGNMENT_CENTER:
+		var w := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
+		x = sp.x + maxf((sp.y - sp.x - w) * 0.5, 0.0)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	l.text = text
-	l.position = Vector2(sp.x, y)
-	l.set_deferred("size", Vector2(sp.y - sp.x, lh))
+	l.position = Vector2(x, y)
+	l.set_deferred("size", Vector2(sp.y - x, lh))
 	space.add_child(l)
+	if not instant:
+		l.visible_ratio = 0.0
+		_enqueue({"kind": "line", "label": l, "sz": sz})
+	return l
 
 ## A ZONE SLIDING DOWN IS THE MECHANISM WORKING, NOT A FAULT. Zones cascade, so a
 ## zone that passes its nominal rule is simply being pushed by the one above it and
@@ -528,19 +868,31 @@ func _overrun(zone: String) -> void:
 		return
 	var over: float = y - bot
 	var lines: int = maxi(1, int(ceil(over / maxf(_line_advance(SIZE_BODY), 1.0))))
-	push_warning(("JournalPage: %s ran %.0fpx off the bottom of the paper (%.0f > %.0f) — "
+	push_warning(("JournalPage[%s p%d]: %s ran %.0fpx off the bottom of the paper (%.0f > %.0f) — "
 			+ "cut %d line%s of copy from this page, shorten the captions, or move %s onto the next sheet.")
-			% [zone, over, y, bot, lines, "" if lines == 1 else "s", zone])
+			% [_tag, get_index(), zone, over, y, bot, lines, "" if lines == 1 else "s", zone])
 
 ## Chosen is circled in ink; the rest simply go quiet. Never a border, never a
-## fill, never a highlight — those read as a form.
+## fill, never a highlight — those read as a form. And the circle is DRAWN, the
+## way a pen actually closes a loop around a word: instant appearance was the
+## one tell left that a computer, not a hand, keeps this book.
 func _select(row: Control, id: String) -> void:
 	for slot in row.get_children():
 		var mine: bool = String(slot.get_meta("id", "")) == id
-		slot.modulate = Color.WHITE if mine else Color(1, 1, 1, 0.55)
+		var tw := create_tween()
+		tw.tween_property(slot, "modulate", Color.WHITE if mine else Color(1, 1, 1, 0.55), 0.14)
 		for c in slot.get_children():
 			if c is _PenCircle:
-				c.visible = mine
+				var pc := c as _PenCircle
+				if mine and not pc.visible:
+					pc.visible = true
+					pc.progress = 0.0
+					var ct := create_tween()
+					ct.tween_method(func(p: float) -> void:
+						pc.progress = p
+						pc.queue_redraw(), 0.0, 1.0, 0.24).set_trans(Tween.TRANS_SINE)
+				elif not mine:
+					pc.visible = false
 	choice_made.emit(id)
 
 func _arrow(pos: Vector2, forward: bool) -> Button:
@@ -553,6 +905,10 @@ func _arrow(pos: Vector2, forward: bool) -> Button:
 	a.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	a.set_deferred("size", Vector2(90, 52))
 	b.add_child(a)
+	if not instant:
+		b.modulate = Color(1, 1, 1, 0)
+		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_enqueue({"kind": "fade", "node": b})
 	space.add_child(b)
 	return b
 
@@ -575,8 +931,18 @@ class _WriteHint:
 		if not written:
 			draw_circle(Vector2(2.0, pitch - 10.0), 4.0, Color(JournalPage.PEN, 0.75))
 
+## The nib that rides the tip of the ink while the page writes itself: a short
+## dark stroke with a coral heel, the pen the founder is holding.
+class _PenTip:
+	extends Control
+	func _draw() -> void:
+		draw_line(Vector2(4, 22), Vector2(15, 4), JournalPage.INK, 4.0, true)
+		draw_line(Vector2(13, 7), Vector2(19, 1), Color(JournalPage.PEN, 0.9), 5.0, true)
+		draw_circle(Vector2(3, 23), 2.4, JournalPage.INK)
+
 class _PenCircle:
 	extends Control
+	var progress := 1.0
 	func _draw() -> void:
 		var c := size * 0.5
 		# THE LOOP HAS TO GET ROUND WHAT IT IS CIRCLING. It is sized to the cell, and a
@@ -593,14 +959,19 @@ class _PenCircle:
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 9
 		for i in 41:
-			var t := TAU * float(i) / 40.0
+			var t := TAU * float(i) / 40.0 - PI * 0.5
 			var w := 1.0 + rng.randf_range(-0.05, 0.05)
 			var cs := cos(t)
 			var sn := sin(t)
 			pts.append(c + Vector2(
 					signf(cs) * pow(absf(cs), 2.0 / n) * rx * w,
 					signf(sn) * pow(absf(sn), 2.0 / n) * ry * w))
-		draw_polyline(pts, JournalPage.PEN, 4.0, true)
+		# The pen draws the loop rather than stamping it: `progress` is how far
+		# around the hand has got. The stroke starts at the top the way a real
+		# circling gesture does, and the final frame is byte-identical to the
+		# stamp it replaced.
+		var upto: int = clampi(int(ceil(progress * 41.0)), 2, 41)
+		draw_polyline(pts.slice(0, upto), JournalPage.PEN, 4.0, true)
 
 class _Arrow:
 	extends Control
