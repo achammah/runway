@@ -1701,6 +1701,10 @@ func _spread_was() -> void:
 			else:
 				shorts.append(l)
 		var short_h: float = 51.0 * float(mini(shorts.size(), 1))
+		# the DM titles every week; the log keeps the headline the beat announced
+		var hl := String((_last_outcome.get("dm", {}) as Dictionary).get("headline", ""))
+		if hl != "":
+			_jp.line(hl.to_upper())
 		if narr != "":
 			_jp.line_fitted(narr, strips_h + short_h)
 			if vt in ["brilliant", "backfired"]:
