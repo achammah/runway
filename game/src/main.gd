@@ -124,8 +124,8 @@ func _fullrun(dir: String) -> void:
 				continue
 		gv._commit_from_text()
 		if OS.get_environment("RUNWAY_CURTAIN_FILM") != "" and state.week <= 2:
-			for ci in 4:
-				await get_tree().create_timer([0.1, 0.2, 0.25, 0.6][ci]).timeout
+			for ci in 5:
+				await get_tree().create_timer([0.1, 0.2, 0.25, 0.6, 1.9][ci]).timeout
 				await _shot(dir, "curtain_%02d_wk%02d_%d" % [state.week, state.week, ci])
 		# a live adjudication takes seconds; keyless answers instantly — wait it
 		# out, and NEVER touch the screen again without checking it still exists:
