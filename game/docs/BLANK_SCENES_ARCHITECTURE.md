@@ -177,3 +177,42 @@ Measured on the pilot (small office, three characters):
 
 Cost per derived scene: 2 generations + 1 optional ambient loop (~$0.60 all-in),
 still one-time. The deliverable at ~/Downloads/runway-one-scene shows every stage.
+
+
+## 8. THE SPOT-PATCH MODEL (v3 — the owner's actual design, correcting v2)
+
+The owner, after reviewing an assembly that pasted library sprites at slot
+coordinates: "I needed full SCENES in which you had BUILT-IN SPOTS that are either
+empty OR with people in it and we can swap empty/character in them and assemble the
+scene like that. While what you have done is backgrounds and you just pasted on top
+random characters."
+
+The correction: a scene's spots are not coordinates to paste at — they are REGIONS
+WITH RENDITIONS. Every rendition is cut from a native full-scene render of that same
+scene, so integration is perfect by definition and swapping is choosing, not pasting.
+
+Per scene:
+```
+scene/
+  populated.png        the scene with all spots filled (native render)
+  blank.png            the same scene, all spots empty (erase edit)
+  spots.json           per spot: region box + available renditions
+  patches/
+    <spot>__empty.png          (implicit: the blank's pixels)
+    <spot>__<character>.png    diff(populated_variant, blank) inside the region
+  ambient/d_NN.png     light deltas over the blank
+```
+
+Growing a spot's cast: a REPLACE edit of the populated scene ("swap the presenter
+for X, everything else identical") -> diff against the blank -> a new patch for the
+same spot. One edit per (spot, character) pair, generated offline in batches for the
+casts a scene will actually see.
+
+Assembly at runtime: blank + chosen patch per spot + ambient deltas + in-engine life
+(breathe/blink on the patch regions, eyes found by the detector). Instant and free,
+and every pixel is in-scene.
+
+Where the v2 libraries fit: the 699 blanks stay (they are the erase targets and the
+fallback rooms), the slots become the spot region definitions, and the 525-pose
+library serves as REFERENCES for replace edits and as distant background extras —
+never as pasted foreground characters.
