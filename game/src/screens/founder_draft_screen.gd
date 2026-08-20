@@ -50,15 +50,12 @@ var _d_pips: Control
 var _d_cash: Label
 var _d_perk: Label
 var _cofounders: Array = []
-var _cf_list: VBoxContainer
-var _add_cf_btn: Button
 var _fund_btns: Array = []
 var _bag: Array[String] = []
 var _bag_btns: Dictionary = {}
 var _name_edit: PaperInput
 var _idea_edit: PaperInput
 var _donut: Control
-var _summary: Label
 var _launch: Button
 var _anim_frames: Dictionary = {}
 var _anim_i := 0
@@ -67,7 +64,6 @@ var _sfx_click: AudioStreamPlayer
 var _hero_base_y := 0.0
 var _hero_tween: Tween
 var _title_label: Label
-var _spot_pool: Control
 var _lockin_btn: Button
 var _stamping := false
 var _crew_row: Control
@@ -82,7 +78,7 @@ var _bagd_art: TextureRect
 var _bagd_name: Label
 var _bagd_blurb: Label
 var _bagd_cost: Label
-var _packed_row: HBoxContainer
+var _packed_row: VBoxContainer
 var _biz_what := "Software"
 var _biz_who := "Consumer"
 var _name_witness: TextureRect
@@ -91,10 +87,6 @@ var _what_chips: Array = []
 var _who_chips: Array = []
 
 
-var _team_stage: Control
-var _team_nodes: Array = []
-var _founder_mini: TextureRect
-var _last_founder_pct := 100.0
 
 func _ready() -> void:
 	_font = load("res://assets/fonts/PatrickHand-Regular.ttf")
@@ -242,22 +234,12 @@ func _style_button(b: Button, col: Color, fsize: int) -> void:
 	b.add_theme_font_size_override("font_size", fsize)
 	b.add_theme_color_override("font_color", PALETTE["ink"])
 	b.add_theme_color_override("font_disabled_color", Color(PALETTE["ink"], 0.45))
-	var st := StyleBoxFlat.new()
-	st.bg_color = PALETTE["cream"]
-	st.border_color = PALETTE["ink"]
-	st.set_border_width_all(4)
-	st.set_corner_radius_all(0)
-	st.content_margin_left = 14
-	st.content_margin_right = 14
-	b.add_theme_stylebox_override("normal", st)
-	var sh := st.duplicate()
-	sh.bg_color = col
-	b.add_theme_stylebox_override("hover", sh)
-	b.add_theme_stylebox_override("pressed", sh)
-	var sd := st.duplicate()
-	sd.bg_color = Color(0.90, 0.88, 0.82)
-	sd.border_color = Color(0.6, 0.58, 0.52)
-	b.add_theme_stylebox_override("disabled", sd)
+	# NO box. This sets type and colour only. Every fill on these screens is
+	# DRAWN — _paper_card lays real paper under the word, _ink_button rings it
+	# in pen — so a call that forgets one falls back to bare text on the stage,
+	# never to a cream rectangle with a printed border.
+	for st_name in ["normal", "hover", "pressed", "disabled", "focus"]:
+		b.add_theme_stylebox_override(st_name, StyleBoxEmpty.new())
 
 func _juice(b: Button) -> void:
 	b.pivot_offset = b.size / 2.0
@@ -271,11 +253,7 @@ func _juice(b: Button) -> void:
 ## strips a card back to bare paper: the fill and the border are drawn, not styled
 func _paper_card(b: Button) -> void:
 	for st_name in ["normal", "hover", "pressed", "disabled", "focus"]:
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0, 0, 0, 0)
-		sb.set_border_width_all(0)
-		sb.set_corner_radius_all(0)
-		b.add_theme_stylebox_override(st_name, sb)
+		b.add_theme_stylebox_override(st_name, StyleBoxEmpty.new())
 	var e := PaperEdge.new()
 	e.name = "edge"
 	e.size = b.size
@@ -311,17 +289,43 @@ func _set_button_text(b: Button, text: String) -> void:
 	else:
 		b.text = text
 
-func _panel(pos: Vector2, sz: Vector2, bg_col: Color = Color("1E1E1E"), border: Color = Color("F2EAD3")) -> Panel:
-	var p := Panel.new()
-	p.position = pos
-	p.size = sz
-	var st := StyleBoxFlat.new()
-	st.bg_color = bg_col
-	st.border_color = border
-	st.set_border_width_all(4)
-	st.set_corner_radius_all(16)
-	p.add_theme_stylebox_override("panel", st)
-	return p
+## Strips a Button down to its hit box — no fill, no border, no content margins.
+## What is left on screen is whatever art the button carries, so the thing you
+## click is the OBJECT and not a tile with an object printed on it.
+func _bare_button(b: Button) -> void:
+	b.add_theme_font_override("font", _font_d)
+	b.add_theme_color_override("font_color", PALETTE["ink"])
+	for st_name in ["normal", "hover", "pressed", "disabled", "focus"]:
+		b.add_theme_stylebox_override(st_name, StyleBoxEmpty.new())
+
+## A control that is a pen MARK rather than a box: a wobbly outline, no fill.
+## Used for every toggle and counter that used to be a filled rectangle, and for
+## the ring that circles a chosen thing the way the log book circles a choice.
+func _ink_button(b: Button, col: Color, fsize: int, ring: bool = false) -> void:
+	b.add_theme_font_override("font", _font_d)
+	b.add_theme_font_size_override("font_size", fsize)
+	for cn in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		b.add_theme_color_override(cn, PALETTE["ink"])
+	b.add_theme_color_override("font_disabled_color", Color(PALETTE["ink"], 0.4))
+	for st_name in ["normal", "hover", "pressed", "disabled", "focus"]:
+		b.add_theme_stylebox_override(st_name, StyleBoxEmpty.new())
+	# the Button paints its own text FIRST and children paint after, so an
+	# outline-only child rings the word instead of blanking it — no cap needed
+	var tag := InkTag.new()
+	tag.name = "edge"
+	tag.color = col
+	tag.shape = 1 if ring else 0
+	tag.wobble_seed = int(absf(b.position.x) + absf(b.position.y)) % 9
+	tag.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(tag)
+	# the pen presses harder under the cursor, the same tell PaperInput uses
+	b.mouse_entered.connect(func():
+		tag.thick = 6.5
+		tag.queue_redraw())
+	b.mouse_exited.connect(func():
+		tag.thick = 3.5
+		tag.queue_redraw())
 
 # ---------- SCREEN 1: CHOOSE YOUR FOUNDER ----------
 
@@ -396,33 +400,62 @@ func _build_select() -> Control:
 	_d_perk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	panel.add_child(_d_perk)
 
-	# roster: fighting-game dock at the bottom
-	var row_w := _archs.size() * 134 - 14
+	# roster: the cast stands ON one sheet of paper. They used to be cream tiles
+	# with printed borders laid on that same cream sheet — a plate on a plate,
+	# and the unpicked ones turned into grey cards. Now the sheet is the only
+	# drawn surface and each founder is an object standing on it, with a contact
+	# shadow at the feet; the pick is a coral pen ring, per the log book.
+	var row_w := _archs.size() * 142 - 14
 	var x0 := (1536 - row_w) / 2.0
 	var dock := PaperEdge.new()
-	dock.size = Vector2(row_w + 48, 150)
-	dock.position = Vector2(x0 - 24, DOCK_BAND_TOP)
+	dock.size = Vector2(row_w + 56, 140)
+	dock.position = Vector2(x0 - 28, DOCK_BAND_TOP)
 	dock.thick = 4.0
 	dock.lean = 3
 	dock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	page.add_child(dock)
 	for i in _archs.size():
 		var chip := Button.new()
-		chip.position = Vector2(x0 + i * 134, DOCK_BAND_TOP + 14.0)
-		chip.size = Vector2(120, 120)
-		chip.pivot_offset = Vector2(60, 120)
-		_style_button(chip, PALETTE["yellow"], 16)
+		chip.position = Vector2(x0 + i * 142, DOCK_BAND_TOP + 12.0)
+		chip.size = Vector2(128, 128)
+		chip.pivot_offset = Vector2(64, 128)
+		_bare_button(chip)
+		# the shadow must be a CHILD painted before the portrait: a Button paints
+		# its own icon first and children over it, so chip.icon would sit UNDER
+		# the shadow. The portrait is a child too, so the stack stays honest.
+		var csh := EllipseShadow.new()
+		csh.position = Vector2(22, 106)
+		csh.size = Vector2(84, 16)
+		csh.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chip.add_child(csh)
+		var port := TextureRect.new()
+		port.name = "port"
+		port.size = Vector2(128, 118)
+		port.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		port.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		port.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chip.add_child(port)
 		var still := "res://assets/sprites/%s.png" % String(_archs[i].get("sprite", ""))
 		if ResourceLoader.exists(still):
-			chip.icon = load(still)
-			chip.expand_icon = true
+			port.texture = load(still)
+		var ring := InkTag.new()
+		ring.name = "ring"
+		ring.color = PALETTE["coral"]
+		ring.shape = 1
+		ring.thick = 5.0
+		ring.wobble_seed = i
+		ring.position = Vector2(-9, -8)
+		ring.size = Vector2(146, 144)
+		ring.visible = false
+		ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chip.add_child(ring)
 		chip.pressed.connect(_select.bind(i))
 		chip.mouse_entered.connect(func():
 			if _chips.find(chip) != _sel_i:
-				chip.position.y = DOCK_BAND_TOP + 6.0)
+				chip.position.y = DOCK_BAND_TOP + 4.0)
 		chip.mouse_exited.connect(func():
 			if _chips.find(chip) != _sel_i:
-				chip.position.y = DOCK_BAND_TOP + 14.0)
+				chip.position.y = DOCK_BAND_TOP + 12.0)
 		page.add_child(chip)
 		_chips.append(chip)
 	# dust motes drifting up through the spotlight beam
@@ -452,6 +485,7 @@ func _build_select() -> Control:
 	_lockin_btn.size = Vector2(260, 84)
 	_lockin_btn.pivot_offset = Vector2(130, 42)
 	_style_button(_lockin_btn, PALETTE["coral"], 36)
+	_paper_card(_lockin_btn)
 	_lockin_btn.pressed.connect(_lock_in)
 	page.add_child(_lockin_btn)
 	return page
@@ -465,8 +499,16 @@ func _select(i: int, animate_swap: bool = true) -> void:
 	for c in _chips.size():
 		var chip: Button = _chips[c]
 		var selected := c == _sel_i
-		chip.modulate = Color.WHITE if selected else Color(0.62, 0.62, 0.62, 1.0)
-		var target_y := 842.0 if selected else 862.0
+		# only the PORTRAIT mutes, never the ring or the shadow, and it mutes by
+		# a light grey multiply at FULL opacity — fading ink toward a cream
+		# ground is what washed these out the last time they were touched
+		var port := chip.get_node_or_null("port")
+		if port:
+			port.modulate = Color.WHITE if selected else Color(0.74, 0.74, 0.74, 1.0)
+		var ring := chip.get_node_or_null("ring")
+		if ring:
+			ring.visible = selected
+		var target_y := (DOCK_BAND_TOP + 2.0) if selected else (DOCK_BAND_TOP + 12.0)
 		var ct := create_tween()
 		ct.tween_property(chip, "position:y", target_y, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	# stats: name stamps in, radar sweeps open
@@ -574,8 +616,6 @@ func _process(_delta: float) -> void:
 	_hero.position.y = _hero_base_y + sin(t * 2.2) * 4.0      # breath float
 	if _hero_shadow:
 		_hero_shadow.scale.x = 1.0 - sin(t * 2.2) * 0.03      # shadow answers the float
-	if _spot_pool:
-		_spot_pool.modulate.a = 0.85 + sin(t * 1.7) * 0.15    # spotlight breathes
 	if _title_label:
 		_title_label.rotation = sin(t * 0.7) * 0.004
 	if _lockin_btn and not _stamping:
@@ -607,22 +647,6 @@ func _dim(page: Control) -> void:
 	dim.color = Color(0.11, 0.13, 0.16, 0.84)
 	dim.size = Vector2(1536, 1024)
 	page.add_child(dim)
-
-func _style_option(ob: OptionButton) -> void:
-	ob.add_theme_font_override("font", _font)
-	ob.add_theme_font_size_override("font_size", 22)
-	ob.add_theme_color_override("font_color", PALETTE["ink"])
-	ob.add_theme_color_override("font_hover_color", PALETTE["ink"])
-	ob.add_theme_color_override("font_focus_color", PALETTE["ink"])
-	var st := StyleBoxFlat.new()
-	st.bg_color = Color.WHITE
-	st.border_color = PALETTE["ink"]
-	st.set_border_width_all(3)
-	st.set_corner_radius_all(10)
-	st.content_margin_left = 12
-	st.content_margin_right = 12
-	for state in ["normal", "hover", "pressed", "focus"]:
-		ob.add_theme_stylebox_override(state, st)
 
 func _build_name() -> Control:
 	var page := Control.new()
@@ -682,6 +706,7 @@ func _build_name() -> Control:
 	back.size = Vector2(90, 70)
 	_style_button(back, PALETTE["blue"], 30)
 	_paper_card(back)
+	_juice(back)
 	back.pressed.connect(func(): _transition_to(0))
 	page.add_child(back)
 	var next := Button.new()
@@ -761,6 +786,7 @@ func _build_shape_page() -> Control:
 	back.size = Vector2(100, 64)
 	_style_button(back, PALETTE["blue"], 30)
 	_paper_card(back)
+	_juice(back)
 	back.pressed.connect(func(): _transition_to(1))
 	page.add_child(back)
 	var next := Button.new()
@@ -872,17 +898,29 @@ func _build_crew_page() -> Control:
 	page.add_child(sub)
 
 	_crew_row = Control.new()
-	_crew_row.position = Vector2(40, 200)
-	_crew_row.size = Vector2(1140, 500)
+	_crew_row.position = Vector2(24, 190)
+	_crew_row.size = Vector2(1176, 512)
 	page.add_child(_crew_row)
 
+	# the cap table is a chart pinned up beside the crew, not a pie floating in
+	# the dark: it is drawn on paper and captioned in the founder's own hand
+	var dsheet := PaperEdge.new()
+	dsheet.position = Vector2(1214, 190)
+	dsheet.size = Vector2(258, 310)
+	dsheet.thick = 4.0
+	dsheet.lean = 2
+	dsheet.rotation = 0.012
+	dsheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.add_child(dsheet)
 	_donut = CapTableDonut.new()
-	(_donut as CapTableDonut).text_color = PALETTE["cream"]
-	_donut.position = Vector2(1230, 170)
-	_donut.size = Vector2(260, 260)
+	(_donut as CapTableDonut).text_color = PALETTE["ink"]
+	_donut.position = Vector2(1240, 206)
+	_donut.size = Vector2(210, 210)
 	page.add_child(_donut)
-	var dcap := _label("the cap table", 24, Color(PALETTE["cream"], 0.6))
-	dcap.position = Vector2(1288, 436)
+	var dcap := _label("the cap table", 26, Color(PALETTE["ink"], 0.6))
+	dcap.position = Vector2(1236, 430)
+	dcap.size = Vector2(218, 36)
+	dcap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	page.add_child(dcap)
 
 	var back := Button.new()
@@ -891,6 +929,7 @@ func _build_crew_page() -> Control:
 	back.size = Vector2(100, 70)
 	_style_button(back, PALETTE["blue"], 30)
 	_paper_card(back)
+	_juice(back)
 	back.pressed.connect(func(): _transition_to(2))
 	page.add_child(back)
 	var next := Button.new()
@@ -963,33 +1002,37 @@ func _open_recruit() -> void:
 		c.queue_free()
 	_recruit_layer.visible = true
 	var shade := ColorRect.new()
-	shade.color = Color(0.05, 0.05, 0.06, 0.8)
+	shade.color = Color(0.05, 0.05, 0.06, 0.9)
 	shade.size = Vector2(1536, 1024)
 	_recruit_layer.add_child(shade)
 	shade.gui_input.connect(func(ev):
 		if ev is InputEventMouseButton and ev.pressed:
 			_recruit_layer.visible = false)
-	var panel := _panel(Vector2(148, 200), Vector2(1240, 620), Color(0.09, 0.09, 0.09, 0.98), PALETTE["cream"])
-	_recruit_layer.add_child(panel)
-	var t := _dlabel("WHO DO YOU CALL?", 44, PALETTE["yellow"])
-	t.position = Vector2(40, 24)
-	panel.add_child(t)
+	# no board behind this. It used to be a dark rounded rectangle with a cream
+	# border — a web modal. The dimmed stage IS the modal; the five paper cards
+	# lie straight on it, the way the money cards lie on the stage one page on.
+	var t := _ink_outline(_dlabel("WHO DO YOU CALL?", 48, PALETTE["yellow"]), 7)
+	t.position = Vector2(188, 214)
+	_recruit_layer.add_child(t)
+	_rule_under(_recruit_layer, "WHO DO YOU CALL?", 48, Vector2(188, 214))
 	for i in ROLES.size():
 		var role: String = ROLES[i]
+		var taken := _role_taken(i)
 		var card := Button.new()
-		card.position = Vector2(40 + i * 235, 100)
-		card.size = Vector2(220, 420)
+		card.position = Vector2(188 + i * 236, 306)
+		card.size = Vector2(220, 424)
+		card.rotation = [-0.007, 0.005, -0.004, 0.006, -0.005][i % 5]
+		card.pivot_offset = Vector2(110, 212)
 		_style_button(card, PALETTE["yellow"], 20)
 		_paper_card(card)
-		if _role_taken(i):
-			card.disabled = true
-			card.modulate = Color(0.72, 0.72, 0.70, 1.0)
+		if not taken:
+			_juice(card)
 		card.pressed.connect(func():
 			_recruit_layer.visible = false
 			_cofounders.append({"role": i, "commitment": 0, "equity": 25.0, "vesting": true, "fresh": true})
 			_sfx_click.play()
 			_refresh_capline())
-		panel.add_child(card)
+		_recruit_layer.add_child(card)
 		var spr := TextureRect.new()
 		spr.size = Vector2(160, 190)
 		spr.position = Vector2(30, 16)
@@ -1005,28 +1048,44 @@ func _open_recruit() -> void:
 			ph.position = spr.position
 			ph.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			card.add_child(ph)
-		var nm := _dlabel(role.to_upper(), 25, PALETTE["ink"])
-		nm.position = Vector2(10, 218)
+		var nm := _dlabel(role.to_upper(), 26, PALETTE["ink"])
+		nm.position = Vector2(10, 216)
 		nm.size = Vector2(200, 40)
 		nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		card.add_child(nm)
-		var gv := _label(String(ROLE_INFO[role]["gives"]), 24, PALETTE["ink"])
+		var gv := _label(String(ROLE_INFO[role]["gives"]), 25, PALETTE["ink"])
 		gv.position = Vector2(10, 262)
 		gv.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_wrap(gv, 200.0)
 		card.add_child(gv)
-	# the ask is the same for every role — stating it four times is the screen
+		if taken:
+			# already on the cap table: scribbled out in pen, not dimmed. Fading
+			# the sheet turned the paper brown, which reads as dirty, not spent.
+			card.disabled = true
+			spr.modulate = Color(0.62, 0.62, 0.62, 1.0)
+			var x := PenCross.new()
+			x.size = card.size
+			x.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			card.add_child(x)
+			var got := _dlabel("ON BOARD", 26, PALETTE["coral"])
+			got.position = Vector2(10, 372)
+			got.size = Vector2(200, 36)
+			got.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			card.add_child(got)
+	# the ask is the same for every role — stating it five times is the screen
 	# repeating itself, so it is said once, under the row
-	var ask := _label("whoever you call will want ~25% of the company.", 26, PALETTE["coral"])
-	ask.position = Vector2(40, 536)
-	panel.add_child(ask)
+	var ask := _label("whoever you call will want ~25% of the company.", 28, PALETTE["coral"])
+	ask.position = Vector2(190, 760)
+	_recruit_layer.add_child(ask)
 	var cancel := Button.new()
 	cancel.text = "☎ nobody. hang up."
-	cancel.position = Vector2(920, 545)
-	cancel.size = Vector2(280, 52)
-	_style_button(cancel, PALETTE["blue"], 24)
+	cancel.position = Vector2(1064, 750)
+	cancel.size = Vector2(320, 62)
+	_style_button(cancel, PALETTE["blue"], 26)
+	_paper_card(cancel)
+	_juice(cancel)
 	cancel.pressed.connect(func(): _recruit_layer.visible = false)
-	panel.add_child(cancel)
+	_recruit_layer.add_child(cancel)
 
 func _build_money_page() -> Control:
 	var page := Control.new()
@@ -1117,6 +1176,7 @@ func _build_money_page() -> Control:
 	back.size = Vector2(100, 70)
 	_style_button(back, PALETTE["blue"], 30)
 	_paper_card(back)
+	_juice(back)
 	back.pressed.connect(func(): _transition_to(3))
 	page.add_child(back)
 	var next := Button.new()
@@ -1147,53 +1207,86 @@ func _build_bag_page() -> Control:
 	sub.position = Vector2(64, 116)
 	page.add_child(sub)
 
-	# item grid — hover to inspect, click to pack
+	# EVERYTHING YOU OWN — one sheet of paper, your things laid out ON it.
+	# They used to be fifteen cream tiles with printed borders: a sticker sheet.
+	# The tile was doing one real job, giving dark ink art a light ground on a
+	# near-black stage, so that job moved to ONE drawn surface and the items
+	# became objects on it, each with a contact shadow and a pen ring when packed.
+	var shelf := PaperEdge.new()
+	shelf.position = Vector2(44, 166)
+	shelf.size = Vector2(676, 516)
+	shelf.thick = 4.0
+	shelf.lean = 2
+	shelf.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.add_child(shelf)
+	var shelf_cap := _label("everything you own", 28, Color(PALETTE["ink"], 0.62))
+	shelf_cap.position = Vector2(78, 178)
+	page.add_child(shelf_cap)
+	var shelf_rule := HandRule.new()
+	shelf_rule.length = 604.0
+	shelf_rule.color = Color(PALETTE["sage"], 0.8)
+	shelf_rule.size = Vector2(604, 14)
+	shelf_rule.position = Vector2(80, 214)
+	shelf_rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.add_child(shelf_rule)
 	var gi := 0
 	for def in content_items:
+		var col := gi % 5
+		var row := gi / 5
+		var org := Vector2(74 + col * 123, 240 + row * 146)
 		var ib := Button.new()
 		ib.custom_minimum_size = Vector2(112, 112)
 		ib.size = Vector2(112, 112)
-		ib.position = Vector2(60 + (gi % 5) * 128, 190 + (gi / 5) * 130)
-		ib.pivot_offset = Vector2(56, 56)
-		var ipath := "res://assets/sprites/%s.png" % String(def["id"])
-		if ResourceLoader.exists(ipath):
-			ib.icon = load(ipath)
-			ib.expand_icon = true
-		_style_button(ib, PALETTE["yellow"], 14)
+		ib.position = org
+		ib.pivot_offset = Vector2(56, 100)
+		_bare_button(ib)
 		ib.pressed.connect(_toggle_bag.bind(String(def["id"]), int(def.get("carry_cost", 1)), ib))
 		ib.mouse_entered.connect(func():
 			_bag_detail(def)
 			var t := create_tween()
-			t.tween_property(ib, "scale", Vector2(1.07, 1.07), 0.08))
+			t.tween_property(ib, "scale", Vector2(1.08, 1.08), 0.08))
 		ib.mouse_exited.connect(func():
 			var t := create_tween()
 			t.tween_property(ib, "scale", Vector2.ONE, 0.1))
-		var packed_mark := _dlabel("✕", 34, PALETTE["coral"])
-		packed_mark.name = "packed"
-		packed_mark.position = Vector2(8, -6)
-		packed_mark.visible = false
-		packed_mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ib.add_child(packed_mark)
+		# shadow first, art second: a Button paints its own icon BEFORE its
+		# children, so an icon here would end up under its own contact shadow
+		var ish := EllipseShadow.new()
+		ish.position = Vector2(18, 94)
+		ish.size = Vector2(76, 14)
+		ish.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ib.add_child(ish)
+		var art := TextureRect.new()
+		art.name = "art"
+		art.size = Vector2(112, 104)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ib.add_child(art)
+		var ipath := "res://assets/sprites/%s.png" % String(def["id"])
+		if ResourceLoader.exists(ipath):
+			art.texture = load(ipath)
+		var ring := InkTag.new()
+		ring.name = "packed"
+		ring.color = PALETTE["coral"]
+		ring.shape = 1
+		ring.thick = 5.0
+		ring.wobble_seed = gi
+		ring.position = Vector2(-10, -8)
+		ring.size = Vector2(132, 128)
+		ring.visible = false
+		ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ib.add_child(ring)
 		page.add_child(ib)
 		_bag_btns[String(def["id"])] = ib
 		if int(def.get("carry_cost", 1)) > 1:
-			var pill := Panel.new()
-			# the tag sits INSIDE the tile — a badge that hangs off the corner
-			# gets clipped by whatever is drawn next to it
-			pill.position = ib.position + Vector2(ib.size.x - 104.0, ib.size.y - 40.0)
-			pill.size = Vector2(100, 34)
-			var pst := StyleBoxFlat.new()
-			pst.bg_color = PALETTE["coral"]
-			pst.border_color = PALETTE["ink"]
-			pst.set_border_width_all(2)
-			pst.set_corner_radius_all(12)
-			pill.add_theme_stylebox_override("panel", pst)
-			pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			page.add_child(pill)
-			var badge := _dlabel("2 SLOTS", 24, Color.WHITE)
-			badge.position = Vector2(9, -2)
-			badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			pill.add_child(badge)
+			# the weight is written next to the thing in pen, not stamped on a
+			# rounded badge that covered the art it was describing
+			var wt := _label("2 slots", 24, PALETTE["coral"])
+			wt.position = org + Vector2(0, 101)
+			wt.size = Vector2(112, 30)
+			wt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			wt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			page.add_child(wt)
 		gi += 1
 
 	# detail panel — what the thing is FOR
@@ -1237,28 +1330,57 @@ func _build_bag_page() -> Control:
 	_bagd_cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	dp.add_child(_bagd_cost)
 
-	# the box + slots
-	_slots_label = _dlabel("SLOTS 0/4", 38, PALETTE["cream"])
-	_slots_label.position = Vector2(1236, 200)
-	page.add_child(_slots_label)
+	# the box, and the manifest taped under it. BUG-06: what was packed showed as
+	# a row of ~70px unlabelled stickers floating on the dark stage — you could
+	# not read them. They are now a written packing list on paper: a 64px icon
+	# and the thing's NAME per line, with the slot count as the sheet's heading.
 	var box := TextureRect.new()
 	if ResourceLoader.exists("res://assets/sprites/env_boxes.png"):
 		box.texture = load("res://assets/sprites/env_boxes.png")
-	box.size = Vector2(230, 230)
-	box.position = Vector2(1210, 260)
+	box.size = Vector2(250, 250)
+	box.position = Vector2(1198, 176)
 	box.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	box.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	page.add_child(box)
-	_box_anchor = box.position + Vector2(115, 90)
-	_packed_row = HBoxContainer.new()
-	_packed_row.position = Vector2(1150, 690)
-	_packed_row.add_theme_constant_override("separation", 14)
+	_box_anchor = box.position + Vector2(125, 100)
+	var manifest := PaperEdge.new()
+	manifest.position = Vector2(1158, 436)
+	manifest.size = Vector2(310, 372)
+	manifest.thick = 4.0
+	manifest.lean = 1
+	manifest.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.add_child(manifest)
+	var mh := _dlabel("IN THE BAG", 32, PALETTE["ink"])
+	mh.position = Vector2(1194, 452)
+	page.add_child(mh)
+	_slots_label = _dlabel("SLOTS 0/4", 30, PALETTE["coral"])
+	_slots_label.position = Vector2(1194, 494)
+	_slots_label.size = Vector2(264, 40)
+	page.add_child(_slots_label)
+	var mrule := HandRule.new()
+	mrule.length = 262.0
+	mrule.color = Color(PALETTE["sage"], 0.8)
+	mrule.size = Vector2(262, 14)
+	mrule.position = Vector2(1194, 532)
+	mrule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.add_child(mrule)
+	_packed_row = VBoxContainer.new()
+	_packed_row.position = Vector2(1190, 552)
+	_packed_row.size = Vector2(272, 240)
+	_packed_row.add_theme_constant_override("separation", 4)
 	page.add_child(_packed_row)
 
-	_bag_summary = _label("", 28, Color(PALETTE["cream"], 0.9))
-	_bag_summary.position = Vector2(64, 820)
-	_bag_summary.size = Vector2(1000, 100)
-	_bag_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var sum_strip := PaperEdge.new()
+	sum_strip.position = Vector2(48, 832)
+	sum_strip.size = Vector2(940, 64)
+	sum_strip.thick = 3.0
+	sum_strip.lean = 4
+	sum_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.add_child(sum_strip)
+	_bag_summary = _label("", 28, PALETTE["ink"])
+	_bag_summary.position = Vector2(70, 846)
+	_bag_summary.size = Vector2(896, 40)
+	_bag_summary.autowrap_mode = TextServer.AUTOWRAP_OFF
 	page.add_child(_bag_summary)
 
 	var back := Button.new()
@@ -1267,6 +1389,7 @@ func _build_bag_page() -> Control:
 	back.size = Vector2(100, 70)
 	_style_button(back, PALETTE["blue"], 30)
 	_paper_card(back)
+	_juice(back)
 	back.pressed.connect(func(): _transition_to(4))
 	page.add_child(back)
 	_launch = Button.new()
@@ -1274,6 +1397,7 @@ func _build_bag_page() -> Control:
 	_launch.position = Vector2(1050, 920)
 	_launch.size = Vector2(450, 84)
 	_style_button(_launch, PALETTE["coral"], 32)
+	_paper_card(_launch)
 	_juice(_launch)
 	_launch.pressed.connect(_do_launch)
 	page.add_child(_launch)
@@ -1298,81 +1422,6 @@ func _add_cofounder() -> void:
 	_open_recruit()
 	return
 
-func _add_cofounder_dead() -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	var cf := {"role": _first_free_role(), "commitment": 0, "equity": 25.0, "vesting": true, "node": row}
-	var role := OptionButton.new()
-	for r in ROLES:
-		role.add_item(r)
-	_style_option(role)
-	role.custom_minimum_size = Vector2(180, 48)
-	role.select(int(cf["role"]))
-	for i in ROLES.size():
-		if i != int(cf["role"]) and _role_taken(i):
-			role.set_item_disabled(i, true)
-	role.item_selected.connect(func(i):
-		for other in _cofounders:
-			if other != cf and int(other["role"]) == i:
-				role.select(int(cf["role"]))
-				return
-		cf["role"] = i
-		_refresh_capline())
-	row.add_child(role)
-	var com := OptionButton.new()
-	for c in COMMITMENTS:
-		com.add_item(c)
-	_style_option(com)
-	com.custom_minimum_size = Vector2(126, 48)
-	com.item_selected.connect(func(i): cf["commitment"] = i; _refresh_capline())
-	row.add_child(com)
-	var minus := Button.new()
-	minus.text = "−"
-	minus.custom_minimum_size = Vector2(44, 48)
-	_style_button(minus, PALETTE["coral"], 28)
-	row.add_child(minus)
-	var eq_label := _label("25%", 30, PALETTE["cream"])
-	eq_label.custom_minimum_size = Vector2(62, 48)
-	eq_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	row.add_child(eq_label)
-	var plus := Button.new()
-	plus.text = "+"
-	plus.custom_minimum_size = Vector2(44, 48)
-	_style_button(plus, PALETTE["sage"], 28)
-	row.add_child(plus)
-	minus.pressed.connect(func():
-		cf["equity"] = maxf(1.0, float(cf["equity"]) - 5.0)
-		eq_label.text = "%.0f%%" % cf["equity"]
-		_refresh_capline()
-		_react_team_member(_cofounders.find(cf), false))
-	plus.pressed.connect(func():
-		cf["equity"] = minf(60.0, float(cf["equity"]) + 5.0)
-		eq_label.text = "%.0f%%" % cf["equity"]
-		_refresh_capline()
-		_react_team_member(_cofounders.find(cf), true))
-	var vest := CheckBox.new()
-	vest.text = "vested"
-	vest.tooltip_text = "4-year vesting, 1-year cliff. Turning this off is the classic mistake."
-	vest.button_pressed = true
-	vest.add_theme_font_override("font", _font)
-	vest.add_theme_font_size_override("font_size", 22)
-	vest.add_theme_color_override("font_color", PALETTE["cream"])
-	vest.toggled.connect(func(on): cf["vesting"] = on; _refresh_capline())
-	row.add_child(vest)
-	var rm := Button.new()
-	rm.text = "✕"
-	rm.custom_minimum_size = Vector2(44, 48)
-	_style_button(rm, PALETTE["coral"], 24)
-	rm.pressed.connect(func():
-		_cofounders.erase(cf)
-		row.queue_free()
-		_refresh_capline())
-	row.add_child(rm)
-	_cofounders.append(cf)
-	_cf_list.add_child(row)
-	_sfx_click.play()
-	_refresh_capline()
-
 func _pick_fund(f: Dictionary, btn: Button) -> void:
 	_sel_fund = f
 	_sfx_click.play()
@@ -1389,18 +1438,16 @@ func _pick_fund(f: Dictionary, btn: Button) -> void:
 			ct.tween_callback(coin.queue_free)
 	_refresh_capline()
 
-## Paints an item tile as packed or not across EVERY state, so the change is
-## visible under the cursor that caused it.
+## Marks an item packed or not. Packed is a coral pen ring drawn AROUND the
+## object — the log book's own idiom — not a repainted tile, because there is
+## no tile any more, and not a red ✕, which reads as "delete this".
 func _paint_bag_tile(btn: Button, packed: bool) -> void:
-	for st_name in ["normal", "hover", "pressed"]:
-		var sb = btn.get_theme_stylebox(st_name)
-		if sb is StyleBoxFlat:
-			sb.bg_color = Color("B9C9AC") if packed else PALETTE["cream"]
-			sb.border_color = PALETTE["coral"] if packed else PALETTE["ink"]
-			sb.set_border_width_all(6 if packed else 4)
 	var mark := btn.get_node_or_null("packed")
 	if mark:
 		mark.visible = packed
+	var art := btn.get_node_or_null("art")
+	if art:
+		art.modulate = Color.WHITE if packed else Color(0.9, 0.9, 0.9, 1.0)
 
 func _toggle_bag(id: String, cost: int, btn: Button) -> void:
 	if _bag.has(id):
@@ -1420,10 +1467,16 @@ func _toggle_bag(id: String, cost: int, btn: Button) -> void:
 		_bag.append(id)
 		_paint_bag_tile(btn, true)
 		# the item flies into the box
-		if btn.icon:
+		var flown: Texture2D = null
+		var art_node := btn.get_node_or_null("art")
+		if art_node is TextureRect:
+			flown = (art_node as TextureRect).texture
+		if flown:
 			var fly := TextureRect.new()
-			fly.texture = btn.icon
+			fly.texture = flown
 			fly.size = Vector2(70, 70)
+			fly.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			fly.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			fly.position = btn.global_position
 			add_child(fly)
 			var ft := create_tween()
@@ -1436,21 +1489,39 @@ func _toggle_bag(id: String, cost: int, btn: Button) -> void:
 		for c in _packed_row.get_children():
 			c.queue_free()
 		for bid in _bag:
-			var chip := Button.new()
-			chip.flat = true
-			var cp := "res://assets/sprites/%s.png" % bid
-			if ResourceLoader.exists(cp):
-				chip.icon = load(cp)
-				chip.expand_icon = true
-			chip.custom_minimum_size = Vector2(104, 104)
-			chip.tooltip_text = "take it back out"
-			chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			var nm := String(bid)
+			for d in content_items:
+				if String(d["id"]) == String(bid):
+					nm = String(d.get("name", bid))
+			var line := Button.new()
+			line.custom_minimum_size = Vector2(272, 58)
+			line.size = Vector2(272, 58)
+			_bare_button(line)
+			line.tooltip_text = "take it back out"
+			line.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 			var chip_id := String(bid)
-			chip.pressed.connect(func():
+			line.pressed.connect(func():
 				var owner_btn: Button = _bag_btns.get(chip_id)
 				if owner_btn:
 					_toggle_bag(chip_id, 0, owner_btn))
-			_packed_row.add_child(chip)
+			_packed_row.add_child(line)
+			var ic := TextureRect.new()
+			ic.size = Vector2(56, 54)
+			ic.position = Vector2(0, 2)
+			ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var cp := "res://assets/sprites/%s.png" % bid
+			if ResourceLoader.exists(cp):
+				ic.texture = load(cp)
+			line.add_child(ic)
+			var nl := _label(nm, 26, PALETTE["ink"])
+			nl.position = Vector2(66, 10)
+			nl.size = Vector2(202, 38)
+			nl.autowrap_mode = TextServer.AUTOWRAP_OFF
+			nl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			nl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			line.add_child(nl)
 
 ## The YC-canon trap detector.
 func _compute_traps() -> Array:
@@ -1543,13 +1614,22 @@ func _refresh_capline() -> void:
 
 const ROLE_SLUGS := {"Sales": "sales", "Business": "business", "Tech": "tech", "Hustler": "hustler", "The Idea Friend": "idea"}
 
-func _crew_card_bg(warn: bool = false) -> StyleBoxFlat:
-	var st := StyleBoxFlat.new()
-	st.bg_color = Color(1, 1, 1, 0.04)
-	st.border_color = Color(Color("F2EAD3"), 0.25) if not warn else Color("E86A5C")
-	st.set_border_width_all(2)
-	st.set_corner_radius_all(14)
-	return st
+## One founding sheet per person, cut from the same paper as everything else.
+## These used to be translucent rounded rectangles with a hairline border —
+## the one shape on the whole flow that could only have come from a web app.
+func _crew_sheet(parent: Control, at: Vector2, sz: Vector2, warn: bool, lean: int) -> Control:
+	var holder := Control.new()
+	holder.position = at
+	holder.size = sz
+	parent.add_child(holder)
+	var paper := PaperEdge.new()
+	paper.size = sz
+	paper.thick = 6.0 if warn else 4.0
+	paper.edge = PALETTE["coral"] if warn else PALETTE["ink"]
+	paper.lean = lean
+	paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(paper)
+	return holder
 
 func _rebuild_crew(founder_pct: float) -> void:
 	if _crew_row == null:
@@ -1559,66 +1639,71 @@ func _rebuild_crew(founder_pct: float) -> void:
 	_crew_sprites.clear()
 	var n := _cofounders.size()
 	var slots := n + 1 + (1 if n < MAX_COFOUNDERS else 0)
-	var cw := 230.0
-	var gap := 18.0
+	var gap := 16.0
+	var cw := clampf((_crew_row.size.x - (slots - 1) * gap) / float(slots), 170.0, 234.0)
+	var ch := 500.0
 	var x0 := (_crew_row.size.x - (slots * cw + (slots - 1) * gap)) / 2.0
 	# YOU card
-	var you := Panel.new()
-	you.position = Vector2(x0, 0)
-	you.size = Vector2(cw, 490)
-	you.add_theme_stylebox_override("panel", _crew_card_bg())
-	_crew_row.add_child(you)
+	var you := _crew_sheet(_crew_row, Vector2(x0, 0), Vector2(cw, ch), founder_pct < 50.0, 0)
 	var yspr := TextureRect.new()
-	yspr.size = Vector2(180, 180)
+	yspr.size = Vector2(cw - 50.0, 180)
 	yspr.position = Vector2(25, 18)
 	yspr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	yspr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	yspr.pivot_offset = Vector2(90, 180)
+	yspr.pivot_offset = Vector2((cw - 50.0) / 2.0, 180)
 	var still := "res://assets/sprites/%s.png" % String(_sel_arch.get("sprite", ""))
 	if ResourceLoader.exists(still):
 		yspr.texture = load(still)
 	if founder_pct < 50.0:
 		yspr.rotation = 0.12
-		yspr.modulate = Color(0.85, 0.85, 0.85)
 	you.add_child(yspr)
-	var ylab := _dlabel("YOU · CEO", 27, PALETTE["yellow"])
-	ylab.position = Vector2(0, 214)
+	var ylab := _dlabel("YOU · CEO", 28, PALETTE["ink"])
+	ylab.position = Vector2(0, 210)
 	ylab.size = Vector2(cw, 40)
 	ylab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	you.add_child(ylab)
-	var ypct := _dlabel("%.0f%%" % founder_pct, 62, PALETTE["sage"] if founder_pct >= 50.0 else PALETTE["coral"])
+	var ypct := _dlabel("%.0f%%" % founder_pct, 64, PALETTE["sage"] if founder_pct >= 50.0 else PALETTE["coral"])
 	ypct.position = Vector2(0, 262)
 	ypct.size = Vector2(cw, 90)
 	ypct.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	you.add_child(ypct)
-	var ysub := _label("your slice", 24, Color(PALETTE["cream"], 0.6))
-	ysub.position = Vector2(0, 360)
+	var ysub := _label("your slice", 26, Color(PALETTE["ink"], 0.6))
+	ysub.position = Vector2(0, 358)
 	ysub.size = Vector2(cw, 32)
 	ysub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	you.add_child(ysub)
+	var cname := _name_edit.value() if _name_edit else ""
+	var cname_lbl := _label(cname if cname != "" else "your company", 30, Color(PALETTE["ink"], 0.8))
+	cname_lbl.position = Vector2(10, 404)
+	cname_lbl.size = Vector2(cw - 20, 40)
+	cname_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cname_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	you.add_child(cname_lbl)
 	if founder_pct < 50.0:
-		var warn := _label("OUTVOTED!", 28, PALETTE["coral"])
-		warn.position = Vector2(0, 420)
-		warn.size = Vector2(cw, 36)
+		var warn := _label("OUTVOTED!", 30, PALETTE["coral"])
+		warn.position = Vector2(0, 446)
+		warn.size = Vector2(cw, 40)
 		warn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		you.add_child(warn)
+	else:
+		var owned := _label("is yours to run", 26, Color(PALETTE["ink"], 0.5))
+		owned.position = Vector2(0, 448)
+		owned.size = Vector2(cw, 36)
+		owned.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		you.add_child(owned)
 	# cofounder cards
 	for i in n:
 		var cf: Dictionary = _cofounders[i]
-		var card := Panel.new()
-		card.position = Vector2(x0 + (i + 1) * (cw + gap), 0)
-		card.size = Vector2(cw, 490)
 		var no_vest: bool = not bool(cf["vesting"])
-		card.add_theme_stylebox_override("panel", _crew_card_bg(no_vest))
-		_crew_row.add_child(card)
+		var card := _crew_sheet(_crew_row, Vector2(x0 + (i + 1) * (cw + gap), 0), Vector2(cw, ch), no_vest, i + 1)
 		var slug: String = ROLE_SLUGS.get(ROLES[int(cf["role"])], "technical")
 		var st := _cf_state(cf, n)
 		var spr := TextureRect.new()
-		spr.size = Vector2(170, 170)
+		spr.size = Vector2(cw - 60.0, 176)
 		spr.position = Vector2(30, 14)
 		spr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		spr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		spr.pivot_offset = Vector2(85, 170)
+		spr.pivot_offset = Vector2((cw - 60.0) / 2.0, 176)
 		var spath := _cf_art(slug, st)
 		if spath != "":
 			spr.texture = load(spath)
@@ -1639,16 +1724,16 @@ func _rebuild_crew(founder_pct: float) -> void:
 			drop.parallel().tween_property(spr, "position:y", 14.0, 0.32).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 		var rm := Button.new()
 		rm.text = "✕"
-		rm.size = Vector2(40, 40)
-		rm.position = Vector2(cw - 48, 8)
-		_style_button(rm, PALETTE["coral"], 20)
+		rm.size = Vector2(44, 44)
+		rm.position = Vector2(cw - 54, 10)
+		_ink_button(rm, PALETTE["coral"], 24, true)
 		rm.tooltip_text = "Part ways (before it gets ugly)"
 		rm.pressed.connect(func():
 			_cofounders.erase(cf)
 			_sfx_click.play()
 			_refresh_capline())
 		card.add_child(rm)
-		var rname := _label(ROLES[int(cf["role"])].to_upper(), 26, PALETTE["cream"])
+		var rname := _dlabel(ROLES[int(cf["role"])].to_upper(), 27, PALETTE["ink"])
 		rname.position = Vector2(0, 196)
 		rname.size = Vector2(cw, 36)
 		rname.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1656,11 +1741,12 @@ func _rebuild_crew(founder_pct: float) -> void:
 		var com := Button.new()
 		var ft: bool = int(cf["commitment"]) == 0
 		com.text = "FULL-TIME" if ft else "PART-TIME ⚠"
-		com.size = Vector2(cw - 40, 44)
+		com.size = Vector2(cw - 40, 46)
 		com.position = Vector2(20, 238)
-		_style_button(com, PALETTE["sage"] if ft else PALETTE["yellow"], 24)
+		_ink_button(com, PALETTE["sage"] if ft else PALETTE["coral"], 24)
 		if not ft:
-			com.add_theme_color_override("font_color", PALETTE["coral"])
+			for cn in ["font_color", "font_hover_color", "font_pressed_color"]:
+				com.add_theme_color_override(cn, PALETTE["coral"])
 		com.tooltip_text = "Click to toggle. Part-timers with real equity flake at the worst time."
 		com.pressed.connect(func():
 			cf["commitment"] = 1 - int(cf["commitment"])
@@ -1669,24 +1755,24 @@ func _rebuild_crew(founder_pct: float) -> void:
 		card.add_child(com)
 		var minus := Button.new()
 		minus.text = "−"
-		minus.size = Vector2(48, 56)
-		minus.position = Vector2(16, 296)
-		_style_button(minus, PALETTE["coral"], 30)
+		minus.size = Vector2(52, 56)
+		minus.position = Vector2(14, 298)
+		_ink_button(minus, PALETTE["coral"], 34, true)
 		minus.pressed.connect(func():
 			cf["equity"] = maxf(1.0, float(cf["equity"]) - 5.0)
 			_refresh_capline()
 			_react_crew(_cofounders.find(cf), false))
 		card.add_child(minus)
-		var eq := _dlabel("%.0f%%" % float(cf["equity"]), 46, PALETTE["cream"])
-		eq.position = Vector2(64, 292)
-		eq.size = Vector2(cw - 128, 64)
+		var eq := _dlabel("%.0f%%" % float(cf["equity"]), 48, PALETTE["ink"])
+		eq.position = Vector2(68, 296)
+		eq.size = Vector2(cw - 136, 64)
 		eq.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		card.add_child(eq)
 		var plus := Button.new()
 		plus.text = "+"
-		plus.size = Vector2(48, 56)
-		plus.position = Vector2(cw - 64, 296)
-		_style_button(plus, PALETTE["sage"], 30)
+		plus.size = Vector2(52, 56)
+		plus.position = Vector2(cw - 66, 298)
+		_ink_button(plus, PALETTE["sage"], 34, true)
 		plus.pressed.connect(func():
 			cf["equity"] = minf(60.0, float(cf["equity"]) + 5.0)
 			_refresh_capline()
@@ -1694,41 +1780,58 @@ func _rebuild_crew(founder_pct: float) -> void:
 		card.add_child(plus)
 		var vest := Button.new()
 		vest.text = "VESTED ✓" if not no_vest else "NO VESTING ⚠"
-		vest.size = Vector2(cw - 40, 44)
-		vest.position = Vector2(20, 366)
-		_style_button(vest, PALETTE["sage"] if not no_vest else PALETTE["coral"], 24)
+		vest.size = Vector2(cw - 40, 46)
+		vest.position = Vector2(20, 370)
+		_ink_button(vest, PALETTE["sage"] if not no_vest else PALETTE["coral"], 24)
 		if no_vest:
-			vest.add_theme_color_override("font_color", PALETTE["coral"])
+			for cn2 in ["font_color", "font_hover_color", "font_pressed_color"]:
+				vest.add_theme_color_override(cn2, PALETTE["coral"])
 		vest.tooltip_text = "4-year vesting, 1-year cliff. Turning this off is the classic mistake."
 		vest.pressed.connect(func():
 			cf["vesting"] = not bool(cf["vesting"])
 			_sfx_click.play()
 			_refresh_capline())
 		card.add_child(vest)
-		var mood := _label({"happy": "☀ thrilled", "neutral": "steady", "resentful": "⛈ resentful…"}[st], 27,
-			{"happy": PALETTE["sage"], "neutral": Color(PALETTE["cream"], 0.85), "resentful": PALETTE["coral"]}[st])
-		mood.position = Vector2(0, 434)
-		mood.size = Vector2(cw, 36)
+		var mood := _label({"happy": "☀ thrilled", "neutral": "steady", "resentful": "⛈ resentful…"}[st], 28,
+			{"happy": PALETTE["sage"], "neutral": Color(PALETTE["ink"], 0.7), "resentful": PALETTE["coral"]}[st])
+		mood.position = Vector2(0, 438)
+		mood.size = Vector2(cw, 40)
 		mood.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		card.add_child(mood)
-	# recruit slot
+	# the empty chair: a blank founding sheet with nobody's name on it yet
 	if n < MAX_COFOUNDERS:
 		var slot := Button.new()
 		slot.position = Vector2(x0 + (n + 1) * (cw + gap), 0)
-		slot.size = Vector2(cw, 490)
-		slot.text = "☎\n+ RECRUIT"
-		slot.add_theme_font_override("font", _font)
-		slot.add_theme_font_size_override("font_size", 38)
-		slot.add_theme_color_override("font_color", Color(PALETTE["cream"], 0.9))
-		var sb := _crew_card_bg()
-		sb.bg_color = Color(1, 1, 1, 0.02)
-		slot.add_theme_stylebox_override("normal", sb)
-		var sbh := _crew_card_bg()
-		sbh.bg_color = Color(1, 1, 1, 0.08)
-		slot.add_theme_stylebox_override("hover", sbh)
-		slot.add_theme_stylebox_override("pressed", sbh)
+		slot.size = Vector2(cw, ch)
+		slot.text = ""
+		_bare_button(slot)
 		slot.pressed.connect(_add_cofounder)
 		_crew_row.add_child(slot)
+		var spaper := PaperEdge.new()
+		spaper.size = slot.size
+		spaper.thick = 3.0
+		spaper.edge = Color(PALETTE["ink"], 0.5)
+		spaper.lean = 4
+		spaper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(spaper)
+		var phone := _label("☎", 78, Color(PALETTE["ink"], 0.55))
+		phone.position = Vector2(0, 150)
+		phone.size = Vector2(cw, 100)
+		phone.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		phone.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(phone)
+		var scap := _dlabel("+ RECRUIT", 32, PALETTE["ink"])
+		scap.position = Vector2(0, 266)
+		scap.size = Vector2(cw, 44)
+		scap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		scap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(scap)
+		var shint := _label("an empty chair", 26, Color(PALETTE["ink"], 0.5))
+		shint.position = Vector2(0, 316)
+		shint.size = Vector2(cw, 36)
+		shint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		shint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(shint)
 
 func _react_crew(i: int, positive: bool) -> void:
 	if i < 0 or i >= _crew_sprites.size():
@@ -1754,76 +1857,6 @@ func _cf_state(cf: Dictionary, n: int) -> String:
 	if eq >= fair * 1.15:
 		return "happy"
 	return "neutral"
-
-func _render_team(founder_pct: float) -> void:
-	_rebuild_crew(founder_pct)
-	return
-
-	if _team_stage == null:
-		return
-	# founder mini: your own archetype, drooping once you lose the majority
-	if _founder_mini and not _sel_arch.is_empty():
-		var still := "res://assets/sprites/%s.png" % String(_sel_arch.get("sprite", ""))
-		if ResourceLoader.exists(still) and _founder_mini.texture == null:
-			_founder_mini.texture = load(still)
-		var droop := 0.14 if founder_pct < 50.0 else 0.0
-		var ft := create_tween()
-		ft.tween_property(_founder_mini, "rotation", droop, 0.3)
-		_founder_mini.modulate = Color(1, 1, 1, 1) if founder_pct >= 50.0 else Color(0.85, 0.85, 0.85, 1)
-	if founder_pct < _last_founder_pct - 0.5 and _founder_mini:
-		var dots := _label("…", 30, PALETTE["cream"])
-		dots.position = _founder_mini.position + Vector2(84, -24)
-		_team_stage.add_child(dots)
-		var dt := create_tween()
-		dt.tween_property(dots, "position:y", dots.position.y - 30.0, 0.9)
-		dt.parallel().tween_property(dots, "modulate:a", 0.0, 0.9)
-		dt.tween_callback(dots.queue_free)
-	_last_founder_pct = founder_pct
-	# cofounder cast: create/update/remove to match the row list
-	while _team_nodes.size() > _cofounders.size():
-		var gone: TextureRect = _team_nodes.pop_back()
-		var gt := create_tween()
-		gt.tween_property(gone, "modulate:a", 0.0, 0.18)
-		gt.parallel().tween_property(gone, "position:y", gone.position.y + 40.0, 0.18)
-		gt.tween_callback(gone.queue_free)
-	for i in _cofounders.size():
-		var cf: Dictionary = _cofounders[i]
-		var slug: String = ROLE_SLUGS.get(ROLES[int(cf["role"])], "technical")
-		var st := _cf_state(cf, _cofounders.size())
-		var path := _cf_art(slug, st)
-		if i >= _team_nodes.size():
-			var node := TextureRect.new()
-			node.size = Vector2(104, 104)
-			node.position = Vector2(132 + i * 78, -60)
-			node.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			node.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			node.pivot_offset = Vector2(52, 104)
-			node.modulate.a = 0.0
-			if ResourceLoader.exists(path):
-				node.texture = load(path)
-			_team_stage.add_child(node)
-			_team_nodes.append(node)
-			var drop := create_tween()
-			drop.tween_property(node, "modulate:a", 1.0, 0.1)
-			drop.parallel().tween_property(node, "position:y", 252.0, 0.28).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-			drop.tween_property(node, "scale", Vector2(1.12, 0.88), 0.07)
-			drop.tween_property(node, "scale", Vector2.ONE, 0.12)
-		else:
-			var node2: TextureRect = _team_nodes[i]
-			if ResourceLoader.exists(path) and (node2.texture == null or node2.texture.resource_path != path):
-				node2.texture = load(path)
-
-func _react_team_member(i: int, positive: bool) -> void:
-	if i < 0 or i >= _team_nodes.size():
-		return
-	var node: TextureRect = _team_nodes[i]
-	var tw := create_tween()
-	if positive:
-		tw.tween_property(node, "position:y", 232.0, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		tw.tween_property(node, "position:y", 252.0, 0.16).set_trans(Tween.TRANS_BOUNCE)
-	else:
-		for off in [-6.0, 6.0, -4.0, 0.0]:
-			tw.tween_property(node, "rotation", off * 0.02, 0.05)
 
 func _do_launch() -> void:
 	var cfs: Array = []
@@ -1875,6 +1908,63 @@ class HandRule:
 			pts.append(Vector2(t * length, 6.0 + sin(t * 5.0) * 1.8 + sin(t * 14.0) * 0.8))
 		draw_polyline(pts, color, 6.0)
 
+class InkTag:
+	extends Control
+	## A pen mark, not a box: a wobbly outline with NO fill and no corner radius.
+	## `shape` 0 rings a word, 1 rings an object. This is what replaced every
+	## filled rounded rectangle on these screens — a form control fills, a pen
+	## only ever draws a line around something that is already there.
+	var color := Color("1E1E1E")
+	var thick := 3.5
+	var shape := 0
+	var wobble_seed := 3
+
+	func _ready() -> void:
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if size.x < 4.0 or size.y < 4.0:
+			return
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 17 + wobble_seed
+		var pts := PackedVector2Array()
+		if shape == 1:
+			var c := size / 2.0
+			for i in 41:
+				var a := TAU * float(i) / 40.0
+				var k := 1.0 + sin(a * 3.0 + wobble_seed) * 0.03 + sin(a * 7.0) * 0.015
+				pts.append(c + Vector2(cos(a) * (c.x - thick) * k, sin(a) * (c.y - thick) * k))
+		else:
+			var inset := thick * 0.5 + 2.0
+			var corners := [Vector2(inset, inset), Vector2(size.x - inset, inset),
+				Vector2(size.x - inset, size.y - inset), Vector2(inset, size.y - inset)]
+			for i in 4:
+				var a: Vector2 = corners[i]
+				var b: Vector2 = corners[(i + 1) % 4]
+				var n := Vector2(b.y - a.y, a.x - b.x).normalized()
+				for k2 in 10:
+					pts.append(a.lerp(b, float(k2) / 9.0) + n * rng.randf_range(-1.7, 1.7))
+			pts.append(pts[0])
+		draw_polyline(pts, color, thick, true)
+
+
+class PenCross:
+	extends Control
+	## Scribbled out in pen — how the log book retires something that is gone.
+	var color := Color(Color("E86A5C"), 0.78)
+	func _draw() -> void:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 29
+		for pair in [[Vector2(0.08, 0.10), Vector2(0.92, 0.90)], [Vector2(0.92, 0.12), Vector2(0.08, 0.88)]]:
+			var a := Vector2(size.x * pair[0].x, size.y * pair[0].y)
+			var b := Vector2(size.x * pair[1].x, size.y * pair[1].y)
+			var n := Vector2(b.y - a.y, a.x - b.x).normalized()
+			var pts := PackedVector2Array()
+			for k in 22:
+				pts.append(a.lerp(b, float(k) / 21.0) + n * rng.randf_range(-3.5, 3.5))
+			draw_polyline(pts, color, 5.0, true)
+
+
 class PaperEdge:
 	extends Control
 	## a card cut from the same paper as the journal: a real shadow, a cream
@@ -1907,49 +1997,6 @@ class PaperEdge:
 			acc += seg
 		pts.append(pts[0])
 		draw_polyline(pts, edge, thick, true)
-
-class RadarChart:
-	extends Control
-	var stats: Dictionary = {}
-	var progress := 1.0   # 0..1 sweep-in animation
-	var line_color := Color("1E1E1E")
-	var fill_color := Color(Color("E86A5C"), 0.45)
-	var edge_color := Color("E86A5C")
-	var label_color := Color(Color("1E1E1E"), 0.7)
-
-	func set_stats(s: Dictionary) -> void:
-		stats = s
-		queue_redraw()
-
-	func _ready() -> void:
-		queue_redraw()
-
-	func _draw() -> void:
-		var center := size / 2.0
-		var radius := minf(size.x, size.y) / 2.0 - 20.0
-		var n := FounderDraftScreen.STAT_NAMES.size()
-		for ring in [0.33, 0.66, 1.0]:
-			var pts := PackedVector2Array()
-			for i in n + 1:
-				var ang := -PI / 2.0 + TAU * i / n
-				pts.append(center + Vector2(cos(ang), sin(ang)) * radius * ring)
-			draw_polyline(pts, Color(line_color, 0.25), 1.5)
-		var font: Font = load("res://assets/fonts/PatrickHand-Regular.ttf")
-		for i in n:
-			var ang := -PI / 2.0 + TAU * i / n
-			var tip := center + Vector2(cos(ang), sin(ang)) * radius
-			draw_line(center, tip, Color(line_color, 0.25), 1.5)
-			var lpos := center + Vector2(cos(ang), sin(ang)) * (radius + 14.0)
-			draw_string(font, lpos + Vector2(-20, 5), FounderDraftScreen.STAT_LABELS[i], HORIZONTAL_ALIGNMENT_CENTER, 48, 14, label_color)
-		var poly := PackedVector2Array()
-		for i in n:
-			var ang := -PI / 2.0 + TAU * i / n
-			var v := float(stats.get(FounderDraftScreen.STAT_NAMES[i], 0)) / 5.0 * clampf(progress, 0.02, 1.0)
-			poly.append(center + Vector2(cos(ang), sin(ang)) * radius * v)
-		draw_colored_polygon(poly, fill_color)
-		poly.append(poly[0])
-		draw_polyline(poly, edge_color, 3.5)
-
 
 class StatPips:
 	extends Control
@@ -1988,18 +2035,6 @@ class EllipseShadow:
 			var a := TAU * i / 40.0
 			pts.append(c + Vector2(cos(a) * c.x, sin(a) * c.y))
 		draw_colored_polygon(pts, Color(0.04, 0.04, 0.04, 0.35))
-
-
-class EllipseGlow:
-	extends Control
-	func _draw() -> void:
-		var c := size / 2.0
-		for layer in [[1.0, 0.10], [0.8, 0.10], [0.6, 0.12]]:
-			var pts := PackedVector2Array()
-			for i in 48:
-				var a := TAU * i / 48.0
-				pts.append(c + Vector2(cos(a) * c.x * layer[0], sin(a) * c.y * layer[0]))
-			draw_colored_polygon(pts, Color(Color("F2EAD3"), layer[1]))
 
 
 class SpotlightFallback:
