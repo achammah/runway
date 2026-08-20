@@ -85,6 +85,9 @@ var _name_witness: TextureRect
 var _spinning := false
 var _what_chips: Array = []
 var _who_chips: Array = []
+var _crew_body: Control
+var _empty_note: Label
+var _ink_cache: Dictionary = {}
 
 
 
@@ -176,6 +179,109 @@ func _fmt_money(v: int) -> String:
 func _load_json(path: String) -> Dictionary:
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
 	return parsed if parsed is Dictionary else {}
+
+## Object art is decomposed out of generated scenes, and a few sheets came back
+## carrying a fragment of the object that stood next to them: a guitar peg under
+## the ping-pong paddle, a sliver beside the savings jar, a chip below the old
+## server. At cell size those read as dirt on the screen, and they also shrink
+## the real object, because an aspect fit has to leave room for them. So an
+## object is drawn through its own ink: the alpha is profiled, ink that is
+## stranded far from the main mass is cut away, and what is left is served as an
+## AtlasTexture — the same trim the consultant's loop frames already use.
+## Characters are NOT run through this; their framing is deliberate.
+func _clean_tex(path: String) -> Texture2D:
+	if _ink_cache.has(path):
+		return _ink_cache[path]
+	if not ResourceLoader.exists(path):
+		_ink_cache[path] = null
+		return null
+	var tex: Texture2D = load(path)
+	var out: Texture2D = tex
+	var img: Image = tex.get_image() if tex else null
+	if img != null:
+		if img.is_compressed():
+			img.decompress()
+		if img.get_format() != Image.FORMAT_RGBA8:
+			img.convert(Image.FORMAT_RGBA8)
+		var w := img.get_width()
+		var h := img.get_height()
+		var data := img.get_data()
+		# profiled at every second pixel: the fragments are tens of pixels wide,
+		# and a full scan of every item sheet is time the player waits for
+		var pw := (w + 1) / 2
+		var ph := (h + 1) / 2
+		var cols := PackedInt32Array()
+		cols.resize(pw)
+		var rows := PackedInt32Array()
+		rows.resize(ph)
+		var y := 0
+		while y < h:
+			var base := y * w * 4
+			var x := 0
+			while x < w:
+				if data[base + x * 4 + 3] > 24:
+					rows[y >> 1] += 1
+					cols[x >> 1] += 1
+				x += 2
+			y += 2
+		var vs := _main_span(rows, ph)
+		var hs := _main_span(cols, pw)
+		var rx := maxi(0, hs.x * 2 - 1)
+		var ry := maxi(0, vs.x * 2 - 1)
+		var rw := mini(w - rx, (hs.y - hs.x) * 2 + 2)
+		var rh := mini(h - ry, (vs.y - vs.x) * 2 + 2)
+		if rw > 8 and rh > 8 and (rx > 0 or ry > 0 or rw < w or rh < h):
+			var at := AtlasTexture.new()
+			at.atlas = tex
+			at.region = Rect2(rx, ry, rw, rh)
+			out = at
+	_ink_cache[path] = out
+	return out
+
+## The run of ink to keep along one axis. Ink stranded more than a tenth of the
+## sprite away from the main mass is a leftover from a neighbour; ink that is
+## merely detached — the sleeping roommate's zZZ, three pixels above his head —
+## belongs to the object and stays. Size cannot tell those apart. Distance can,
+## so the test is the width of the GAP, with a size guard so a genuinely large
+## second mass is never cut.
+func _main_span(prof: PackedInt32Array, n: int) -> Vector2i:
+	var runs: Array = []
+	var st := -1
+	var ink := 0
+	for i in n:
+		if prof[i] > 0:
+			if st < 0:
+				st = i
+				ink = 0
+			ink += prof[i]
+		elif st >= 0:
+			runs.append([st, i, ink])
+			st = -1
+	if st >= 0:
+		runs.append([st, n, ink])
+	if runs.is_empty():
+		return Vector2i(0, n)
+	var best := 0
+	for i in runs.size():
+		if int(runs[i][2]) > int(runs[best][2]):
+			best = i
+	var gap_max := int(round(float(n) * 0.10))
+	var keep_ink: int = int(runs[best][2]) / 5
+	var lo: int = int(runs[best][0])
+	var hi: int = int(runs[best][1])
+	var b := best - 1
+	while b >= 0:
+		if lo - int(runs[b][1]) > gap_max and int(runs[b][2]) < keep_ink:
+			break
+		lo = int(runs[b][0])
+		b -= 1
+	var f := best + 1
+	while f < runs.size():
+		if int(runs[f][0]) - hi > gap_max and int(runs[f][2]) < keep_ink:
+			break
+		hi = int(runs[f][1])
+		f += 1
+	return Vector2i(lo, hi)
 
 func _show_page(i: int) -> void:
 	_page = i
@@ -826,9 +932,7 @@ func _shape_card(spec: Array, pos: Vector2, is_what: bool) -> Button:
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(icon)
-	var ip := "res://assets/sprites/%s.png" % String(spec[1])
-	if ResourceLoader.exists(ip):
-		icon.texture = load(ip)
+	icon.texture = _clean_tex("res://assets/sprites/%s.png" % String(spec[1]))
 	var nm := _dlabel(String(spec[0]).to_upper(), 30, PALETTE["ink"])
 	nm.name = "nm"
 	nm.position = Vector2(20, 128)
@@ -889,18 +993,27 @@ func _build_crew_page() -> Control:
 	add_child(page)
 	_dim(page)
 
+	# everything this page owns hangs off ONE holder, so opening the recruit call
+	# can take the whole screen away instead of dimming it. A dim leaves the title
+	# and the cap table legible under the modal, and then two headings are on
+	# screen at once and the player cannot tell which one they are answering.
+	_crew_body = Control.new()
+	_crew_body.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_crew_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.add_child(_crew_body)
+
 	var title := _ink_outline(_dlabel("THE CREW", 56, PALETTE["cream"]))
 	title.position = Vector2(60, 26)
-	page.add_child(title)
-	_rule_under(page, "THE CREW", 56, Vector2(60, 26))
+	_crew_body.add_child(title)
+	_rule_under(_crew_body, "THE CREW", 56, Vector2(60, 26))
 	var sub := _label("Recruit cofounders. Split the company. They will remember the split.", 28, Color(PALETTE["cream"], 0.85))
 	sub.position = Vector2(64, 116)
-	page.add_child(sub)
+	_crew_body.add_child(sub)
 
 	_crew_row = Control.new()
 	_crew_row.position = Vector2(24, 190)
 	_crew_row.size = Vector2(1176, 512)
-	page.add_child(_crew_row)
+	_crew_body.add_child(_crew_row)
 
 	# the cap table is a chart pinned up beside the crew, not a pie floating in
 	# the dark: it is drawn on paper and captioned in the founder's own hand
@@ -911,17 +1024,17 @@ func _build_crew_page() -> Control:
 	dsheet.lean = 2
 	dsheet.rotation = 0.012
 	dsheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	page.add_child(dsheet)
+	_crew_body.add_child(dsheet)
 	_donut = CapTableDonut.new()
 	(_donut as CapTableDonut).text_color = PALETTE["ink"]
 	_donut.position = Vector2(1240, 206)
 	_donut.size = Vector2(210, 210)
-	page.add_child(_donut)
+	_crew_body.add_child(_donut)
 	var dcap := _label("the cap table", 26, Color(PALETTE["ink"], 0.6))
 	dcap.position = Vector2(1236, 430)
 	dcap.size = Vector2(218, 36)
 	dcap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	page.add_child(dcap)
+	_crew_body.add_child(dcap)
 
 	var back := Button.new()
 	back.text = "←"
@@ -931,7 +1044,7 @@ func _build_crew_page() -> Control:
 	_paper_card(back)
 	_juice(back)
 	back.pressed.connect(func(): _transition_to(2))
-	page.add_child(back)
+	_crew_body.add_child(back)
 	var next := Button.new()
 	next.text = "NEXT: FIRST MONEY  →"
 	next.position = Vector2(1090, 920)
@@ -942,7 +1055,7 @@ func _build_crew_page() -> Control:
 	next.pressed.connect(func():
 		_sfx_click.play()
 		_transition_to(4))
-	page.add_child(next)
+	_crew_body.add_child(next)
 
 	# recruit modal lives above everything on this page
 	_recruit_layer = Control.new()
@@ -997,17 +1110,28 @@ func _first_free_role() -> int:
 			return i
 	return 0
 
+## The call takes the screen. Not a dim over the crew — a dim leaves the ghost
+## of the cards, the donut and a SECOND title showing through, and the eye cannot
+## tell which screen it is on. The crew is hidden outright; what stays behind the
+## cards is the same stage every other page in this flow stands on.
+func _close_recruit() -> void:
+	_recruit_layer.visible = false
+	if _crew_body:
+		_crew_body.visible = true
+
 func _open_recruit() -> void:
 	for c in _recruit_layer.get_children():
 		c.queue_free()
 	_recruit_layer.visible = true
+	if _crew_body:
+		_crew_body.visible = false
 	var shade := ColorRect.new()
-	shade.color = Color(0.05, 0.05, 0.06, 0.9)
+	shade.color = Color(0.05, 0.05, 0.06, 0.55)
 	shade.size = Vector2(1536, 1024)
 	_recruit_layer.add_child(shade)
 	shade.gui_input.connect(func(ev):
 		if ev is InputEventMouseButton and ev.pressed:
-			_recruit_layer.visible = false)
+			_close_recruit())
 	# no board behind this. It used to be a dark rounded rectangle with a cream
 	# border — a web modal. The dimmed stage IS the modal; the five paper cards
 	# lie straight on it, the way the money cards lie on the stage one page on.
@@ -1028,7 +1152,7 @@ func _open_recruit() -> void:
 		if not taken:
 			_juice(card)
 		card.pressed.connect(func():
-			_recruit_layer.visible = false
+			_close_recruit()
 			_cofounders.append({"role": i, "commitment": 0, "equity": 25.0, "vesting": true, "fresh": true})
 			_sfx_click.play()
 			_refresh_capline())
@@ -1074,17 +1198,22 @@ func _open_recruit() -> void:
 			card.add_child(got)
 	# the ask is the same for every role — stating it five times is the screen
 	# repeating itself, so it is said once, under the row
+	# the ask and the way out are ONE line under the row: same band, same type
+	# size, the button's right edge on the last card's right edge. They used to
+	# sit at two heights and two weights, which is what made the bottom scatter.
 	var ask := _label("whoever you call will want ~25% of the company.", 28, PALETTE["coral"])
-	ask.position = Vector2(190, 760)
+	ask.position = Vector2(190, 764)
+	ask.size = Vector2(760, 62)
+	ask.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_recruit_layer.add_child(ask)
 	var cancel := Button.new()
 	cancel.text = "☎ nobody. hang up."
-	cancel.position = Vector2(1064, 750)
+	cancel.position = Vector2(1032, 764)
 	cancel.size = Vector2(320, 62)
-	_style_button(cancel, PALETTE["blue"], 26)
+	_style_button(cancel, PALETTE["blue"], 28)
 	_paper_card(cancel)
 	_juice(cancel)
-	cancel.pressed.connect(func(): _recruit_layer.visible = false)
+	cancel.pressed.connect(_close_recruit)
 	_recruit_layer.add_child(cancel)
 
 func _build_money_page() -> Control:
@@ -1101,7 +1230,7 @@ func _build_money_page() -> Control:
 	page.add_child(sub)
 
 	var display := {
-		"bootstrap": {"icon": "itm_savings_jar", "big": "your savings", "cost": "you keep 100%", "cost_col": "sage", "flavor": "Ramen. Focus. Freedom."},
+		"bootstrap": {"icon": "itm_savings_jar", "big": "+$0", "cost": "you keep 100%", "cost_col": "sage", "flavor": "Your savings and nothing else. Ramen. Focus. Freedom."},
 		"fnf": {"icon": "itm_goodwill", "big": "+$15,000", "cost": "−5% · dilutes EVERYONE", "cost_col": "coral", "flavor": "Awkward Thanksgiving if this fails."},
 		"angel": {"icon": "itm_dignity", "big": "+$50,000", "cost": "−12% · dilutes EVERYONE", "cost_col": "coral", "flavor": "The angel replies only in voice memos."},
 	}
@@ -1126,9 +1255,7 @@ func _build_money_page() -> Control:
 		icon.position = Vector2(125, 30)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		var ip := "res://assets/sprites/%s.png" % String(d.get("icon", ""))
-		if ResourceLoader.exists(ip):
-			icon.texture = load(ip)
+		icon.texture = _clean_tex("res://assets/sprites/%s.png" % String(d.get("icon", "")))
 		card.add_child(icon)
 		var nm := _dlabel(String(f["name"]), 30, PALETTE["ink"])
 		nm.position = Vector2(20, 196)
@@ -1262,9 +1389,7 @@ func _build_bag_page() -> Control:
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ib.add_child(art)
-		var ipath := "res://assets/sprites/%s.png" % String(def["id"])
-		if ResourceLoader.exists(ipath):
-			art.texture = load(ipath)
+		art.texture = _clean_tex("res://assets/sprites/%s.png" % String(def["id"]))
 		var ring := InkTag.new()
 		ring.name = "packed"
 		ring.color = PALETTE["coral"]
@@ -1289,10 +1414,12 @@ func _build_bag_page() -> Control:
 			page.add_child(wt)
 		gi += 1
 
-	# detail panel — what the thing is FOR
+	# detail panel — what the thing is FOR, cut to the size of what it says. It
+	# was a 430x520 sheet holding a name and two lines, which made it the equal of
+	# the shelf beside it: three big cream rectangles all shouting at once.
 	var dp := Control.new()
-	dp.position = Vector2(730, 180)
-	dp.size = Vector2(430, 520)
+	dp.position = Vector2(760, 200)
+	dp.size = Vector2(340, 400)
 	dp.rotation = 0.007
 	page.add_child(dp)
 	var dp_sheet := PaperEdge.new()
@@ -1302,73 +1429,96 @@ func _build_bag_page() -> Control:
 	dp_sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dp.add_child(dp_sheet)
 	_bagd_art = TextureRect.new()
-	_bagd_art.size = Vector2(190, 190)
-	_bagd_art.position = Vector2(120, 26)
+	_bagd_art.size = Vector2(150, 150)
+	_bagd_art.position = Vector2(95, 18)
 	_bagd_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_bagd_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	dp.add_child(_bagd_art)
-	_bagd_name = _dlabel("", 34, PALETTE["ink"])
-	_bagd_name.position = Vector2(30, 232)
-	_bagd_name.size = Vector2(370, 50)
+	_bagd_name = _dlabel("", 30, PALETTE["ink"])
+	_bagd_name.position = Vector2(10, 176)
+	_bagd_name.size = Vector2(320, 44)
 	_bagd_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	dp.add_child(_bagd_name)
 	var rule := HandRule.new()
-	rule.length = 120.0
+	rule.length = 110.0
 	rule.color = PALETTE["coral"]
-	rule.size = Vector2(120, 14)
-	rule.position = Vector2(155, 284)
+	rule.size = Vector2(110, 14)
+	rule.position = Vector2(115, 226)
 	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dp.add_child(rule)
-	_bagd_blurb = _label("", 27, PALETTE["ink"])
-	_bagd_blurb.position = Vector2(36, 310)
+	_bagd_blurb = _label("", 26, PALETTE["ink"])
+	_bagd_blurb.position = Vector2(30, 248)
 	_bagd_blurb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_wrap(_bagd_blurb, 360.0)
+	_wrap(_bagd_blurb, 280.0)
 	dp.add_child(_bagd_blurb)
 	_bagd_cost = _label("", 24, Color(PALETTE["ink"], 0.6))
-	_bagd_cost.position = Vector2(36, 452)
-	_bagd_cost.size = Vector2(360, 34)
+	_bagd_cost.position = Vector2(16, 356)
+	_bagd_cost.size = Vector2(308, 34)
 	_bagd_cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	dp.add_child(_bagd_cost)
 
-	# the box, and the manifest taped under it. BUG-06: what was packed showed as
-	# a row of ~70px unlabelled stickers floating on the dark stage — you could
-	# not read them. They are now a written packing list on paper: a 64px icon
-	# and the thing's NAME per line, with the slot count as the sheet's heading.
+	# WHAT IS PACKED IS WRITTEN ON THE BOX. It used to be a third cream panel the
+	# size of the other two, and at 0/4 that panel was a large blank rectangle —
+	# the loudest thing on the screen. A moving box already stands here doing
+	# nothing, and a shipping label is exactly what a moving box is written on,
+	# so the manifest is now stuck to it and the panel is gone.
 	var box := TextureRect.new()
-	if ResourceLoader.exists("res://assets/sprites/env_boxes.png"):
-		box.texture = load("res://assets/sprites/env_boxes.png")
-	box.size = Vector2(250, 250)
-	box.position = Vector2(1198, 176)
+	box.size = Vector2(340, 460)
+	box.position = Vector2(1140, 126)
 	box.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	box.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	box.texture = _clean_tex("res://assets/sprites/env_boxes.png")
 	page.add_child(box)
-	_box_anchor = box.position + Vector2(125, 100)
-	var manifest := PaperEdge.new()
-	manifest.position = Vector2(1158, 436)
-	manifest.size = Vector2(310, 372)
-	manifest.thick = 4.0
-	manifest.lean = 1
-	manifest.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	page.add_child(manifest)
-	var mh := _dlabel("IN THE BAG", 32, PALETTE["ink"])
-	mh.position = Vector2(1194, 452)
-	page.add_child(mh)
-	_slots_label = _dlabel("SLOTS 0/4", 30, PALETTE["coral"])
-	_slots_label.position = Vector2(1194, 494)
-	_slots_label.size = Vector2(264, 40)
-	page.add_child(_slots_label)
+	# the label covers the bottom box and stops where the box stops. Laid across
+	# the middle of the stack it left the box's tapering foot showing under it,
+	# which read as a paper tail rather than as a box.
+	var tag := Control.new()
+	tag.position = Vector2(1178, 352)
+	tag.size = Vector2(288, 238)
+	tag.pivot_offset = tag.size / 2.0
+	tag.rotation = -0.018
+	page.add_child(tag)
+	_box_anchor = tag.position + tag.size / 2.0
+	var tag_paper := PaperEdge.new()
+	tag_paper.size = tag.size
+	tag_paper.thick = 4.0
+	tag_paper.lean = 3
+	tag_paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.add_child(tag_paper)
+	_slots_label = _dlabel("IN THE BAG · 0/4", 28, PALETTE["ink"])
+	_slots_label.position = Vector2(18, 12)
+	_slots_label.size = Vector2(252, 38)
+	tag.add_child(_slots_label)
 	var mrule := HandRule.new()
-	mrule.length = 262.0
+	mrule.length = 252.0
 	mrule.color = Color(PALETTE["sage"], 0.8)
-	mrule.size = Vector2(262, 14)
-	mrule.position = Vector2(1194, 532)
+	mrule.size = Vector2(252, 14)
+	mrule.position = Vector2(18, 52)
 	mrule.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	page.add_child(mrule)
+	tag.add_child(mrule)
+	# four printed rules, one per slot. An empty label was a blank cream field —
+	# the loudest thing on the screen when nothing is packed yet. Ruled, the same
+	# emptiness reads as a form waiting to be filled in, and the names that arrive
+	# sit ON the ruling instead of floating in the middle of it.
+	for i in 4:
+		var srule := HandRule.new()
+		srule.length = 252.0
+		srule.color = Color(PALETTE["ink"], 0.15)
+		srule.size = Vector2(252, 14)
+		srule.position = Vector2(18, 96.0 + i * 36.0)
+		srule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tag.add_child(srule)
+	_empty_note = _label("nothing packed yet.", 25, Color(PALETTE["ink"], 0.5))
+	_empty_note.position = Vector2(18, 76)
+	_empty_note.size = Vector2(252, 36)
+	_empty_note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.add_child(_empty_note)
 	_packed_row = VBoxContainer.new()
-	_packed_row.position = Vector2(1190, 552)
-	_packed_row.size = Vector2(272, 240)
-	_packed_row.add_theme_constant_override("separation", 4)
-	page.add_child(_packed_row)
+	_packed_row.position = Vector2(18, 72)
+	_packed_row.size = Vector2(252, 148)
+	_packed_row.add_theme_constant_override("separation", 0)
+	tag.add_child(_packed_row)
+	_refresh_packed()
 
 	var sum_strip := PaperEdge.new()
 	sum_strip.position = Vector2(48, 832)
@@ -1408,9 +1558,7 @@ func _build_bag_page() -> Control:
 func _bag_detail(def: Dictionary) -> void:
 	if _bagd_name == null:
 		return
-	var ipath := "res://assets/sprites/%s.png" % String(def["id"])
-	if ResourceLoader.exists(ipath):
-		_bagd_art.texture = load(ipath)
+	_bagd_art.texture = _clean_tex("res://assets/sprites/%s.png" % String(def["id"]))
 	_bagd_name.text = String(def["name"])
 	_bagd_blurb.text = String(def.get("blurb", ""))
 	var cost := int(def.get("carry_cost", 1))
@@ -1485,43 +1633,49 @@ func _toggle_bag(id: String, cost: int, btn: Button) -> void:
 			ft.tween_callback(fly.queue_free)
 	_sfx_click.play()
 	_refresh_capline()
-	if _packed_row:
-		for c in _packed_row.get_children():
-			c.queue_free()
-		for bid in _bag:
-			var nm := String(bid)
-			for d in content_items:
-				if String(d["id"]) == String(bid):
-					nm = String(d.get("name", bid))
-			var line := Button.new()
-			line.custom_minimum_size = Vector2(272, 58)
-			line.size = Vector2(272, 58)
-			_bare_button(line)
-			line.tooltip_text = "take it back out"
-			line.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-			var chip_id := String(bid)
-			line.pressed.connect(func():
-				var owner_btn: Button = _bag_btns.get(chip_id)
-				if owner_btn:
-					_toggle_bag(chip_id, 0, owner_btn))
-			_packed_row.add_child(line)
-			var ic := TextureRect.new()
-			ic.size = Vector2(56, 54)
-			ic.position = Vector2(0, 2)
-			ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			var cp := "res://assets/sprites/%s.png" % bid
-			if ResourceLoader.exists(cp):
-				ic.texture = load(cp)
-			line.add_child(ic)
-			var nl := _label(nm, 26, PALETTE["ink"])
-			nl.position = Vector2(66, 10)
-			nl.size = Vector2(202, 38)
-			nl.autowrap_mode = TextServer.AUTOWRAP_OFF
-			nl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-			nl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			line.add_child(nl)
+	_refresh_packed()
+
+## The packing list, written on the shipping label in the founder's own hand:
+## a ticked line per thing, clickable to take it back out. Icons came off the
+## lines when the list moved onto the box — at label width a 56px thumbnail
+## beside every name is fifteen more shapes on a screen already called clogged,
+## and the object itself is already on the shelf two hand-spans to the left.
+func _refresh_packed() -> void:
+	if _packed_row == null:
+		return
+	for c in _packed_row.get_children():
+		c.queue_free()
+	if _empty_note:
+		_empty_note.visible = _bag.is_empty()
+	for bid in _bag:
+		var nm := String(bid)
+		for d in content_items:
+			if String(d["id"]) == String(bid):
+				nm = String(d.get("name", bid))
+		var line := Button.new()
+		line.custom_minimum_size = Vector2(252, 36)
+		line.size = Vector2(252, 36)
+		_bare_button(line)
+		line.tooltip_text = "take it back out"
+		line.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		var chip_id := String(bid)
+		line.pressed.connect(func():
+			var owner_btn: Button = _bag_btns.get(chip_id)
+			if owner_btn:
+				_toggle_bag(chip_id, 0, owner_btn))
+		_packed_row.add_child(line)
+		var tick := _label("✓", 26, PALETTE["coral"])
+		tick.position = Vector2(0, -2)
+		tick.size = Vector2(24, 36)
+		tick.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		line.add_child(tick)
+		var nl := _label(nm, 26, PALETTE["ink"])
+		nl.position = Vector2(26, -2)
+		nl.size = Vector2(224, 36)
+		nl.autowrap_mode = TextServer.AUTOWRAP_OFF
+		nl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		nl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		line.add_child(nl)
 
 ## The YC-canon trap detector.
 func _compute_traps() -> Array:
@@ -1594,7 +1748,7 @@ func _refresh_capline() -> void:
 			for def in content_items:
 				if def["id"] == bid:
 					used += int(def.get("carry_cost", 1))
-		_slots_label.text = "SLOTS %d/4" % used
+		_slots_label.text = "IN THE BAG · %d/4" % used
 	if _bag_summary:
 		var n_cf: int = _cofounders.size()
 		_bag_summary.text = "%s · %s · %d %s · you keep %.0f%% · ~$%s day one" % [
