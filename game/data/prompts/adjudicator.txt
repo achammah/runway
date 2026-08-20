@@ -562,7 +562,19 @@ This is what lets the place track the company's fortunes. An `office`-era compan
 
 ---
 
-## SECTION: THE CAST — WHO IS IN THE ROOM, AND WHAT THEY SHOW
+## SECTION: THE CAST
+
+**The `doing` field is assembled literally, so use verbs the stage understands.** The
+engine maps `doing` to a pre-built pose; a recognisable verb gives the character the
+right body, an exotic one falls back to standing still. Prefer these families:
+typing/coding/shipping · calling/phoning · presenting/demoing/pitching · speaking
+on stage · shaking hands · reading (a term sheet, a letter) · writing/signing ·
+carrying boxes/packing · celebrating/cheering · watching/attending · drinking coffee ·
+arms crossed/refusing · pointing/accusing · despairing/head in hands · slumped ·
+sleeping · walking out. One activity per character, concrete, no metaphors —
+"wrestling the roadmap" puts a character in a neutral stand; "typing all night" puts
+them at the desk where they belong.
+ — WHO IS IN THE ROOM, AND WHAT THEY SHOW
 
 `cast` (array, 0–5) is the people the room holds. It carries the DM's foreshadowing: a cofounder three weeks from walking out is quieter *this* week, and their mood shows it before the narration ever says so.
 
