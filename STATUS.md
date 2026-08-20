@@ -18,18 +18,24 @@ labels. That must never be the recovery path again. Git now covers this too.
 
 | | |
 |---|---|
-| Compiles | yes, 0 script errors on parse |
-| Smoke | SMOKE PASS |
-| Authored events | 65 |
-| Full run | reaches all five eras: garage → coworking → office → floor → hq |
-| Runtime | **37 errors per full run** (see BUG-04) and **an infinite loop** (BUG-05) |
-| Scene art | 3,574 PNGs, 0 damaged (`tools/scene_pipeline.py verify`) |
-| Loops | 8 empty-stage loops, 48 frames each |
-| Cast | 27 sprites: 4 founders × 5 cofounder types × fine / burnt / gone |
-| Crew geometry | 25 crew marks + 20 occluders across 5 eras |
-| Music | 5 loops + 4 stings + 2 stems, wired |
+| Compiles | 29 scripts, smoke gate green (now also requires can_instantiate + zero SCRIPT ERROR) |
+| Full run | reaches all five eras and ENDS (IPO / acquisition / death / 78-week cap) |
+| Background library | **516 empty rooms**, verified intact and empty; +183-scene expansion packs authored |
+| Generative turn | WIRED and proven live: lock → DM (one call, fast tier, luna) → art renders while the player reads → the scene becomes the room |
+| The proof | a live turn composed the player's real move into the image: founder on the phone, burnt cofounder soldering, headline over the scene |
+| Blank-scenes architecture | piloted and greenlit — slots + 500-pose library + programmatic assembly = instant, free turns |
+| QA | 45 captures read individually; 12 verified blockers, all routed |
 
----
+### Running now (7 lanes, one file each)
+| lane | fixes / builds |
+|---|---|
+| FIX-JOURNAL | decision lock never lights (CRITICAL), week 1 missing, option icons, icon cell heights |
+| FIX-SHELL | 10-30px icons, overrun warning honesty, pen-circle scaling |
+| FIX-BEATS | text off the page on THE MOVE, acquisition showing the IPO bell, mid-fade capture |
+| FIX-CORE | harness photographing the wrong archetype, art-on capture, sub-24px handwriting, keyless silent no-op |
+| POSES | 21 characters × 24 canonical poses (~500 sprites), keyed, eye-coords extracted |
+| SLOTS | typed slots for all 516 scenes with overlay verification |
+| ASSEMBLER | SceneStage: instant programmatic scene assembly + free in-engine life |
 
 ## 2. OPEN ISSUES — playtest, 2026-08-19
 
