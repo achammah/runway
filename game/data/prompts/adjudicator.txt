@@ -453,11 +453,17 @@ You are not a per-turn judge scoring a move in isolation. You are a dungeon mast
 
 ## SECTION: THE BACKGROUND LIBRARY — THESE PLACES ALREADY EXIST, USE THEM FIRST
 
-This is the complete library. Every `place` id below is a real, pre-built empty room.
-**Always pick from this list first.** Set `novel_place` ONLY when nothing here can
-honestly hold the week you narrated — that path costs a full extra generation, so it
-is the exception, not the habit. If you name a `place` that is not on this list and
-leave `novel_place` empty, the engine cannot resolve a room and the turn degrades.
+Every `place` id below is a known room, and the engine can also GENERATE any room
+you describe — the scene is drawn fresh for the week either way, at the same cost.
+So treat this table as a vocabulary, not a fence: when the week you narrated
+deserves its own room, set `place` to a short new id and fill `novel_place` with
+the room (place and objects only, never a person or an action). The whole world is
+stageable: a suburban doorstep mid door-to-door pitch, a county-fair booth, a
+conference afterparty with abandoned lanyards, a supermarket buyer's bare meeting
+room, a machine shop, a wet lab, a food truck at night, a courthouse corridor, a
+container port, a golf course, an investor's garden party. The one hard rule is
+unchanged: if `place` is not on the table, `novel_place` MUST be non-empty —
+half-set pairs render nothing.
 
 | family | place ids |
 |---|---|

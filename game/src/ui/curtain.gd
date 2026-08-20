@@ -24,14 +24,24 @@ const INK := Color("1E1E1E")
 
 var _t := 0.0          ## 0 = fully open (offstage), 1 = fully shut
 var _tw: Tween
+var _whoosh: AudioStreamPlayer
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	visible = false
 
+func _ready() -> void:
+	if FileAccess.file_exists("res://assets/sfx/curtain.wav"):
+		_whoosh = AudioStreamPlayer.new()
+		_whoosh.stream = load("res://assets/sfx/curtain.wav")
+		_whoosh.volume_db = -8.0
+		add_child(_whoosh)
+
 func close(secs: float = 0.45) -> void:
 	visible = true
+	if _whoosh != null:
+		_whoosh.play()
 	# shut curtains swallow clicks so nothing behind them can be pressed mid-swap
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	if _tw != null and _tw.is_valid():
@@ -42,6 +52,8 @@ func close(secs: float = 0.45) -> void:
 	await _tw.finished
 
 func open(secs: float = 0.55) -> void:
+	if _whoosh != null and visible:
+		_whoosh.play()
 	if _tw != null and _tw.is_valid():
 		_tw.kill()
 	_tw = create_tween()

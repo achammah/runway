@@ -60,6 +60,8 @@ var _target := 0.0
 var _done := false
 var _reveal_queue: Array = []
 var _next_reveal_at := 0.0
+var _scratch: AudioStreamPlayer
+var _writing := 0                 ## blocks currently writing; scratch while > 0
 var _ready_hint: Label
 
 func begin(week_label: String) -> void:
@@ -178,9 +180,14 @@ func _reveal(beat: Dictionary) -> void:
 	var b := _mk(String(beat["body"]), SIZE_BODY, INK, HORIZONTAL_ALIGNMENT_LEFT)
 	b.custom_minimum_size = Vector2(888, 0)
 	block.add_child(b)
-	block.modulate.a = 0.0
+	# WRITTEN, not faded: the beat is the week being put down in ink, so each
+	# block writes itself in at a hand's pace with the paper scratching under it.
+	b.visible_ratio = 0.0
+	var secs: float = clampf(String(beat["body"]).length() / 95.0, 0.3, 6.5)
+	_scratch_on()
 	var tw := create_tween()
-	tw.tween_property(block, "modulate:a", 1.0, 0.32)
+	tw.tween_property(b, "visible_ratio", 1.0, secs)
+	tw.tween_callback(_scratch_off)
 	# keep the newest beat in view: the reader follows the pen down the page
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -193,6 +200,24 @@ func _reveal(beat: Dictionary) -> void:
 		to = ceilf(to / line_h) * line_h
 		var st := create_tween()
 		st.tween_property(_scroll, "scroll_vertical", int(to), 0.45).set_trans(Tween.TRANS_SINE)
+
+func _scratch_on() -> void:
+	_writing += 1
+	if _scratch == null and FileAccess.file_exists("res://assets/sfx/pen_scratch.wav"):
+		var st: AudioStream = load("res://assets/sfx/pen_scratch.wav")
+		if st is AudioStreamWAV:
+			(st as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_FORWARD
+		_scratch = AudioStreamPlayer.new()
+		_scratch.stream = st
+		_scratch.volume_db = -16.0
+		add_child(_scratch)
+	if _scratch != null and not _scratch.playing:
+		_scratch.play()
+
+func _scratch_off() -> void:
+	_writing = maxi(_writing - 1, 0)
+	if _writing == 0 and _scratch != null and _scratch.playing:
+		_scratch.stop()
 
 func _mk(text: String, sz: int, col: Color, align: int) -> Label:
 	var l := Label.new()
