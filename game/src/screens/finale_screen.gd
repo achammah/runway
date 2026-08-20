@@ -56,20 +56,18 @@ func _ready() -> void:
 	size = Vector2(1536, 1024)
 	_score()
 
-	var room := SceneRoom.new()
-	room.size = Vector2(1536, 1024)
-	add_child(room)
-	room.load_scene("nasdaq_bell" if SceneRoomPicker.has_scene("nasdaq_bell") else "hq_steady")
+	_ceremony_room()
 
 	var scrim := ColorRect.new()
 	scrim.color = Color(0.05, 0.05, 0.07, 0.0)
 	scrim.size = Vector2(1536, 1024)
 	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(scrim)
-	create_tween().tween_property(scrim, "color:a", 0.52, 0.6)
+	# short: the ceremony's settled state is the one worth looking at, so get there
+	create_tween().tween_property(scrim, "color:a", 0.52, 0.3)
 
-	# the bell, the crowd and the boards are the busiest art in the game; the
-	# ceremony block carries its own contrast rather than dimming the whole room
+	# a trading floor or a boardroom is busy art either way; the ceremony block
+	# carries its own contrast rather than dimming the whole room
 	var band := _Band.new()
 	band.position = Vector2(0, 120)
 	band.size = Vector2(1536, 460)
@@ -97,7 +95,7 @@ func _ready() -> void:
 	title.scale = Vector2(1.6, 1.6)
 	title.modulate.a = 0.0
 	var tt := create_tween()
-	tt.tween_interval(0.3)
+	tt.tween_interval(0.2)
 	tt.tween_property(title, "modulate:a", 1.0, 0.1)
 	tt.parallel().tween_property(title, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tt.tween_callback(func():
@@ -113,8 +111,8 @@ func _ready() -> void:
 	hero.position = Vector2(0, 300)
 	hero.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var count := create_tween()
-	count.tween_interval(0.55)
-	count.tween_method(func(v: float): hero.text = "$" + _fmt(int(v)), 0.0, float(final_payout), 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	count.tween_interval(0.4)
+	count.tween_method(func(v: float): hero.text = "$" + _fmt(int(v)), 0.0, float(final_payout), 0.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 	var caption := _lbl(self, "your slice of %s" % state.company_name, 32, PALETTE["cream"], _hand)
 	_shadow(caption)
@@ -163,7 +161,7 @@ func _ready() -> void:
 		card.modulate.a = 0.0
 		card.scale = Vector2(0.9, 0.9)
 		var ct := create_tween()
-		ct.tween_interval(1.5 + i * 0.14)
+		ct.tween_interval(0.8 + i * 0.1)
 		ct.tween_property(card, "modulate:a", 1.0, 0.12)
 		ct.parallel().tween_property(card, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
@@ -190,8 +188,54 @@ func _ready() -> void:
 	var pulse := create_tween().set_loops()
 	pulse.tween_property(cta, "scale", Vector2(1.03, 1.03), 0.7).set_trans(Tween.TRANS_SINE)
 	pulse.tween_property(cta, "scale", Vector2.ONE, 0.7).set_trans(Tween.TRANS_SINE)
+	# the whole ceremony has settled by ~1.3s, so the guard against a stray keypress
+	# skipping it does not need to outlast the animation it is guarding
 	await get_tree().create_timer(1.4).timeout
 	_armed = true
+
+## THE ROOM THE ENDING ACTUALLY HAPPENED IN.
+##
+## An acquisition is a signature at a boardroom table. The bell, the ticker wall,
+## the trading floor and the photographers belong to an IPO and to nothing else —
+## showing a founder who was bought out ringing the opening bell reads as a bug on
+## the one screen they are going to screenshot. So the exit kind picks the room.
+##
+## Every rung is checked against the disk before it is taken: a composed signing
+## scene if the art lane has made one, the painted signing plate that ships today
+## if not, and the hq room as the floor. A file that is missing degrades one rung
+## instead of leaving the ceremony blank.
+func _ceremony_room() -> void:
+	var room := SceneRoom.new()
+	room.size = Vector2(1536, 1024)
+	if kind != "acquisition":
+		add_child(room)
+		room.load_scene("nasdaq_bell" if SceneRoomPicker.has_scene("nasdaq_bell") else "hq_steady")
+		return
+	for id in ["signing_room", "stage_signing", "signing_room_day"]:
+		if SceneRoomPicker.has_scene(id):
+			add_child(room)
+			room.load_scene(id)
+			return
+	room.queue_free()
+	for f in ["endings__signing_room__day_thriving_wide",
+			"endings__signing_room__day_steady_wide",
+			"endings__signing_room__night_thriving_wide",
+			"endings__signing_room__night_steady_wide"]:
+		var path := "res://assets/backgrounds/%s.png" % f
+		if ResourceLoader.exists(path):
+			var plate := TextureRect.new()
+			plate.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			plate.stretch_mode = TextureRect.STRETCH_SCALE
+			plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			plate.texture = load(path)
+			plate.size = Vector2(1536, 1024)
+			plate.set_deferred("size", Vector2(1536, 1024))
+			add_child(plate)
+			return
+	var fallback := SceneRoom.new()
+	fallback.size = Vector2(1536, 1024)
+	add_child(fallback)
+	fallback.load_scene("hq_steady" if SceneRoomPicker.has_scene("hq_steady") else "stage_hq")
 
 ## Hand-drawn confetti: flat palette rectangles, no gradients.
 func _confetti() -> void:
