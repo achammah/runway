@@ -98,9 +98,12 @@ func _draw() -> void:
 		var cx: float = w * (float(s) + 0.5) / 12.0
 		draw_circle(Vector2(cx, 46), w / 24.0, va)
 	if _t > 0.15:
-		var line := PackedVector2Array()
-		for i in 49:
-			var lx: float = w * float(i) / 48.0
-			var ly: float = 46.0 + absf(sin(float(i) * PI / 4.0)) * (w / 24.0) - 2.0
-			line.append(Vector2(lx, ly + rng.randf_range(-1.5, 1.5)))
-		draw_polyline(line, INK, 3.0, true)
+		# true scallops: one hand-wobbled arc under each swag, not a zigzag
+		for sc in 12:
+			var cx2: float = w * (float(sc) + 0.5) / 12.0
+			var pts2 := PackedVector2Array()
+			for a in 13:
+				var th := PI * float(a) / 12.0
+				pts2.append(Vector2(cx2 + cos(th) * (w / 24.0),
+						46.0 + sin(th) * (w / 24.0) + rng.randf_range(-1.2, 1.2)))
+			draw_polyline(pts2, INK, 3.0, true)
