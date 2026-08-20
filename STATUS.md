@@ -28,6 +28,7 @@ labels. That must never be the recovery path again. Git now covers this too.
 | **Service** | fourth WHAT (setup card, state, adjudicator grading, event flavor) |
 | Journal layout | fence + reservation airtight: 0px ink off paper across worst-case stress |
 | QA | every animation filmed frame by frame; paid e2e runs photographed; keyless soaks green |
+| **The evening's live-play round** | curtain-on-lock (drawn drapes + fabric whoosh, 12s failsafe), beat text WRITES itself with paper scratch, standing context + "So — what do you do?" on the decision page (ink, never trimmed), delta strip shows the week's CHANGES (+/−) with morale battery, moving-day scene on era arrival, journal-open settle, typed ink rides a scroll-tracking ruling, DM staging vocabulary opened to the whole world (novel places now first-class: staged a therapy clinic unprompted), ~330 lines of dead five-spread code purged, shot harness photographs the real states |
 
 ### Fix wave: LANDED (all four lanes, verified)
 | lane | result |
