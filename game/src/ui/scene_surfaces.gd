@@ -90,6 +90,36 @@ func mount(scene_id: String) -> bool:
 ## (`_money_tag.visible = not s.has("ledger")`), so a 25x28 sticky in some library room
 ## costs the run its plate for one week instead of costing the number its legibility.
 ## The old answer was yes to everything, which is how 16px type ended up on a stamp.
+## Mount from the BACKGROUND library's annotations instead of a legacy scene's
+## layout.json. `facet_id` is slash-form ("scrappy_workspace/garage/day_steady_wide").
+## This is what lets the assembled room, its surfaces and its cast swap as ONE unit —
+## wiring the assembled scene while the surfaces still pointed at the old stage's
+## coordinates put "$82,350" on a bare wall, which is how we learned.
+const BG_ANNOTATIONS := "res://assets/backgrounds/annotations.json"
+static var _bg_cache: Dictionary = {}
+
+func mount_background(facet_id: String) -> bool:
+	_font = load(HAND)
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	size = Vector2(1536, 1024)
+	if _bg_cache.is_empty():
+		if not FileAccess.file_exists(BG_ANNOTATIONS):
+			return false
+		var doc = JSON.parse_string(FileAccess.get_file_as_string(BG_ANNOTATIONS))
+		if doc is Dictionary:
+			_bg_cache = doc
+	var entry = _bg_cache.get(facet_id, null)
+	if entry == null:
+		entry = _bg_cache.get(facet_id.replace("/", "__"), null)
+	if not (entry is Dictionary):
+		return false
+	var ws = (entry as Dictionary).get("write_surfaces", {})
+	if not (ws is Dictionary) or (ws as Dictionary).is_empty():
+		return false
+	surfaces = ws
+	return true
+
 func has(name: String) -> bool:
 	if not surfaces.has(name):
 		return false
