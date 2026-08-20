@@ -440,13 +440,19 @@ func write_field(prompt: String = "...or write what you actually do", zone: Stri
 	# input is the one cut this page may never make; ask() budgets so it cannot come
 	# to that, and if a host composes past every budget the field crosses the fence
 	# and _overrun says so, which is the honest failure.
-	hgt = maxf(minf(hgt, _hard_floor() - y - 8.0), rule_pitch() * 1.2)
+	# TWO FULL SLOTS MINIMUM plus descender headroom, and this floor OUTRANKS the
+	# fence: the written move is the game, and a field that clips its own second
+	# line teaches the player not to write. ask() budgets so the floor is never
+	# actually exercised; when a host overfills, _overrun says so honestly.
+	hgt = minf(hgt, _hard_floor() - y - 8.0)
+	hgt = maxf(hgt, rule_pitch() * 2.0) + 12.0
 	_input.position = Vector2(sp.x, y)
 	_input.custom_minimum_size = Vector2(sp.y - sp.x, hgt)
 	_input.set_deferred("size", Vector2(sp.y - sp.x, hgt))
 	_input.mouse_filter = Control.MOUSE_FILTER_STOP
 	space.add_child(_input)
 	var nib := _WriteHint.new()
+	nib.edit = _input
 	nib.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	nib.position = Vector2(sp.x, y)
 	nib.set_deferred("size", Vector2(sp.y - sp.x, hgt))
@@ -1093,9 +1099,28 @@ class _WriteHint:
 	var focused := false
 	var pitch := 48.0
 	var ascent := 34.0
+	var edit: TextEdit          ## the field whose scroll these rules must ride
+	var _last_scroll := -1.0
+
+	func _process(_d: float) -> void:
+		# WHEN THE FIELD SCROLLS, THE RULING SCROLLS WITH IT. Static rules read
+		# as aligned only until the third line; then every rule struck through a
+		# word. The guide is the paper under the words, so it moves as one.
+		if edit != null and is_instance_valid(edit):
+			var sv := edit.scroll_vertical
+			if absf(sv - _last_scroll) > 0.001:
+				_last_scroll = sv
+				queue_redraw()
+
 	func _draw() -> void:
 		var strong := focused or not written
-		var y: float = ascent + 8.0
+		# one rule under each LINE SLOT, phase-shifted by the field's scroll
+		var shift := 0.0
+		if edit != null and is_instance_valid(edit):
+			shift = fmod(maxf(edit.scroll_vertical, 0.0) * pitch, pitch)
+		var y: float = (pitch + 1.0) - shift
+		if y < 11.0:
+			y += pitch
 		while y < size.y + 2.0:
 			var pts := PackedVector2Array()
 			var rng := RandomNumberGenerator.new()
@@ -1106,7 +1131,7 @@ class _WriteHint:
 					3.0 if strong else 2.5, true)
 			y += maxf(pitch, 24.0)
 		if not written:
-			draw_circle(Vector2(2.0, ascent + 2.0), 4.5, Color(JournalPage.PEN, 0.9))
+			draw_circle(Vector2(2.0, pitch - 13.0), 4.5, Color(JournalPage.PEN, 0.9))
 
 ## The pen that rides the tip of the ink while the page writes itself. At page
 ## scale the first draft read as a stray tick, so this is a real slender pen:

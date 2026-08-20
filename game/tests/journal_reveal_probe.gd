@@ -54,6 +54,19 @@ func _go() -> void:
 		await create_timer(0.055).timeout
 		await RenderingServer.frame_post_draw
 		root.get_viewport().get_texture().get_image().save_png("%s/c_%02d.png" % [dir, i])
+	# the written move itself: typed ink must ride the printed rules
+	var fld := p.input_field()
+	if fld != null:
+		fld.text = "We call the bank, apologise for March, and ask the manager by name for sixty more days. Then we demo to her team as thanks."
+		await create_timer(0.3).timeout
+		await RenderingServer.frame_post_draw
+		print("FIELD: scroll_v=", fld.scroll_vertical, " line_h=", fld.get_line_height(),
+				" size=", fld.size)
+		for li in mini(fld.get_line_count(), 1):
+			for wl in 3:
+				var r := fld.get_rect_at_line_column(0, mini(wl * 40, fld.text.length() - 1))
+				print("  vis line ", wl, " rect=", r)
+		root.get_viewport().get_texture().get_image().save_png("%s/typed.png" % dir)
 	print("REVEAL PROBE DONE: %s" % dir)
 	quit(0)
 
