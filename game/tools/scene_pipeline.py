@@ -74,6 +74,27 @@ STYLE = ("Flat hand-drawn cartoon, wobbly felt-pen ink outlines, flat fills, no 
          "Different characters are told apart ONLY by the props they hold or stand beside, never by their "
          "bodies, faces or clothes.")
 
+# EMPTY-ROOM STYLE. STYLE ends with ~200 words of CHARACTER LAW so a SCENE draws the
+# crew on-model. Appended to a room prompt whose only counter-instruction is "empty of
+# people", that description INVITES them in: LANE-BATCH found creatures in a smoke-test
+# room, and ~1 room in 12 still arrived occupied even after asking. Same failure class
+# as "a laptop balanced on a knee" summoning a body.
+#
+# So a background NEVER uses STYLE. It uses this: the palette, the UI safe zones and the
+# writing-surface rules kept verbatim, the character law CUT, and an emptiness clause in
+# its place. Anyone generating a room that the cast will be composited into must use
+# this, because a person painted into a background doubles against the composited cast.
+#
+# Asking is still not sufficient — verify emptiness after generation and re-roll, the way
+# clear_surfaces enforces blankness rather than requesting it.
+STYLE_EMPTY = STYLE[:STYLE.index("# CHARACTER LAW")] if "# CHARACTER LAW" in STYLE else STYLE
+STYLE_EMPTY = (STYLE.split("THE CHARACTERS (")[0]
+    + "THE ROOM IS EMPTY: there are no people, no characters, no creatures, no figures and "
+      "no silhouettes anywhere in the image. Nobody is present. Do not draw a person, a body, "
+      "a face, a limb, or any part of one, and do not imply one — no laptop balanced on a knee, "
+      "no hand reaching into frame, no occupied chair. Describe only the place and its objects. "
+      "The room is unoccupied and waiting.")
+
 def _key(name):
     return open(f"{SCRATCH}/{name}").read().strip()
 

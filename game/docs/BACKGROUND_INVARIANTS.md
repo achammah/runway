@@ -176,3 +176,26 @@ proposal covers more than about a quarter of any crew mark.
 
 Both are the difference between a library that costs one person-day per room and
 one that costs nothing per room.
+
+
+## THE CHARACTER LAW INVITES CHARACTERS (measured, 2026-08-20)
+
+The shared `STYLE` block ends with ~200 words of CHARACTER LAW describing the crew, so
+that a SCENE draws them on-model. Appended to a room prompt whose only counter-instruction
+is "EMPTY OF PEOPLE", that description INVITES them in. One of the first two smoke-test
+rooms came back with three creatures sitting in it.
+
+Cutting the clause was necessary but NOT sufficient: **roughly 1 room in 12 still arrived
+occupied**. This is the same failure class as "a laptop balanced on a knee" summoning a body.
+
+So emptiness is ENFORCED, not requested, exactly as `clear_surfaces` enforces blankness:
+threshold the ink, erode the felt-pen outlines so only filled bodies survive, label the
+components, and call one a creature only when a blank white oval eye sits fully inside it.
+A dark TV has no white holes; a whiteboard has no ink surround. 37 of 516 rooms were caught
+and re-rolled on that test alone.
+
+`tools/scene_pipeline.py` now exports `STYLE_EMPTY` for this: palette, UI safe zones and
+writing-surface rules kept verbatim, character law cut, emptiness clause in its place.
+**Any lane generating a room the cast will be composited into must use `STYLE_EMPTY`, never
+`STYLE`** — a person painted into a background doubles against the composited cast, which
+is a defect the owner has already photographed once.
