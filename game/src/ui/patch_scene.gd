@@ -96,6 +96,7 @@ var _spots: Dictionary = {}          # spot id -> its row out of spots.json
 var _spot_order: Array = []          # the order spots.json declares them in
 var _founder_spot := ""              # the chair the room is composed around
 var _eyes: Dictionary = {}           # patch name -> [[x0, y0, x1, y1], …] patch-local
+var _tweens: Array = []              # every loop this build started, so a rebuild ends them
 var _placed: Array = []              # [{who, spot, name, mood, doing, f2}]
 var _skipped: Array = []             # every `who` this scene has no patch for
 var _rng := RandomNumberGenerator.new()
@@ -588,10 +589,20 @@ func _bob(tr: TextureRect, i: int) -> void:
 	var amp: float = BOB_MIN + fmod(float(i) * 0.7, BOB_MAX - BOB_MIN + 0.001)
 	# A looping tween whose FIRST step has zero duration makes Godot spin ("Infinite
 	# loop detected", out of tween.cpp) — so the phase interval is never zero.
-	var tw := create_tween().set_loops()
+	var tw := _loop()
 	tw.tween_interval(0.05 + 0.41 * float(i))
 	tw.tween_property(tr, "position:y", base_y - amp, BOB_SECS).set_trans(Tween.TRANS_SINE)
 	tw.tween_property(tr, "position:y", base_y, BOB_SECS).set_trans(Tween.TRANS_SINE)
+
+
+## A LOOP THAT A REBUILD CAN END. Tweens bind to the node that made them — this
+## scene — not to the patch they animate, so a re-cast that frees the old patches
+## leaves their loops running against freed instances. Every loop is held here and
+## killed in _reset(), and the callbacks re-check their target besides.
+func _loop() -> Tween:
+	var tw := create_tween().set_loops()
+	_tweens.append(tw)
+	return tw
 
 
 ## A patch that shipped a second frame ACTS instead of bobbing: the factory already
@@ -600,22 +611,32 @@ func _bob(tr: TextureRect, i: int) -> void:
 func _alternate(tr: TextureRect, a: Texture2D, b: Texture2D, i: int) -> void:
 	if a == null or b == null:
 		return
-	var tw := create_tween().set_loops()
+	var tw := _loop()
 	tw.tween_interval(0.05 + 0.33 * float(i))
-	tw.tween_callback(func(): tr.texture = b)
+	tw.tween_callback(func(): _set_tex(tr, b))
 	tw.tween_interval(F2_ON)
-	tw.tween_callback(func(): tr.texture = a)
+	tw.tween_callback(func(): _set_tex(tr, a))
 	tw.tween_interval(F2_OFF)
 
 
 func _blink(lids: Control, i: int) -> void:
 	var gap := _rng.randf_range(BLINK_MIN, BLINK_MAX)
-	var tw := create_tween().set_loops()
+	var tw := _loop()
 	tw.tween_interval(0.2 + 0.83 * float(i))
-	tw.tween_callback(func(): lids.visible = true)
+	tw.tween_callback(func(): _set_shown(lids, true))
 	tw.tween_interval(BLINK_HOLD)
-	tw.tween_callback(func(): lids.visible = false)
+	tw.tween_callback(func(): _set_shown(lids, false))
 	tw.tween_interval(gap)
+
+
+static func _set_tex(tr: TextureRect, t: Texture2D) -> void:
+	if is_instance_valid(tr):
+		tr.texture = t
+
+
+static func _set_shown(c: Control, v: bool) -> void:
+	if is_instance_valid(c):
+		c.visible = v
 
 
 func _ready() -> void:
@@ -727,6 +748,11 @@ func _texture(path: String) -> Texture2D:
 
 
 func _reset() -> void:
+	for t in _tweens:
+		var tw: Tween = t
+		if tw != null and is_instance_valid(tw) and tw.is_valid():
+			tw.kill()
+	_tweens.clear()
 	for c in get_children():
 		remove_child(c)
 		c.queue_free()

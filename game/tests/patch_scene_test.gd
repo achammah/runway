@@ -37,6 +37,10 @@ const STEPS := ["_test_full_build", "_test_unknown_who_is_skipped", "_test_missi
 	"_test_archetype_picks_the_chair", "_test_undrawn_archetype_leaves_the_chair_empty",
 	"_test_a_hire_is_never_the_cofounder", "_test_a_blank_alone_is_not_a_scene"]
 
+## Steps that must run frames rather than just assert, so the life tweens actually
+## tick. They are awaited from _go, which is why they are not in STEPS.
+const AWAITED := ["_test_recast_ends_the_old_life"]
+
 var _checks := 0
 var _failed := false
 
@@ -53,6 +57,11 @@ func _go() -> void:
 	# The latch is checked between steps, and PASS has exactly one path to it.
 	for step in STEPS:
 		call(String(step))
+		if _failed:
+			quit(1)
+			return
+	for step in AWAITED:
+		await call(String(step))
 		if _failed:
 			quit(1)
 			return
@@ -234,6 +243,31 @@ func _test_a_blank_alone_is_not_a_scene() -> void:
 		"a half-built directory must not count as a shipped scene")
 	_ok(PatchScene._shipped("%s/%s" % [FIX, LOFT]),
 		"a finished directory must count as a shipped scene")
+	ps.queue_free()
+
+
+## A DEPARTURE REBUILDS THE ROOM, and rebuilding frees every patch the old cast was
+## standing in. The bob, the blink and the two-frame loop are bound to the SCENE, not
+## to the patch they animate, so unless the rebuild ends them they keep running
+## against freed instances — which is a crash in the room, one week in. This step
+## runs frames on both sides of the rebuild so the loops actually tick; a leaked one
+## shows up as SCRIPT ERROR in the run output, which the gate counts.
+func _test_recast_ends_the_old_life() -> void:
+	var ps := _scene()
+	_ok(ps.build(LOFT, [
+		{"who": "founder", "kind": "founder", "mood": "fine", "doing": "types all night"},
+		{"who": "tech", "kind": "cofounder", "mood": "fine", "doing": "fixes the build"},
+	]), "the first build must succeed")
+	for i in 8:
+		await process_frame
+	# the technical cofounder walks out
+	_ok(ps.build(LOFT, [
+		{"who": "founder", "kind": "founder", "mood": "burnt", "doing": "types all night"},
+	]), "the re-cast must succeed")
+	_ok(ps.placements().size() == 1, "only the founder is left in the room")
+	for i in 8:
+		await process_frame
+	_ok(ps.placements().size() == 1, "the room must still hold exactly the new cast")
 	ps.queue_free()
 
 
