@@ -14,18 +14,20 @@ labels. That must never be the recovery path again. Git now covers this too.
 
 ---
 
-## 1. Where the build actually is (2026-08-20)
+## 1. Where the build actually is (2026-08-20, evening wave)
 
 | | |
 |---|---|
-| Compiles | 31 scripts, smoke gate green (can_instantiate + zero SCRIPT ERROR) |
-| Full run | reaches all five eras and ENDS (IPO / acquisition / death / 78-week cap) |
-| **The journal (the core mechanic)** | pages WRITE THEMSELVES: ink reveals behind a travelling pen, choices wake only once inked, the selection circle is DRAWN, page turns are physical (sheet lifts, room holds still), old spreads stay dry ink, one click skips any performance; procedural paper-scratch under the pen; lock-the-week is a ceremony (stroke under the words, latch, beat); brilliant/backfired get hand margin marks |
-| Journal layout | airtight under worst-case stress: answer space reserved before prose, captions cap at 3 lines, icon rows compress toward a sacred 2-rule controls fence, empty zones pull content up, crowded sheets trade pictures for writing room — 0px of ink off the paper across all five spreads |
-| Scenes | STATIC IMAGES (owner call after animation review); PatchScene assembles blank + spot patches per era; all life gated behind RUNWAY_LIFE=1 |
-| Background library | 516 empty rooms on disk + 183-scene packs (699 total); taxonomy v4 (~576 places / ~1,050 scenes incl. GTM channel worlds, type ladders, exits) authored for review in ~/Downloads |
-| Generative turn | DM one-call contract live (luna, fast tier); FULLY-GENERATIVE scene pivot (GPT medium on demand, ~$0.07/img, cache + edit-on-cast-change) APPROVED and parked with the full map in PROJECT_LOG — journal took priority |
-| QA | 23-screen capture sweep read individually — clean; journal reveal/turn/lock all FILMED frame by frame and verified; 40-week fullrun soak in CI habit |
+| Compiles | 31 scripts, smoke gate green |
+| **The 60-second week** | TWO spreads: the world's reply (DM narration first, margin verdict, doodle delta strip, crew strip) then the situation + ONE clean writing area (ghost prompt, coral ruling, resting nib) + lock. No options before the pen. ONE press commits: write -> adjudicate -> effects -> beat -> scene |
+| **The turn spine** | every locked week is a DM turn — payload rides the outcome dict (race-proof), TURN log line per week; beat (headline + said/heard + narration typing under the pen) opens on every lock, art or not |
+| **Fully generative scenes** | LIVE and proven paid: one GPT-medium image per staged beat (instruction JSON + character refs + frame law), change-beat cadence, exact-repeat cache, library+seedream fallback behind RUNWAY_GPT_SCENES=0 |
+| **Status board in the picture** | every V2 scene carries contract surfaces (blank whiteboard upper-left, pinned sheet upper-right) and the game writes cash/runway/customers/payroll/equity on them in the founder's hand |
+| **The opening image** | generated at launch from type + segment + capital + pitch + cofounders; adopts into the room while week one is written |
+| **Journal doodle icons** | 20 generated + layer-decomposed transparent doodles (bean-blob crew, cash, runway hourglass, growth, morale battery...) wired with sprite fallback |
+| **Service** | fourth WHAT (setup card, state, adjudicator grading, event flavor) |
+| Journal layout | fence + reservation airtight: 0px ink off paper across worst-case stress |
+| QA | every animation filmed frame by frame; paid e2e runs photographed; keyless soaks green |
 
 ### Fix wave: LANDED (all four lanes, verified)
 | lane | result |
