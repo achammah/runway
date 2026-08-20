@@ -116,11 +116,31 @@ func _on_card(card: Dictionary) -> void:
 	else:
 		push_warning("generated card rejected by validator")
 
+## WHAT THE WORLD SAYS WHEN THERE IS NO WORLD TO ASK.
+## With no key the written move used to hand back {} and the page did not so much as
+## blink: no verdict, no line, no lock, no sound. The founder wrote a paragraph into
+## the one screen this whole game is built around and the game answered with silence,
+## which reads as broken rather than as unconfigured. So the world answers in its own
+## voice instead — it hears the move, it writes it down, and it changes NOTHING.
+##
+## `effects` is empty ON PURPOSE and must stay empty. A stub that paid out would be
+## the game inventing a judgement it never made, which is worse than the silence was.
+## No headline, no scene and no cast either, so the turn stays a quiet page and never
+## starts a render.
+static func keyless_adjudication() -> Dictionary:
+	return {
+		"interpreted_as": "you write it down",
+		"narration": "The world takes note. Nothing changes yet — the phone stays quiet.",
+		"verdict": "fine",
+		"effects": [],
+	}
+
 ## Adjudicate the player's own written move for an event. cb gets
-## {narration, verdict, effects} (validated) or {} on failure/no key.
+## {narration, verdict, effects} (validated), the keyless stub above when there is no
+## key at all, or {} when a live call came back empty or failed its validator.
 func adjudicate(state: GameState, ev: Dictionary, player_text: String, cb: Callable) -> void:
 	if not llm.enabled():
-		cb.call({})
+		cb.call(keyless_adjudication())
 		return
 	llm.request_json(_adjudicate_prompt, compose_adjudicate_user(state, ev, player_text), LlmClient.ADJUDICATE_SCHEMA, func(result: Dictionary):
 		if result.is_empty() or not _validate_effects(result.get("effects", []), true):

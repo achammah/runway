@@ -351,7 +351,11 @@ func _autopilot() -> void:
 	await _shot(dir, "02_select")
 	if _screen is FounderDraftScreen:
 		var d := _screen as FounderDraftScreen
-		d._select(4)
+		# INDEX, NOT COUNT. `_select` wraps with wrapi(i, 0, _archs.size()) and exactly
+		# four archetypes ship, so 4 silently lands back on 0 — and this shot spent a
+		# whole QA pass calling a photograph of the hacker `03_select_consultant`.
+		# The consultant is the LAST of the four: index 3.
+		d._select(3)
 		await get_tree().create_timer(0.9).timeout
 		await _shot(dir, "03_select_consultant")
 		d._transition_to(1)
@@ -881,9 +885,20 @@ func _collect_upload(force: bool = false) -> String:
 
 ## Art costs money and up to three minutes. Harnesses never spend either, and
 ## RUNWAY_NO_ART=1 turns it off for anyone who wants the game without renders.
+##
+## RUNWAY_ART=1 IS THE QA OPT-IN, and it exists because without it no capture
+## harness could ever photograph the game a keyed player actually plays: art-off
+## was the only path a screenshot had ever shown, so every review of this build
+## reviewed a code path nobody buys. Set it alongside any harness and the art
+## paths run for REAL. It stays off by default because on means money and minutes
+## per room, and the ordinary harnesses have to stay fast and free.
+##
+## RUNWAY_NO_ART still wins over both: an explicit "off" is never overruled.
 func _art_enabled() -> bool:
 	if OS.get_environment("RUNWAY_NO_ART") != "":
 		return false
+	if OS.get_environment("RUNWAY_ART") != "":
+		return true   # a harness that asked, in writing, to spend on real renders
 	if OS.get_environment("RUNWAY_TURN_ART") != "":
 		return true   # the turn harness, asked explicitly for a real render
 	return not _harness()
