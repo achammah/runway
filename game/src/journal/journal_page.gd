@@ -87,6 +87,7 @@ var _spans: Array = []            ## [[y, left, right], ...] normalised, measure
 var _zone: Dictionary = {}        ## name -> [y0, y1] normalised
 var _rules: Dictionary = {}       ## the PRINTED ruling: {first, pitch} normalised
 var _usable := Vector2.ZERO       ## writable area inside the sheet's margins
+var _top_pad := 0.0               ## where the paper first becomes visible on screen
 var _zone_px: Dictionary = {}     ## name -> [top, bottom] in sheet-local pixels
 var _cursor: Dictionary = {}      ## name -> current y in page-local pixels
 var _input: TextEdit
@@ -139,7 +140,16 @@ func build(title_text: String, scene_id: String = "") -> void:
 	space.set_deferred("size", SHEET_SIZE)
 	tex.add_child(space)
 
-	_usable = Vector2(SHEET_SIZE.x - 2.0 * MARGIN_X, SHEET_SIZE.y - MARGIN_TOP - MARGIN_BOT)
+	# CONTENT LIVES ONLY WHERE THE PAPER IS ACTUALLY ON SCREEN.
+	# The sheet deliberately overflows the canvas so it fills the frame the way the
+	# reference book does — but the zones were being measured against the WHOLE sheet,
+	# so the title rode 24px above the top of the screen and the controls fell 104px
+	# below the bottom. Clip the writable band to the visible intersection first.
+	var sheet_top: float = PAGE_POS.y + SHEET_POS.y
+	var vis_top: float = maxf(0.0, -sheet_top) + MARGIN_TOP
+	var vis_bot: float = minf(SHEET_SIZE.y, 1024.0 - sheet_top) - MARGIN_BOT
+	_top_pad = vis_top
+	_usable = Vector2(SHEET_SIZE.x - 2.0 * MARGIN_X, maxf(vis_bot - vis_top, 120.0))
 	# ZONES ARE MEASURED IN PRINTED RULES, not in fractions of the artwork.
 	# Fractions of the art gave the title 103px while a 64px title needs two rules
 	# plus its gap — 107 — so every page opened by overrunning its own first zone.
@@ -147,7 +157,7 @@ func build(title_text: String, scene_id: String = "") -> void:
 	# every boundary lands on one.
 	var pitch := rule_pitch()
 	var y0 := (float(_rules.get("first", 0.17784)) * ART_PX.y - PAPER_ORIGIN_TEX.y) * SCALE
-	var y := y0
+	var y: float = maxf(y0, _top_pad)
 	for z in ZONE_RULES.keys():
 		var h: float = float(ZONE_RULES[z]) * pitch
 		_cursor[z] = y
@@ -171,6 +181,23 @@ func zone_bottom(zone: String) -> float:
 		return float((_zone_px[zone] as Array)[1])
 	return SHEET_SIZE.y - MARGIN_BOT
 
+## ZONES CASCADE. A zone's nominal start is a rule position, but if the zone ABOVE it
+## wrote past that rule the content must move down rather than land on top of it —
+## which is how the choice captions ended up printing straight through the "...or write
+## what you actually do" prompt. Called before anything is added to a zone.
+const _ZONE_ORDER := ["title", "body", "ending", "controls"]
+
+func _cascade(zone: String) -> void:
+	var idx := _ZONE_ORDER.find(zone)
+	if idx <= 0:
+		return
+	var floor_y: float = float(_cursor.get(zone, 0.0))
+	for i in idx:
+		var above: String = _ZONE_ORDER[i]
+		floor_y = maxf(floor_y, float(_cursor.get(above, 0.0)))
+	if floor_y > float(_cursor.get(zone, 0.0)):
+		_cursor[zone] = _snap(floor_y)
+
 ## How much of a zone is still free. A page that returns <= 0 is holding too much
 ## and should be split rather than shrunk.
 func room_left(zone: String = "ending") -> float:
@@ -187,6 +214,7 @@ func line(text: String, faint: bool = false, zone: String = "body") -> void:
 ## A row of selectable icons. State is drawn and choosing is a pen mark — never a
 ## button, never a bordered chip. `items` is [{id, text, tex(optional)}].
 func icon_row(items: Array, cell := Vector2(124, 116), zone: String = "ending") -> Control:
+	_cascade(zone)
 	var y: float = _cursor.get(zone, 0.0)
 	var sp := span_at(y + cell.y * 0.5)
 	var avail: float = sp.y - sp.x
@@ -261,6 +289,7 @@ func icon_row(items: Array, cell := Vector2(124, 116), zone: String = "ending") 
 ## border, no fill. The ruled line IS the field and the typing looks handwritten.
 func write_field(prompt: String = "...or write what you actually do", zone: String = "ending") -> TextEdit:
 	line(prompt, true, zone)
+	_cascade(zone)
 	var y: float = _cursor.get(zone, 0.0)
 	var sp := span_at(y + SIZE_BODY)
 	_input = TextEdit.new()
@@ -368,6 +397,7 @@ func arrows(show_prev: bool, show_next: bool) -> void:
 ## broken to the span available at its own y, and placed at that span's left edge.
 ## This is what makes the wrap follow the lean instead of crossing it.
 func _shaped(text: String, sz: int, col: Color, zone: String, align: int) -> void:
+	_cascade(zone)
 	# Sit ON the printed ruling. Text that floats between the rules is the single
 	# strongest "a text engine did this" tell; snapping every baseline to a rule and
 	# advancing by whole rules is what makes it read as handwriting.
