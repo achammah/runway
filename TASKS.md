@@ -18,6 +18,24 @@ Last updated: 2026-08-20 (the journal wave)
 - SCENES MODE: FULLY GENERATIVE (owner pivot executed) — GPT medium per staged beat, contract status surfaces inked, opening + moving-day scenes, change-beat cadence; static patch rooms remain the fallback floor
 - SUPERSEDED: the 700-scene pre-generation batch (fully-generative replaced it); taxonomy v4 lives on as the DM's staging vocabulary
 
+## THE AAA NIGHT (2026-08-21) — D&D-of-startups, tracked live
+Status: ☐ todo · ◐ in progress · ✔ done+tested
+- ◐ N1 SimEngine core (`src/core/sim_engine.gd`): Theta, hostile tick, statuses, clocks, pipeline, funding, signals
+- ☐ N2 GameState fields + save/load for all engine state
+- ☐ N3 `tests/sim_engine_test.gd` hermetic unit suite
+- ☐ N4 `tests/balance_sim.gd` scripted-strategy N-week tables; calibrate constants
+- ☐ N5 World-gen: Theta-from-pitch LLM call + clamps; world bible (3 investors + 2 rivals: traits/thesis/bond/flaw/secret/alignment coords; Markov names); keyless fallback
+- ☐ N6 Engine⇄week loop: tick before DM; extended ops (status/clock/price/marketing/hire/loan) + executor + receipts on the page
+- ☐ N7 D&D resolution wired: DC floors + margin bands + advantage/disadvantage (2d20) + exhaustion; ceremony shows adv/dis
+- ☐ N8 DM prompt v2: context sandwich (bible + capped story_so_far + last-3-weeks + signals + directives); memory_update field + 500-word cap enforcement
+- ☐ N9 Sentinel linter + premise guard + one-retry hardening
+- ☐ N10 Typed milestones + XP/levels (+1 stat picks) + trait tally + archetype epilogue
+- ☐ N11 THE BINDER: 7-tab diegetic dashboard (vitals/customers/product/crew/cap table/street/threats) + fog of war by analytics level
+- ☐ N12 Decision surface: move telegraphing note, term-sheet cards, candidate slates, CRIT/BACKFIRE stamps
+- ☐ N13 Dice: 20 sheets landed + wired + ceremony filmed (batch in flight)
+- ☐ N14 Setup upgrades: stat allocation, cofounder chemistry, world-map reveal page
+- ☐ N15 Soaks: keyless 75-week + live multi-week + balance recheck; all films; STATUS/PROJECT_LOG current
+
 ## THE LIVE-PLAY + AUTONOMY ROUND (2026-08-20 night)
 - ✅ K1 Two-spread 60-second week (read the world's reply → one clean written move), no options before the pen
 - ✅ K2 One-press commit: write → adjudicate → apply → beat; payload rides the outcome (race-proof)
