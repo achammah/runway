@@ -959,7 +959,74 @@ func _turn_in_flight() -> bool:
 ## week\'s numbers straight onto the room\'s own furniture in the founder\'s hand.
 var _contract_ink: Control
 
-func _mark_contract_surfaces(on: bool) -> void:
+## THE SCOUT (owner: "maybe we should have a YOLO to identify boxes that are
+## empty"): instead of trusting the contract positions, SCAN the generated image
+## for its actual blank surfaces — large bright low-saturation rectangles — and
+## write the numbers onto those. Calibrated offline on real renders: brightness
+## >207, channel spread <34, solidity >=0.66, at a 192px scan width.
+func _scout_blanks(tex: Texture2D) -> Array:
+	var img := tex.get_image()
+	if img == null:
+		return []
+	var W := img.get_width()
+	var H := img.get_height()
+	var sw := 192
+	var sh := int(192.0 * float(H) / float(W))
+	var small: Image = img.duplicate()
+	small.resize(sw, sh, Image.INTERPOLATE_BILINEAR)
+	var seen := {}
+	var rects: Array = []
+	for y0 in sh:
+		for x0 in sw:
+			var k0 := y0 * sw + x0
+			if seen.has(k0):
+				continue
+			var c0: Color = small.get_pixel(x0, y0)
+			if not _blankish(c0):
+				continue
+			var stack: Array = [Vector2i(x0, y0)]
+			seen[k0] = true
+			var cells: Array = []
+			while not stack.is_empty():
+				var p: Vector2i = stack.pop_back()
+				cells.append(p)
+				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var q: Vector2i = p + d
+					if q.x < 0 or q.y < 0 or q.x >= sw or q.y >= sh:
+						continue
+					var kq := q.y * sw + q.x
+					if seen.has(kq):
+						continue
+					if _blankish(small.get_pixel(q.x, q.y)):
+						seen[kq] = true
+						stack.append(q)
+			if cells.size() < 130:
+				continue
+			var xmin := sw; var xmax := 0; var ymin := sh; var ymax := 0
+			for p2 in cells:
+				xmin = mini(xmin, (p2 as Vector2i).x); xmax = maxi(xmax, (p2 as Vector2i).x)
+				ymin = mini(ymin, (p2 as Vector2i).y); ymax = maxi(ymax, (p2 as Vector2i).y)
+			var bw := xmax - xmin + 1
+			var bh := ymax - ymin + 1
+			if float(cells.size()) / float(bw * bh) < 0.66 or bw < 16 or bh < 11 or bh > bw * 2.2:
+				continue
+			rects.append({"r": Rect2(float(xmin) * W / sw, float(ymin) * H / sh,
+					float(bw) * W / sw, float(bh) * H / sh), "n": cells.size()})
+	rects.sort_custom(func(a, b): return int(a["n"]) > int(b["n"]))
+	var out: Array = []
+	for rr in rects.slice(0, 2):
+		# map from image space to the 1536x1024 room space
+		var r: Rect2 = rr["r"]
+		out.append(Rect2(r.position.x * 1536.0 / W, r.position.y * 1024.0 / H,
+				r.size.x * 1536.0 / W, r.size.y * 1024.0 / H))
+	return out
+
+func _blankish(c: Color) -> bool:
+	var mx := maxf(c.r, maxf(c.g, c.b))
+	var mn := minf(c.r, minf(c.g, c.b))
+	return mx > 0.81 and (mx - mn) < 0.135
+
+func _mark_contract_surfaces(on: bool, tex: Texture2D = null) -> void:
 	if _contract_ink != null and is_instance_valid(_contract_ink):
 		_contract_ink.queue_free()
 		_contract_ink = null
@@ -968,41 +1035,51 @@ func _mark_contract_surfaces(on: bool) -> void:
 	var ink := Control.new()
 	ink.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ink.size = Vector2(1536, 1024)
+	# scout the REAL blank surfaces; fall back to the contract zones when the
+	# picture kept none big enough
+	var found: Array = _scout_blanks(tex) if tex != null else []
+	var money_r: Rect2 = found[0] if found.size() > 0 else Rect2(80, 90, 380, 260)
+	var sheet_r: Rect2 = found[1] if found.size() > 1 else Rect2(1130, 90, 300, 230)
+	if found.size() > 1 and found[1].position.x < found[0].position.x:
+		money_r = found[1]
+		sheet_r = found[0]
 	var net := state.burn_per_week()
 	var weeks := 999 if net <= 0 else maxi(0, int(floor(float(state.cash) / float(net))))
+	var msz := clampi(int(money_r.size.x / 5.5), 26, 50)
 	var wb := [
-		["$%s" % _fmt(state.cash), 46, Color("1E1E1E")],
-		[("%d weeks left" % weeks) if weeks < 999 else "cash positive", 30, Color("E86A5C")],
+		["$%s" % _fmt(state.cash), msz, Color("1E1E1E")],
+		[("%d weeks left" % weeks) if weeks < 999 else "cash positive", int(msz * 0.62), Color("E86A5C")],
 	]
-	var y := 120.0
+	var y := money_r.position.y + money_r.size.y * 0.22
 	for row in wb:
 		var l := Label.new()
 		l.add_theme_font_override("font", _font)
 		l.add_theme_font_size_override("font_size", int(row[1]))
 		l.add_theme_color_override("font_color", row[2])
 		l.text = String(row[0])
-		l.position = Vector2(96, y)
-		l.rotation = -0.02
+		l.position = Vector2(money_r.position.x + money_r.size.x * 0.12, y)
+		l.rotation = -0.015
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ink.add_child(l)
-		y += float(row[1]) * 1.3
+		y += float(row[1]) * 1.35
+	var ssz := clampi(int(sheet_r.size.x / 9.0), 20, 30)
 	var sheet := [
 		"%d customers" % state.traction,
 		"%d on payroll" % (state.cofounders.size() + state.employees.size()),
 		"%d%% yours" % int(state.founder_pct),
 	]
-	var sy := 110.0
+	var sy := sheet_r.position.y + sheet_r.size.y * 0.18
 	for t in sheet:
 		var l2 := Label.new()
 		l2.add_theme_font_override("font", _font)
-		l2.add_theme_font_size_override("font_size", 26)
+		l2.add_theme_font_size_override("font_size", ssz)
 		l2.add_theme_color_override("font_color", Color("1E1E1E"))
 		l2.text = String(t)
-		l2.position = Vector2(1160, sy)
-		l2.rotation = 0.015
+		l2.position = Vector2(sheet_r.position.x + sheet_r.size.x * 0.12, sy)
+		l2.rotation = 0.012
 		l2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ink.add_child(l2)
-		sy += 34.0
+		sy += float(ssz) * 1.32
 	_room.add_child(ink)
 	_contract_ink = ink
 
@@ -1032,7 +1109,7 @@ func adopt_composed(path: String, aligned: bool = false) -> bool:
 	_composed.texture = tex
 	_composed.visible = true
 	_composed_path = path
-	_mark_contract_surfaces(path.contains("gen_scenes_v2"))
+	_mark_contract_surfaces(path.contains("gen_scenes_v2"), tex)
 	# An assembled room's faces were measured on the LIBRARY scene, so no composed
 	# image can ever be aligned to them.
 	_surf_aligned = aligned and not _assembled

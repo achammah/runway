@@ -321,9 +321,11 @@ const MIDDLEWARE_GEN := "https://nano-banana-production-e03b.up.railway.app/gene
 const V2_DIR := "user://gen_scenes_v2"
 const V2_REG := "user://gen_scenes_v2/registry.json"
 
-const CHARACTER_LAW := ("Characters are solid ink-black bean blobs with two blank white "
-	+ "oval eyes (left bigger), one ink cowlick, tiny cream sneakers, NO pupils, NO mouth, "
-	+ "NO clothing; identity by carried props only, exactly as drawn in each reference image.")
+const CHARACTER_LAW := ("EVERY person in this world — the cast, customers, strangers, "
+	+ "officials, passers-by — is the SAME species: a solid ink-black bean blob with two "
+	+ "blank white oval eyes (left bigger), one ink cowlick, tiny cream sneakers, NO pupils, "
+	+ "NO mouth, NO clothing. NEVER draw a realistic human. The cast are identified by their "
+	+ "carried props exactly as in the reference images; strangers get incidental props.")
 const STYLE_LAW := ("Hand-drawn wobbly felt-pen ink, flat fills, no gradients. Palette only: "
 	+ "cream #F2EAD3, ink #1E1E1E, coral #E86A5C, yellow #F4B942, sage #8FA582, blue #6E8CA0, white.")
 const FRAME_LAW := ("One wide establishing shot, camera at standing eye height, level. "

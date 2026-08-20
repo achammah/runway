@@ -770,7 +770,44 @@ func _after_draft(result: Dictionary) -> void:
 	g.week_committing.connect(_drop_curtain)
 	g.week_rolled.connect(_show_die)
 	_swap(g)
-	_opening_scene()
+	_cold_open(g)
+
+## WEEK ONE IS GENERATED TOO (owner: "it's just the bland standard situation").
+## Day one gets its own DM story: a real roll, a real narration from the pitch,
+## the type, the capital and the crew — and the DM's own scene staging drives
+## the opening image. Keyless runs keep the authored line and the synthetic
+## opening scene.
+func _cold_open(gv: GarageViewScreen) -> void:
+	if generator == null or not generator.llm.enabled():
+		_opening_scene()
+		return
+	var d20 := rng.roll_d20()
+	var move := ("Day one of %s: we sign the papers, unpack the boxes, and put the plan on "
+			+ "the whiteboard. Everyone takes their corner and we start.") % state.company_name
+	generator.adjudicate(state, {}, move, func(res: Dictionary) -> void:
+		if res.is_empty() or state == null:
+			_opening_scene()
+			return
+		res["player_text"] = move
+		res["d20"] = d20
+		state.last_outcome = {
+			"title": "day one", "verdict": String(res.get("verdict", "")),
+			"said": move, "heard": String(res.get("interpreted_as", "")),
+			"narration": String(res.get("narration", "")),
+			"reality": String(res.get("reality_check", "")),
+			"dec_log": [], "log": [], "dm": res.duplicate(true)}
+		if is_instance_valid(gv):
+			gv.set("_last_outcome", state.last_outcome.duplicate(true))
+			if gv.has_method("refresh_week_story"):
+				gv.call("refresh_week_story")
+		# the DM staged day one; its scene drives the opening image
+		var cast_pack := _cast_pack(res.get("cast", []))
+		_scene_seq = _turn_seq
+		_scene_headline = String(res.get("headline", "DAY ONE"))
+		director.make_scene_v2(res.get("scene", {}), cast_pack["cast"], cast_pack["urls"],
+				String((res.get("scene", {}) as Dictionary).get("beat", "day one")),
+				"opening_run%d" % (record.seed_value if record != null else 0), _company_ctx()),
+		d20)
 
 func _company_ctx() -> Dictionary:
 	if state == null:
@@ -933,15 +970,37 @@ func _drop_curtain() -> void:
 		_curtain = Curtain.new()
 		add_child(_curtain)
 	move_child(_curtain, get_child_count() - 1)
+	# the table roll owns the screen first; the curtain waits for the die
+	if _cup != null and is_instance_valid(_cup):
+		await _cup.settled
+		await get_tree().create_timer(0.15).timeout
+	move_child(_curtain, get_child_count() - 1)
 	_curtain.close()
 	get_tree().create_timer(12.0).timeout.connect(func() -> void:
 		if _curtain != null and is_instance_valid(_curtain) and _curtain.visible \
 				and not _turn_busy:
 			_curtain.open())
 
+## The table roll: cup + 3D d20 ON THE ROOM, then the curtain falls. The DM is
+## already thinking while the die tumbles, so the ceremony costs no extra wait.
+var _cup: DiceCup
+
 func _show_die(n: int) -> void:
+	_roll_ceremony(n)
+
+func _roll_ceremony(n: int) -> void:
+	if _cup != null and is_instance_valid(_cup):
+		return
+	_cup = DiceCup.new()
+	add_child(_cup)
+	move_child(_cup, get_child_count() - 1)
+	_cup.size = get_viewport().get_visible_rect().size
+	await _cup.roll(n)
+	if _cup != null and is_instance_valid(_cup):
+		_cup.queue_free()
+		_cup = null
 	if _curtain != null and is_instance_valid(_curtain):
-		_curtain.roll_die(n)
+		_curtain.roll_die(n)   # the die persists small on the curtain for the DC stamp
 
 func _raise_curtain() -> void:
 	if _curtain != null and is_instance_valid(_curtain) and _curtain.visible:
