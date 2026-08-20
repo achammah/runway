@@ -47,6 +47,7 @@ var _last_cash := 0
 var _adjudicating := false
 var _sfx := {}
 var _over := false
+var _week_opened := false                 # has THIS screen already opened a week? (see _start_week)
 var _page_i := 0
 var _pending_choice: Dictionary = {}      # chosen listed option (not yet applied)
 var _pending_free: Dictionary = {}        # adjudicated free move (not yet applied)
@@ -968,7 +969,16 @@ func _fmt(v: int) -> String:
 # ---------- weekly loop ----------
 
 func _start_week() -> void:
-	state.week += 1
+	# WEEK 1 MUST EXIST. The counter opens at 1 and this used to advance it on the
+	# way IN, so the first page anyone ever read said WEEK 2, the button said WEEK 2
+	# AWAITS, and the player's own first week was missing from their record — the
+	# autopsy jumped straight from "wk 0 founded" to "wk 2". The counter now advances
+	# only once a week has actually been PLAYED, so the opening value is week 1.
+	# A screen built mid-run still ticks: the act break makes a fresh one, and by
+	# then the counter has long left 1 behind.
+	if _week_opened or state.week > 1:
+		state.week += 1
+	_week_opened = true
 	_week_log.clear()
 	_departures.clear()
 	_pending_choice = {}
@@ -1075,7 +1085,28 @@ var _jp: JournalPage
 ## Fit a row to the space the zone actually has left, and to how many things share
 ## it. Width matters as much as height: a caption box wider than the column step
 ## overlaps its neighbour, which is what clipped "Enterprise" to "Enterpris".
-const WRITE_FIELD_H := 168.0   ## measured: prompt line + the ruled field + the gap
+## WHAT `icon_row` DOES WITH THE HEIGHT IT IS HANDED. The number is the row's BUDGET:
+## the caption is taken out of it first and the drawing gets the rest, and the shell
+## will not let a drawing fall under ICON_MIN_H — under that it grows the row instead.
+## So the height a caller names IS the row's height, provided it leaves room for both.
+## 76 and 56 did not: they left 30px and 10px of picture under captions bigger than the
+## thing they belonged to. 150 leaves a drawing worth looking at on every page here.
+const ROW_WANT_H := 150.0
+
+## The written move needs the last rules of the sheet: its faint prompt, the two ruled
+## lines the shell guarantees under it, and clear air above the lock line. A row that
+## runs past this pushes the field down onto the lock button.
+const WRITE_FIELD_RESERVE := 205.0
+
+## The height to ASK a row for so it stops at `limit_y`. Below ICON_MIN_H the number
+## stops meaning anything — the shell grows the row back — so that is the floor.
+func _row_h(zone: String, limit_y: float, want: float = ROW_WANT_H) -> float:
+	var cursor: float = _jp.zone_bottom(zone) - _jp.room_left(zone)
+	return clampf(limit_y - cursor - JournalPage.GAP, JournalPage.ICON_MIN_H, want)
+
+## Where a row has to stop for the written move to still fit under it.
+func _write_limit() -> float:
+	return _jp.zone_bottom("ending") - WRITE_FIELD_RESERVE
 
 ## Returns Vector2.ZERO when the row genuinely does not fit; callers skip it.
 func _row_fits(zone: String, reserve: float) -> bool:
@@ -1228,8 +1259,12 @@ func _page_consequences() -> void:
 		return
 	var lines := _story_lines()
 	if lines.is_empty():
-		# an honest line, never numbers with no story behind them
-		_jp.line("You made no move last week. The week passed anyway, and it still cost you.")
+		# an honest line, never numbers with no story behind them — and WEEK ONE HAS
+		# NO LAST WEEK. Opening a brand new run by blaming the founder for a move they
+		# were never offered is the off-by-one read out loud.
+		_jp.line("Week one. Nothing has happened to you yet. After this, everything that does is yours."
+			if state.week <= 1
+			else "You made no move last week. The week passed anyway, and it still cost you.")
 		_week_told = 0
 		_week_state()
 		return
@@ -1313,7 +1348,13 @@ func _page_people() -> void:
 	if faces.size() > 4:
 		faces = faces.slice(0, 4)
 	_jp.line("Who is still here.")
-	var frow: Control = _jp.icon_row(faces, Vector2(_row_cell("body", faces.size()).x, 76.0), "body")
+	# THESE ARE PORTRAITS OF THE PEOPLE IN THE ROOM, not bullet points. At 76 they
+	# came out 30px tall, under captions bigger than the faces, so the page read as
+	# three words over three specks. BODY cannot hold a full-size row on its own —
+	# the shell cascades what overflows into the zone below rather than printing on
+	# top of it, which is exactly what that mechanism is for.
+	var fcell := _row_cell("body", faces.size())
+	var frow: Control = _jp.icon_row(faces, Vector2(fcell.x, ROW_WANT_H), "body")
 	if state.cofounders.is_empty():
 		_jp.line("Nobody else yet. The plant cannot hold equity.", true)
 		return
@@ -1331,7 +1372,11 @@ func _page_people() -> void:
 		{"id": "g:equip", "tex": _tex("itm_laptop"), "text": "new gear"},
 	]
 	_jp.line("Give one of them something this week.", false, "ending")
-	_jp.icon_row(gifts, Vector2(_row_cell("ending", gifts.size()).x, 56.0), "ending")
+	# 56 drew the bonus, the slice and the gear at TEN pixels. This row shares what
+	# is left of the sheet with the written move below it, so it takes as much of a
+	# drawing as that leaves and never less than a visible one.
+	var gcell := _row_cell("ending", gifts.size())
+	_jp.icon_row(gifts, Vector2(gcell.x, _row_h("ending", _write_limit())), "ending")
 	var gte := _jp.write_field()
 	gte.text = String(_free_text.get(1, ""))
 	_wire_free(gte)
@@ -1345,8 +1390,14 @@ func _page_work() -> void:
 			var pid := String(pr["id"])
 			moves.append({"id": "%s|%s" % [dept, pid], "tex": _tex(String(WORK_ICONS.get(pid, "itm_laptop"))),
 				"text": String(WORK_SHORT.get(pid, pr["label"]))})
-	_jp.icon_row(moves.slice(0, 3), Vector2(_row_cell("body", 3).x, 76.0), "body")
-	_jp.icon_row(moves.slice(3, 6), Vector2(_row_cell("ending", 3).x, 56.0), "ending")
+	# Same as the crew page: 76 and 56 drew the week's six moves at 30px and 10px, so
+	# `outreach`, `demos` and `invoices` were captions under dots. The top row takes a
+	# full-size drawing and cascades; the bottom row takes what the written move leaves.
+	var tcell := _row_cell("body", 3)
+	var bcell := _row_cell("ending", 3)
+	var bottom: Array = moves.slice(3, 6)
+	_jp.icon_row(moves.slice(0, 3), Vector2(tcell.x, ROW_WANT_H), "body")
+	_jp.icon_row(bottom, Vector2(bcell.x, _row_h("ending", _write_limit())), "ending")
 	_jp.choice_made.connect(func(id: String):
 		if not "|" in id:
 			return
@@ -1398,30 +1449,113 @@ func _page_decision() -> void:
 		_lock_button()
 		return
 	var opts: Array = []
+	var locks: Array = []
 	for i in _current_event.get("choices", []).size():
 		var choice: Dictionary = _current_event["choices"][i]
 		var locked := _choice_lock_reason(choice)
 		var label := String(choice.get("label", "..."))
+		# THE REASON IS THE CAPTION'S SECOND LINE, never a parenthetical glued onto
+		# the end of the sentence. A locked option has to LOOK locked before it is
+		# clicked; a click that silently does nothing reads as a broken game.
 		if locked != "":
-			label += " (%s)" % locked
-		opts.append({"id": "c%d" % i, "text": label, "locked": locked != ""})
+			label += "\n" + locked
+		locks.append(locked != "")
+		opts.append({"id": "c%d" % i, "tex": _choice_tex(choice), "text": label,
+			"locked": locked != ""})
+	_jp.line(String(_current_event.get("title", "")) + " — what do you do?")
+	var ocell := _row_cell("body", opts.size())
+	var orow: Control = _jp.icon_row(opts, Vector2(ocell.x,
+			_row_h("body", _write_limit())), "body")
+	_dim_locked(orow, locks)
 	_jp.choice_made.connect(func(id: String):
 		if not id.begins_with("c"):
 			return
 		var idx := int(id.substr(1))
 		var ch: Dictionary = _current_event["choices"][idx]
 		if _choice_lock_reason(ch) != "":
+			# picking a locked option must ANSWER — the shell has already drawn a pen
+			# ring around it and lifted it out of the dim, so put both back
+			_sfx["card_flip"].play()
+			_dim_locked(orow, locks)
 			return
 		_pending_free = {}
 		_pending_choice = ch
 		_sfx["cash"].play()
+		_dim_locked(orow, locks)
 		_lock_button())
-	_jp.line(String(_current_event.get("title", "")) + " — what do you do?")
-	_jp.icon_row(opts, Vector2(_row_cell("body", opts.size()).x, 70.0), "body")
+	# THE PAGE HAS TO ANSWER THE PEN. Pressing Enter re-renders this page with the
+	# move already gone to the world, and without this line the page came back
+	# character-for-character identical — so the one screen the game is built around
+	# looked broken for as long as the verdict took. The situation page has said this
+	# since it was written; the decision page, where the field actually is, did not.
+	if _adjudicating:
+		_jp.line("the world considers your move...", true, "ending")
+		_lock_button()
+		return
 	var te := _jp.write_field()
 	te.text = String(_free_text.get(4, ""))
 	_wire_free(te)
 	_lock_button()
+
+## THE OPTION NEEDS A DRAWING. `icon_row` only draws one when the item carries a
+## `tex`, and the listed choices carried none — so the decision page was two floating
+## sentences with nothing to say they were pressable. A gated choice shows the very
+## thing it is waiting on; otherwise the verb in the label picks the drawing. First
+## match wins, and the fallback means no choice is ever iconless.
+const CHOICE_ICONS := [
+	["itm_savings_jar", ["$", "cash", "pay", "buy", "bank", "price", "charge", "cheap",
+		"free", "refund", "money", "raise", "fund", "invoice", "salary", "bill"]],
+	["cf_business_neutral", ["hire", "cofounder", "founder", "partner", "offer", "equity",
+		"share", "recruit", "team", "call", "meet", "talk", "pitch", "email", "customer"]],
+	["itm_laptop", ["ship", "build", "code", "hotfix", "fix", "polish", "rebuild",
+		"product", "feature", "push", "demo", "launch"]],
+	["gv/chart_1", ["post", "tweet", "announce", "publish", "press", "market", "ads",
+		"public", "growth", "screenshot"]],
+	["itm_energy_drinks", ["sleep", "rest", "night", "weekend", "ramen", "eat", "food",
+		"coffee", "pizza", "window"]],
+	["itm_dignity", ["decline", "skip", "refuse", "walk", "quit", "ignore", "silent",
+		"stay", "keep", "wait", "solo", "no."]],
+]
+const CHOICE_ICON_FALLBACK := "itm_idea_napkin"
+
+func _choice_tex(choice: Dictionary) -> Texture2D:
+	if choice.has("needs_item"):
+		var ti := _tex(String(choice["needs_item"]))
+		if ti != null:
+			return ti
+	if choice.has("needs_role"):
+		var tr := _tex("cf_%s_neutral" % String(choice["needs_role"]).to_lower())
+		if tr != null:
+			return tr
+	if choice.has("needs_cash"):
+		return _tex("gv/money_2")
+	var label := String(choice.get("label", "")).to_lower()
+	for pair in CHOICE_ICONS:
+		var words: Array = (pair as Array)[1]
+		for w in words:
+			if label.contains(String(w)):
+				var tw := _tex(String((pair as Array)[0]))
+				if tw != null:
+					return tw
+	return _tex(CHOICE_ICON_FALLBACK)
+
+## A LOCKED OPTION MUST READ AS LOCKED. `icon_row` computes the "locked" flag into
+## the item dictionary and then never looks at it, and `_select` repaints every
+## slot's modulate the moment anything is picked — so the dimming is applied here,
+## and re-applied after every pen mark.
+func _dim_locked(row: Control, locked: Array) -> void:
+	if row == null or not is_instance_valid(row):
+		return
+	for i in mini(row.get_child_count(), locked.size()):
+		if not bool(locked[i]):
+			continue
+		var slot: Control = row.get_child(i)
+		slot.modulate = Color(1, 1, 1, 0.40)   # readable, plainly not yours
+		# and never a pen ring around something you cannot have. The drawing and the
+		# caption stay; the mark the shell drew on the way past does not.
+		for c in slot.get_children():
+			if not (c is TextureRect or c is Label):
+				c.visible = false
 
 ## Enter commits a written move to the world for adjudication.
 func _wire_free(te: TextEdit) -> void:
@@ -1743,18 +1877,24 @@ func _free_move(text: String) -> void:
 	_adjudicating = true
 	_pending_choice = {}
 	_show_spread()
+	# REDRAW WHATEVER PAGE IS OPEN, never one page index. This waited on `_page_i == 3`,
+	# the situation page — but the field the player actually writes their move into is
+	# on the DECISION page, page 4. So the verdict came back, `_pending_free` was set,
+	# the page was never rebuilt, and the lock button sat on "...decide first" forever:
+	# you wrote your move on the page the whole game is built around and nothing
+	# happened. The crew page carries a field too. The open page is the one to rebuild.
 	generator.adjudicate(state, _current_event, text, func(result: Dictionary):
 		_adjudicating = false
 		if result.is_empty():
 			_pending_free = {}
-			if _journal.visible and _page_i == 3:
+			if _journal.visible:
 				_show_spread()
 			return
 		result["player_text"] = text
 		result["reality"] = result.get("reality_check", "")
 		_pending_free = result
 		_sfx["deposit"].play()
-		if _journal.visible and _page_i == 3:
+		if _journal.visible:
 			_show_spread())
 
 func _do_pivot(layer: Control, new_idea: String, new_what: String, new_who: String, cost: int, kept: int, fought: bool) -> void:
