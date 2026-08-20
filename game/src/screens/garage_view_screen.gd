@@ -74,6 +74,15 @@ var _composed_path := ""
 var _composed_for: Dictionary = {}    # scene_id -> a compose has already been asked for
 var _composing := false
 var _director: SceneDirector
+## THE ASSEMBLED ROOM (docs/BLANK_SCENES_ARCHITECTURE.md). A blank scene out of the
+## background library, this run's crew posed into its typed slots, and that scene's
+## OWN writable faces. It replaces the old stage whole — see _mount_assembled().
+var _stage: SceneStage
+var _assembled := false               # is the assembled room the room we stand in?
+var _facet_id := ""                   # the library facet the stage was built from
+var _mount_key := ""                  # scene id + facet the current room was mounted for
+var _cast_key := ""                   # who was in it, so a departure re-poses the room
+var _face_of: Dictionary = {}         # bank/product/users/equity/bag -> the drawn face
 
 # where each ownable thing lives in the room (position, height)
 const FUN_FACTS := [
@@ -160,7 +169,7 @@ func _ready() -> void:
 	_mount_scene()
 
 	# living objects (classic path only builds sprites; scene mode reuses the tag/labels)
-	if not _scene_mode:
+	if not _scene_mode and not _assembled:
 		_spot("money", GV + "money_1.png", Vector2(70, 760), 180.0)
 	var tag := Panel.new()
 	tag.position = Vector2(268, 714) if _scene_mode else Vector2(64, 700)
@@ -177,7 +186,7 @@ func _ready() -> void:
 	_money_label = _mk_dlabel("$0", 29, PALETTE["ink"])
 	_money_label.position = Vector2(14, 4)
 	tag.add_child(_money_label)
-	if not _scene_mode:
+	if not _scene_mode and not _assembled:
 		_spot("board", GV + "board_1.png", Vector2(200, 270), 210.0)
 		_spot("chart", GV + "chart_1.png", Vector2(952, 300), 150.0)
 	_users_label = _mk_dlabel("", 22, Color(PALETTE["ink"], 0.85))
@@ -213,8 +222,13 @@ func _ready() -> void:
 	cap_paper.add_child(cap_lbl)
 	_cap_label = cap_lbl
 
-	# decay + badge spots (hidden until earned); scene mode repositions onto the painting
-	if _scene_mode:
+	# decay + badge spots (hidden until earned); scene mode repositions onto the painting.
+	# An ASSEMBLED room gets NONE of them: the facet it was built from already carries
+	# the condition (in_the_red IS the fraying room), and a decay sprite measured for a
+	# different stage laid over it is the second garage in the frame.
+	if _assembled:
+		pass
+	elif _scene_mode:
 		_spot("decay_trash", GV + "decay_trash.png", Vector2(486, 800), 110.0, false)
 		_spot("decay_flies", GV + "decay_flies.png", Vector2(1030, 640), 74.0, false)
 		_spot("decay_graffiti", GV + "decay_graffiti.png", Vector2(284, 132), 110.0, false)
@@ -422,6 +436,212 @@ func _item_note(item_id: String, anchor: Control) -> void:
 	tw.tween_property(note, "modulate:a", 0.0, 0.35)
 	tw.tween_callback(note.queue_free)
 
+## ── THE ASSEMBLED ROOM — WIRED, AND OFF BY DEFAULT ───────────────────
+##
+## WHAT IT DOES when it is on: the era and the company's condition name a facet in
+## the background library ("scrappy_workspace/garage/day_in_the_red_wide").
+## SceneStage paints that blank scene and poses this run's crew into its typed slots;
+## SceneSurfaces reads the SAME facet's annotations for the faces the numbers are
+## written on. It lands as ONE unit — an earlier wiring layered the new stage over
+## the old one while the surfaces still wrote at the OLD stage's coordinates, and put
+## "$82,350" on a bare wall with two garages in the same frame — so when it mounts,
+## the whole old stack (stage plate, layered spots and cutouts, sprite crew,
+## old-coordinate surfaces) goes down in the same breath, and if any part of it
+## misses, none of it is applied.
+##
+## WHY IT IS OFF. Posing library sprites onto measured slot coordinates still reads
+## as pasting: "the placement is weird — what you have done is backgrounds and you
+## just pasted on top random characters" (owner, on an assembly). The room that ships
+## is the path below. The model being built instead gives every scene PER-SPOT
+## IN-SCENE RENDITIONS — an empty patch and character patches for each spot, all cut
+## from native renders of that same scene — so assembly composites the scene's own
+## pixels and no foreign sprite ever lands in a room. That model reuses everything
+## here: the same facet ids, the same slots as spot definitions, the same surfaces.
+## So this stays wired and testable behind RUNWAY_STAGE rather than being deleted.
+const STAGE_ENV := "RUNWAY_STAGE"
+
+const ERA_FACETS := {
+	"garage": "scrappy_workspace/garage",
+	"coworking": "legit_workspace/coworking_hotdesk",
+	"office": "legit_workspace/small_office",
+	"floor": "legit_workspace/open_floor",
+	"hq": "legit_workspace/hq_skyline",
+}
+
+## THE ROOM'S CONDITION IS THE COMPANY'S. Money first — an overdraft is the loudest
+## fact in a run — then a room that is visibly winning, else the ordinary week. This
+## picks the SCENE. Burnt moods pick the POSES instead, and SceneStage folds that in,
+## so a mood is never multiplied against a room.
+func _condition_for_state() -> String:
+	if state == null:
+		return "steady"
+	if state.cash < 0:
+		return "in_the_red"
+	if state.morale >= 70 and state.cash > 60000:
+		return "thriving"
+	return "steady"
+
+
+## The one switch. Off in every player build and every capture that does not ask for
+## it, so the shipped room is the path below this block.
+func _stage_enabled() -> bool:
+	return OS.get_environment(STAGE_ENV) != ""
+
+
+## What the current room was mounted for. The CONDITION only belongs in it when the
+## assembled path is live — otherwise a room that never changes with the money would
+## be torn down and rebuilt every time the balance crossed zero, taking the composed
+## picture with it.
+func _mount_key_now() -> String:
+	var want := SceneRoomPicker.scene_id_for(state) if state != null else _scene_id
+	return "%s|%s" % [want, _facet_for_state() if _stage_enabled() else ""]
+
+
+## The facet of the room we are standing in, or "" when the era names no place.
+## The per-spot rendition model needs exactly this mapping, so it lives here whether
+## or not the assembled path above is switched on.
+func _facet_for_state() -> String:
+	if state == null:
+		return ""
+	var place := String(ERA_FACETS.get(String(state.era), ""))
+	if place == "":
+		return ""
+	return "%s/day_%s_wide" % [place, _condition_for_state()]
+
+
+## crew_cast() speaks the game's role vocabulary ("tech", "sales"); the pose library
+## is keyed by character folder ("cofd_tech"). Translate, and mark the founder so
+## SceneStage still hands them the most prominent slot in the room.
+func _stage_cast() -> Array:
+	var out: Array = []
+	for c in crew_cast():
+		var m: Dictionary = c
+		var who := String(m.get("who", ""))
+		var art := _pose_char(who, String(m.get("kind", "cofounder")))
+		if art == "":
+			continue
+		out.append({
+			"who": art,
+			"mood": String(m.get("mood", "fine")),
+			"doing": String(m.get("doing", "")),
+			"founder": who == "founder",
+		})
+	return out
+
+
+func _pose_char(who: String, kind: String) -> String:
+	if kind == "employee":
+		return "employee"
+	var art := ""
+	if who == "founder":
+		art = String(FOUNDER_DIRS.get(String(state.archetype_id), "cast_hacker"))
+	else:
+		art = String(COFOUNDER_DIRS.get(who, ""))
+	return art.trim_prefix("cast_")
+
+
+## RUNG 1. Touches nothing and returns false when the room cannot be assembled, so
+## the caller falls straight through to the old path.
+func _mount_assembled() -> bool:
+	if not _stage_enabled():
+		return false
+	var facet := _facet_for_state()
+	if facet == "":
+		return false
+	var st := SceneStage.new()
+	st.name = "assembled"
+	_room.add_child(st)
+	_room.move_child(st, 0)
+	var cast := _stage_cast()
+	if not st.build(facet, cast):
+		_room.remove_child(st)
+		st.queue_free()
+		return false
+	_stage = st
+	_facet_id = facet
+	# The faces come from the SAME facet the scene did. A room nobody annotated keeps
+	# neither half: writing the bank onto a wall we never measured is precisely the
+	# failure this integration exists to prevent.
+	if not _mount_stage_surfaces():
+		_room.remove_child(st)
+		st.queue_free()
+		_stage = null
+		_facet_id = ""
+		return false
+	_assembled = true
+	_cast_key = JSON.stringify(cast)
+	_hide_old_stack()
+	print("RUNWAY! room assembled: %s — %s" % [facet, _cast_line()])
+	return true
+
+
+## The handwriting is drawn INTO the stage: over the scene, UNDER the cast. A number
+## on a board somebody is standing in front of is hidden by that body, the way it
+## would be in the room — never tattooed across their back. A stage rebuild frees
+## everything the stage owns, so this runs again after every build.
+func _mount_stage_surfaces() -> bool:
+	if _stage == null or not is_instance_valid(_stage):
+		return false
+	var sf := SceneSurfaces.new()
+	if not sf.mount_background(_facet_id):
+		sf.queue_free()
+		return false
+	_stage.add_child(sf)
+	_stage.move_child(sf, mini(1, _stage.get_child_count() - 1))
+	_surfaces = sf
+	_surf_mode = true
+	return true
+
+
+## THE SWAP IS ATOMIC, so everything the old room drew goes down together: the stage
+## plate, its layered spots and cutouts, the badges, the decay sprites, the sprite
+## crew. Cheap and idempotent, so the weekly sync can simply call it.
+func _hide_old_stack() -> void:
+	for k in _spots:
+		var tr: TextureRect = _spots[k]
+		if is_instance_valid(tr):
+			tr.visible = false
+	for n in _crew_nodes:
+		if is_instance_valid(n):
+			(n as CanvasItem).visible = false
+	if _room_scene != null and is_instance_valid(_room_scene):
+		_room_scene.visible = false
+	if _room_bg != null and is_instance_valid(_room_bg):
+		_room_bg.visible = false
+
+
+## The people in the room are state too: a cofounder walks out, morale burns someone
+## down into the slumped pose, a hire arrives. The frame must never disagree with the
+## ledger, so the cast is re-posed the moment it stops matching — and the surfaces
+## are re-laid with it, because a rebuild frees them.
+func _refresh_stage_cast() -> void:
+	if not _assembled or _stage == null or not is_instance_valid(_stage):
+		return
+	var cast := _stage_cast()
+	var key := JSON.stringify(cast)
+	if key == _cast_key:
+		return
+	_cast_key = key
+	if _stage.build(_facet_id, cast) and _mount_stage_surfaces():
+		print("RUNWAY! room re-cast: %s — %s" % [_facet_id, _cast_line()])
+		return
+	_mount_scene()          # the whole unit re-lands, or the old path takes over
+
+
+## What is actually standing in the room, for the run log — the one place a capture
+## can be checked against without opening the frame.
+func _cast_line() -> String:
+	if _stage == null or not is_instance_valid(_stage):
+		return ""
+	var bits := PackedStringArray()
+	for p in _stage.placements():
+		var d: Dictionary = p
+		bits.append("%s %s @%s" % [d.get("who", ""), d.get("pose", ""), d.get("slot_id", "")])
+	for q in _stage.dropped():
+		bits.append("%s DROPPED" % (q as Dictionary).get("who", ""))
+	return String(", ").join(bits)
+
+
 ## THE EMPTY STAGE. This is the FLOOR of the room, never the finished picture:
 ## the annotated stages are painted with nobody in them, and the people arrive
 ## composed into the room by the model (see below), not pasted on top of it.
@@ -429,18 +649,27 @@ func _item_note(item_id: String, anchor: Control) -> void:
 ## (MAIN-owned) owns the writable faces this screen writes the numbers on.
 func _mount_scene() -> void:
 	_scene_mode = false
+	_assembled = false
 	_surf_mode = false
 	_surf_aligned = true
-	for old in [_room_scene, _surfaces, _room_bg]:
+	_facet_id = ""
+	_cast_key = ""
+	_face_of = {}
+	for old in [_stage, _room_scene, _surfaces, _room_bg]:
 		if old != null and is_instance_valid(old):
 			var par := (old as Node).get_parent()
 			if par:
 				par.remove_child(old)
 			(old as Node).queue_free()
+	_stage = null
 	_room_scene = null
 	_surfaces = null
 	_room_bg = null
+	_mount_key = _mount_key_now()
 	_load_scene_layout()
+	# RUNG 1 — the assembled room, with nothing of the old stack left under it.
+	if _mount_assembled():
+		return
 	var sr := SceneRoom.new()
 	sr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sr.size = Vector2(1536, 1024)
@@ -557,19 +786,22 @@ func crew_cast() -> Array:
 	var out: Array = []
 	if state == null:
 		return out
-	out.append({"who": "founder",
+	out.append({"who": "founder", "kind": "founder",
 		"mood": "burnt" if (state.morale <= 30 or state.weeks_in_red >= 2) else "fine",
 		"doing": String(DOING["founder"])})
 	for cf in state.cofounders:
 		var loy := int(cf.get("loyalty", 70))
 		var sour := loy <= 30 or state.morale <= 20 or state.has_flag("trap_underpaid_cofounder")
 		var key := _role_key(String(cf.get("role", "Tech")))
-		out.append({"who": key, "mood": "burnt" if sour else "fine",
+		out.append({"who": key, "kind": "cofounder", "mood": "burnt" if sour else "fine",
 			"doing": String(DOING.get(key, "at work"))})
 	for e in state.employees:
 		var bs := GameState.burnout_state(int(e.get("burnout", 0)))
 		var ekey := _role_key(String(e.get("role", "generalist")))
-		out.append({"who": ekey, "mood": "burnt" if bs in ["cooked", "gone"] else "fine",
+		# `kind` keeps a hire from being drawn as a SECOND copy of the cofounder whose
+		# job they share; the pose library has its own employee.
+		out.append({"who": ekey, "kind": "employee",
+			"mood": "burnt" if bs in ["cooked", "gone"] else "fine",
 			"doing": String(DOING.get(ekey, "at work"))})
 	# the render is 67s for one character and 113s for four; four is the ceiling
 	return out.slice(0, 4)
@@ -615,6 +847,11 @@ func _mark_beat() -> String:
 ## turn the week loop is already rendering, and never in a harness.
 func _compose_room() -> void:
 	if state == null or _composing or _harness() or OS.get_environment("RUNWAY_NO_ART") != "":
+		return
+	# An assembled room IS the room, and it is instantaneous. A two-minute render of
+	# the LEGACY stage would replace it with a picture whose walls are not these
+	# walls — every writable face would then be somewhere else.
+	if _assembled:
 		return
 	if _composed_for.has(_scene_id) or _turn_in_flight():
 		return
@@ -714,7 +951,11 @@ func adopt_composed(path: String, aligned: bool = false) -> bool:
 	_composed.texture = tex
 	_composed.visible = true
 	_composed_path = path
-	_surf_aligned = aligned
+	# An assembled room's faces were measured on the LIBRARY scene, so no composed
+	# image can ever be aligned to them.
+	_surf_aligned = aligned and not _assembled
+	if _stage and is_instance_valid(_stage):
+		_stage.visible = false
 	if _room_scene and is_instance_valid(_room_scene):
 		_room_scene.visible = false
 	_write_state_surfaces()
@@ -730,46 +971,110 @@ func _drop_composed() -> void:
 	_surf_aligned = true
 	if _composed and is_instance_valid(_composed):
 		_composed.visible = false
+	if _stage and is_instance_valid(_stage):
+		_stage.visible = true
 	if _room_scene and is_instance_valid(_room_scene):
 		_room_scene.visible = true
 
 ## ── THE NUMBERS LIVE ON THE ROOM'S OWN SURFACES ──────────────────────────
 ## Cash is written in the ledger, product on the whiteboard, customers on the wall
-## chart, equity on the sticky note. What the scene declares no face for keeps its
-## old plate — per surface, not all-or-nothing, because a stage can annotate one
-## face and not another and the state must never simply disappear.
+## chart, equity on the sticky note. What the room has no face for keeps its old
+## plate — per value, not all-or-nothing, because a stage can annotate one face and
+## not another and the state must never simply disappear.
+##
+## WHICH DRAWN FACE EACH NUMBER GOES ON. The library rooms were not all furnished
+## alike — a garage in the red has no ledger on its crate — so each value names the
+## faces that suit it, best first, and takes the first one this room actually has and
+## nobody has claimed yet. The hand-authored stages were annotated face-for-face, so
+## only a library room walks past the first choice.
+const FACE_PREF := {
+	"bank": ["ledger", "sticky", "whiteboard", "wallchart"],
+	"equity": ["sticky", "face_1", "face_2"],
+	"users": ["wallchart", "face_1", "face_2"],
+	"product": ["whiteboard", "face_2", "face_3"],
+	"bag": ["inventory", "face_4"],
+}
+## Claim order: the money first, then what is still yours, then the meters.
+const FACE_ORDER := ["bank", "equity", "users", "product", "bag"]
+
+
+## The surfaces we may actually write on: mounted, and belonging to the room in
+## front of us rather than to some other stage the picture came from.
+func _live_surfaces() -> SceneSurfaces:
+	if _surf_mode and _surf_aligned and _surfaces != null and is_instance_valid(_surfaces):
+		return _surfaces
+	return null
+
+
+func _faces() -> Dictionary:
+	var out: Dictionary = {}
+	var s := _live_surfaces()
+	if s == null:
+		return out
+	var used: Dictionary = {}
+	for key in FACE_ORDER:
+		var prefs: Array = FACE_PREF[key]
+		for i in prefs.size():
+			if i > 0 and not _assembled:
+				break
+			var face := String(prefs[i])
+			if used.has(face) or not s.has(face):
+				continue
+			used[face] = true
+			out[key] = face
+			break
+	return out
+
+
+## Is the room under us one whose geometry we never measured — a scene composed
+## somewhere else, or a library room the old plates were never positioned on?
+func _off_stage() -> bool:
+	return _showing_foreign_room() or _assembled
+
+
 func _write_state_surfaces() -> void:
-	var s: SceneSurfaces = _surfaces if (_surf_mode and _surf_aligned and _surfaces != null and is_instance_valid(_surfaces)) else null
+	var s := _live_surfaces()
+	_face_of = _faces()
 	if _surface_layer and is_instance_valid(_surface_layer):
-		_surface_layer.visible = s != null
-	var foreign := _showing_foreign_room()
+		# an assembled room carries its handwriting inside the stage, under the cast
+		_surface_layer.visible = s != null and not _assembled
 	if s != null:
-		if s.has("ledger"):
-			s.write("ledger", "IN THE BANK", _cash_str(),
+		if _face_of.has("bank"):
+			s.write(String(_face_of["bank"]), "IN THE BANK", _cash_str(),
 				PALETTE["coral"] if state.cash < 0 else PALETTE["ink"])
-		if s.has("whiteboard"):
-			s.write("whiteboard", "PRODUCT", "v0.%d" % state.product)
-		if s.has("wallchart"):
+		if _face_of.has("product"):
+			s.write(String(_face_of["product"]), "PRODUCT", "v0.%d" % state.product)
+		if _face_of.has("users"):
 			# the face is ~100px: "CUSTOMERS" measures wider than that and clipped
 			# itself to "CUSTOME" on the first capture
-			s.write("wallchart", "USERS", str(state.traction))
-		if s.has("sticky"):
-			s.write("sticky", "YOURS", "%.0f%%" % state.founder_pct)
-		if s.has("inventory"):
-			s.write("inventory", "IN THE BAG", _inventory_text())
+			s.write(String(_face_of["users"]), "USERS", str(state.traction))
+		if _face_of.has("equity"):
+			s.write(String(_face_of["equity"]), "YOURS", "%.0f%%" % state.founder_pct)
+		if _face_of.has("bag"):
+			s.write(String(_face_of["bag"]), "IN THE BAG", _inventory_text())
 		if s.has("glass_wall"):
 			s.write("glass_wall", state.company_name.to_upper(), "WEEK %d" % state.week)
+	var off := _off_stage()
 	if _money_tag and is_instance_valid(_money_tag):
-		_money_tag.visible = s == null or not s.has("ledger")
-		# on our own stage the plate sits where the art left room for it; on a room
-		# we did not build, the only ground we can trust is the calm top strip the
-		# compose prompt keeps clear, and one plate carries both numbers there.
-		_money_tag.position = Vector2(24, 76) if foreign else (Vector2(268, 714) if _scene_mode else Vector2(64, 700))
-		_money_tag.set_deferred("size", Vector2(346, 48) if foreign else Vector2(180, 48))
-	if _money_label and is_instance_valid(_money_label):
-		_money_label.text = _money_text()
+		var txt := _money_text()
+		if _money_label and is_instance_valid(_money_label):
+			_money_label.text = txt
+		_money_tag.visible = txt != ""
+		if off:
+			# on our own stage the plate sits where the art left room for it; in a room
+			# we did not lay out, the only ground we can trust is the calm top strip the
+			# composition law keeps clear, and ONE plate carries everything that room
+			# has no drawn face for.
+			var pw: float = _font_d.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 29).x
+			_money_tag.position = Vector2(24, 76)
+			_money_tag.set_deferred("size", Vector2(clampf(pw + 32.0, 180.0, 430.0), 48))
+		else:
+			_money_tag.position = Vector2(268, 714) if _scene_mode else Vector2(64, 700)
+			_money_tag.set_deferred("size", Vector2(180, 48))
 	if _cap_paper and is_instance_valid(_cap_paper):
-		_cap_paper.visible = (s == null or not s.has("sticky")) and not foreign
+		# the pinned equity paper hangs where the hand-authored stages left a nail; in
+		# any other room the plate above carries the share instead of it floating.
+		_cap_paper.visible = not _face_of.has("equity") and not off
 		if _cap_label and is_instance_valid(_cap_label):
 			_cap_label.text = "%.0f%%\nyours" % state.founder_pct
 
@@ -778,14 +1083,19 @@ func _write_state_surfaces() -> void:
 func _showing_foreign_room() -> bool:
 	return _composed != null and is_instance_valid(_composed) and _composed.visible and not _surf_aligned
 
-## The equity plate has nowhere to hang in a room we did not build, so the cash
-## plate carries the share count too rather than dropping it.
+## THE LEFTOVERS LINE. Whatever this room has no drawn face for goes here and
+## nowhere else — the bank when there is no ledger, the share when there is no
+## sticky — so a number is either written on a real object or on this one plate,
+## never floating in the middle of somebody's wall.
 func _money_text() -> String:
 	if state == null:
 		return ""
-	if _showing_foreign_room():
-		return "%s  ·  %.0f%% yours" % [_cash_str(), state.founder_pct]
-	return _cash_str()
+	var parts := PackedStringArray()
+	if not _face_of.has("bank"):
+		parts.append(_cash_str())
+	if _off_stage() and not _face_of.has("equity"):
+		parts.append("%.0f%% yours" % state.founder_pct)
+	return String("  ·  ").join(parts)
 
 ## An overdraft is written "-$300", not "$-300": the minus belongs to the money,
 ## not to the digits after the sign.
@@ -835,7 +1145,7 @@ func _load_scene_layout() -> void:
 ## Sprite crew is the ART-LESS fallback only. In a real room nobody is pasted in:
 ## the people arrive painted into the composed scene or they do not arrive at all.
 func _build_crew() -> void:
-	if _scene_mode:
+	if _scene_mode or _assembled:
 		return
 	for n in _crew_nodes:
 		if is_instance_valid(n):
@@ -893,7 +1203,11 @@ func _refresh_scene() -> void:
 	if state == null:
 		return
 	var want := SceneRoomPicker.scene_id_for(state)
-	if want == _scene_id:
+	# The room turns over on the ERA, and — once the assembled path is live — on the
+	# CONDITION too: going into the red is a different room, not the same room with a
+	# sadder sprite laid over it.
+	var key := _mount_key_now()
+	if key == _mount_key:
 		return
 	_scene_id = want
 	_drop_composed()
@@ -908,8 +1222,11 @@ func _sync_room(instant: bool = false) -> void:
 	if state.cash > 30000: mtier = 4
 	elif state.cash > 12000: mtier = 3
 	elif state.cash > 3000: mtier = 2
+	_refresh_stage_cast()
 	_write_state_surfaces()
-	if _scene_mode:
+	if _assembled:
+		pass    # the assembled room draws its own money; there is no pile sprite here
+	elif _scene_mode:
 		var mc: TextureRect = _room_scene.get_layer("money") if (_room_scene and is_instance_valid(_room_scene)) else null
 		if mc:
 			var msc: float = [0.7, 0.85, 1.0, 1.14][mtier - 1]
@@ -928,7 +1245,7 @@ func _sync_room(instant: bool = false) -> void:
 		t.tween_interval(0.9)
 		t.tween_callback(func(): ml.add_theme_color_override("font_color", PALETTE["ink"]))
 	_last_cash = state.cash
-	if not _scene_mode:
+	if not _scene_mode and not _assembled:
 		# whiteboard = product
 		_set_spot_tex("board", GV + "board_%d.png" % clampi(1 + state.product / 26, 1, 4))
 		# wall chart = traction
@@ -943,7 +1260,13 @@ func _sync_room(instant: bool = false) -> void:
 			var tr: TextureRect = _spots.get("item_" + id)
 			if tr:
 				tr.visible = state.has_item(id)
-	# decay tracks morale; badges track flags
+	# decay tracks morale; badges track flags — but NEVER over an assembled room. The
+	# facet it was built from already IS the decay (in_the_red is the fraying garage),
+	# and the burnt moods are already in the poses, so the old spot sprites laid over
+	# it would be the second garage in the frame.
+	if _assembled:
+		_hide_old_stack()
+		return
 	if _scene_mode:
 		var pz: TextureRect = _room_scene.get_layer("pizza") if (_room_scene and is_instance_valid(_room_scene)) else null
 		if pz:
