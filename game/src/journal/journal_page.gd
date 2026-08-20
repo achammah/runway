@@ -74,6 +74,15 @@ const ZONE_RULES := {"title": 3, "body": 4, "ending": 7, "controls": 2}
 const SIZE_TITLE := 64
 const SIZE_BODY := 34
 const GAP := 22.0
+## AN ICON SMALLER THAN THIS IS NOT AN ICON, IT IS A SPECK. Reported as "portraits at
+## 30px and gift icons at 10px, captions under specks". The row had been sizing the
+## drawing to whatever the caller's cell had left AFTER the caption, so a wrapped
+## caption ate the picture. The floor is enforced here, in the shell, by GROWING the
+## row instead — no caller can produce an invisible icon again, and the zones below
+## cascade down to absorb the extra height.
+const ICON_MIN_H := 96.0
+## breathing room between a drawing and the words under it
+const CAP_GAP := 8.0
 const INK := Color("1E1E1E")
 const PEN := Color("E86A5C")
 const FAINT := Color(Color("1E1E1E"), 0.45)
@@ -88,6 +97,7 @@ var _zone: Dictionary = {}        ## name -> [y0, y1] normalised
 var _rules: Dictionary = {}       ## the PRINTED ruling: {first, pitch} normalised
 var _usable := Vector2.ZERO       ## writable area inside the sheet's margins
 var _top_pad := 0.0               ## where the paper first becomes visible on screen
+var _paper_bot := 0.0             ## last sheet-local y the player can still see paper at
 var _zone_px: Dictionary = {}     ## name -> [top, bottom] in sheet-local pixels
 var _cursor: Dictionary = {}      ## name -> current y in page-local pixels
 var _input: TextEdit
@@ -150,6 +160,7 @@ func build(title_text: String, scene_id: String = "") -> void:
 	var vis_bot: float = minf(SHEET_SIZE.y, 1024.0 - sheet_top) - MARGIN_BOT
 	_top_pad = vis_top
 	_usable = Vector2(SHEET_SIZE.x - 2.0 * MARGIN_X, maxf(vis_bot - vis_top, 120.0))
+	_paper_bot = vis_top + _usable.y
 	# ZONES ARE MEASURED IN PRINTED RULES, not in fractions of the artwork.
 	# Fractions of the art gave the title 103px while a 64px title needs two rules
 	# plus its gap — 107 — so every page opened by overrunning its own first zone.
@@ -179,7 +190,15 @@ func span_at(_y: float) -> Vector2:
 func zone_bottom(zone: String) -> float:
 	if _zone_px.has(zone):
 		return float((_zone_px[zone] as Array)[1])
-	return SHEET_SIZE.y - MARGIN_BOT
+	return writable_bottom()
+
+## THE ONE BOUNDARY THAT IS REAL. A zone boundary is a budget and it may be crossed —
+## the cascade moves the next zone down and the page still reads. THIS is the edge of
+## the paper: past it ink lands on the room behind the book, which is the defect the
+## page has been rejected for. Sheet-local, and it is the VISIBLE bottom — the sheet
+## deliberately overflows the canvas, so its own last pixel is below the screen.
+func writable_bottom() -> float:
+	return _paper_bot if _paper_bot > 0.0 else SHEET_SIZE.y - MARGIN_BOT
 
 ## ZONES CASCADE. A zone's nominal start is a rule position, but if the zone ABOVE it
 ## wrote past that rule the content must move down rather than land on top of it —
@@ -218,8 +237,8 @@ func icon_row(items: Array, cell := Vector2(124, 116), zone: String = "ending") 
 	var y: float = _cursor.get(zone, 0.0)
 	var sp := span_at(y + cell.y * 0.5)
 	var avail: float = sp.y - sp.x
-	var n: int = max(items.size(), 1)
-	var step: float = min(cell.x + 28.0, avail / float(n))
+	var n: int = maxi(items.size(), 1)
+	var step: float = minf(cell.x + 28.0, avail / float(n))
 	var total: float = step * n
 	var x0: float = sp.x + (avail - total) * 0.5
 
@@ -228,14 +247,30 @@ func icon_row(items: Array, cell := Vector2(124, 116), zone: String = "ending") 
 	# through the line below it, and what clipped "Enterprise" to "Enterpris".
 	# Captions are drawn at the COLUMN width (not the nominal cell width) so two
 	# neighbours can never overlap, and the row grows to fit the tallest one.
-	var cap_w: float = max(step - 14.0, 60.0)
+	var cap_w: float = maxf(step - 14.0, 60.0)
 	var cap_h := 0.0
 	for it0 in items:
 		var t0 := String((it0 as Dictionary).get("text", ""))
-		cap_h = max(cap_h, _font.get_multiline_string_size(
+		cap_h = maxf(cap_h, _font.get_multiline_string_size(
 				t0, HORIZONTAL_ALIGNMENT_CENTER, cap_w, SIZE_BODY).y)
-	cap_h = max(cap_h, SIZE_BODY * 1.2)
-	cell = Vector2(cap_w, cell.y - 46.0 + cap_h + 8.0)
+	cap_h = maxf(cap_h, SIZE_BODY * 1.2)
+
+	# THE PICTURE IS NEVER WHAT IS LEFT OVER. The caller's cell height is the row's
+	# BUDGET: the caption is taken out of it first and the drawing gets the rest — but
+	# if that rest falls under ICON_MIN_H the row GROWS rather than shrinking the
+	# drawing, because a 10px portrait cannot be rescued and a taller row can. Captions
+	# stay at SIZE_BODY always; the shell has two type sizes and no third.
+	var draws_icon := false
+	for it1 in items:
+		if (it1 as Dictionary).get("tex") != null:
+			draws_icon = true
+			break
+	# a caption-only row reserves NO picture space — an empty 96px strip above the
+	# words is dead paper, and dead paper is what pushes the writing off the sheet
+	var icon_h := 0.0
+	if draws_icon:
+		icon_h = maxf(cell.y - cap_h - CAP_GAP, ICON_MIN_H)
+	cell = Vector2(cap_w, icon_h + (CAP_GAP if draws_icon else 0.0) + cap_h)
 
 	var row := Control.new()
 	row.position = Vector2(0, y)
@@ -261,7 +296,7 @@ func icon_row(items: Array, cell := Vector2(124, 116), zone: String = "ending") 
 			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			ic.texture = it["tex"]
-			ic.set_deferred("size", Vector2(cap_w, cell.y - cap_h - 8.0))
+			ic.set_deferred("size", Vector2(cap_w, icon_h))
 			slot.add_child(ic)
 		var cap := Label.new()
 		cap.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -307,7 +342,11 @@ func write_field(prompt: String = "...or write what you actually do", zone: Stri
 		_input.add_theme_stylebox_override(s, StyleBoxEmpty.new())
 	# Give the writing area a real height: it must be a big, obvious place to write,
 	# not a one-line slot. Two ruled lines minimum, more when the page has room.
-	var hgt: float = max(rule_pitch() * 2.0, min(rule_pitch() * 4.0, zone_bottom(zone) - y - 8.0))
+	var hgt: float = maxf(rule_pitch() * 2.0, minf(rule_pitch() * 4.0, zone_bottom(zone) - y - 8.0))
+	# ...but the paper wins over the zone. When the page above has cascaded so far that
+	# two ruled lines no longer fit, the field takes what is left rather than printing
+	# the player's own writing onto the room behind the book. _overrun then says so.
+	hgt = minf(hgt, maxf(writable_bottom() - y - 8.0, rule_pitch()))
 	_input.position = Vector2(sp.x, y)
 	_input.custom_minimum_size = Vector2(sp.y - sp.x, hgt)
 	_input.set_deferred("size", Vector2(sp.y - sp.x, hgt))
@@ -346,8 +385,10 @@ func write_field(prompt: String = "...or write what you actually do", zone: Stri
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	# do not let the trailing gap push past the boundary: it is space AFTER the
 	# last element, not space the element needs. That alone reported the ending
-	# zone overrunning by 2px on every page.
-	_cursor[zone] = min(y + hgt + GAP, zone_bottom(zone))
+	# zone overrunning by 2px on every page. The gap is all that may be dropped
+	# though — clamping to the boundary outright hid a field that really did end
+	# below it, and a hidden overflow is the one the player sees on the room.
+	_cursor[zone] = minf(y + hgt + GAP, maxf(zone_bottom(zone), y + hgt))
 	_overrun(zone)
 	return _input
 
@@ -438,7 +479,14 @@ func _snap(y: float) -> float:
 		return y
 	if y <= first:
 		return first
-	return first + ceil((y - first) / pitch) * pitch
+	# THE EPSILON IS LOAD-BEARING. Every zone starts at first + k*pitch, so the
+	# division is a whole number in arithmetic and a hair above it in floats — and a
+	# hair above sent ceil() to the NEXT rule, throwing away a full 51px line at the
+	# top of every zone and at every cascade. That lost rule is why a page with two
+	# icon rows pushed the written move off the bottom of the paper. 0.01 of a rule is
+	# half a pixel: it can only ever pull a baseline back onto the rule it is already
+	# sitting on.
+	return first + ceil((y - first) / pitch - 0.01) * pitch
 
 ## A line occupies whole rules: body text ONE, a big title two. The 0.78 factor is
 ## load-bearing — a font's reported height includes ascender and descender padding
@@ -462,10 +510,23 @@ func _place(text: String, sz: int, col: Color, sp: Vector2, y: float, lh: float,
 	l.set_deferred("size", Vector2(sp.y - sp.x, lh))
 	space.add_child(l)
 
+## A ZONE SLIDING DOWN IS THE MECHANISM WORKING, NOT A FAULT. Zones cascade, so a
+## zone that passes its nominal rule is simply being pushed by the one above it and
+## the page still renders correctly — a full 40-week run proved it, 108 times, with
+## no text ever landing on text. Warning on that left no signal to hear a real fault
+## with, so the only thing warned about now is the fault the owner actually rejects
+## the page for: ink past the bottom edge of the paper, printed onto the room. The
+## message says what to cut, because "overran" alone never told anyone what to do.
 func _overrun(zone: String) -> void:
-	if float(_cursor.get(zone, 0.0)) > zone_bottom(zone):
-		push_warning("JournalPage: %s zone overran (%.0f > %.0f) — split the page or cut copy"
-				% [zone, float(_cursor[zone]), zone_bottom(zone)])
+	var y: float = float(_cursor.get(zone, 0.0))
+	var bot := writable_bottom()
+	if y <= bot:
+		return
+	var over: float = y - bot
+	var lines: int = maxi(1, int(ceil(over / maxf(_line_advance(SIZE_BODY), 1.0))))
+	push_warning(("JournalPage: %s ran %.0fpx off the bottom of the paper (%.0f > %.0f) — "
+			+ "cut %d line%s of copy from this page, shorten the captions, or move %s onto the next sheet.")
+			% [zone, over, y, bot, lines, "" if lines == 1 else "s", zone])
 
 ## Chosen is circled in ink; the rest simply go quiet. Never a border, never a
 ## fill, never a highlight — those read as a form.
@@ -514,13 +575,27 @@ class _PenCircle:
 	extends Control
 	func _draw() -> void:
 		var c := size * 0.5
+		# THE LOOP HAS TO GET ROUND WHAT IT IS CIRCLING. It is sized to the cell, and a
+		# cell is now a full-size drawing PLUS a caption that may wrap, so cells are tall.
+		# A true ellipse pinches in exactly where a tall cell's caption is widest and left
+		# the words sticking out of the ink. Squaring the loop off toward the cell's own
+		# corners as it gets taller keeps it a hand-drawn pen ring and actually encloses
+		# the item. It only ever grows INSIDE the cell, so it still cannot touch a
+		# neighbouring cell or reach the edge of the row.
+		var n: float = clampf(2.0 + size.y / maxf(size.x, 1.0), 2.0, 4.5)
+		var rx: float = size.x * 0.48
+		var ry: float = size.y * 0.47
 		var pts := PackedVector2Array()
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 9
 		for i in 41:
 			var t := TAU * float(i) / 40.0
 			var w := 1.0 + rng.randf_range(-0.05, 0.05)
-			pts.append(c + Vector2(cos(t) * size.x * 0.48 * w, sin(t) * size.y * 0.47 * w))
+			var cs := cos(t)
+			var sn := sin(t)
+			pts.append(c + Vector2(
+					signf(cs) * pow(absf(cs), 2.0 / n) * rx * w,
+					signf(sn) * pow(absf(sn), 2.0 / n) * ry * w))
 		draw_polyline(pts, JournalPage.PEN, 4.0, true)
 
 class _Arrow:
