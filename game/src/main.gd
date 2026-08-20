@@ -143,7 +143,11 @@ func _fullrun(dir: String) -> void:
 		# one capture of the room itself the first week each era is standing
 		if _still_playing(gv) and not rooms_shot.has(state.era):
 			rooms_shot.append(state.era)
-			await get_tree().create_timer(0.5).timeout
+			# 2.4s, not 0.5: a plain week reaches here mid dread-scrim (its fade-out
+			# ends ~2.25s in), which photographed era_garage at luminance 50 against
+			# ~190 for post-move weeks. The scrim is a design beat, so the harness
+			# waits it out rather than the beat being shortened.
+			await get_tree().create_timer(2.4).timeout
 			if not _still_playing(gv):
 				continue
 			await _shot(dir, "era_%s_wk%02d" % [state.era, state.week])
