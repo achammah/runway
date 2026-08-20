@@ -23,6 +23,8 @@ var _layout: Dictionary = {}
 var _marks: Dictionary = {}       # name -> {foot_x, foot_y, scale, ...}
 var _occluders: Dictionary = {}   # name -> rect that draws OVER the cast
 var _cast: Array = []             # the TextureRects currently standing in the room
+var _ambient: TextureRect          # additive ambient-motion layer over the still
+var _ambient_frames: Array = []
 
 func load_scene(p_scene_id: String) -> bool:
 	scene_id = p_scene_id
@@ -210,6 +212,46 @@ func _raise_occluders() -> void:
 func mark_count() -> int:
 	return _marks.size()
 
+## AMBIENT LIFE OVER A STILL — the bulb sways even when the room was generated.
+##
+## A composed scene is one image and therefore dead, while the pre-built stages breathe
+## because they carry a 48-frame loop. Measured on stage_garage: only 0.9% of a loop's
+## pixels ever change, in about a dozen places. The motion is LOCALISED, so it separates
+## from the room: `tools/make_ambient.py` stores frame_i minus frame_0 as an additive
+## delta, and adding that to ANY still of the same room reproduces exactly the light that
+## moved and nothing else. Black adds nothing, so the still is untouched where nothing
+## moved — and where the bulb brightens it also brightens a character standing under it,
+## which is correct rather than a bug.
+##
+## The delta MUST come from the same room. Verified by laying the garage's delta over a
+## hangar: the light lands in the wrong place and pokes a spike near a character's head.
+func ambient(scene_for_motion: String = "") -> void:
+	var src := scene_for_motion if scene_for_motion != "" else scene_id
+	var dir := "res://assets/scenes/%s/ambient" % src
+	_ambient_frames.clear()
+	var i := 0
+	while true:
+		var fp := "%s/d_%02d.png" % [dir, i]
+		if not ResourceLoader.exists(fp):
+			break
+		_ambient_frames.append(load(fp))
+		i += 1
+	if _ambient_frames.is_empty():
+		return
+	if _ambient != null and is_instance_valid(_ambient):
+		_ambient.queue_free()
+	_ambient = TextureRect.new()
+	_ambient.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_ambient.stretch_mode = TextureRect.STRETCH_SCALE
+	_ambient.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_ambient.material = mat
+	_ambient.texture = _ambient_frames[0]
+	_ambient.set_deferred("size", Vector2(1536, 1024))
+	add_child(_ambient)
+	set_process(true)
+
 ## Darken the room so something laid over it (the log book) reads as the subject.
 ## The owner asked for exactly this: "the paper log should come simply on top of a
 ## scene and we need to have a dark overlay on scene". Call after load_scene().
@@ -224,9 +266,12 @@ func dim(amount: float = 0.45) -> void:
 	move_child(v, get_child_count() - 1)   # above the room, below whatever comes next
 
 func _process(delta: float) -> void:
+	_anim_t += delta
+	if _ambient != null and is_instance_valid(_ambient) and not _ambient_frames.is_empty():
+		var ai := int(_anim_t * ANIM_FPS) % _ambient_frames.size()
+		_ambient.texture = _ambient_frames[ai]
 	if _anim_frames.is_empty() or not _layers.has("anim"):
 		return
-	_anim_t += delta
 	var idx := int(_anim_t * ANIM_FPS) % _anim_frames.size()
 	(_layers["anim"] as TextureRect).texture = _anim_frames[idx]
 

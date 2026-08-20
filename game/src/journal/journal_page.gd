@@ -46,8 +46,11 @@ const HAND := "res://assets/fonts/PatrickHand-Regular.ttf"
 # page the owner accepted ("the LAST PAGE render really well"). The sheet fills
 # the frame the way the reference book does, with the room showing past every edge.
 const ART_PX := Vector2(1095.0, 1462.0)
-const PAGE_SIZE := Vector2(719.0, 960.0)      # the art's exact aspect: no shear
-const PAGE_POS := Vector2(408.0, 32.0)
+# Widened at the owner's request to match the reading beat, which he liked. The
+# aspect is the art's own, so the sheet cannot shear — it just fills more frame,
+# with the room still showing past every edge.
+const PAGE_SIZE := Vector2(862.0, 1152.0)
+const PAGE_POS := Vector2(337.0, -24.0)   # re-centred for the wider sheet
 const PAGE_TILT := -0.012                     # a hair of lean on top of the drawn one
 # Re-measured on THE LAST PAGE: 884 wrongly counted the sheets drawn BEHIND the
 # page as part of it, which is why the right margin read tighter than the left.
@@ -262,7 +265,11 @@ func write_field(prompt: String = "...or write what you actually do", zone: Stri
 	var sp := span_at(y + SIZE_BODY)
 	_input = TextEdit.new()
 	_input.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-	_input.scroll_fit_content_height = true
+	# SCROLL, DO NOT GROW. Growing to fit pushed a long written move straight through
+	# the bottom of the page. The field keeps the height the zone allows and scrolls
+	# inside it, so the player can write as much as they like and the paper still holds.
+	_input.scroll_fit_content_height = false
+	_input.scroll_smooth = true
 	_input.add_theme_font_override("font", _font)
 	_input.add_theme_font_size_override("font_size", SIZE_BODY)
 	_input.add_theme_color_override("font_color", INK)
@@ -286,6 +293,10 @@ func write_field(prompt: String = "...or write what you actually do", zone: Stri
 	_input.text_changed.connect(func() -> void:
 		nib.written = _input.text.strip_edges() != ""
 		nib.queue_redraw()
+		# follow the pen down the page as it fills
+		var last := max(_input.get_line_count() - 1, 0)
+		_input.set_caret_line(last)
+		_input.scroll_vertical = float(max(0, last - int(_input.size.y / max(rule_pitch(), 1.0)) + 1))
 		written.emit(_input.text))
 	# THE FIELD IS INVISIBLE BY DESIGN — no box, no border, the ruling IS the field.
 	# That makes it undiscoverable unless it already has focus, which is why the
