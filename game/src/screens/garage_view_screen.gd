@@ -1176,6 +1176,10 @@ func _showing_foreign_room() -> bool:
 func _money_text() -> String:
 	if state == null:
 		return ""
+	# a V2 scene already carries the money and the equity ON ITS OWN WALLS (the
+	# contract ink) — the chip repeating them was the one redundant UI in shot
+	if _contract_ink != null and is_instance_valid(_contract_ink):
+		return ""
 	var parts := PackedStringArray()
 	if not _face_of.has("bank"):
 		parts.append(_cash_str())
