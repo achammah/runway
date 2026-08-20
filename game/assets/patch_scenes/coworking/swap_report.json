@@ -1,0 +1,32 @@
+{
+ "hustler": {
+  "founder_body_iou_change": 0.5786,
+  "other_bodies_iou_change": {
+   "phone": 0.1482
+  },
+  "new_prop_px_inside_founder_pct": 54.66,
+  "new_prop_px": 7960,
+  "new_prop_blobs_outside_founder": [],
+  "founder_was_recast": true
+ },
+ "pm": {
+  "founder_body_iou_change": 0.6519,
+  "other_bodies_iou_change": {
+   "phone": 0.1647
+  },
+  "new_prop_px_inside_founder_pct": 50.18,
+  "new_prop_px": 6473,
+  "new_prop_blobs_outside_founder": [],
+  "founder_was_recast": true
+ },
+ "consultant": {
+  "founder_body_iou_change": 0.598,
+  "other_bodies_iou_change": {
+   "phone": 0.1814
+  },
+  "new_prop_px_inside_founder_pct": 40.85,
+  "new_prop_px": 5851,
+  "new_prop_blobs_outside_founder": [],
+  "founder_was_recast": true
+ }
+}

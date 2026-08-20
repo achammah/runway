@@ -1,0 +1,103 @@
+{
+ "study": [
+  "the monitors on both desk banks are drawn DARK \u2014 they are off. No screen glow is invented.",
+  "plants: x75-200 y420-540, x560-730 y325-665, x1320-1490 y380-500, x1545-1725 y410-590",
+  "snack cabinet with coloured bottles and a coffee machine, x1300-1500 y510-665",
+  "INERT: the wall of pinned paper charts and sticky notes (that is the pitch's content), the big blank chart, the clipboard, the bookshelf, the desks, the coral chairs, the blue door"
+ ],
+ "motion_prompt": "Bring this empty hand-drawn open-plan office alive as a calm seamless loop. The leaves of the potted plants sway a few pixels each, at different speeds. The overhead light over the two desk banks breathes very slightly, brighter then dimmer, and the small red light on the coffee machine pulses. Nothing else moves: the papers and charts pinned to the wall, the big blank chart, the clipboard, the bookshelf, the desks, the monitors, the chairs and the door are completely still. The monitors are switched off and stay dark. Camera absolutely locked: no zoom, no pan, no drift. Do not redraw, move, resize or restyle any drawn line. Every whiteboard, wall chart, clipboard, paper and sticky note stays exactly as it is and stays blank. No people, no creatures, no new objects, nothing enters or leaves the frame. Flat hand-drawn 2D style preserved exactly.",
+ "gate": [
+  {
+   "name": "plant_far_left",
+   "box": [
+    55,
+    400,
+    220,
+    560
+   ],
+   "feather": 35,
+   "gain": 1.0
+  },
+  {
+   "name": "plants_left",
+   "box": [
+    540,
+    305,
+    750,
+    685
+   ],
+   "feather": 40,
+   "gain": 1.0
+  },
+  {
+   "name": "plants_right",
+   "box": [
+    1300,
+    360,
+    1745,
+    610
+   ],
+   "feather": 40,
+   "gain": 1.0
+  },
+  {
+   "name": "snacks",
+   "box": [
+    1290,
+    495,
+    1510,
+    680
+   ],
+   "feather": 35,
+   "gain": 0.8
+  },
+  {
+   "name": "desk_bank_left",
+   "box": [
+    0,
+    550,
+    420,
+    820
+   ],
+   "feather": 60,
+   "gain": 0.35
+  },
+  {
+   "name": "desk_bank_right",
+   "box": [
+    1630,
+    550,
+    2048,
+    840
+   ],
+   "feather": 60,
+   "gain": 0.35
+  }
+ ],
+ "frames": 47,
+ "fps": 12,
+ "report": {
+  "frames_extracted": 49,
+  "window": [
+   1,
+   48
+  ],
+  "frames_kept": 47,
+  "dropped_drifted_frames": 1,
+  "seam_first_to_last_raw": 2.369,
+  "seam_after_window": 1.315,
+  "seam_after_gate": 0.188,
+  "clamp_loss_mean": 0.752,
+  "moving_pixels_pct": 1.03,
+  "peak_delta_raw": 221,
+  "peak_delta": 39,
+  "per_box_peak": {
+   "plant_far_left": 39,
+   "plants_left": 39,
+   "plants_right": 39,
+   "snacks": 39,
+   "desk_bank_left": 31,
+   "desk_bank_right": 39
+  }
+ }
+}

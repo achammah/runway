@@ -1,0 +1,54 @@
+{
+ "scene": "coworking",
+ "size": [
+  2048,
+  1360
+ ],
+ "founder_spot": "hotdesk",
+ "spots": {
+  "hotdesk": [
+   0,
+   392,
+   804,
+   1060
+  ],
+  "phone": [
+   1131,
+   408,
+   1666,
+   1027
+  ]
+ },
+ "bodies": {
+  "hotdesk": [
+   222,
+   559,
+   596,
+   988
+  ],
+  "phone": [
+   1160,
+   466,
+   1597,
+   1006
+  ]
+ },
+ "cast": {
+  "hotdesk": [
+   "hacker",
+   "hustler",
+   "pm",
+   "consultant"
+  ],
+  "phone": [
+   "cofd_sales"
+  ]
+ },
+ "measured_bodies": 2,
+ "expected_spots": 2,
+ "body_change_per_region": {
+  "hotdesk": 0.5762,
+  "phone": 0.1611
+ },
+ "founder_by_measurement": "hotdesk"
+}

@@ -1,0 +1,70 @@
+{
+ "scene": "office",
+ "size": [
+  2048,
+  1360
+ ],
+ "founder_spot": "desk_left",
+ "spots": {
+  "desk_left": [
+   11,
+   339,
+   891,
+   995
+  ],
+  "board": [
+   755,
+   488,
+   1070,
+   962
+  ],
+  "desk_right": [
+   1535,
+   531,
+   1960,
+   969
+  ]
+ },
+ "bodies": {
+  "desk_left": [
+   420,
+   560,
+   632,
+   858
+  ],
+  "board": [
+   787,
+   535,
+   1042,
+   917
+  ],
+  "desk_right": [
+   1606,
+   549,
+   1889,
+   900
+  ]
+ },
+ "cast": {
+  "desk_left": [
+   "hacker",
+   "hustler",
+   "pm",
+   "consultant"
+  ],
+  "board": [
+   "cofd_business"
+  ],
+  "desk_right": [
+   "cofd_tech"
+  ]
+ },
+ "measured_bodies": 3,
+ "expected_spots": 3,
+ "body_change_per_region": {
+  "desk_left": 0.4296,
+  "board": 0.1175,
+  "desk_right": 0.2275
+ },
+ "founder_by_measurement": "desk_left"
+}

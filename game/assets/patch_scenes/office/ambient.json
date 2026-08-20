@@ -1,0 +1,92 @@
+{
+ "study": [
+  "server rack with drawn blue/green/orange LEDs, x1049-1249 y420-869 \u2014 the only real light EVENT",
+  "two monitors, lit blue: x320-455 y620-719 and x1843-1973 y620-729",
+  "glass street door, daylight beyond it, x37-262 y412-974",
+  "plant x1249-1411 y524-824",
+  "INERT: whiteboard, clipboard, wall charts, sticky notes, shelves, desks, chairs, safe"
+ ],
+ "motion_prompt": "Bring this empty hand-drawn office alive as a calm seamless loop. The little status lights on the black server rack blink and pulse gently, a few at a time, never all together. The two monitor screens glow a touch brighter and dimmer. Daylight through the glass street door drifts very slightly and a soft sheen crosses the glass once. The leaves of the tall plant sway a few pixels. Nothing else moves: the whiteboard, the clipboard, the papers, the sticky notes, the shelves, the desks and the chairs are completely still. Camera absolutely locked: no zoom, no pan, no drift. Do not redraw, move, resize or restyle any drawn line. Every whiteboard, wall chart, clipboard, paper and sticky note stays exactly as it is and stays blank. No people, no creatures, no new objects, nothing enters or leaves the frame. Flat hand-drawn 2D style preserved exactly.",
+ "gate": [
+  {
+   "name": "server_leds",
+   "box": [
+    1030,
+    400,
+    1270,
+    890
+   ],
+   "feather": 40,
+   "gain": 1.0
+  },
+  {
+   "name": "monitor_left",
+   "box": [
+    280,
+    580,
+    500,
+    760
+   ],
+   "feather": 40,
+   "gain": 0.9
+  },
+  {
+   "name": "monitor_right",
+   "box": [
+    1790,
+    580,
+    2020,
+    770
+   ],
+   "feather": 40,
+   "gain": 0.9
+  },
+  {
+   "name": "glass_door",
+   "box": [
+    20,
+    390,
+    290,
+    1000
+   ],
+   "feather": 55,
+   "gain": 0.5
+  },
+  {
+   "name": "plant",
+   "box": [
+    1230,
+    500,
+    1430,
+    840
+   ],
+   "feather": 40,
+   "gain": 1.0
+  }
+ ],
+ "frames": 47,
+ "fps": 12,
+ "report": {
+  "frames_extracted": 49,
+  "window": [
+   1,
+   48
+  ],
+  "frames_kept": 47,
+  "dropped_drifted_frames": 1,
+  "seam_first_to_last_raw": 1.474,
+  "seam_after_window": 1.294,
+  "seam_after_gate": 0.153,
+  "clamp_loss_mean": 0.7,
+  "moving_pixels_pct": 1.38,
+  "peak_delta_raw": 242,
+  "peak_delta": 39,
+  "per_box_peak": {
+   "server_leds": 39,
+   "monitor_left": 39,
+   "monitor_right": 38,
+   "glass_door": 37,
+   "plant": 39
+  }
+ }
+}

@@ -1,0 +1,70 @@
+{
+ "scene": "hq",
+ "size": [
+  2048,
+  1360
+ ],
+ "founder_spot": "window",
+ "spots": {
+  "table_1": [
+   285,
+   400,
+   557,
+   718
+  ],
+  "table_2": [
+   477,
+   437,
+   782,
+   824
+  ],
+  "window": [
+   1032,
+   359,
+   1366,
+   753
+  ]
+ },
+ "bodies": {
+  "table_1": [
+   353,
+   467,
+   493,
+   648
+  ],
+  "table_2": [
+   547,
+   468,
+   731,
+   753
+  ],
+  "window": [
+   1122,
+   387,
+   1292,
+   685
+  ]
+ },
+ "cast": {
+  "table_1": [
+   "cofd_business"
+  ],
+  "table_2": [
+   "cofd_sales"
+  ],
+  "window": [
+   "hacker",
+   "hustler",
+   "pm",
+   "consultant"
+  ]
+ },
+ "measured_bodies": 3,
+ "expected_spots": 3,
+ "body_change_per_region": {
+  "table_1": 0.3272,
+  "table_2": 0.2355,
+  "window": 0.1709
+ },
+ "founder_by_measurement": "table_1"
+}

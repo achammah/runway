@@ -1,0 +1,67 @@
+{
+ "study": [
+  "bare bulb on a cord, lit, at (679,454) \u2014 the room's only light source",
+  "warm pool it casts on the workbench top, x100-660 y590-780",
+  "potted plant by the shelf, x1430-1566 y500-762",
+  "INERT: pegboard tools, whiteboard, wall charts, cardboard boxes, roller door, desk, chair"
+ ],
+ "motion_prompt": "Bring this empty hand-drawn garage alive as a calm seamless loop. The bare bulb hanging on its cord glows very slightly brighter and dimmer, slowly, and the warm pool of light it throws across the workbench breathes with it. The leaves of the potted plant sway a few pixels. Nothing else moves: the tools on the pegboard, the boxes, the whiteboard, the papers, the roller door, the bench and the floor are completely still. Camera absolutely locked: no zoom, no pan, no drift. Do not redraw, move, resize or restyle any drawn line. Every whiteboard, wall chart, clipboard, paper and sticky note stays exactly as it is and stays blank. No people, no creatures, no new objects, nothing enters or leaves the frame. Flat hand-drawn 2D style preserved exactly.",
+ "gate": [
+  {
+   "name": "bulb",
+   "box": [
+    560,
+    330,
+    830,
+    620
+   ],
+   "feather": 50,
+   "gain": 1.0
+  },
+  {
+   "name": "bench_pool",
+   "box": [
+    90,
+    560,
+    680,
+    800
+   ],
+   "feather": 60,
+   "gain": 0.7
+  },
+  {
+   "name": "plant",
+   "box": [
+    1400,
+    480,
+    1590,
+    780
+   ],
+   "feather": 40,
+   "gain": 1.0
+  }
+ ],
+ "frames": 47,
+ "fps": 12,
+ "report": {
+  "frames_extracted": 49,
+  "window": [
+   1,
+   48
+  ],
+  "frames_kept": 47,
+  "dropped_drifted_frames": 1,
+  "seam_first_to_last_raw": 1.862,
+  "seam_after_window": 1.267,
+  "seam_after_gate": 0.107,
+  "clamp_loss_mean": 0.931,
+  "moving_pixels_pct": 0.83,
+  "peak_delta_raw": 242,
+  "peak_delta": 39,
+  "per_box_peak": {
+   "bulb": 39,
+   "bench_pool": 11,
+   "plant": 39
+  }
+ }
+}

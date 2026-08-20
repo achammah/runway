@@ -1,0 +1,54 @@
+{
+ "scene": "garage",
+ "size": [
+  2048,
+  1360
+ ],
+ "founder_spot": "desk",
+ "spots": {
+  "bench": [
+   337,
+   389,
+   758,
+   873
+  ],
+  "desk": [
+   648,
+   374,
+   1245,
+   929
+  ]
+ },
+ "bodies": {
+  "bench": [
+   400,
+   425,
+   688,
+   851
+  ],
+  "desk": [
+   768,
+   457,
+   1144,
+   863
+  ]
+ },
+ "cast": {
+  "bench": [
+   "cofd_tech"
+  ],
+  "desk": [
+   "hacker",
+   "hustler",
+   "pm",
+   "consultant"
+  ]
+ },
+ "measured_bodies": 2,
+ "expected_spots": 2,
+ "body_change_per_region": {
+  "bench": 0.2031,
+  "desk": 0.3607
+ },
+ "founder_by_measurement": "desk"
+}

@@ -1,0 +1,91 @@
+{
+ "study": [
+  "blue pendant lamp x250-362 y350-462, two coral pendants x1500-1780 y340-500",
+  "lit interior of the grey phone booth, x624-824 y400-750",
+  "plants: x25-240 y470-670, x360-500 y510-730, x1680-1780 y530-670, x1940-2040 y520-730",
+  "INERT: green board, wall papers, brick column, tables, chairs, laptops, coffee counter"
+ ],
+ "motion_prompt": "Bring this empty hand-drawn coworking floor alive as a calm seamless loop. The three pendant lamps glow a touch brighter and dimmer, out of step with each other and very slowly. The light inside the grey phone booth breathes faintly. The leaves of the potted plants sway a few pixels. Nothing else moves: the green board, the papers on the wall, the brick column, the tables, the chairs and the coffee counter are completely still. Camera absolutely locked: no zoom, no pan, no drift. Do not redraw, move, resize or restyle any drawn line. Every whiteboard, wall chart, clipboard, paper and sticky note stays exactly as it is and stays blank. No people, no creatures, no new objects, nothing enters or leaves the frame. Flat hand-drawn 2D style preserved exactly.",
+ "gate": [
+  {
+   "name": "pendant_blue",
+   "box": [
+    190,
+    300,
+    430,
+    560
+   ],
+   "feather": 50,
+   "gain": 1.0
+  },
+  {
+   "name": "pendants_coral",
+   "box": [
+    1460,
+    300,
+    1820,
+    560
+   ],
+   "feather": 50,
+   "gain": 1.0
+  },
+  {
+   "name": "booth",
+   "box": [
+    600,
+    380,
+    850,
+    780
+   ],
+   "feather": 45,
+   "gain": 0.8
+  },
+  {
+   "name": "plants_left",
+   "box": [
+    10,
+    450,
+    520,
+    750
+   ],
+   "feather": 40,
+   "gain": 0.9
+  },
+  {
+   "name": "plants_right",
+   "box": [
+    1650,
+    500,
+    2048,
+    760
+   ],
+   "feather": 40,
+   "gain": 0.9
+  }
+ ],
+ "frames": 47,
+ "fps": 12,
+ "report": {
+  "frames_extracted": 49,
+  "window": [
+   1,
+   48
+  ],
+  "frames_kept": 47,
+  "dropped_drifted_frames": 1,
+  "seam_first_to_last_raw": 2.171,
+  "seam_after_window": 1.72,
+  "seam_after_gate": 0.273,
+  "clamp_loss_mean": 1.071,
+  "moving_pixels_pct": 1.15,
+  "peak_delta_raw": 214,
+  "peak_delta": 39,
+  "per_box_peak": {
+   "pendant_blue": 39,
+   "pendants_coral": 39,
+   "booth": 25,
+   "plants_left": 39,
+   "plants_right": 39
+  }
+ }
+}

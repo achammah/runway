@@ -1,0 +1,78 @@
+{
+ "study": [
+  "floor-to-ceiling glass over a PALE FLAT SILHOUETTE skyline, x475-1450 y150-640. The towers have NO lit window squares drawn in them \u2014 inventing any would be adding artwork, so the honest motion is atmospheric only: haze value drift and one sheen band crossing the glass.",
+  "plants: x262-375 y350-540, x1486-1600 y475-590, x1886-2024 y362-650",
+  "INERT: whiteboard, clipboard, sticky notes, bookshelf, red conference table, yellow chairs, stage, microphone, couch, rug, low table"
+ ],
+ "motion_prompt": "Bring this empty hand-drawn skyline office alive as a calm seamless loop. Beyond the floor-to-ceiling glass the sky haze drifts very slightly in value and one soft sheen band slides slowly down the near pane, once. The leaves of the tall potted plants sway a few pixels. The room light breathes almost imperceptibly. The city towers are flat silhouettes: do NOT draw lit windows, do not add any window squares, lights or details to them, and do not change their shape. Nothing else moves: the whiteboard, the clipboard, the sticky notes, the bookshelf, the conference table, the chairs, the stage, the microphone and the couch are completely still. Camera absolutely locked: no zoom, no pan, no drift. Do not redraw, move, resize or restyle any drawn line. Every whiteboard, wall chart, clipboard, paper and sticky note stays exactly as it is and stays blank. No people, no creatures, no new objects, nothing enters or leaves the frame. Flat hand-drawn 2D style preserved exactly.",
+ "gate": [
+  {
+   "name": "glass_sky",
+   "box": [
+    460,
+    140,
+    1470,
+    660
+   ],
+   "feather": 70,
+   "gain": 0.55
+  },
+  {
+   "name": "plant_left",
+   "box": [
+    240,
+    330,
+    400,
+    560
+   ],
+   "feather": 40,
+   "gain": 1.0
+  },
+  {
+   "name": "plant_mid",
+   "box": [
+    1460,
+    455,
+    1625,
+    610
+   ],
+   "feather": 40,
+   "gain": 1.0
+  },
+  {
+   "name": "plant_right",
+   "box": [
+    1860,
+    340,
+    2048,
+    670
+   ],
+   "feather": 40,
+   "gain": 1.0
+  }
+ ],
+ "frames": 47,
+ "fps": 12,
+ "report": {
+  "frames_extracted": 49,
+  "window": [
+   1,
+   48
+  ],
+  "frames_kept": 47,
+  "dropped_drifted_frames": 1,
+  "seam_first_to_last_raw": 2.237,
+  "seam_after_window": 1.494,
+  "seam_after_gate": 0.189,
+  "clamp_loss_mean": 11.016,
+  "moving_pixels_pct": 1.65,
+  "peak_delta_raw": 232,
+  "peak_delta": 39,
+  "per_box_peak": {
+   "glass_sky": 33,
+   "plant_left": 39,
+   "plant_mid": 39,
+   "plant_right": 39
+  }
+ }
+}

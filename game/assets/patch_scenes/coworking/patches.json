@@ -1,0 +1,72 @@
+{
+ "hotdesk__hacker": {
+  "offset": [
+   54,
+   529
+  ],
+  "size": [
+   555,
+   466
+  ],
+  "px": 114684,
+  "holes_filled": 10101,
+  "spot": "hotdesk",
+  "who": "hacker"
+ },
+ "hotdesk__hustler": {
+  "offset": [
+   0,
+   392
+  ],
+  "size": [
+   804,
+   612
+  ],
+  "px": 291032,
+  "holes_filled": 38508,
+  "spot": "hotdesk",
+  "who": "hustler"
+ },
+ "hotdesk__pm": {
+  "offset": [
+   0,
+   392
+  ],
+  "size": [
+   740,
+   628
+  ],
+  "px": 266342,
+  "holes_filled": 25729,
+  "spot": "hotdesk",
+  "who": "pm"
+ },
+ "hotdesk__consultant": {
+  "offset": [
+   0,
+   392
+  ],
+  "size": [
+   729,
+   658
+  ],
+  "px": 263718,
+  "holes_filled": 29056,
+  "spot": "hotdesk",
+  "who": "consultant"
+ },
+ "phone__cofd_sales": {
+  "offset": [
+   1158,
+   464
+  ],
+  "size": [
+   508,
+   550
+  ],
+  "px": 128888,
+  "holes_filled": 5698,
+  "spot": "phone",
+  "who": "cofd_sales"
+ }
+}

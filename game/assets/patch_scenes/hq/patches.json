@@ -1,0 +1,86 @@
+{
+ "table_1__cofd_business": {
+  "offset": [
+   285,
+   400
+  ],
+  "size": [
+   259,
+   318
+  ],
+  "px": 43911,
+  "holes_filled": 4315,
+  "spot": "table_1",
+  "who": "cofd_business"
+ },
+ "table_2__cofd_sales": {
+  "offset": [
+   477,
+   437
+  ],
+  "size": [
+   305,
+   387
+  ],
+  "px": 71608,
+  "holes_filled": 3897,
+  "spot": "table_2",
+  "who": "cofd_sales"
+ },
+ "window__hacker": {
+  "offset": [
+   1096,
+   383
+  ],
+  "size": [
+   226,
+   364
+  ],
+  "px": 45493,
+  "holes_filled": 1421,
+  "spot": "window",
+  "who": "hacker"
+ },
+ "window__hustler": {
+  "offset": [
+   1032,
+   359
+  ],
+  "size": [
+   334,
+   394
+  ],
+  "px": 89971,
+  "holes_filled": 11370,
+  "spot": "window",
+  "who": "hustler"
+ },
+ "window__pm": {
+  "offset": [
+   1032,
+   359
+  ],
+  "size": [
+   334,
+   394
+  ],
+  "px": 89649,
+  "holes_filled": 16684,
+  "spot": "window",
+  "who": "pm"
+ },
+ "window__consultant": {
+  "offset": [
+   1032,
+   359
+  ],
+  "size": [
+   334,
+   394
+  ],
+  "px": 94755,
+  "holes_filled": 13174,
+  "spot": "window",
+  "who": "consultant"
+ }
+}

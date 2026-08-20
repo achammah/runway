@@ -1,0 +1,70 @@
+{
+ "scene": "floor",
+ "size": [
+  2048,
+  1360
+ ],
+ "founder_spot": "presenter",
+ "spots": {
+  "seat_left": [
+   175,
+   464,
+   616,
+   1073
+  ],
+  "presenter": [
+   570,
+   203,
+   1388,
+   1073
+  ],
+  "seat_right": [
+   1482,
+   526,
+   1915,
+   1021
+  ]
+ },
+ "bodies": {
+  "seat_left": [
+   244,
+   520,
+   599,
+   1055
+  ],
+  "presenter": [
+   833,
+   388,
+   1184,
+   904
+  ],
+  "seat_right": [
+   1528,
+   544,
+   1850,
+   1003
+  ]
+ },
+ "cast": {
+  "seat_left": [
+   "employee"
+  ],
+  "presenter": [
+   "hacker",
+   "hustler",
+   "pm",
+   "consultant"
+  ],
+  "seat_right": [
+   "employee"
+  ]
+ },
+ "measured_bodies": 3,
+ "expected_spots": 3,
+ "body_change_per_region": {
+  "seat_left": 0.2437,
+  "presenter": 0.1919,
+  "seat_right": 0.2332
+ },
+ "founder_by_measurement": "seat_left"
+}

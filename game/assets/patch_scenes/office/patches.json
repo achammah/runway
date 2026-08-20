@@ -1,0 +1,86 @@
+{
+ "desk_left__hacker": {
+  "offset": [
+   257,
+   540
+  ],
+  "size": [
+   498,
+   412
+  ],
+  "px": 48902,
+  "holes_filled": 2403,
+  "spot": "desk_left",
+  "who": "hacker"
+ },
+ "desk_left__hustler": {
+  "offset": [
+   22,
+   339
+  ],
+  "size": [
+   733,
+   656
+  ],
+  "px": 247024,
+  "holes_filled": 69445,
+  "spot": "desk_left",
+  "who": "hustler"
+ },
+ "desk_left__pm": {
+  "offset": [
+   24,
+   339
+  ],
+  "size": [
+   867,
+   648
+  ],
+  "px": 258179,
+  "holes_filled": 69616,
+  "spot": "desk_left",
+  "who": "pm"
+ },
+ "desk_left__consultant": {
+  "offset": [
+   25,
+   339
+  ],
+  "size": [
+   730,
+   644
+  ],
+  "px": 266725,
+  "holes_filled": 69848,
+  "spot": "desk_left",
+  "who": "consultant"
+ },
+ "board__cofd_business": {
+  "offset": [
+   762,
+   488
+  ],
+  "size": [
+   301,
+   468
+  ],
+  "px": 65839,
+  "holes_filled": 2329,
+  "spot": "board",
+  "who": "cofd_business"
+ },
+ "desk_right__cofd_tech": {
+  "offset": [
+   1535,
+   547
+  ],
+  "size": [
+   425,
+   422
+  ],
+  "px": 88023,
+  "holes_filled": 8272,
+  "spot": "desk_right",
+  "who": "cofd_tech"
+ }
+}

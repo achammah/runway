@@ -1,0 +1,86 @@
+{
+ "seat_left__employee": {
+  "offset": [
+   182,
+   464
+  ],
+  "size": [
+   425,
+   594
+  ],
+  "px": 131646,
+  "holes_filled": 8805,
+  "spot": "seat_left",
+  "who": "employee"
+ },
+ "presenter__hacker": {
+  "offset": [
+   828,
+   319
+  ],
+  "size": [
+   365,
+   621
+  ],
+  "px": 106562,
+  "holes_filled": 3899,
+  "spot": "presenter",
+  "who": "hacker"
+ },
+ "presenter__hustler": {
+  "offset": [
+   570,
+   215
+  ],
+  "size": [
+   738,
+   718
+  ],
+  "px": 122283,
+  "holes_filled": 5705,
+  "spot": "presenter",
+  "who": "hustler"
+ },
+ "presenter__pm": {
+  "offset": [
+   570,
+   204
+  ],
+  "size": [
+   818,
+   742
+  ],
+  "px": 190599,
+  "holes_filled": 39685,
+  "spot": "presenter",
+  "who": "pm"
+ },
+ "presenter__consultant": {
+  "offset": [
+   749,
+   216
+  ],
+  "size": [
+   600,
+   733
+  ],
+  "px": 149390,
+  "holes_filled": 17815,
+  "spot": "presenter",
+  "who": "consultant"
+ },
+ "seat_right__employee": {
+  "offset": [
+   1526,
+   526
+  ],
+  "size": [
+   359,
+   482
+  ],
+  "px": 106019,
+  "holes_filled": 12610,
+  "spot": "seat_right",
+  "who": "employee"
+ }
+}

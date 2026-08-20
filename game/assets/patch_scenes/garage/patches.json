@@ -1,0 +1,72 @@
+{
+ "bench__cofd_tech": {
+  "offset": [
+   337,
+   421
+  ],
+  "size": [
+   367,
+   442
+  ],
+  "px": 90405,
+  "holes_filled": 2660,
+  "spot": "bench",
+  "who": "cofd_tech"
+ },
+ "desk__hacker": {
+  "offset": [
+   743,
+   446
+  ],
+  "size": [
+   418,
+   425
+  ],
+  "px": 88814,
+  "holes_filled": 3264,
+  "spot": "desk",
+  "who": "hacker"
+ },
+ "desk__hustler": {
+  "offset": [
+   743,
+   374
+  ],
+  "size": [
+   502,
+   497
+  ],
+  "px": 132005,
+  "holes_filled": 22361,
+  "spot": "desk",
+  "who": "hustler"
+ },
+ "desk__pm": {
+  "offset": [
+   743,
+   374
+  ],
+  "size": [
+   502,
+   500
+  ],
+  "px": 139099,
+  "holes_filled": 25170,
+  "spot": "desk",
+  "who": "pm"
+ },
+ "desk__consultant": {
+  "offset": [
+   743,
+   374
+  ],
+  "size": [
+   502,
+   543
+  ],
+  "px": 145282,
+  "holes_filled": 16003,
+  "spot": "desk",
+  "who": "consultant"
+ }
+}
