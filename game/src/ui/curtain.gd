@@ -25,6 +25,15 @@ const INK := Color("1E1E1E")
 var _t := 0.0          ## 0 = fully open (offstage), 1 = fully shut
 var _tw: Tween
 var _whoosh: AudioStreamPlayer
+var _shut_for := 0.0   ## seconds fully shut; after a beat, the curtain speaks
+
+func _process(delta: float) -> void:
+	if _t > 0.98:
+		_shut_for += delta
+		if _shut_for > 0.9:
+			queue_redraw()   # the considering line breathes
+	else:
+		_shut_for = 0.0
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -97,6 +106,14 @@ func _draw() -> void:
 	for s in 12:
 		var cx: float = w * (float(s) + 0.5) / 12.0
 		draw_circle(Vector2(cx, 46), w / 24.0, va)
+	# a curtain shut longer than a breath says why, in hand on the fabric
+	if _shut_for > 0.9:
+		var f: Font = load("res://assets/fonts/PatrickHand-Regular.ttf")
+		var msg := "the world considers your week…"
+		var a := clampf((_shut_for - 0.9) * 2.0, 0.0, 1.0) * (0.75 + 0.25 * sin(_shut_for * 2.2))
+		var msz := f.get_string_size(msg, HORIZONTAL_ALIGNMENT_LEFT, -1, 40)
+		draw_string(f, Vector2((w - msz.x) * 0.5, h * 0.5 + sin(_shut_for * 1.3) * 4.0),
+				msg, HORIZONTAL_ALIGNMENT_LEFT, -1, 40, Color(0.95, 0.92, 0.83, a))
 	if _t > 0.15:
 		# true scallops: one hand-wobbled arc under each swag, not a zigzag
 		for sc in 12:
