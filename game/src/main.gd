@@ -705,6 +705,42 @@ func _after_draft(result: Dictionary) -> void:
 	g.setup(state, content, rng, record, generator)
 	g.done.connect(_after_grind)
 	_swap(g)
+	_opening_scene()
+
+## THE FIRST IMAGE IS YOURS (owner directive): generated at launch from the type,
+## the segment, the capital and the pitch itself, with the founder and the
+## cofounders in it. It renders while week one is being written; when it lands,
+## the room under the book quietly becomes YOUR company's room.
+func _opening_scene() -> void:
+	if not _art_enabled() or OS.get_environment("RUNWAY_GPT_SCENES") == "0":
+		return
+	if director == null or state == null:
+		return
+	var money: String = {
+		"bootstrap": "furnished from savings: secondhand everything, ramen on the shelf",
+		"fnf": "furnished on a family loan: mismatched but hopeful",
+		"angel": "fresh angel money visible in one or two conspicuously new purchases",
+	}.get(state.funding_id, "")
+	var scene := {
+		"novel_place": ("the very first workspace of %s, a %s company for %s that %s. "
+				+ "A scrappy garage-like space on founding day, %s.") % [
+			state.company_name, state.biz_what.to_lower(), state.biz_who.to_lower(),
+			state.company_idea if state.company_idea != "" else "does something nobody asked for",
+			money],
+		"place": "garage", "condition": "steady", "time": "day", "framing": "wide",
+		"beat": "founding day",
+	}
+	var cast: Array = [{"who": "founder", "mood": "fine", "doing": "raising a toast with instant coffee"}]
+	var role_who := {"Technical": "tech", "Business": "business", "Design": "tech",
+		"Sales": "sales", "The Hustler": "hustler", "The Idea Friend": "idea_friend"}
+	for cf in state.cofounders:
+		cast.append({"who": String(role_who.get(String(cf.get("role", "Technical")), "tech")),
+			"mood": "fine", "doing": "unpacking a box of cables"})
+	var pack := _cast_pack(cast)
+	_scene_seq = _turn_seq
+	_scene_headline = "DAY ONE"
+	director.make_scene_v2(scene, pack["cast"], pack["urls"], "founding day",
+			"opening_run%d" % (record.seed_value if record != null else 0))
 
 func _after_grind(result: Dictionary) -> void:
 	# money endings earn the ceremony first; ash goes straight to the last page
