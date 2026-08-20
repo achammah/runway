@@ -123,3 +123,19 @@ life layer stays built + tested behind RUNWAY_LIFE=1 (patch_scene.gd
 life_enabled(); suite exercises life explicitly and proves the static default —
 44 checks, PASS; real-scene shot verified static and clean).
 700-scene rollout implication: images only (~$400 at GPT medium), no video cost.
+
+## 2026-08-20 — Generative-scene pivot PARKED at the mapping stage (owner redirect)
+Owner approved fully-generative scenes at GPT medium (one image per beat, cache +
+edit-for-cast-change), then redirected: the JOURNAL is the core mechanic and gets
+the time now; repo cleanup done alongside. So the pivot is parked with the map in
+hand, nothing built yet. The map, for whoever resumes it:
+- The DM is the adjudicator call: data/prompts/adjudicator.txt +
+  ADJUDICATE_SCHEMA in src/llm/llm_client.gd (one call = narration + headline +
+  scene facets + cast). Scene vocabulary there is still taxonomy v1; v4 vocabulary
+  lives in ~/Downloads/RUNWAY_scene_taxonomy_v4.md and would replace it.
+- The swap point is src/llm/scene_director.gd make_scene(): today resolve(library)
+  + seedream compose; becomes ONE GPT-medium instruction-JSON call (the proven
+  ladder protocol) + per-(run,place,cast) cache. Library + PatchScene stay as the
+  fallback floor. Opening scene inputs all exist on GameState: company_idea,
+  cofounders, funding_id, cash (type + cofounder + pitch + capital).
+- Measured: GPT medium ~55s/$0.07 (fits the narration reading beat), high ~140s.
