@@ -1,6 +1,9 @@
 extends Node
 ## Scene flow: TITLE → SCRAMBLE (Act 0) → GRIND (garage weeks) → AUTOPSY → TITLE.
-## Owns the run: seed, rng, state, content, run record, LLM client.
+## Owns the run: seed, rng, state, content, run record, LLM client — and THE TURN:
+## the week locks, the DM answers with the consequences AND the scene to build, the
+## art starts immediately, and the player reads the consequences while it renders.
+## See "THE GENERATIVE WEEK" below and docs/GENERATIVE_ARCHITECTURE.md.
 
 var content := ContentDb.new()
 var llm: LlmClient
@@ -21,6 +24,7 @@ func _ready() -> void:
 	add_child(generator)
 	music = MusicManager.new()
 	add_child(music)
+	_setup_director()
 	print("RUNWAY! content: %d items, %d events · LLM: %s" % [
 		content.items.size(), content.events.size(),
 		(llm.provider + "/" + llm.model) if llm.enabled() else "off (authored only)"])
@@ -33,12 +37,16 @@ func _ready() -> void:
 		_shoot_lane_screens(OS.get_environment("RUNWAY_LANEWIRE"))
 	elif OS.get_environment("RUNWAY_READING") != "":
 		_shoot_reading_beat(OS.get_environment("RUNWAY_READING"))
+	elif OS.get_environment("RUNWAY_TURN") != "":
+		_shoot_turn(OS.get_environment("RUNWAY_TURN"))
 
 ## I2 — integration autopilot: plays a REAL run end-to-end through the actual
 ## screens (draft picks, weekly journal locks, era transitions, death/exit),
 ## screenshotting every few weeks. Proves the systems hold hands.
 func _fullrun(dir: String) -> void:
-	SaveSystem.clear_run()
+	# BUG-15: no clear_run() here. A test run must not delete the game the owner has
+	# in progress — and it does not need to, because _start_run always starts fresh
+	# under a harness env var.
 	DirAccess.make_dir_recursive_absolute(dir)
 	await get_tree().create_timer(1.2).timeout
 	if _screen is TitleScreen:
@@ -81,10 +89,22 @@ func _fullrun(dir: String) -> void:
 		if not gv._journal.visible:
 			gv._open_journal()
 			await get_tree().create_timer(0.4).timeout
+		# THE RUN CAN END ON ANY WEEK TICK. _check_exit swaps the finale in from
+		# _process, which frees this screen between two awaits — and the harness then
+		# wrote into a freed node and died there, leaving the run with no last page.
+		# Every await inside this loop is followed by this check.
+		if not _still_playing(gv):
+			await get_tree().create_timer(0.5).timeout
+			continue   # act break swapped the screen, or the run ended — the loop
+					   # condition decides which, and neither may be written to
 		# walk the spreads like a player
 		gv._page_i = 4
 		gv._show_spread()
 		await get_tree().create_timer(0.3).timeout
+		if not _still_playing(gv):
+			await get_tree().create_timer(0.5).timeout
+			continue   # act break swapped the screen, or the run ended — the loop
+					   # condition decides which, and neither may be written to
 		if not gv._current_event.is_empty():
 			for choice in gv._current_event.get("choices", []):
 				if gv._choice_lock_reason(choice) == "":
@@ -98,9 +118,15 @@ func _fullrun(dir: String) -> void:
 			gv._pending_work["SALES"] = {"kind": "preset", "id": "demos"}
 		gv._show_spread()
 		await get_tree().create_timer(0.2).timeout
+		if not _still_playing(gv):
+			await get_tree().create_timer(0.5).timeout
+			continue   # act break swapped the screen, or the run ended — the loop
+					   # condition decides which, and neither may be written to
 		if state.week % 5 == 0:
 			await _shot(dir, "wk%02d_%s" % [state.week, state.era])
 			shots += 1
+			if not _still_playing(gv):
+				continue
 		gv._lock_week()
 		await get_tree().create_timer(1.4).timeout
 		while _era_overlay != null and is_instance_valid(_era_overlay):
@@ -115,9 +141,11 @@ func _fullrun(dir: String) -> void:
 			_pump_era_queue()   # a second move may be waiting behind this one
 			await get_tree().create_timer(0.6).timeout
 		# one capture of the room itself the first week each era is standing
-		if not rooms_shot.has(state.era):
+		if _still_playing(gv) and not rooms_shot.has(state.era):
 			rooms_shot.append(state.era)
 			await get_tree().create_timer(0.5).timeout
+			if not _still_playing(gv):
+				continue
 			await _shot(dir, "era_%s_wk%02d" % [state.era, state.week])
 			shots += 1
 	await get_tree().create_timer(2.5).timeout
@@ -155,6 +183,96 @@ func _shoot_reading_beat(dir: String) -> void:
 	await get_tree().create_timer(2.0).timeout
 	await _shot(dir, "read_03_full")
 	print("READING BEAT DONE: 3 shots")
+	get_tree().quit()
+
+## Harness for THE TURN — the whole generative week against a canned DM verdict, so
+## the beat, the room opening and the dead-network path can all be reviewed without
+## playing to week 7 and without spending a render. Two weeks are played: one where
+## the art lands, one where it dies. RUNWAY_TURN_ART=1 makes the first one REAL
+## (a live compose: one to three minutes, and it costs money).
+func _shoot_turn(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	await get_tree().create_timer(0.6).timeout
+	state = GameState.new()
+	state.company_name = "Bytesy"
+	state.week = 7
+	state.archetype_id = "hacker"
+	state.archetype_name = "The Hacker"
+	state.morale = 58
+	# a real cofounder on the cap table, and the DM below also asks for a sales one
+	# this company never hired — the invented person must not reach the canvas
+	state.cofounders = [{"role": "Technical", "commitment": "Full-time", "equity": 30.0,
+		"vesting": true, "loyalty": 24}]
+	record = RunRecord.new()
+	record.seed_value = 424242
+	var dm := {
+		"player_text": "I stop building features and phone every single person who ever signed up, one by one, and just ask them what they actually need.",
+		"interpreted_as": "You call the eight people who signed up and ask what would make voice-based tax help worth using.",
+		"narration": "At 9:12 you sit beside the savings jar with a legal pad and begin dialing. The first number goes to voicemail. The second belongs to Mara, who says she does not want a subscription box for taxes; she wants someone to tell her which envelope matters.\n\nBy lunch five people have answered. Two want reminders, one wants a plain-language checklist, and another asks whether the voice can hear panic. Your tired Tech cofounder quietly removes a feature from the roadmap without making eye contact.\n\nNothing has gone viral. Nothing has been automated. But the product now has a problem small enough to solve, which is more than it had on Monday.",
+		"reality_check": "The eighth caller says they would pay if it stopped sounding like a tax podcast. This is, unfortunately, useful.",
+		"verdict": "fine",
+		"headline": "EIGHT PHONE CALLS AND ONE USEFUL SENTENCE",
+		"scene": {
+			"family": "scrappy_workspace", "place": "garage desk", "time": "night",
+			"condition": "steady", "framing": "wide",
+			"novel_place": "a two-car garage converted into an office, a folding table under a work lamp, a savings jar and a legal pad beside a cooling mug",
+			"beat": "the founder works the phone while the tech cofounder quietly deletes a feature",
+		},
+		"cast": [
+			{"who": "founder", "mood": "fine", "doing": "on the phone with a legal pad, tallying answers"},
+			{"who": "tech", "mood": "burnt", "doing": "removing a feature from the roadmap without eye contact"},
+			{"who": "sales", "mood": "fine", "doing": "working a list this company has never had anyone to work"},
+		],
+	}
+	var live := OS.get_environment("RUNWAY_TURN_ART") != ""
+	var pack := _cast_pack(dm["cast"])
+	print("TURN HARNESS: %d of %d cast members have a fetchable sprite · art=%s" % [
+		(pack["urls"] as Array).size(), (dm["cast"] as Array).size(), "LIVE" if live else "stub"])
+	# ── week 7: the art lands, the room opens ──
+	_begin_turn(dm, "" if live else "res://docs/refs/pilot_composed_hangar.png")
+	await get_tree().create_timer(1.2).timeout
+	await _shot(dir, "turn_01_beat_opens")
+	await get_tree().create_timer(9.0).timeout
+	await _shot(dir, "turn_02_beat_reading")
+	var waited := 0.0
+	var cap := 300.0 if live else 70.0
+	while (_turn_busy or (live and not _scene_done)) and waited < cap:
+		await get_tree().create_timer(1.0).timeout
+		waited += 1.0
+	# a live render can outlast the beat's ceiling, and out here there is no room to
+	# come back to, so the harness opens whatever landed in order to photograph it
+	if _scene_path != "" and not (_scene_layer != null and is_instance_valid(_scene_layer)):
+		_open_scene(_scene_path, String(dm["headline"]))
+	await get_tree().create_timer(1.0).timeout
+	await _shot(dir, "turn_03_room_opens")
+	var opened := _scene_layer != null and is_instance_valid(_scene_layer)
+	_close_scene()
+	await get_tree().create_timer(0.8).timeout
+	# ── week 8: the render dies, and the week must carry on regardless ──
+	state.week = 8
+	_begin_turn(dm, "FAIL")
+	await get_tree().create_timer(4.0).timeout
+	await _shot(dir, "turn_04_reading_after_a_dead_render")
+	waited = 0.0
+	while _turn_busy and waited < 70.0:
+		await get_tree().create_timer(1.0).timeout
+		waited += 1.0
+	await get_tree().create_timer(0.8).timeout
+	# ── week 9: no art at all (no key, or art switched off). The week is still read ──
+	var text_only := false
+	if not live:
+		state.week = 9
+		_begin_turn(dm)
+		await get_tree().create_timer(2.0).timeout
+		text_only = _beat != null and is_instance_valid(_beat) and _beat.visible
+		await _shot(dir, "turn_05_reading_with_no_art_at_all")
+		waited = 0.0
+		while _turn_busy and waited < 70.0:
+			await get_tree().create_timer(1.0).timeout
+			waited += 1.0
+	var stranded := _scene_layer != null and is_instance_valid(_scene_layer)
+	print("TURN HARNESS DONE: room_opened=%s · failure_left_the_room_alone=%s · text_only_beat=%s · turn_busy=%s" % [
+		str(opened), str(not stranded), str(text_only), str(_turn_busy)])
 	get_tree().quit()
 
 func _shoot_lane_screens(dir: String) -> void:
@@ -341,6 +459,13 @@ func _autopilot() -> void:
 	print("AUTOPILOT DONE")
 	get_tree().quit()
 
+## Is the screen the harness is holding still the screen the game is showing? A run
+## that ends mid-week frees it, and a freed node must never be written to.
+## The argument is deliberately UNTYPED: a freed instance cannot be passed to a
+## typed Node parameter at all — the call itself is the error, before the body runs.
+func _still_playing(gv) -> bool:
+	return is_instance_valid(gv) and _screen == gv and state != null and not state.dead
+
 func _shot(dir: String, name: String) -> void:
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
@@ -359,10 +484,14 @@ func _process(_delta: float) -> void:
 		_last_era = state.era
 	if daily_mode and generator != null and not generator.pool.is_empty():
 		generator.pool.clear()   # authored-only: a generated card must never enter a daily run
+	if _upload_thread != null and _upload_done:
+		_collect_upload()   # a room hosted too late for its own week is free for the next
 	if _screen is GarageViewScreen and state != null and not state.dead:
+		_poll_turn(_screen as GarageViewScreen)
 		if state.week != _last_saved_week:
 			_last_saved_week = state.week
-			SaveSystem.save_run(state, record)
+			if not _harness():
+				SaveSystem.save_run(state, record)   # BUG-15: harnesses never touch the player's save
 			_check_exit()
 		if state.cash < 0:
 			music.play("in_the_red")
@@ -382,6 +511,12 @@ var _gallery_open := false
 var daily_mode := false
 
 func _unhandled_input(event: InputEvent) -> void:
+	# the week's room is up: any key or click puts it away, and nothing else fires
+	if _scene_layer != null and is_instance_valid(_scene_layer):
+		if (event is InputEventKey and event.pressed) or (event is InputEventMouseButton and event.pressed):
+			_close_scene()
+			get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey and event.pressed and event.keycode == KEY_D and _screen is TitleScreen:
 		daily_mode = true
 		_start_run()
@@ -457,6 +592,7 @@ func _swap(next: Node) -> void:
 		(next as Control).size = get_viewport().get_visible_rect().size
 
 func _to_title() -> void:
+	_cancel_turn()
 	music.play("title")
 	music.set_stem("")
 	var t := TitleScreen.new()
@@ -566,6 +702,7 @@ func _after_grind(result: Dictionary) -> void:
 		_next_chapter()
 		return
 	if exit_kind != "" and OS.get_environment("RUNWAY_SHOT") == "":
+		_cancel_turn()   # the company sold or rang the bell: no room is coming after that
 		music.play("title")
 		music.set_stem("")
 		var fin := FinaleScreen.new()
@@ -590,6 +727,556 @@ func _next_chapter() -> void:
 	g.done.connect(_after_grind)
 	_swap(g)
 
+# ═══════════════════════════════════════════════════════════════════════════
+# THE GENERATIVE WEEK
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# THE TURN, end to end:
+#
+#   the player writes a move  ─> the DM answers ONCE with both halves of the week:
+#                                the consequence text AND the scene to build
+#   the player locks the week ─> THE ART STARTS THIS INSTANT (67s one character,
+#                                113s four, +107s when the room has to be built)
+#                             ─> the reading beat opens over the room and the wait
+#                                is spent on the most interesting thing in the game
+#   the scene lands           ─> the room opens
+#
+# WHY MAIN OWNS THIS. The decision page belongs to another lane and raises no signal
+# for the lock, so main watches the run instead: the DM's verdict sits on the page as
+# a pending move, and the frame it is consumed is the frame the week turned.
+#
+# WHAT HAPPENS WHEN THE NETWORK DOES NOT COOPERATE — the whole point of the rules
+# below, because a render failure must cost a picture and never a turn:
+#   · the DM is off or errors   → no scene facets, no beat: the authored week runs
+#                                  exactly as it always has
+#   · the compose fails         → `failed` keeps the PREVIOUS room and the week
+#                                  continues; the player is told nothing, because
+#                                  the last room persisting one more week is
+#                                  diegetically fine
+#   · the render hangs          → the beat closes at HOLD_CEILING regardless
+#   · it lands after that       → it opens later, when the player is back in the
+#                                  room, or is dropped if the week has moved on
+#   · the run ends mid-render   → the turn is cancelled and nothing from it can
+#                                  reach the screen
+# Nothing on this path awaits a network call without a deadline.
+
+## The beat never holds a reader longer than this, whatever the render is doing.
+const HOLD_CEILING := 150.0
+## Cast sprite URLs, uploaded once by the scene pipeline. res:// paths are useless
+## here — the image API has to be able to FETCH every reference.
+const CAST_REFS := "res://assets/scenes/refs.json"
+
+## The cast directories, matching the room's own mapping so the composed scene and
+## the room agree on who is who. `founder` goes through the archetype that was
+## actually drafted — the person in the picture is the person the player chose.
+const FOUNDER_CAST := {
+	"hacker": "cast_hacker", "hustler": "cast_founder_hustler",
+	"exfaang": "cast_founder_pm", "consultant": "cast_founder_consultant",
+}
+const COFD_CAST := {
+	"tech": "cast_cofd_tech", "technical": "cast_cofd_tech", "design": "cast_cofd_tech",
+	"business": "cast_cofd_business", "sales": "cast_cofd_sales",
+	"hustler": "cast_cofd_hustler", "idea": "cast_cofd_idea",
+}
+## The DM asks for people by these words; a role string on the cap table answers to one.
+const ROLE_KEYS := {
+	"tech": "tech", "technical": "tech", "design": "tech", "business": "business",
+	"sales": "sales", "hustler": "hustler", "idea": "idea_friend",
+}
+const MOOD_WORDS := {"burnt": " (burnt out, running on fumes)", "gone": " (checked out entirely)"}
+
+var director: SceneDirector
+var _refs: Dictionary = {}          # ref key -> permanent https url
+var _dm: Dictionary = {}            # the DM verdict currently pending on the page
+var _dm_armed := false              # ...and whether it is still sitting there
+var _turn_busy := false
+var _turn_seq := 0                  # bumped by any cancel; orphans everything in flight
+var _scene_seq := -1                # the seq the in-flight render belongs to
+var _scene_path := ""
+var _scene_done := false
+var _scene_progress := 0.0
+var _from_library := ""             # the library room this render is built on, if any
+var _scene_headline := ""           # the DM's title for it, kept for a late arrival
+var _beat: LoadingScreen
+var _scene_layer: Control
+
+## A worker still running at shutdown must be joined, or the engine reports a thread
+## that was never disposed. Blocking here is correct: the game is already closing.
+func _exit_tree() -> void:
+	_collect_upload(true)
+
+func _setup_director() -> void:
+	director = SceneDirector.new(get_tree())
+	director.ready.connect(_on_scene_ready)
+	director.failed.connect(_on_scene_failed)
+	director.progress.connect(_on_scene_progress)
+	if FileAccess.file_exists(CAST_REFS):
+		var r = JSON.parse_string(FileAccess.get_file_as_string(CAST_REFS))
+		if r is Dictionary:
+			_refs = r
+	print("RUNWAY! scene library: %d rooms · art %s" % [
+		director._entries.size(), "on" if _art_enabled() else "off"])
+
+## HOSTING A LIBRARY ROOM — the caller's job, by the director's design.
+## The rooms ship as files, but the remote edit FETCHES its references over HTTP, so a
+## room has to exist at a url before anything can be composed on it. The director hands
+## that job out here on purpose: an upload that fails has to cost a picture and never a
+## turn. It runs on a thread, because the week must not freeze on a subprocess; it is
+## cached across runs, so a room costs this once, ever; and only rooms a run actually
+## walks into are ever uploaded.
+##
+## `nexus` is a dev machine's CLI. Where it does not exist the upload simply fails, the
+## room is never hosted, and the week keeps the room it already had.
+var _upload_thread: Thread
+var _upload_id := ""
+var _upload_url := ""
+var _upload_done := false
+
+func _host_room(id: String) -> bool:
+	if _upload_thread != null or id == "":
+		return false
+	var res_path := director._local_path(id)
+	if not FileAccess.file_exists(res_path):
+		return false
+	_upload_id = id
+	_upload_url = ""
+	_upload_done = false
+	_upload_thread = Thread.new()
+	if _upload_thread.start(_upload_worker.bind(ProjectSettings.globalize_path(res_path))) != OK:
+		_upload_thread = null
+		return false
+	return true
+
+func _upload_worker(abs_path: String) -> void:
+	var out: Array = []
+	var url := ""
+	if OS.execute("nexus", ["--timeout", "300", "asset", "upload", abs_path, "--json"], out, true) == 0 \
+			and not out.is_empty():
+		var parsed = JSON.parse_string(String(out[0]))
+		if parsed is Dictionary:
+			url = String((parsed as Dictionary).get("url", ""))
+			if url == "":
+				url = String(((parsed as Dictionary).get("data", {}) as Dictionary).get("url", ""))
+	_upload_url = url
+	_upload_done = true
+
+## Join a FINISHED upload and tell the director where the room now lives. Returns the
+## url, or "" when the upload did not work — in which case the week keeps its old room.
+## Never joins a thread that is still working: that would freeze the game on a
+## subprocess. A late one is collected by _process instead, and the room is hosted in
+## time for a later week. `force` is only for shutdown, where blocking is correct.
+func _collect_upload(force: bool = false) -> String:
+	if _upload_thread == null or not (_upload_done or force):
+		return ""
+	_upload_thread.wait_to_finish()
+	_upload_thread = null
+	var url := _upload_url
+	if url != "":
+		director.remember_url(_upload_id, url)
+	else:
+		print("RUNWAY! could not host room %s — keeping the previous room" % _upload_id)
+	_upload_id = ""
+	_upload_url = ""
+	return url
+
+## Art costs money and up to three minutes. Harnesses never spend either, and
+## RUNWAY_NO_ART=1 turns it off for anyone who wants the game without renders.
+func _art_enabled() -> bool:
+	if OS.get_environment("RUNWAY_NO_ART") != "":
+		return false
+	if OS.get_environment("RUNWAY_TURN_ART") != "":
+		return true   # the turn harness, asked explicitly for a real render
+	return not _harness()
+
+func _harness() -> bool:
+	for v in ["RUNWAY_SHOT", "RUNWAY_FULLRUN", "RUNWAY_LANEWIRE", "RUNWAY_READING", "RUNWAY_TURN"]:
+		if OS.get_environment(v) != "":
+			return true
+	return false
+
+## WATCH THE LOCK. The adjudicated move waits on the decision page as a pending
+## verdict; `_apply_lock` consumes it into the week's outcome and clears it in the
+## same call. That transition — pending, then gone, with the outcome quoting the
+## same words back — is the lock. Read through `get()` on purpose: the property
+## belongs to another lane's file, and if it is ever renamed this must fall back to
+## the authored week, not take the game down with it.
+func _poll_turn(gv: GarageViewScreen) -> void:
+	if _turn_busy or director == null:
+		return
+	var pending = gv.get("_pending_free")
+	if pending is Dictionary and not (pending as Dictionary).is_empty():
+		_dm = (pending as Dictionary).duplicate(true)
+		_dm_armed = true
+		return
+	if not _dm_armed:
+		return
+	_dm_armed = false
+	var outcome = gv.get("_last_outcome")
+	if not (outcome is Dictionary):
+		return
+	var said := String((outcome as Dictionary).get("said", ""))
+	if said == "" or said != String(_dm.get("player_text", "")):
+		return   # the verdict was replaced or discarded, never locked
+	if state == null or state.dead or state.has_flag("exit_taken") or bool(gv.get("_over")):
+		return   # the run ended on this very move; there is no next room to show
+	_begin_turn(_dm)
+
+## `stub_path` is the harness seam ONLY: it stands in for the render so the beat and
+## the scene opening can be reviewed without a network call. Empty in a real game.
+func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
+	var scene: Dictionary = dm.get("scene", {})
+	var narration := String(dm.get("narration", "")).strip_edges()
+	# THE BEAT IS FOR THE READING; THE ART IS WHAT IT WAITS FOR. With a render in
+	# flight it fills the wait. With no render — art off, or no key — it still runs,
+	# because the consequence chain IS the payoff of the written move, and with
+	# nothing to wait for it closes the moment the last line is read. With neither
+	# text nor art there is nothing to show, and the authored week runs untouched.
+	var want_art := stub_path != "" or (_art_enabled() and not scene.is_empty())
+	if narration == "" and not want_art:
+		return
+	_turn_busy = true
+	var seq := _turn_seq
+	_scene_seq = seq
+	_scene_path = ""
+	_scene_done = false
+	_scene_progress = 0.0
+
+	var cast_pack := _cast_pack(dm.get("cast", []))
+	var want := {
+		"family": String(scene.get("family", "scrappy_workspace")),
+		"place": _slug(String(scene.get("place", ""))),
+		"time": String(scene.get("time", "day")),
+		"condition": String(scene.get("condition", "steady")),
+		"framing": String(scene.get("framing", "wide")),
+	}
+	_scene_headline = String(dm.get("headline", ""))
+	var out_name := "run%d_wk%02d" % [record.seed_value if record != null else 0, state.week]
+	# WHICH ROOM THIS IS BUILT ON. A remembered room is only as good as its url, and
+	# a generated url can expire — so if the compose dies on a library room, that room
+	# is forgotten for this session and the place gets rebuilt next time rather than
+	# failing every week from now on.
+	var pick := director.resolve(want)
+	_from_library = "" if bool(pick.get("miss", true)) else String(pick.get("id", ""))
+	# A room the run has never walked into is on disk but not yet at a url. Start
+	# hosting it now, in the background, and compose the moment it lands.
+	var hosting := want_art and stub_path == "" and _from_library != "" \
+			and director.needs_upload(_from_library) and _host_room(_from_library)
+
+	# THE ART STARTS FIRST — before a single line is drawn, because every second of
+	# the beat is a second of render already paid for.
+	if hosting:
+		pass   # the compose is fired below, as soon as the room has a url
+	elif not want_art:
+		_scene_done = true   # nothing is coming; the beat is pure reading
+	elif stub_path != "":
+		# harness only: stand in for the render, "FAIL" to rehearse a dead network
+		get_tree().create_timer(3.0).timeout.connect(func():
+			if stub_path == "FAIL":
+				_on_scene_failed("harness: forced failure")
+			else:
+				_on_scene_ready(stub_path))
+	else:
+		director.make_scene(want, String(scene.get("novel_place", "")), cast_pack["cast"],
+			cast_pack["urls"], String(scene.get("beat", "")), out_name)
+		# it may have failed before it ever reached the network (no key, bad request).
+		# That is not a reason to skip the week: the beat carries on as reading.
+
+	var l := LoadingScreen.new()
+	l.begin("WEEK %d" % state.week)
+	add_child(l)
+	l.size = get_viewport().get_visible_rect().size
+	_beat = l
+	# the DM's own title for the week, and then the week itself. It has nowhere else
+	# to be: the room takes the picture, not the words.
+	l.say("", String(dm.get("headline", "")))
+	l.say("You said", String(dm.get("player_text", "")))
+	l.say("They heard", String(dm.get("interpreted_as", "")))
+	l.say("", String(dm.get("narration", "")))
+	l.say("", String(dm.get("reality_check", "")))
+
+	var deadline := Time.get_ticks_msec() + int(HOLD_CEILING * 1000.0)
+	# THE ROOM HAS TO EXIST AT A URL BEFORE ANYTHING CAN BE PAINTED INTO IT. The reader
+	# is already reading while this finishes; it takes about two seconds, and it shares
+	# the same deadline as everything else on this path.
+	if hosting:
+		while not _upload_done and Time.get_ticks_msec() < deadline and seq == _turn_seq:
+			await get_tree().process_frame
+		if seq != _turn_seq:
+			return
+		if _collect_upload() != "":
+			director.make_scene(want, String(scene.get("novel_place", "")), cast_pack["cast"],
+				cast_pack["urls"], String(scene.get("beat", "")), out_name)
+		else:
+			_scene_done = true   # unhosted: no art this week, and the reading goes on
+
+	# THE BOUNDED WAIT. The pen tracks the real render; the deadline is what makes a
+	# hung request impossible to be stranded by.
+	while not _scene_done and Time.get_ticks_msec() < deadline and seq == _turn_seq:
+		l.report(_scene_progress)
+		await get_tree().process_frame
+	if seq != _turn_seq:
+		return   # the run ended under us; the cancel already took the beat away
+	await l.finish()   # drains whatever is left to read, then fades. Never the art.
+	_beat = null
+	if seq != _turn_seq:
+		return
+	_turn_busy = false
+	if _scene_path != "":
+		_open_scene(_scene_path, String(dm.get("headline", "")))
+	_check_exit()   # deferred while the week was being read
+
+## Progress is never allowed to run backwards: the director reports the novel-room
+## generation and the compose on one channel, and the second stage restarts its own
+## count. A pen that goes back down reads as a bug, so it only ever moves forward.
+func _on_scene_progress(f: float) -> void:
+	_scene_progress = maxf(_scene_progress, clampf(f, 0.0, 1.0))
+
+func _on_scene_ready(path: String) -> void:
+	if _scene_seq != _turn_seq:
+		return   # belongs to a run that has already ended
+	_scene_path = path
+	_scene_done = true
+	if not _turn_busy:
+		_late_scene(path)
+
+## A FAILED RENDER IS A COSMETIC LOSS. The previous room stays, the week continues,
+## and the only trace is a line in the log for whoever is watching.
+func _on_scene_failed(reason: String) -> void:
+	if _scene_seq != _turn_seq:
+		return
+	_scene_path = ""
+	_scene_done = true
+	if _from_library != "":
+		# A room the GAME generated carries its own url, and that url is signed and
+		# expires within a day, so a failure on one means it has gone stale: stop
+		# trusting it for this session and let the place be rebuilt. A shipped room is
+		# hosted permanently, so a failure there is the request, not the room, and the
+		# library keeps it.
+		for i in range(director._entries.size() - 1, -1, -1):
+			var e: Dictionary = director._entries[i]
+			if String(e.get("id", "")) == _from_library and String(e.get("url", "")) != "":
+				director._entries.remove_at(i)
+		_from_library = ""
+	print("RUNWAY! scene skipped (%s) — keeping the previous room" % reason)
+
+## The render came in after the beat closed. Handing it to the room is never an
+## interruption — it just becomes the room, even behind an open book, and the player
+## looks up into it when they are done writing. Only the fallback overlay has to wait
+## for the book to be shut, and is dropped if the week has moved on.
+func _late_scene(path: String) -> void:
+	if not (_screen is GarageViewScreen) or state == null or state.dead:
+		return
+	if _screen.has_method("adopt_composed") and bool(_screen.call("adopt_composed", path, false)):
+		return
+	if _scene_layer != null and is_instance_valid(_scene_layer):
+		return
+	var journal = (_screen as GarageViewScreen).get("_journal")
+	if journal != null and is_instance_valid(journal) and bool(journal.visible):
+		print("RUNWAY! scene arrived late while the book was open — dropped")
+		return
+	_open_scene(path, _scene_headline)
+
+## NOTHING IN FLIGHT SURVIVES THE END OF A RUN. Bumping the sequence orphans the
+## render, the beat and anything the director still has in the air; the beat is
+## hidden rather than freed, so the coroutine awaiting it can finish safely.
+func _cancel_turn() -> void:
+	_turn_seq += 1
+	_turn_busy = false
+	_dm = {}
+	_dm_armed = false
+	_scene_path = ""
+	_scene_headline = ""
+	_scene_done = true
+	if _beat != null and is_instance_valid(_beat):
+		_beat.visible = false
+		_beat.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_beat = null
+	if _scene_layer != null and is_instance_valid(_scene_layer):
+		_scene_layer.queue_free()
+	_scene_layer = null
+
+## THE ROOM YOU ARE LOOKING AT. The composed scene fills the frame; the headline
+## sits in the calm top band and the hint in the calm bottom one — the two strips
+## the compose prompt keeps clear for exactly this. Any key or click puts it away.
+func _open_scene(path: String, headline: String) -> void:
+	# THE BOUNDARY: the room screen owns what the room looks like, so the week's scene
+	# is handed to it and BECOMES the room — no overlay to dismiss, the player simply
+	# looks up from the page into the room their decision made. `aligned` is false: the
+	# turn composes on a library room, not on the stage we were standing in, so the
+	# room's handwriting stands down rather than writing the cash total across a
+	# stranger's wall. The overlay below is the fallback for anywhere else.
+	if _screen is GarageViewScreen and _screen.has_method("adopt_composed"):
+		if bool(_screen.call("adopt_composed", path, false)):
+			return
+	var img := Image.new()
+	if img.load(path) != OK:
+		print("RUNWAY! scene unreadable on disk: %s" % path)
+		return
+	var vp := get_viewport().get_visible_rect().size
+	var layer := Control.new()
+	layer.size = vp
+	layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	var back := ColorRect.new()
+	back.color = Color(0.06, 0.05, 0.07, 1.0)
+	back.size = vp
+	back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(back)
+	var tr := TextureRect.new()
+	tr.texture = ImageTexture.create_from_image(img)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	tr.size = vp
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(tr)
+	var font: Font = load("res://assets/fonts/PatrickHand-Regular.ttf")
+	if headline.strip_edges() != "":
+		layer.add_child(_scene_line(headline, font, 44, Color("F2EAD3"), vp, 34.0))
+	layer.add_child(_scene_line("click anywhere to get on with the week", font, 26,
+		Color(Color("F2EAD3"), 0.55), vp, vp.y - 74.0))
+	add_child(layer)
+	_scene_layer = layer
+	layer.modulate.a = 0.0
+	create_tween().tween_property(layer, "modulate:a", 1.0, 0.35)
+
+func _scene_line(text: String, font: Font, sz: int, col: Color, vp: Vector2, y: float) -> Label:
+	var l := Label.new()
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_font_override("font", font)
+	l.add_theme_font_size_override("font_size", sz)
+	l.add_theme_color_override("font_color", col)
+	l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.55))
+	l.add_theme_constant_override("shadow_offset_y", 3)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.text = text
+	l.position = Vector2(vp.x * 0.12, y)
+	l.size = Vector2(vp.x * 0.76, 0)
+	l.custom_minimum_size = Vector2(vp.x * 0.76, 0)
+	return l
+
+func _close_scene() -> void:
+	if _scene_layer == null or not is_instance_valid(_scene_layer):
+		_scene_layer = null
+		return
+	var l := _scene_layer
+	_scene_layer = null
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tw := l.create_tween()
+	tw.tween_property(l, "modulate:a", 0.0, 0.25)
+	tw.tween_callback(l.queue_free)
+
+## THE CAST IS THE PLAYER'S ACTUAL CREW — never a generic set.
+## The model paints these characters into the room itself, so what it is handed IS
+## the company: the founder is the archetype that was drafted, the crew are the
+## people still on the cap table and the payroll, and the moods are the ones the
+## room is already showing — burnt when loyalty or morale says burnt. The DM only
+## chooses who is present this week and what each of them is doing.
+##
+## A character with no fetchable sprite is dropped from BOTH lists together: the
+## compose prompt numbers the roster against the images, so they must stay equal or
+## the model is told about someone it was never shown.
+func _cast_pack(dm_cast) -> Dictionary:
+	var cast: Array = []
+	var urls: Array = []
+	if not (dm_cast is Array) or state == null:
+		return {"cast": cast, "urls": urls}
+	var roster := _crew_roster()
+	var used: Array = []
+	for c in dm_cast:
+		if not (c is Dictionary):
+			continue
+		var who := String((c as Dictionary).get("who", "")).to_lower()
+		if not roster.has(who) or used.has(who):
+			continue   # the DM asked for someone this company does not have
+		var person: Dictionary = roster[who]
+		var url := _cast_url(String(person["base"]), String(person["mood"]))
+		if url == "":
+			continue
+		used.append(who)
+		cast.append({
+			"role": String(person["role"]) + String(MOOD_WORDS.get(String(person["mood"]), "")),
+			"doing": String((c as Dictionary).get("doing", "at work")),
+		})
+		urls.append(url)
+	# the DM wanted people and none of them exist: the founder is always in the run
+	if cast.is_empty() and not (dm_cast as Array).is_empty() and roster.has("founder"):
+		var f: Dictionary = roster["founder"]
+		var f_url := _cast_url(String(f["base"]), String(f["mood"]))
+		if f_url != "":
+			cast.append({"role": String(f["role"]) + String(MOOD_WORDS.get(String(f["mood"]), "")),
+				"doing": "in the middle of it"})
+			urls.append(f_url)
+	return {"cast": cast, "urls": urls}
+
+## Who this company actually contains, keyed by the words the DM uses. Moods follow
+## the same rules the room uses, so the picture never disagrees with the crew line.
+func _crew_roster() -> Dictionary:
+	var out: Dictionary = {}
+	var f_burnt := state.morale <= 30 or state.weeks_in_red >= 2
+	out["founder"] = {
+		"base": String(FOUNDER_CAST.get(state.archetype_id, "cast_hacker")),
+		"mood": "burnt" if f_burnt else "fine",
+		"role": ("%s, the founder" % state.archetype_name.to_lower()) if state.archetype_name != "" else "founder",
+	}
+	for cf in state.cofounders:
+		var role := String(cf.get("role", "Tech"))
+		var key := _role_key(role)
+		if out.has(key):
+			continue   # one sprite per type: the DM names types, not names
+		var sour := int(cf.get("loyalty", 70)) <= 30 or state.morale <= 20 or state.has_flag("trap_underpaid_cofounder")
+		out[key] = {"base": _cofd_base(role), "mood": "burnt" if sour else "fine",
+			"role": "%s cofounder" % role.to_lower()}
+	for e in state.employees:
+		var e_role := String(e.get("role", "generalist"))
+		var e_key := _role_key(e_role)
+		if out.has(e_key):
+			continue
+		var cooked := GameState.burnout_state(int(e.get("burnout", 0))) in ["cooked", "gone"]
+		out[e_key] = {"base": _cofd_base(e_role), "mood": "burnt" if cooked else "fine",
+			"role": "%s, the %s" % [String(e.get("name", "the hire")).to_lower(), e_role.to_lower()]}
+	return out
+
+## Roles arrive as display strings ("The Idea Friend") and events invent their own
+## ("generalist"), so match on containment before defaulting.
+func _role_key(role: String) -> String:
+	var key := role.to_lower().strip_edges()
+	if ROLE_KEYS.has(key):
+		return String(ROLE_KEYS[key])
+	for k in ROLE_KEYS:
+		if key.contains(String(k)):
+			return String(ROLE_KEYS[k])
+	return "tech"
+
+func _cofd_base(role: String) -> String:
+	var key := role.to_lower().strip_edges()
+	if COFD_CAST.has(key):
+		return String(COFD_CAST[key])
+	for k in COFD_CAST:
+		if key.contains(String(k)):
+			return String(COFD_CAST[k])
+	return "cast_cofd_tech"
+
+func _cast_url(base: String, mood: String) -> String:
+	if base == "":
+		return ""
+	# a mood we have no sprite for is better shown at the wrong mood than not at all
+	for m in [mood, "fine"]:
+		for layer in ["sprite", "scene"]:
+			var u := String(_refs.get("%s_%s/%s" % [base, m, layer], ""))
+			if u.begins_with("http"):
+				return u
+	return ""
+
+## The DM writes places in English; the library indexes them as slugs.
+func _slug(s: String) -> String:
+	var out := ""
+	for ch in s.strip_edges().to_lower():
+		if (ch >= "a" and ch <= "z") or (ch >= "0" and ch <= "9"):
+			out += ch
+		elif out != "" and not out.ends_with("_"):
+			out += "_"
+	return out.rstrip("_")
+
 ## A RUN MUST BE ABLE TO END IN SUCCESS.
 ## The IPO was gated on the Act-1 victory signal, which stops firing once Act One
 ## is cleared — so a company that reached the top floor could never end at all.
@@ -604,6 +1291,11 @@ func _check_exit() -> void:
 		return
 	if state.has_flag("exit_taken"):
 		return
+	if _turn_busy:
+		# the week that just locked is still being read. Ending the run out from
+		# under the beat would tear the page away mid-sentence; the turn calls this
+		# again the moment it closes, so nothing is skipped, only sequenced.
+		return
 	var reason := ""
 	if state.era == "hq" and state.valuation() >= 25_000_000 and state.traction >= 70:
 		reason = "ipo"                     # the company is genuinely public-ready
@@ -613,6 +1305,7 @@ func _check_exit() -> void:
 	if reason == "":
 		return
 	state.flags.append("exit_taken")
+	_cancel_turn()   # the run is over: no render still in the air may reach the screen
 	if reason == "timeout":
 		_to_autopsy({"death": "THE LONG HAUL — %d weeks in, the story ran out before the money did." % state.week}, "")
 		return
@@ -626,7 +1319,44 @@ func _check_exit() -> void:
 	else:
 		_to_autopsy({"victory": true}, "ipo")
 
+## BUG-15 — THE HARNESSES GET THEIR OWN PROFILE.
+## Every autopilot run used to land in the player's gallery: 39 runs and ×37 FOUNDER
+## FLATLINE that nobody ever played. A harness now keeps its own book at
+## user://profile_harness.json — same shape, so it can still be read back — and the
+## player's profile and saved run are left exactly as they were.
+const HARNESS_PROFILE := "user://profile_harness.json"
+
+func _record_run_end(cause: String) -> void:
+	if not _harness():
+		SaveSystem.record_run_end(state, cause)
+		return
+	var prof: Dictionary = {"version": SaveSystem.VERSION, "runs": [], "endings_seen": [], "best_payout": 0}
+	if FileAccess.file_exists(HARNESS_PROFILE):
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(HARNESS_PROFILE))
+		if parsed is Dictionary:
+			prof = parsed
+	var payout := state.payout_today()
+	var runs: Array = prof.get("runs", [])
+	runs.append({
+		"company": state.company_name, "archetype": state.archetype_name,
+		"weeks": state.week, "era": state.era, "cause": cause, "payout": payout,
+		"founder_pct": state.founder_pct, "pivots": state.pivots, "harness": true,
+	})
+	while runs.size() > 50:
+		runs.pop_front()
+	prof["runs"] = runs
+	var seen: Array = prof.get("endings_seen", [])
+	if not seen.has(cause):
+		seen.append(cause)
+	prof["endings_seen"] = seen
+	prof["best_payout"] = maxi(int(prof.get("best_payout", 0)), payout)
+	var f := FileAccess.open(HARNESS_PROFILE, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(prof))
+		f.close()
+
 func _to_autopsy(result: Dictionary, exit_kind: String = "") -> void:
+	_cancel_turn()
 	var headline: String
 	if result.has("death"):
 		headline = String(result["death"])
@@ -637,7 +1367,7 @@ func _to_autopsy(result: Dictionary, exit_kind: String = "") -> void:
 	else:
 		headline = "SURVIVED: MVP shipped, first users on board. (Act 1 gate — more acts coming.)"
 	headline += "\nYour slice today: $%s  (%.0f%% of the company)" % [str(state.payout_today()), state.founder_pct]
-	SaveSystem.record_run_end(state, ("[DAILY] " if daily_mode else "") + headline.split("\n")[0])
+	_record_run_end(("[DAILY] " if daily_mode else "") + headline.split("\n")[0])
 	daily_mode = false
 	music.play("last_page")
 	music.set_stem("")
