@@ -111,9 +111,14 @@ func _fullrun(dir: String) -> void:
 			continue   # act break swapped the screen, or the run ended — the loop
 					   # condition decides which, and neither may be written to
 		var moves := ["Head down and sprint on the product all week.",
-			"Get out of the building: demo to ten real customers.",
+			"Get out of the building: demo to ten real customers and close one paying.",
 			"Spend the week on money: chase invoices and warm up an angel."]
-		gv._free_text[1] = moves[state.week % moves.size()]
+		var mv: String = moves[state.week % moves.size()]
+		if state.product >= 55 and not state.has_flag("launched"):
+			mv = "Ship it: public launch this week — post everywhere, email every signup."
+		elif state.has_flag("launched") and state.traction >= 20 and not state.has_flag("seed_raised"):
+			mv = "Run the seed round to a close: line up the angels, set a deadline, sign."
+		gv._free_text[1] = mv
 		var fld: TextEdit = gv._jp.input_field()
 		if fld != null:
 			fld.text = String(gv._free_text[1])

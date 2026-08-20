@@ -53,6 +53,21 @@ Each effects[] entry is `{op, v}`:
 | `hype_delta` | number | -12 to +12 | Hype meter change. |
 | `set_flag` | string | short snake_case | Plants a flag on run_state.flags (e.g. "fraud_watch", "investor_pressure", "burned_a_bridge"). Does not remove flags. |
 
+**THE MILESTONE FLAGS GATE THE WHOLE GAME.** The company only ever moves up when
+these exact flags exist, and the player's written move is now the ONLY place
+they can come from. When the week's story GENUINELY constitutes the milestone,
+set it — withholding an earned milestone stalls the run forever:
+- `first_revenue` — the first customer actually pays money.
+- `launched` — a real public launch ships (the product is out, people can get it).
+- `pmf` — evidence of product-market fit: retention, organic pull, customers who
+  would be upset to lose it. Needs a story, not a wish.
+- `seed_raised` — a seed round actually closes (money wired, not a meeting).
+- `series_a` — a Series A actually closes.
+Rules: at most ONE milestone flag per week; the move and your narration must
+actually earn it (writing "we launch" with v0.2 and zero users can still launch —
+badly — but a launch it is); a raise needs a believable path in the state
+(meetings taken, traction, a lead). Pair a closed round with its cash_delta.
+
 **Hard rules:**
 - effects[] has 0 to 3 entries. Empty `[]` is legal ('nothing much happens').
 - No op repeats within one effects[] array. At most one cash_delta, one product_delta, etc. set_flag appears at most once and carries one flag string.
