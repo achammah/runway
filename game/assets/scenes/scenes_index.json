@@ -161,5 +161,79 @@
    "litter",
    "shelves"
   ]
+ },
+ "coworking_stage_steady": {
+  "layers": [
+   "write_surfaces",
+   "money",
+   "product",
+   "pizza",
+   "plant",
+   "litter",
+   "shelves"
+  ]
+ },
+ "select_stage": {
+  "layers": [
+   "write_surfaces",
+   "easel",
+   "ledgerbox",
+   "shelves",
+   "light",
+   "plant"
+  ]
+ },
+ "floor_stage_steady": {
+  "layers": [
+   "write_surfaces",
+   "money",
+   "product",
+   "pizza",
+   "plant",
+   "litter",
+   "shelves"
+  ]
+ },
+ "nasdaq_bell_stage": {
+  "layers": [
+   "write_surfaces",
+   "bell",
+   "easel",
+   "banner",
+   "cases",
+   "plant"
+  ]
+ },
+ "office_stage_steady": {
+  "layers": [
+   "write_surfaces",
+   "money",
+   "product",
+   "pizza",
+   "plant",
+   "litter",
+   "shelves"
+  ]
+ },
+ "yc_stage": {
+  "layers": [
+   "write_surfaces",
+   "lectern",
+   "screen",
+   "easel",
+   "cases",
+   "plant"
+  ]
+ },
+ "hq_stage_steady": {
+  "layers": [
+   "write_surfaces",
+   "money",
+   "product",
+   "trophy",
+   "plant",
+   "pizza",
+   "shelves"
+  ]
  }
 }

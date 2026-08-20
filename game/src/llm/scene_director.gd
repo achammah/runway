@@ -392,13 +392,26 @@ func _download(url: String, out_name: String) -> void:
 	progress.emit(1.0)
 	ready.emit(path)
 
+## Accept every reasonable spelling of the key. The owner added ATLAS_CLOUD_API_KEY
+## and the code only looked for ATLASCLOUD_API_KEY, so a key that was correctly present
+## silently produced no art at all — the exact failure this game must never have, since
+## the art path is meant to degrade visibly rather than vanish.
+const ATLAS_KEY_NAMES := ["ATLASCLOUD_API_KEY", "ATLAS_CLOUD_API_KEY", "ATLAS_API_KEY"]
+
 func _atlas_key() -> String:
-	if OS.has_environment("ATLASCLOUD_API_KEY"):
-		return OS.get_environment("ATLASCLOUD_API_KEY")
-	# the game reads its keys the same way the rest of the LLM layer does
+	for name in ATLAS_KEY_NAMES:
+		if OS.has_environment(name):
+			var v := OS.get_environment(name).strip_edges()
+			if v != "":
+				return v
 	if FileAccess.file_exists("res://.env"):
 		for line in FileAccess.get_file_as_string("res://.env").split("\n"):
 			var t := line.strip_edges()
-			if t.begins_with("ATLASCLOUD_API_KEY="):
-				return t.split("=", true, 1)[1].strip_edges()
+			for name in ATLAS_KEY_NAMES:
+				if t.begins_with(name + "="):
+					var v := t.split("=", true, 1)[1].strip_edges()
+					if v != "":
+						return v
+	push_warning("SceneDirector: no Atlas key found (tried %s) — art is off, the game "
+			% ", ".join(ATLAS_KEY_NAMES) + "will run on the reading beat alone")
 	return ""
