@@ -154,7 +154,7 @@ func _ready() -> void:
 	_font = load("res://assets/fonts/PatrickHand-Regular.ttf")
 	_font_d = load("res://assets/fonts/Baloo2-Bold.ttf")
 	_last_cash = state.cash
-	for n in ["card_flip", "cash", "death", "win", "tick", "deposit"]:
+	for n in ["card_flip", "cash", "death", "win", "tick", "deposit", "lock_week"]:
 		var pl := AudioStreamPlayer.new()
 		pl.stream = load("res://assets/sfx/%s.wav" % n)
 		add_child(pl)
@@ -1646,12 +1646,20 @@ func _page_consequences() -> void:
 	# Measured on the page: BODY is 213px and ENDING 256px. The three short lines
 	# (~45px each) belong in BODY; the narration alone measures 188px and only
 	# fits ENDING. So the split is by KIND of line, not by whatever room is left.
+	# The founder annotates their own verdict: a quick star in the margin for
+	# brilliant, a hard double strike for backfired. Fine and risky get nothing —
+	# a mark that appears every week is wallpaper, not a reaction.
+	var vt := String(_last_outcome.get("verdict", ""))
 	var i := 0
 	while i < lines.size() and not bool(lines[i][2]):
 		_jp.line(String(lines[i][0]), bool(lines[i][1]))
+		if String(lines[i][0]).begins_with("The world called it") and vt in ["brilliant", "backfired"]:
+			_jp.margin_mark("star" if vt == "brilliant" else "cross")
 		i += 1
 	while i < lines.size() and _fits("ending", String(lines[i][0])):
 		_jp.line(String(lines[i][0]), bool(lines[i][1]), "ending")
+		if String(lines[i][0]).begins_with("The world called it") and vt in ["brilliant", "backfired"]:
+			_jp.margin_mark("star" if vt == "brilliant" else "cross")
 		i += 1
 	_week_told = i
 
@@ -1981,13 +1989,53 @@ func _lock_button() -> void:
 	for stn in ["normal", "hover", "pressed", "focus", "disabled"]:
 		b.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
 	b.disabled = not ready
-	var ly := _jp.zone_bottom("ending") + 6.0
+	# The commit lives in the CONTROLS BAND — the two rules the fence keeps sacred,
+	# same band as the arrows. Anchoring to the ending zone's nominal bottom let a
+	# cascaded page slide content underneath the lock line.
+	var ly := _jp.writable_bottom() - 54.0
 	var sp := _jp.span_at(ly)
 	b.position = Vector2(sp.x + (sp.y - sp.x) * 0.5 - 170.0, ly)
 	b.custom_minimum_size = Vector2(340, 48)
 	b.set_deferred("size", Vector2(340, 48))
-	b.pressed.connect(_lock_week)
+	b.pressed.connect(_commit_week.bind(b))
 	_jp.space.add_child(b)
+
+## THE COMMIT IS A CEREMONY, one beat long: the pen strikes a line under the
+## words, the latch clicks, and only then does the week turn. An instant jump
+## made the most consequential click in the game feel like a menu.
+func _commit_week(b: Button) -> void:
+	if _adjudicating:
+		return
+	if _sfx.has("lock_week"):
+		_sfx["lock_week"].play()
+	var stroke := _PenStroke.new()
+	stroke.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stroke.position = b.position + Vector2(30.0, b.size.y - 6.0)
+	stroke.set_deferred("size", Vector2(b.size.x - 60.0, 10.0))
+	_jp.space.add_child(stroke)
+	var tw := create_tween()
+	tw.tween_method(func(p: float) -> void:
+		stroke.progress = p
+		stroke.queue_redraw(), 0.0, 1.0, 0.14)
+	tw.tween_interval(0.10)
+	tw.tween_callback(_lock_week)
+
+## One underline in the founder's pen, drawn left to right at commit.
+class _PenStroke:
+	extends Control
+	var progress := 0.0
+	func _draw() -> void:
+		if progress <= 0.02:
+			return
+		var pts := PackedVector2Array()
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 23
+		var n: int = maxi(int(progress * 24.0), 2)
+		for i in 24:
+			var jitter := rng.randf_range(-1.4, 1.4)
+			if i < n:
+				pts.append(Vector2(size.x * float(i) / 23.0, 5.0 + jitter))
+		draw_polyline(pts, Color("E86A5C"), 4.0, true)
 
 ## ── THE PIVOT — two questions on one sheet, then the price ───────────────
 const PIVOT_WHAT := [["Software", "itm_laptop"], ["Hardware", "itm_dads_server"], ["Market", "gv/money_2"]]

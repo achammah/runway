@@ -118,6 +118,7 @@ var _zone_px: Dictionary = {}     ## name -> [top, bottom] in sheet-local pixels
 var _cursor: Dictionary = {}      ## name -> current y in page-local pixels
 var _input: TextEdit
 
+var _last_block_y := 0.0          ## sheet-local y where the last written block began
 var _sheet: TextureRect           ## the drawn paper; the thing a page-turn moves
 var _enter_done := true           ## the sheet has landed; the reveal may start
 var _tag := ""                    ## the page's title, so a warning names its page
@@ -126,6 +127,8 @@ var _revealing := false           ## the page is still arriving; a click skips i
 var _reveal_queued := false
 var _reveal_tw: Tween
 var _pen: _PenTip
+var _scratch: AudioStreamPlayer   ## paper under the nib, looping while lines write
+var _scribble: AudioStreamPlayer  ## one quick loop of ink for the pen circle
 var _wrote: Dictionary = {}       ## zone -> content actually landed there
 
 func build(title_text: String, scene_id: String = "") -> void:
@@ -569,6 +572,10 @@ func _play_reveal() -> void:
 	_pen.set_deferred("size", Vector2(40, 42))
 	_pen.visible = false
 	space.add_child(_pen)
+	# The page sounds like a page. The scratch loops only while a LINE is under
+	# the pen (_pen_show gates it), quiet enough to sit under the music.
+	_scratch = _sfx_player("res://assets/sfx/pen_scratch.wav", -14.0, true)
+	_scribble = _sfx_player("res://assets/sfx/pen_scribble.wav", -10.0, false)
 	# The budget scales the hand, never the page: a long page writes faster,
 	# a short one savours it, and nothing ever takes longer than the budget.
 	var total := 0.0
@@ -620,6 +627,25 @@ func _write_line(r: float, l: Label, sz: int) -> void:
 func _pen_show(on: bool) -> void:
 	if _pen != null and is_instance_valid(_pen):
 		_pen.visible = on
+	if _scratch != null and is_instance_valid(_scratch):
+		if on and not _scratch.playing:
+			_scratch.play()
+		elif not on and _scratch.playing:
+			_scratch.stop()
+
+func _sfx_player(path: String, db: float, loop: bool) -> AudioStreamPlayer:
+	if not FileAccess.file_exists(path):
+		return null
+	var stream: AudioStream = load(path)
+	if stream == null:
+		return null
+	if loop and stream is AudioStreamWAV:
+		(stream as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_FORWARD
+	var pl := AudioStreamPlayer.new()
+	pl.stream = stream
+	pl.volume_db = db
+	add_child(pl)
+	return pl
 
 ## An element becomes interactive the moment it is fully ink — never before.
 ## Choice rows wake their slots and stay transparent themselves; a lone control
@@ -667,6 +693,8 @@ func _finish_reveal() -> void:
 					_wake_row(nd)
 	_seq.clear()
 	_revealing = false
+	if _scratch != null and is_instance_valid(_scratch) and _scratch.playing:
+		_scratch.stop()
 	if _pen != null and is_instance_valid(_pen):
 		_pen.queue_free()
 		_pen = null
@@ -759,6 +787,39 @@ func overview(state_lines: Array, whats_next: String, options: Array) -> Control
 			line(String(s))
 	return ask(whats_next, options)
 
+## A founder annotates their own log. A margin mark beside the line just written:
+## a quick star when the world said brilliant, a hard double strike when it said
+## backfired. It rides the reveal like everything else.
+func margin_mark(kind: String) -> void:
+	var m := _MarginMark.new()
+	m.kind = kind
+	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.position = Vector2(8.0, _last_block_y - 6.0)
+	m.set_deferred("size", Vector2(34, 40))
+	space.add_child(m)
+	if not instant:
+		m.modulate = Color(1, 1, 1, 0)
+		_enqueue({"kind": "fade", "node": m})
+
+class _MarginMark:
+	extends Control
+	var kind := "star"
+	func _draw() -> void:
+		if kind == "star":
+			# a hand star: five strokes through a centre, never lifted quite right
+			var c := Vector2(17, 22)
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 31
+			for i in 5:
+				var a := TAU * float(i) / 5.0 - PI * 0.5 + rng.randf_range(-0.06, 0.06)
+				var r := 13.0 + rng.randf_range(-1.5, 1.5)
+				draw_line(c - Vector2(cos(a), sin(a)) * r * 0.3,
+						c + Vector2(cos(a), sin(a)) * r, JournalPage.PEN, 3.5, true)
+		else:
+			# backfired: two hard slashes, the second angrier
+			draw_line(Vector2(4, 30), Vector2(30, 12), JournalPage.PEN, 4.0, true)
+			draw_line(Vector2(8, 34), Vector2(32, 18), JournalPage.PEN, 4.5, true)
+
 ## Navigation lives in the CONTROLS zone and is drawn, never chrome.
 func arrows(show_prev: bool, show_next: bool) -> void:
 	# Anchored to the VISIBLE paper, not the zone fractions of the whole sheet — the
@@ -789,6 +850,7 @@ func _shaped(text: String, sz: int, col: Color, zone: String, align: int) -> voi
 	# is the one thing on this page that can lose a tail and still work. The
 	# alternative was the writing prompt printed onto the room, every stress run.
 	var fence: float = writable_bottom() if zone == "controls" else _hard_floor()
+	_last_block_y = y
 	var lines := _wrap_lines(text, sz, align)
 	var placed_any := false
 	var last: Label = null
@@ -940,6 +1002,8 @@ func _select(row: Control, id: String) -> void:
 				if mine and not pc.visible:
 					pc.visible = true
 					pc.progress = 0.0
+					if _scribble != null and is_instance_valid(_scribble):
+						_scribble.play()
 					var ct := create_tween()
 					ct.tween_method(func(p: float) -> void:
 						pc.progress = p
