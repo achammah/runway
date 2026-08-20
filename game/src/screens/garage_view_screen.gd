@@ -1753,8 +1753,10 @@ func _crew_strip() -> void:
 func _crew_faces() -> Array:
 	var slugs := {"tech": "technical", "technical": "technical", "business": "business",
 		"sales": "business", "hustler": "idea", "the idea friend": "idea", "design": "design"}
+	var jslug := {"technical": "cofd_tech", "business": "cofd_business",
+		"design": "cofd_design", "idea": "cofd_idea"}
 	var faces: Array = []
-	faces.append({"id": "you", "tex": _tex("chr_arch_%s" % state.archetype_id), "text": "you"})
+	faces.append({"id": "you", "tex": _jicon("you", "chr_arch_%s" % state.archetype_id), "text": "you"})
 	for i in state.cofounders.size():
 		var cf: Dictionary = state.cofounders[i]
 		if not cf.has("loyalty"):
@@ -1762,11 +1764,17 @@ func _crew_faces() -> Array:
 		var loy := int(cf["loyalty"])
 		var mood := "happy" if loy > 70 else ("neutral" if loy > 30 else "resentful")
 		var slug: String = slugs.get(String(cf.get("role", "Technical")).to_lower(), "technical")
-		faces.append({"id": "cf%d" % i, "tex": _tex("cf_%s_%s" % [slug, mood]),
-			"text": String(cf.get("role", "?")).to_lower()})
+		var role_l := String(cf.get("role", "?")).to_lower()
+		var jname: String = jslug.get(slug, "cofd_tech")
+		if role_l.contains("sales"):
+			jname = "cofd_sales"
+		# the doodle carries identity; the mood still comes through the caption
+		var cap := role_l if mood == "happy" else role_l + "\n(" + ("uneasy" if mood == "neutral" else "resentful") + ")"
+		faces.append({"id": "cf%d" % i, "tex": _jicon(jname, "cf_%s_%s" % [slug, mood]),
+			"text": cap})
 	for e in state.employees:
 		var bs := GameState.burnout_state(int(e.get("burnout", 0)))
-		faces.append({"id": "emp", "tex": _tex("cf_technical_%s" % ("resentful" if bs in ["cooked", "gone"] else ("neutral" if bs == "frayed" else "happy"))),
+		faces.append({"id": "emp", "tex": _jicon("employee", "cf_technical_%s" % ("resentful" if bs in ["cooked", "gone"] else ("neutral" if bs == "frayed" else "happy"))),
 			"text": String(e.get("name", "hire")).to_lower()})
 	return faces
 
