@@ -425,7 +425,11 @@ func overview(state_lines: Array, whats_next: String, options: Array) -> Control
 
 ## Navigation lives in the CONTROLS zone and is drawn, never chrome.
 func arrows(show_prev: bool, show_next: bool) -> void:
-	var y: float = float(_zone.get("controls", [0.85, 0.92])[0]) * _page.y + 12.0
+	# Anchored to the VISIBLE paper, not the zone fractions of the whole sheet — the
+	# old maths parked the arrows below the sheet's own bottom edge, so no page-turn
+	# arrow has ever actually been seen. They sit in the far corners of the last
+	# writable band, clear of the centred lock line.
+	var y: float = writable_bottom() - 56.0
 	var sp := span_at(y + 26.0)
 	if show_prev:
 		_arrow(Vector2(sp.x, y), false).pressed.connect(func() -> void: prev_page.emit())
