@@ -62,6 +62,7 @@ var _reveal_queue: Array = []
 var _next_reveal_at := 0.0
 var _scratch: AudioStreamPlayer
 var _writing := 0                 ## blocks currently writing; scratch while > 0
+var _bodies: Array = []           ## every body label, so a skip can finish them all
 var _ready_hint: Label
 
 func begin(week_label: String) -> void:
@@ -117,7 +118,7 @@ func begin(week_label: String) -> void:
 	_bar.set_deferred("size", Vector2(760, 26))
 	_card.add_child(_bar)
 
-	_ready_hint = _mk("the week is still developing...", SIZE_LABEL, Color(INK, 0.4), HORIZONTAL_ALIGNMENT_CENTER)
+	_ready_hint = _mk("the week is still developing... (click to catch up)", SIZE_LABEL, Color(INK, 0.4), HORIZONTAL_ALIGNMENT_CENTER)
 	_ready_hint.position = Vector2(0, CARD_H - FOOTER_H + 54.0)
 	_ready_hint.custom_minimum_size = Vector2(1080, 0)
 	_ready_hint.set_deferred("size", Vector2(1080, 0))
@@ -126,6 +127,13 @@ func begin(week_label: String) -> void:
 	_card.modulate.a = 0.0
 	create_tween().tween_property(_card, "modulate:a", 1.0, 0.24)
 	set_process(true)
+	# A READER IS NEVER HELD (the journal's own law, now the beat's too): one
+	# click lands every remaining line instantly. The art keeps its own time —
+	# skipping the words never skips the render.
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and ev.pressed:
+			_skip_reading())
 
 ## Queue one beat of the consequence chain. `label` is the small blue-grey lead-in
 ## ("You said", "They heard", "What happened"); pass "" for a bare paragraph.
@@ -183,6 +191,7 @@ func _reveal(beat: Dictionary) -> void:
 	# WRITTEN, not faded: the beat is the week being put down in ink, so each
 	# block writes itself in at a hand's pace with the paper scratching under it.
 	b.visible_ratio = 0.0
+	_bodies.append(b)
 	var secs: float = clampf(String(beat["body"]).length() / 95.0, 0.3, 6.5)
 	_scratch_on()
 	var tw := create_tween()
@@ -200,6 +209,20 @@ func _reveal(beat: Dictionary) -> void:
 		to = ceilf(to / line_h) * line_h
 		var st := create_tween()
 		st.tween_property(_scroll, "scroll_vertical", int(to), 0.45).set_trans(Tween.TRANS_SINE)
+
+## Everything lands NOW: queued beats spawn, writing lines complete, the clock
+## considers the reading done. Only the render (the bar) keeps its own pace.
+func _skip_reading() -> void:
+	while not _reveal_queue.is_empty():
+		_reveal(_reveal_queue.pop_front())
+	for b in _bodies:
+		if is_instance_valid(b):
+			(b as Label).visible_ratio = 1.0
+	_writing = 0
+	if _scratch != null and _scratch.playing:
+		_scratch.stop()
+	_t = maxf(_t, MIN_LIFE)
+	_next_reveal_at = 0.0
 
 func _scratch_on() -> void:
 	_writing += 1
