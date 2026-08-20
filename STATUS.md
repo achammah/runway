@@ -35,13 +35,19 @@ labels. That must never be the recovery path again. Git now covers this too.
 | FIX-CORE | harness photographs the real consultant, RUNWAY_ART=1 opt-in, all surface handwriting >= 24px (values abbreviate, never shrink), keyless moves get an honest in-voice answer |
 | MAIN | era captures wait out the dread scrim (all five 184-195 luminance); reading-beat scroll snaps to whole lines |
 
-### Blank-scenes build: derive pipeline proven, deliverable shipped
-The owner rejected assembly on empty-generated scenes; the derive pipeline fixes
-integration by construction (generate populated -> measure -> erase -> resident cuts).
-Proven end to end: ~/Downloads/runway-one-scene (populated source, derived blank, keyed
-poses with detected eyes, two casts in the same slots, two fully animated loops).
-ASSEMBLER landed (SceneStage, 39 checks). POSES and SLOTS still running with revised
-priorities (standing poses port; seated need canonical geometry / resident cuts).
+### Blank-scenes build: ALL THREE LIBRARIES COMPLETE
+| library | state |
+|---|---|
+| Blank scenes | **699** (516 base + 183 packs: YC, press, crisis, milestone, weird, money2), verified empty |
+| Slots | **699 scenes**, 4,262+ typed slots, 16/16 overlay verdicts, zero under the floor gate, confidence-marked |
+| Poses | **525 sprites** — 21 characters x 25 poses, 100% eye pairs, baked shadows, seat_frac canonical geometry |
+| Runtime | SceneStage landed (39 checks); SceneSurfaces mounts background annotations |
+| Derive pipeline | proven end to end; deliverable at ~/Downloads/runway-one-scene |
+
+RUNNING: LANE-INTEGRATE — the atomic swap of scene+surfaces+cast in the era room.
+The lesson baked into its brief: a premature partial wiring was read, judged worse
+than the old room (two garages fighting, numbers floating on bare wall), and
+reverted. Integration is atomic or not at all.
 
 ## 2. OPEN ISSUES — playtest, 2026-08-19
 
