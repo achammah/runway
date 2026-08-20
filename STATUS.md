@@ -26,16 +26,22 @@ labels. That must never be the recovery path again. Git now covers this too.
 | Blank-scenes architecture | piloted and greenlit — slots + 500-pose library + programmatic assembly = instant, free turns |
 | QA | 45 captures read individually; 12 verified blockers, all routed |
 
-### Running now (7 lanes, one file each)
-| lane | fixes / builds |
+### Fix wave: LANDED (all four lanes, verified)
+| lane | result |
 |---|---|
-| FIX-JOURNAL | decision lock never lights (CRITICAL), week 1 missing, option icons, icon cell heights |
-| FIX-SHELL | 10-30px icons, overrun warning honesty, pen-circle scaling |
-| FIX-BEATS | text off the page on THE MOVE, acquisition showing the IPO bell, mid-fade capture |
-| FIX-CORE | harness photographing the wrong archetype, art-on capture, sub-24px handwriting, keyless silent no-op |
-| POSES | 21 characters × 24 canonical poses (~500 sprites), keyed, eye-coords extracted |
-| SLOTS | typed slots for all 516 scenes with overlay verification |
-| ASSEMBLER | SceneStage: instant programmatic scene assembly + free in-engine life |
+| FIX-JOURNAL | decision lock lights on writing (15/15 sim assertions), WEEK 1 exists, options have 96px icons + visible lock reasons |
+| FIX-SHELL | zone overruns 110 -> 0, icons floored at 96px, warning fires only at the paper edge |
+| FIX-BEATS | THE MOVE migrated onto the portrait shell (the last landscape book is gone), acquisition and IPO are different ceremonies, beats fully lit in ~0.75s |
+| FIX-CORE | harness photographs the real consultant, RUNWAY_ART=1 opt-in, all surface handwriting >= 24px (values abbreviate, never shrink), keyless moves get an honest in-voice answer |
+| MAIN | era captures wait out the dread scrim (all five 184-195 luminance); reading-beat scroll snaps to whole lines |
+
+### Blank-scenes build: derive pipeline proven, deliverable shipped
+The owner rejected assembly on empty-generated scenes; the derive pipeline fixes
+integration by construction (generate populated -> measure -> erase -> resident cuts).
+Proven end to end: ~/Downloads/runway-one-scene (populated source, derived blank, keyed
+poses with detected eyes, two casts in the same slots, two fully animated loops).
+ASSEMBLER landed (SceneStage, 39 checks). POSES and SLOTS still running with revised
+priorities (standing poses port; seated need canonical geometry / resident cuts).
 
 ## 2. OPEN ISSUES — playtest, 2026-08-19
 
