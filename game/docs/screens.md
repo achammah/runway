@@ -18,10 +18,10 @@ Autopilot: `rm -rf <dir>; RUNWAY_SHOT=<dir> godot --path game > log 2>&1` (~2.5 
 | 10_garage | Garage room | steady state, crew present | LANE-GARAGE |
 | 10b_room_item_note | Garage room | item clicked → paper note | LANE-GARAGE |
 | 10c_room_in_the_red | Garage room | cash<0: red vignette, red money tag | LANE-GARAGE |
-| 11_people | Journal p2 | portraits, pips, gestures | LANE-GARAGE |
-| 12_work | Journal p3 | assignment desk, presets+free inputs | LANE-GARAGE |
-| 12b_situation | Journal p4 | event full-bleed | LANE-GARAGE |
-| 13_decision | Journal p5 | nothing chosen | LANE-GARAGE |
+| 11_decision_quiet | Journal p2 | portraits, pips, gestures | LANE-GARAGE |
+| 12_decision_event | Journal p3 | assignment desk, presets+free inputs | LANE-GARAGE |
+| 12_decision_event (same surface) | Journal p4 | event full-bleed | LANE-GARAGE |
+| 13_decision_written | Journal p5 | nothing chosen | LANE-GARAGE |
 | 13b_decision_ready | Journal p5 | choice+gesture+work pending (ready to lock) | LANE-GARAGE |
 | 13c_pivot | Pivot panel | axes, costs, fun fact | LANE-GARAGE |
 | 14_autopsy | The Last Page | forced death, estate, causal chain | LANE-FLOW |

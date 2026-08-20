@@ -87,6 +87,9 @@ func _fullrun(dir: String) -> void:
 	var rooms_shot: Array[String] = []   # the room, tracked apart from the move beats
 	while _screen is GarageViewScreen and week_cap > 0:
 		week_cap -= 1
+		print("FULLRUN week %d · busy=%s beat=%s curtain=%s" % [state.week, str(_turn_busy),
+				str(_beat != null and is_instance_valid(_beat)),
+				str(_curtain != null and is_instance_valid(_curtain) and _curtain.visible)])
 		var gv := _screen as GarageViewScreen
 		if not gv._journal.visible:
 			gv._open_journal()
