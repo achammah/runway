@@ -93,6 +93,28 @@ func _go() -> void:
 	# Optional second pass: film the page TURN (arrow press -> old sheet away,
 	# new sheet lands, reveal begins). Run WITHOUT RUNWAY_INSTANT_PAGES to see
 	# the writing start after the paper settles.
+	# Film the COMMIT: the pen stroke under "lock the week", the beat, the turn.
+	if OS.get_environment("RUNWAY_LOCK_FILM") != "":
+		screen._page_i = 4
+		screen._show_spread()
+		await create_timer(0.8).timeout
+		var lock: Button = null
+		for c in screen._jp.space.get_children():
+			if c is Button and c.has_meta("lock"):
+				lock = c
+		if lock != null:
+			lock.pressed.emit()
+			var lts := [0.05, 0.1, 0.16, 0.24, 0.4]
+			var lt0 := Time.get_ticks_msec()
+			for i in lts.size():
+				var lw: float = float(lts[i]) - float(Time.get_ticks_msec() - lt0) / 1000.0
+				if lw > 0.0:
+					await create_timer(lw).timeout
+				await RenderingServer.frame_post_draw
+				root.get_viewport().get_texture().get_image().save_png("%s/lock_%02d.png" % [dir, i])
+			print("LOCK FILMED")
+		else:
+			print("LOCK BUTTON NOT FOUND")
 	if OS.get_environment("RUNWAY_TURN_FILM") != "":
 		screen._page_i = 1
 		screen._show_spread()

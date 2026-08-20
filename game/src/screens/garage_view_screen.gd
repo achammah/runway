@@ -2008,10 +2008,12 @@ func _commit_week(b: Button) -> void:
 		return
 	if _sfx.has("lock_week"):
 		_sfx["lock_week"].play()
+	# under the WORDS, not the button's invisible box — the text is centred in it
+	var tw2: float = _font.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34).x
 	var stroke := _PenStroke.new()
 	stroke.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stroke.position = b.position + Vector2(30.0, b.size.y - 6.0)
-	stroke.set_deferred("size", Vector2(b.size.x - 60.0, 10.0))
+	stroke.position = b.position + Vector2((b.size.x - tw2) * 0.5 - 8.0, b.size.y - 8.0)
+	stroke.set_deferred("size", Vector2(tw2 + 16.0, 10.0))
 	_jp.space.add_child(stroke)
 	var tw := create_tween()
 	tw.tween_method(func(p: float) -> void:
