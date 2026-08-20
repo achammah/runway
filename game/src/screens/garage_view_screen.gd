@@ -79,6 +79,11 @@ var _director: SceneDirector
 ## OWN writable faces. It replaces the old stage whole — see _mount_assembled().
 var _stage: SceneStage
 var _assembled := false               # is the assembled room the room we stand in?
+## THE SPOT-PATCH ROOM (docs/BLANK_SCENES_ARCHITECTURE.md §8) — the rung ABOVE the
+## assembled stage. Its blank and its people are all cut from native renders of the
+## SAME scene, so nothing in it was ever pasted. See _mount_patch_scene().
+var _patch: PatchScene
+var _patch_mode := false              # is the patch room the room we stand in?
 var _facet_id := ""                   # the library facet the stage was built from
 var _mount_key := ""                  # scene id + facet the current room was mounted for
 var _cast_key := ""                   # who was in it, so a departure re-poses the room
@@ -169,7 +174,7 @@ func _ready() -> void:
 	_mount_scene()
 
 	# living objects (classic path only builds sprites; scene mode reuses the tag/labels)
-	if not _scene_mode and not _assembled:
+	if not _scene_mode and not _assembled and not _patch_mode:
 		_spot("money", GV + "money_1.png", Vector2(70, 760), 180.0)
 	var tag := Panel.new()
 	tag.position = Vector2(268, 714) if _scene_mode else Vector2(64, 700)
@@ -186,7 +191,7 @@ func _ready() -> void:
 	_money_label = _mk_dlabel("$0", 29, PALETTE["ink"])
 	_money_label.position = Vector2(14, 4)
 	tag.add_child(_money_label)
-	if not _scene_mode and not _assembled:
+	if not _scene_mode and not _assembled and not _patch_mode:
 		_spot("board", GV + "board_1.png", Vector2(200, 270), 210.0)
 		_spot("chart", GV + "chart_1.png", Vector2(952, 300), 150.0)
 	_users_label = _mk_dlabel("", 22, Color(PALETTE["ink"], 0.85))
@@ -494,7 +499,14 @@ func _stage_enabled() -> bool:
 ## picture with it.
 func _mount_key_now() -> String:
 	var want := SceneRoomPicker.scene_id_for(state) if state != null else _scene_id
-	return "%s|%s" % [want, _facet_for_state() if _stage_enabled() else ""]
+	# The patch room turns over on the ERA and nothing else, and the picker resolves
+	# several eras to the same fallback id when their art is not on disk — so the era
+	# is named here in its own right, or a move to the office would keep the garage.
+	# Empty, and therefore inert, for every run that ships no patch scene.
+	var patch := ""
+	if state != null and PatchScene.exists_for(String(state.era)):
+		patch = String(state.era)
+	return "%s|%s|%s" % [want, _facet_for_state() if _stage_enabled() else "", patch]
 
 
 ## The facet of the room we are standing in, or "" when the era names no place.
@@ -650,23 +662,30 @@ func _cast_line() -> String:
 func _mount_scene() -> void:
 	_scene_mode = false
 	_assembled = false
+	_patch_mode = false
 	_surf_mode = false
 	_surf_aligned = true
 	_facet_id = ""
 	_cast_key = ""
 	_face_of = {}
-	for old in [_stage, _room_scene, _surfaces, _room_bg]:
+	for old in [_patch, _stage, _room_scene, _surfaces, _room_bg]:
 		if old != null and is_instance_valid(old):
 			var par := (old as Node).get_parent()
 			if par:
 				par.remove_child(old)
 			(old as Node).queue_free()
+	_patch = null
 	_stage = null
 	_room_scene = null
 	_surfaces = null
 	_room_bg = null
 	_mount_key = _mount_key_now()
 	_load_scene_layout()
+	# RUNG 0 — the spot-patch room: this era's own scene, with this run's crew chosen
+	# out of that scene's own renditions. Nothing in it was pasted, so it outranks
+	# every path below it.
+	if _mount_patch_scene():
+		return
 	# RUNG 1 — the assembled room, with nothing of the old stack left under it.
 	if _mount_assembled():
 		return
@@ -954,6 +973,8 @@ func adopt_composed(path: String, aligned: bool = false) -> bool:
 	# An assembled room's faces were measured on the LIBRARY scene, so no composed
 	# image can ever be aligned to them.
 	_surf_aligned = aligned and not _assembled
+	if _patch and is_instance_valid(_patch):
+		_patch.visible = false        # the composed turn image wins over every room
 	if _stage and is_instance_valid(_stage):
 		_stage.visible = false
 	if _room_scene and is_instance_valid(_room_scene):
@@ -971,6 +992,8 @@ func _drop_composed() -> void:
 	_surf_aligned = true
 	if _composed and is_instance_valid(_composed):
 		_composed.visible = false
+	if _patch and is_instance_valid(_patch):
+		_patch.visible = true
 	if _stage and is_instance_valid(_stage):
 		_stage.visible = true
 	if _room_scene and is_instance_valid(_room_scene):
@@ -1029,7 +1052,9 @@ func _faces() -> Dictionary:
 ## Is the room under us one whose geometry we never measured — a scene composed
 ## somewhere else, or a library room the old plates were never positioned on?
 func _off_stage() -> bool:
-	return _showing_foreign_room() or _assembled
+	# The patch blanks are NEW ART, not the annotated backgrounds the old plates were
+	# measured on, so their geometry is unknown here too.
+	return _showing_foreign_room() or _assembled or _patch_mode
 
 
 func _write_state_surfaces() -> void:
@@ -1145,7 +1170,7 @@ func _load_scene_layout() -> void:
 ## Sprite crew is the ART-LESS fallback only. In a real room nobody is pasted in:
 ## the people arrive painted into the composed scene or they do not arrive at all.
 func _build_crew() -> void:
-	if _scene_mode or _assembled:
+	if _scene_mode or _assembled or _patch_mode:
 		return
 	for n in _crew_nodes:
 		if is_instance_valid(n):
@@ -1223,9 +1248,10 @@ func _sync_room(instant: bool = false) -> void:
 	elif state.cash > 12000: mtier = 3
 	elif state.cash > 3000: mtier = 2
 	_refresh_stage_cast()
+	_refresh_patch_cast()
 	_write_state_surfaces()
-	if _assembled:
-		pass    # the assembled room draws its own money; there is no pile sprite here
+	if _assembled or _patch_mode:
+		pass    # these rooms draw their own money; there is no pile sprite over them
 	elif _scene_mode:
 		var mc: TextureRect = _room_scene.get_layer("money") if (_room_scene and is_instance_valid(_room_scene)) else null
 		if mc:
@@ -1245,7 +1271,7 @@ func _sync_room(instant: bool = false) -> void:
 		t.tween_interval(0.9)
 		t.tween_callback(func(): ml.add_theme_color_override("font_color", PALETTE["ink"]))
 	_last_cash = state.cash
-	if not _scene_mode and not _assembled:
+	if not _scene_mode and not _assembled and not _patch_mode:
 		# whiteboard = product
 		_set_spot_tex("board", GV + "board_%d.png" % clampi(1 + state.product / 26, 1, 4))
 		# wall chart = traction
@@ -1264,7 +1290,7 @@ func _sync_room(instant: bool = false) -> void:
 	# facet it was built from already IS the decay (in_the_red is the fraying garage),
 	# and the burnt moods are already in the poses, so the old spot sprites laid over
 	# it would be the second garage in the frame.
-	if _assembled:
+	if _assembled or _patch_mode:
 		_hide_old_stack()
 		return
 	if _scene_mode:
@@ -2297,3 +2323,73 @@ func _die(cause: String) -> void:
 	_over = true
 	await get_tree().create_timer(1.0).timeout
 	done.emit({"death": cause})
+
+
+## ── RUNG 0: THE SPOT-PATCH ROOM ──────────────────────────────────────────
+##
+## docs/BLANK_SCENES_ARCHITECTURE.md §8. This era's scene ships as a blank plus one
+## in-scene rendition per (spot, character), every one of them cut from a NATIVE
+## render of that same scene. So the room is assembled by CHOOSING renditions, and
+## no foreign sprite is ever laid over a painting it was not lit for — which is the
+## defect every path below this one still carries.
+##
+## NO ENV GATE. Unlike RUNWAY_STAGE, this rung is on by default the moment a scene
+## exists on disk, because the factory only ships scenes it has verified: the switch
+## IS the directory. RUNWAY_NO_ART still turns it off with everything else.
+##
+## NO SURFACE MOUNTING THIS ROUND. The patch blanks are new art, not the annotated
+## backgrounds SceneSurfaces measured — writing "$82,350" at a stranger's coordinates
+## is exactly the failure the assembled path was built to prevent. So _surf_mode
+## stays false, _live_surfaces() returns null, and the HUD plates keep the numbers.
+##
+## Returns false without touching anything when this era ships no scene, so the
+## caller falls through to precisely the behaviour it had before this existed.
+func _mount_patch_scene() -> bool:
+	if state == null:
+		return false
+	if OS.get_environment("RUNWAY_NO_ART") != "":
+		return false
+	var era := String(state.era)
+	if era == "":
+		return false
+	var ps := PatchScene.new()
+	ps.name = "patch_room"
+	ps.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# crew_cast() says "founder" without saying WHICH founder, and the founder's chair
+	# ships one rendition per archetype — so the archetype is handed over separately
+	# rather than the room quietly seating a stranger in it.
+	ps.archetype = String(state.archetype_id)
+	_room.add_child(ps)
+	_room.move_child(ps, 0)
+	var cast := crew_cast()
+	if not ps.build(era, cast):
+		_room.remove_child(ps)
+		ps.queue_free()
+		return false
+	_patch = ps
+	_patch_mode = true
+	_cast_key = JSON.stringify(cast)
+	# The swap is atomic here too: the old plate, its spots, its cutouts and the
+	# sprite crew all go down together, or there are two rooms in the frame.
+	_hide_old_stack()
+	print("RUNWAY! patch room: %s — %s" % [era, ps.cast_line()])
+	return true
+
+
+## The people in the room are state. A cofounder walks out, a hire arrives, a mood
+## burns someone down — the frame must never disagree with the ledger, so the room
+## is re-chosen the moment its cast stops matching. Choosing is free (it is a set of
+## texture swaps out of the same scene), so this can run every week.
+func _refresh_patch_cast() -> void:
+	if not _patch_mode or _patch == null or not is_instance_valid(_patch):
+		return
+	var cast := crew_cast()
+	var key := JSON.stringify(cast)
+	if key == _cast_key:
+		return
+	_cast_key = key
+	_patch.archetype = String(state.archetype_id)
+	if _patch.build(String(state.era), cast):
+		print("RUNWAY! patch room re-cast: %s — %s" % [state.era, _patch.cast_line()])
+		return
+	_mount_scene()          # the room re-lands whole, or the ladder below takes over
