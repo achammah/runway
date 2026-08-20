@@ -151,6 +151,18 @@ func _fullrun(dir: String) -> void:
 			shots += 1
 	await get_tree().create_timer(2.5).timeout
 	await _shot(dir, "final_%s_wk%02d" % ["dead" if (state and state.dead) else "alive", state.week if state else 0])
+	# a paid render may still be in flight: wait it out and photograph the proof,
+	# otherwise the harness quits with the evidence half-downloaded
+	if OS.get_environment("RUNWAY_TURN_ART") != "":
+		var art_cap := 240
+		while _turn_busy and art_cap > 0:
+			art_cap -= 1
+			await get_tree().create_timer(1.0).timeout
+		if _scene_path != "":
+			if not (_scene_layer != null and is_instance_valid(_scene_layer)):
+				_open_scene(_scene_path, _scene_headline)
+			await get_tree().create_timer(1.0).timeout
+			await _shot(dir, "v2_generated_scene")
 	print("FULLRUN DONE: weeks=%d era=%s cash=%d dead=%s shots=%d eras=%s" % [
 		state.week if state else -1, state.era if state else "?",
 		state.cash if state else 0, str(state.dead if state else "?"), shots + 1,
@@ -801,6 +813,7 @@ var _scene_path := ""
 var _scene_done := false
 var _scene_progress := 0.0
 var _from_library := ""             # the library room this render is built on, if any
+var _last_stage_sig := ""           # place|condition|cast of the last rendered beat
 var _scene_headline := ""           # the DM's title for it, kept for a late arrival
 var _beat: LoadingScreen
 var _scene_layer: Control
@@ -989,11 +1002,23 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 	# a generated url can expire — so if the compose dies on a library room, that room
 	# is forgotten for this session and the place gets rebuilt next time rather than
 	# failing every week from now on.
+	# CHANGE-BEATS (owner-approved cadence): a fresh image is generated when the
+	# WEEK'S STAGE changes — new place, new condition, new cast. A quiet week in
+	# the same room keeps its scene, the beat still reads, and nothing is spent.
+	var stage_sig := "%s|%s|%s" % [String(scene.get("novel_place", want["place"])),
+			want["condition"], str((dm.get("cast", []) as Array).size())]
+	if want_art and stub_path == "" and stage_sig == _last_stage_sig and _scene_layer == null:
+		want_art = false
 	var pick := director.resolve(want)
 	_from_library = "" if bool(pick.get("miss", true)) else String(pick.get("id", ""))
+	# THE GENERATIVE PATH IS THE MAIN PATH (owner pivot): one GPT-medium image per
+	# staged beat, built from references + an instruction contract. The library +
+	# seedream compose remain the fallback ladder behind RUNWAY_GPT_SCENES=0.
+	var use_v2 := want_art and stub_path == "" \
+			and OS.get_environment("RUNWAY_GPT_SCENES") != "0"
 	# A room the run has never walked into is on disk but not yet at a url. Start
 	# hosting it now, in the background, and compose the moment it lands.
-	var hosting := want_art and stub_path == "" and _from_library != "" \
+	var hosting := want_art and not use_v2 and stub_path == "" and _from_library != "" \
 			and director.needs_upload(_from_library) and _host_room(_from_library)
 
 	# THE ART STARTS FIRST — before a single line is drawn, because every second of
@@ -1009,7 +1034,12 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 				_on_scene_failed("harness: forced failure")
 			else:
 				_on_scene_ready(stub_path))
+	elif use_v2:
+		_last_stage_sig = stage_sig
+		director.make_scene_v2(scene, cast_pack["cast"], cast_pack["urls"],
+				String(scene.get("beat", "")), out_name)
 	else:
+		_last_stage_sig = stage_sig
 		director.make_scene(want, String(scene.get("novel_place", "")), cast_pack["cast"],
 			cast_pack["urls"], String(scene.get("beat", "")), out_name)
 		# it may have failed before it ever reached the network (no key, bad request).

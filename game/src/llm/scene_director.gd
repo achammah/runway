@@ -303,6 +303,170 @@ func remember_url(id: String, url: String) -> void:
 		f.store_string(JSON.stringify(have))
 		f.close()
 
+# ═══════════════════ V2: THE FULLY-GENERATIVE SCENE (GPT medium) ═══════════════════
+## One call per staged beat: the scene is GENERATED for this exact week — place,
+## condition, cast, and the move itself — instead of resolved from a library and
+## composited. The ladder protocol proved the contract: reference images + an
+## instruction JSON with an over-specified background frame. ~$0.07 and ~55s at
+## quality medium, hidden entirely under the reading beat.
+##
+## THE STATUS SURFACES ARE PART OF THE CONTRACT. Every generated scene must carry
+## a blank whiteboard upper-left and a pinned blank sheet upper-right: the game
+## then WRITES the week's numbers onto them in the founder's hand. We told the
+## model where to put them, so we know where they are — the contract IS the
+## annotation, no detection required.
+
+const MIDDLEWARE_EDIT := "https://nano-banana-production-e03b.up.railway.app/edit-image-openai"
+const MIDDLEWARE_GEN := "https://nano-banana-production-e03b.up.railway.app/generate-image-openai"
+const V2_DIR := "user://gen_scenes_v2"
+const V2_REG := "user://gen_scenes_v2/registry.json"
+
+const CHARACTER_LAW := ("Characters are solid ink-black bean blobs with two blank white "
+	+ "oval eyes (left bigger), one ink cowlick, tiny cream sneakers, NO pupils, NO mouth, "
+	+ "NO clothing; identity by carried props only, exactly as drawn in each reference image.")
+const STYLE_LAW := ("Hand-drawn wobbly felt-pen ink, flat fills, no gradients. Palette only: "
+	+ "cream #F2EAD3, ink #1E1E1E, coral #E86A5C, yellow #F4B942, sage #8FA582, blue #6E8CA0, white.")
+const FRAME_LAW := ("One wide establishing shot, camera at standing eye height, level. "
+	+ "The room reads at a glance. Top tenth and bottom seventh of the frame stay calm and "
+	+ "uncluttered. A BLANK whiteboard hangs on the left wall in the upper-left quarter of "
+	+ "the frame; a BLANK pinned paper sheet hangs in the upper-right quarter. Both stay "
+	+ "completely blank: no text, no numbers, no letters anywhere in the image.")
+
+var _v2_reg: Dictionary = {}
+
+func _v2_load_reg() -> void:
+	if not _v2_reg.is_empty():
+		return
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(V2_DIR))
+	if FileAccess.file_exists(V2_REG):
+		var d = JSON.parse_string(FileAccess.get_file_as_string(V2_REG))
+		if d is Dictionary:
+			_v2_reg = d
+
+func _v2_save_reg() -> void:
+	var f := FileAccess.open(V2_REG, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(_v2_reg))
+		f.close()
+
+## The whole week in one image. `desc` is the DM's place (novel_place preferred,
+## else the place phrase), `condition` dresses it, `cast` acts in it.
+func make_scene_v2(scene: Dictionary, cast: Array, cast_urls: Array, beat: String,
+		out_name: String) -> void:
+	_v2_load_reg()
+	var desc := String(scene.get("novel_place", "")).strip_edges()
+	if desc == "":
+		desc = String(scene.get("place", "a small startup workspace")).replace("_", " ")
+	var cond := String(scene.get("condition", "steady"))
+	var key := "%s|%s|%s" % [desc.left(80), cond, _cast_sig(cast)]
+	var hit: Dictionary = _v2_reg.get(key, {})
+	var cached := String(hit.get("path", ""))
+	if cached != "" and FileAccess.file_exists(cached):
+		progress.emit(1.0)
+		ready.emit(cached)
+		return
+	var dressing: String = {
+		"thriving": "The place is well kept: good kit, full shelves, a sense of money.",
+		"steady": "The place is lived in and ordinary.",
+		"in_the_red": "The place is fraying: bare shelves, an unpaid notice, a dead plant, litter.",
+	}.get(cond, "")
+	var roster: Array = []
+	for i in cast.size():
+		var c: Dictionary = cast[i]
+		roster.append({"place": "reference image %d" % (i + 1),
+			"who": String(c.get("role", c.get("who", "founder"))),
+			"doing": String(c.get("doing", "at work"))})
+	var instr := {
+		"task": "draw one finished game scene",
+		"scene": desc + ". " + dressing + (" This week: " + beat if beat != "" else ""),
+		"cast": roster,
+		"character_law": CHARACTER_LAW,
+		"style": STYLE_LAW,
+		"frame": FRAME_LAW,
+		"must_hold": [
+			"every referenced character appears exactly once, integrated into the room's own light with a soft contact shadow",
+			"no text, numbers or letters anywhere in the image",
+			"the whiteboard and the pinned sheet stay blank",
+		],
+	}
+	var body := {"prompt": JSON.stringify(instr, "", false), "quality": "medium",
+		"size": "1536x1024", "output_format": "png"}
+	var endpoint := MIDDLEWARE_GEN
+	if not cast_urls.is_empty():
+		body["referenceImages"] = cast_urls
+		endpoint = MIDDLEWARE_EDIT
+	progress.emit(0.05)
+	var path := await _middleware_call(endpoint, body, out_name)
+	if path == "":
+		# the proven fallback ladder: seedream compose on a library room
+		failed.emit("v2 generation failed")
+		return
+	_v2_reg[key] = {"path": path}
+	_v2_save_reg()
+	ready.emit(path)
+
+func _cast_sig(cast: Array) -> String:
+	var bits := PackedStringArray()
+	for c in cast:
+		bits.append(String((c as Dictionary).get("who", (c as Dictionary).get("role", "?"))))
+	return "+".join(bits)
+
+func _openai_key() -> String:
+	if OS.has_environment("OPENAI_API_KEY"):
+		return OS.get_environment("OPENAI_API_KEY").strip_edges()
+	if FileAccess.file_exists("res://.env"):
+		for line in FileAccess.get_file_as_string("res://.env").split("\n"):
+			var t := line.strip_edges()
+			if t.begins_with("OPENAI_API_KEY="):
+				return t.split("=", true, 1)[1].strip_edges()
+	return ""
+
+## One middleware round-trip: the response carries imageUrl directly (no polling).
+## Returns the downloaded local path, or "" on any failure — the caller owns the
+## fallback, and a failure costs a picture, never a turn.
+func _middleware_call(endpoint: String, body: Dictionary, out_name: String) -> String:
+	var okey := _openai_key()
+	if okey == "":
+		return ""
+	var http := HTTPRequest.new()
+	http.timeout = 180.0
+	_tree.root.add_child(http)
+	var err := http.request(endpoint,
+			PackedStringArray(["Content-Type: application/json", "x-openai-api-key: " + okey]),
+			HTTPClient.METHOD_POST, JSON.stringify(body))
+	if err != OK:
+		http.queue_free()
+		return ""
+	progress.emit(0.2)
+	var res: Array = await http.request_completed
+	http.queue_free()
+	var body_txt := (res[3] as PackedByteArray).get_string_from_utf8()
+	if int(res[1]) < 200 or int(res[1]) >= 300:
+		print("SceneDirector v2: middleware %d — %s" % [int(res[1]), body_txt.left(160)])
+		return ""
+	var parsed = JSON.parse_string(body_txt)
+	if not (parsed is Dictionary):
+		return ""
+	var url := String((parsed as Dictionary).get("imageUrl", ""))
+	if url == "":
+		print("SceneDirector v2: no imageUrl — %s" % body_txt.left(160))
+		return ""
+	progress.emit(0.75)
+	var dl := HTTPRequest.new()
+	dl.timeout = 120.0
+	_tree.root.add_child(dl)
+	var out_path := ProjectSettings.globalize_path("%s/%s.png" % [V2_DIR, out_name])
+	dl.download_file = out_path
+	if dl.request(url) != OK:
+		dl.queue_free()
+		return ""
+	var dres: Array = await dl.request_completed
+	dl.queue_free()
+	if int(dres[1]) < 200 or int(dres[1]) >= 300 or not FileAccess.file_exists(out_path):
+		return ""
+	progress.emit(1.0)
+	return out_path
+
 func _run(body: Dictionary, out_name: String) -> void:
 	# progress is REPORTED, never faked: the pen stroke on the reading beat moves
 	# when something real happens, and otherwise waits.
