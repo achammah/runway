@@ -35,19 +35,34 @@ labels. That must never be the recovery path again. Git now covers this too.
 | FIX-CORE | harness photographs the real consultant, RUNWAY_ART=1 opt-in, all surface handwriting >= 24px (values abbreviate, never shrink), keyless moves get an honest in-voice answer |
 | MAIN | era captures wait out the dread scrim (all five 184-195 luminance); reading-beat scroll snaps to whole lines |
 
-### Blank-scenes build: ALL THREE LIBRARIES COMPLETE
-| library | state |
-|---|---|
-| Blank scenes | **699** (516 base + 183 packs: YC, press, crisis, milestone, weird, money2), verified empty |
-| Slots | **699 scenes**, 4,262+ typed slots, 16/16 overlay verdicts, zero under the floor gate, confidence-marked |
-| Poses | **525 sprites** — 21 characters x 25 poses, 100% eye pairs, baked shadows, seat_frac canonical geometry |
-| Runtime | SceneStage landed (39 checks); SceneSurfaces mounts background annotations |
-| Derive pipeline | proven end to end; deliverable at ~/Downloads/runway-one-scene |
+### THE SPOT-PATCH MODEL (v3 — the owner's design, now the architecture)
 
-RUNNING: LANE-INTEGRATE — the atomic swap of scene+surfaces+cast in the era room.
-The lesson baked into its brief: a premature partial wiring was read, judged worse
-than the old room (two garages fighting, numbers floating on bare wall), and
-reverted. Integration is atomic or not at all.
+His correction, after rejecting pasted sprites a second time: full scenes with
+BUILT-IN SPOTS, each spot either empty or holding a character, every rendition cut
+from a native render of that same scene. Swapping is choosing, never pasting.
+
+| proven on the VC pitch scene (~/Downloads/runway-scene-2-vc-pitch) | |
+|---|---|
+| populated source | consultant pitching, VC arms-crossed, angel with smoothie |
+| erase edit | all three spots empty, room identical |
+| replace edit | the hacker pitches instead — investors and room unmoved |
+| patches | per-spot pixel-diffs, shadows and occlusion holes carried automatically |
+| assemblies | 4 combinations at zero generation, incl. the presenter swap |
+| loops | ambient deltas + bob + blink over any assembly |
+
+### The gate sequence (owner-set)
+1. **RUNNING: LANE-SCENE-CRAFT** — custom per-scene animation on the VC pitch: an
+   authored animation script (laser dot on the chart, skyline flicker, the angel
+   sips), a scene-specific ambient regeneration, and 2-frame character acting via
+   replace-edits. Its round log becomes the factory recipe.
+2. **GATED: regenerate-all** — only after the crafted scene is verified good. Phased:
+   5 era cores -> top-30 -> the library.
+
+### Supporting libraries (all complete, roles updated for v3)
+699 blank scenes (erase targets + fallback rooms) · 4,262+ slots (spot regions) ·
+525 poses (replace-edit references + distant extras; NOT pasted foregrounds) ·
+SceneStage gated OFF behind RUNWAY_STAGE · known issue: pose shadows clip at the
+sprite's bottom row (matters only for the extras use; raws kept, re-crop cheap).
 
 ## 2. OPEN ISSUES — playtest, 2026-08-19
 
