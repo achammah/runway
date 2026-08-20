@@ -57,11 +57,22 @@ var _pending_work: Dictionary = {}        # dept -> {kind:"preset"/"free", id/te
 var _red_vignette: ColorRect
 var _note_layer: Control
 var _scene_mode := false
-var _scene_layout: Dictionary = {}
-var _scene_cuts: Dictionary = {}      # name -> TextureRect
+var _scene_layout: Dictionary = {}    # the stage's own annotation table (crew marks)
 var _scene_id := "garage"             # which painted room we are standing in
-var _room_bg: TextureRect             # its base plate, swapped when the era turns
+var _room_bg: TextureRect             # last-resort plate when no stage will render
 var _money_tag: Panel
+var _cap_paper: Panel                 # equity plate — fallback for a room with no sticky
+var _cap_label: Label
+var _room_scene: SceneRoom            # the painted stage AND its cast (MAIN-owned)
+var _surfaces: SceneSurfaces          # the room's own writable faces (MAIN-owned)
+var _surface_layer: Control           # the z-band the handwriting lives in
+var _surf_mode := false
+var _surf_aligned := false            # ...and whether the room under it is the stage they were measured on
+var _composed: TextureRect            # the model-composed room, when one has arrived
+var _composed_path := ""
+var _composed_for: Dictionary = {}    # scene_id -> a compose has already been asked for
+var _composing := false
+var _director: SceneDirector
 
 # where each ownable thing lives in the room (position, height)
 const FUN_FACTS := [
@@ -137,22 +148,15 @@ func _ready() -> void:
 	_room.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_room.size = Vector2(1536, 1024)
 	add_child(_room)
-	# SCENE-FIRST: one composed painting, decomposed into living layers.
+	# the handwriting on the room's surfaces sits in its own band: above the room
+	# and its cast, below the HUD and the journal, and it survives an era swap.
+	_surface_layer = Control.new()
+	_surface_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_surface_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_surface_layer)
+	# SCENE-FIRST: the painted stage, with the cast composited onto its marks.
 	_scene_id = SceneRoomPicker.scene_id_for(state)
-	_load_scene_layout()
-	# flags → texture → deferred size, in that order (setting size first lets the
-	# texture's minimum size win and the room renders inset with grey bands).
-	var bg := TextureRect.new()
-	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	bg.texture = _scene_base_tex()
-	bg.set_deferred("size", Vector2(1536, 1024))
-	_room.add_child(bg)
-	_room_bg = bg
-	if _scene_mode:
-		for cut_name in _scene_cut_order():
-			_scene_cut(String(cut_name))
-		_scene_hover_notes()
+	_mount_scene()
 
 	# living objects (classic path only builds sprites; scene mode reuses the tag/labels)
 	if not _scene_mode:
@@ -191,6 +195,7 @@ func _ready() -> void:
 	cap_paper.add_theme_stylebox_override("panel", st)
 	cap_paper.rotation = 0.045
 	_room.add_child(cap_paper)
+	_cap_paper = cap_paper
 	var cap_pin := Panel.new()
 	cap_pin.position = Vector2(52, -5)
 	cap_pin.size = Vector2(14, 14)
@@ -205,6 +210,7 @@ func _ready() -> void:
 	cap_lbl.position = Vector2(28, 34)
 	cap_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cap_paper.add_child(cap_lbl)
+	_cap_label = cap_lbl
 
 	# decay + badge spots (hidden until earned); scene mode repositions onto the painting
 	if _scene_mode:
@@ -269,6 +275,9 @@ func _ready() -> void:
 	add_child(_journal)
 
 	_sync_room(true)
+	var stub := OS.get_environment(ROOM_STUB_ENV)
+	if stub != "":
+		adopt_composed(stub, false)
 	_start_week()
 
 func _process(_delta: float) -> void:
@@ -412,26 +421,386 @@ func _item_note(item_id: String, anchor: Control) -> void:
 	tw.tween_property(note, "modulate:a", 0.0, 0.35)
 	tw.tween_callback(note.queue_free)
 
-## Every era paints its own layer names, so the order is derived, not hardcoded:
-## the garage's tuned back→front order first, then anything else biggest-first
-## (a bigger cutout sits further back). `room_dup` is a copy of the whole room.
-const GARAGE_ORDER := ["whiteboard", "chart", "crew_headphones", "crew_vest", "founder", "money", "pizza", "mug"]
+## THE EMPTY STAGE. This is the FLOOR of the room, never the finished picture:
+## the annotated stages are painted with nobody in them, and the people arrive
+## composed into the room by the model (see below), not pasted on top of it.
+## SceneRoom (MAIN-owned) renders the stage and its animation loop; SceneSurfaces
+## (MAIN-owned) owns the writable faces this screen writes the numbers on.
+func _mount_scene() -> void:
+	_scene_mode = false
+	_surf_mode = false
+	_surf_aligned = true
+	for old in [_room_scene, _surfaces, _room_bg]:
+		if old != null and is_instance_valid(old):
+			var par := (old as Node).get_parent()
+			if par:
+				par.remove_child(old)
+			(old as Node).queue_free()
+	_room_scene = null
+	_surfaces = null
+	_room_bg = null
+	_load_scene_layout()
+	var sr := SceneRoom.new()
+	sr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sr.size = Vector2(1536, 1024)
+	_room.add_child(sr)
+	_room.move_child(sr, 0)
+	if sr.load_scene(_scene_id):
+		_room_scene = sr
+		_scene_mode = true
+	else:
+		_room.remove_child(sr)
+		sr.queue_free()
+	# a flat plate ONLY when no stage would render — never a blank screen
+	if not _scene_mode:
+		var bg := TextureRect.new()
+		bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		bg.texture = _scene_base_tex()
+		bg.set_deferred("size", Vector2(1536, 1024))
+		_room.add_child(bg)
+		_room.move_child(bg, 0)
+		_room_bg = bg
+	var sf := SceneSurfaces.new()
+	if sf.mount(_scene_id):
+		_surface_layer.add_child(sf)
+		_surfaces = sf
+		_surf_mode = true
+	else:
+		sf.queue_free()
 
-func _scene_cut_order() -> Array:
-	var ordered: Array = []
-	for k in GARAGE_ORDER:
-		if _scene_layout.has(k):
-			ordered.append(k)
-	var rest: Array = []
-	for k in _scene_layout.keys():
-		if not ordered.has(k) and String(k) != "room_dup":
-			rest.append(k)
-	rest.sort_custom(func(x, y):
-		var sx: Dictionary = _scene_layout.get(x, {})
-		var sy: Dictionary = _scene_layout.get(y, {})
-		return float(sx.get("w", 0)) * float(sx.get("h", 0)) > float(sy.get("w", 0)) * float(sy.get("h", 0)))
-	ordered.append_array(rest)
-	return ordered
+## ── THE ROOM IS COMPOSED, NOT ASSEMBLED ──────────────────────────────────
+##
+## Pasting character cutouts onto a painted room can never match that room's own
+## light, and the owner rejected the result outright: bland characters dropped in,
+## each sitting in the grey rectangle its sprite sheet came with, no contact shadow
+## that belongs to the floor. It is the project's oldest standing defect —
+## "assembled, not organic" — and no amount of placement fixes it.
+##
+## So the cast is never composited here. The room is COMPOSED BY THE MODEL:
+## SceneDirector sends the empty stage plus one reference image per character to
+## seedream-v5.0-pro/edit, which paints THIS player's founder and cofounders into
+## that room with its lighting and real contact shadows, each partly behind the
+## furniture. docs/refs/pilot_composed_hangar.png is the proven result.
+##
+## THE COMPOSE RUNS ON THE STAGE WE ARE STANDING IN, not on a library background:
+## the era stays correct, and the writable faces keep their coordinates, because
+## the compose prompt holds the room "EXACTLY as the first image".
+##
+## IT CANNOT HAPPEN IN A FRAME — 67s with one character, 113s with four. Until a
+## composed room arrives the screen shows the last good composed room, and failing
+## that the plain empty stage. An empty room is better than a wrong one.
+##
+## The WEEKLY TURN's scene (lock → DM → compose → the reading beat) belongs to
+## main.gd. This composes only an establishing room for a stage that has never
+## been composed in this run — week one, and each era change — which is the empty
+## first scene the owner opened the game to.
+const CAST_REFS := "res://assets/scenes/refs.json"
+const FOUNDER_DIRS := {
+	"hacker": "cast_hacker", "hustler": "cast_founder_hustler",
+	"consultant": "cast_founder_consultant", "exfaang": "cast_founder_pm",
+}
+const COFOUNDER_DIRS := {
+	"sales": "cast_cofd_sales", "business": "cast_cofd_business",
+	"tech": "cast_cofd_tech", "idea_friend": "cast_cofd_idea",
+	"hustler": "cast_cofd_hustler",
+}
+## Role strings arrive as the draft's display names and events invent their own,
+## so they are normalised to the one vocabulary the cast directories use.
+const ROLE_KEYS := {
+	"tech": "tech", "technical": "tech", "design": "tech", "engineer": "tech",
+	"business": "business", "ops": "business", "sales": "sales",
+	"hustler": "hustler", "idea": "idea_friend", "the idea friend": "idea_friend",
+}
+const ROLE_WORDS := {
+	"founder": "founder", "sales": "sales cofounder", "business": "business cofounder",
+	"tech": "technical cofounder", "idea_friend": "ideas-guy cofounder",
+	"hustler": "hustler cofounder",
+}
+const MOOD_WORDS := {"burnt": " (burnt out, running on empty)", "gone": " (checked out entirely)"}
+## What each one is physically doing, so the model has something to paint rather
+## than five identical beans standing in a line.
+const DOING := {
+	"founder": "at the middle of the room, mid-thought, holding the week's notes",
+	"tech": "hunched over a laptop, soldering iron in the other hand",
+	"business": "working a clipboard, halfway through a column of numbers",
+	"sales": "on a headset mid-call, gesturing at nobody",
+	"hustler": "half out of a chair with a coffee, already leaving",
+	"idea_friend": "gesturing at the whiteboard, carrying nothing useful",
+}
+## The harness seam ONLY: stands in for a two-minute render so the composed-room
+## path can be photographed without a network call. Empty in a real game.
+const ROOM_STUB_ENV := "RUNWAY_ROOM_STUB"
+
+## Art costs money and up to three minutes; a capture harness never spends either.
+func _harness() -> bool:
+	for v in ["RUNWAY_SHOT", "RUNWAY_FULLRUN", "RUNWAY_LANEWIRE", "RUNWAY_READING", "RUNWAY_TURN"]:
+		if OS.get_environment(v) != "":
+			return true
+	return false
+
+func _role_key(role: String) -> String:
+	var k := role.to_lower().strip_edges()
+	if ROLE_KEYS.has(k):
+		return String(ROLE_KEYS[k])
+	for probe in ROLE_KEYS:
+		if k.contains(String(probe)):
+			return String(ROLE_KEYS[probe])
+	return "tech"
+
+## THIS PLAYER'S CREW — never a generic set. The founder's chosen archetype first,
+## then every actual cofounder and hire, each carrying the mood their own numbers
+## give them. Public, and shaped the way the DM writes its cast, so the weekly
+## turn can compose the same people without rebuilding this.
+func crew_cast() -> Array:
+	var out: Array = []
+	if state == null:
+		return out
+	out.append({"who": "founder",
+		"mood": "burnt" if (state.morale <= 30 or state.weeks_in_red >= 2) else "fine",
+		"doing": String(DOING["founder"])})
+	for cf in state.cofounders:
+		var loy := int(cf.get("loyalty", 70))
+		var sour := loy <= 30 or state.morale <= 20 or state.has_flag("trap_underpaid_cofounder")
+		var key := _role_key(String(cf.get("role", "Tech")))
+		out.append({"who": key, "mood": "burnt" if sour else "fine",
+			"doing": String(DOING.get(key, "at work"))})
+	for e in state.employees:
+		var bs := GameState.burnout_state(int(e.get("burnout", 0)))
+		var ekey := _role_key(String(e.get("role", "generalist")))
+		out.append({"who": ekey, "mood": "burnt" if bs in ["cooked", "gone"] else "fine",
+			"doing": String(DOING.get(ekey, "at work"))})
+	# the render is 67s for one character and 113s for four; four is the ceiling
+	return out.slice(0, 4)
+
+func _refs() -> Dictionary:
+	if not FileAccess.file_exists(CAST_REFS):
+		return {}
+	var r = JSON.parse_string(FileAccess.get_file_as_string(CAST_REFS))
+	return r if r is Dictionary else {}
+
+## A character with no fetchable reference is DROPPED, never substituted: the
+## compose prompt numbers its roster against the images it is given, so telling
+## the model about someone it was never shown is how a duplicate gets invented.
+func _cast_ref(who: String, mood: String, refs: Dictionary) -> String:
+	var base := ""
+	if who == "founder":
+		base = String(FOUNDER_DIRS.get(String(state.archetype_id), "cast_hacker"))
+	else:
+		base = String(COFOUNDER_DIRS.get(who, ""))
+	if base == "":
+		return ""
+	for m in [mood, "fine"]:
+		for layer in ["sprite", "scene"]:
+			var u := String(refs.get("%s_%s/%s" % [base, m, layer], ""))
+			if u.begins_with("http"):
+				return u
+	return ""
+
+## The marks are no longer where sprites are pasted — they are what the model is
+## told about where people plausibly stand in THIS room.
+func _mark_beat() -> String:
+	var marks := 0
+	for k in _scene_layout:
+		var row = _scene_layout[k]
+		if row is Dictionary and String((row as Dictionary).get("kind", "")) == "crew_mark":
+			marks += 1
+	var where := "spread across the working half of the room"
+	if marks > 0:
+		where = "spread across the %d places people actually work in this room" % marks
+	return "an ordinary working week: everyone %s, nobody posing for the camera" % where
+
+## Ask for the establishing room. Fires once per stage per run, never inside a
+## turn the week loop is already rendering, and never in a harness.
+func _compose_room() -> void:
+	if state == null or _composing or _harness() or OS.get_environment("RUNWAY_NO_ART") != "":
+		return
+	if _composed_for.has(_scene_id) or _turn_in_flight():
+		return
+	var refs := _refs()
+	var bg := ""
+	for key in ["%s/scene" % _scene_id, "%s/room_bg" % _scene_id]:
+		var u := String(refs.get(key, ""))
+		if u.begins_with("http"):
+			bg = u
+			break
+	if bg == "":
+		return          # this stage has no fetchable plate; the empty stage stands
+	var cast: Array = []
+	var urls: Array = []
+	for c in crew_cast():
+		var who := String((c as Dictionary).get("who", ""))
+		var mood := String((c as Dictionary).get("mood", "fine"))
+		var u2 := _cast_ref(who, mood, refs)
+		if u2 == "":
+			continue
+		cast.append({"role": String(ROLE_WORDS.get(who, who)) + String(MOOD_WORDS.get(mood, "")),
+			"doing": String((c as Dictionary).get("doing", "at work"))})
+		urls.append(u2)
+	if cast.is_empty():
+		return
+	_composed_for[_scene_id] = true
+	_composing = true
+	if _director == null:
+		_director = SceneDirector.new(get_tree())
+		_director.ready.connect(_on_room_composed)
+		_director.failed.connect(_on_room_compose_failed)
+	_director.compose(bg, urls, cast, _mark_beat(), "room_%s_wk%02d" % [_scene_id, state.week])
+
+func _on_room_composed(path: String) -> void:
+	_composing = false
+	# composed ON this stage, so the writable faces are still where they were measured
+	adopt_composed(path, true)
+
+## A failed compose is a cosmetic loss: the plain stage stands and the week runs on.
+func _on_room_compose_failed(reason: String) -> void:
+	_composing = false
+	# one dead request must not leave a whole era empty, so the next week may ask
+	# again — once, because _sync_room only runs when the week turns
+	_composed_for.erase(_scene_id)
+	print("RUNWAY! room compose skipped (%s) — the empty stage stands" % reason)
+
+## Is the week loop already rendering this week's scene? Read through get() on
+## purpose: the property belongs to another lane's file, and if it is ever renamed
+## this must fall back to "no", not take the room down with it.
+func _turn_in_flight() -> bool:
+	var p := get_parent()
+	if p == null:
+		return false
+	var busy = p.get("_turn_busy")
+	return busy is bool and busy
+
+## SHOW A COMPOSED ROOM. Public: the week loop hands this the scene its own turn
+## produced, and the room becomes that scene instead of throwing it away.
+##
+## `aligned` says the image was composed on the stage we are standing in, so the
+## write surfaces still land on the surfaces they were measured on. A scene
+## composed somewhere else is a DIFFERENT room, so the handwriting stands down and
+## the plates take over rather than writing the cash total across a stranger's wall.
+func adopt_composed(path: String, aligned: bool = false) -> bool:
+	var tex: Texture2D = null
+	if path.begins_with("res://"):
+		if ResourceLoader.exists(path):
+			tex = load(path)
+	else:
+		var img := Image.new()
+		if img.load(path) == OK:
+			tex = ImageTexture.create_from_image(img)
+	if tex == null:
+		return false
+	if _composed == null or not is_instance_valid(_composed):
+		var tr := TextureRect.new()
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		# SCALE, not COVERED: the composed frame is 2048x1360 and the room is
+		# 1536x1024, and a cover-crop would slide every write surface off its face.
+		tr.stretch_mode = TextureRect.STRETCH_SCALE
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tr.size = Vector2(1536, 1024)
+		tr.set_deferred("size", Vector2(1536, 1024))
+		_room.add_child(tr)
+		_room.move_child(tr, mini(1, _room.get_child_count() - 1))
+		_composed = tr
+	_composed.texture = tex
+	_composed.visible = true
+	_composed_path = path
+	_surf_aligned = aligned
+	if _room_scene and is_instance_valid(_room_scene):
+		_room_scene.visible = false
+	_write_state_surfaces()
+	_composed.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(_composed, "modulate:a", 1.0, 0.4)
+	return true
+
+## The era turned, or the run moved on: the composed room belongs to the old
+## stage, so it stands down and the new empty stage shows through.
+func _drop_composed() -> void:
+	_composed_path = ""
+	_surf_aligned = true
+	if _composed and is_instance_valid(_composed):
+		_composed.visible = false
+	if _room_scene and is_instance_valid(_room_scene):
+		_room_scene.visible = true
+
+## ── THE NUMBERS LIVE ON THE ROOM'S OWN SURFACES ──────────────────────────
+## Cash is written in the ledger, product on the whiteboard, customers on the wall
+## chart, equity on the sticky note. What the scene declares no face for keeps its
+## old plate — per surface, not all-or-nothing, because a stage can annotate one
+## face and not another and the state must never simply disappear.
+func _write_state_surfaces() -> void:
+	var s: SceneSurfaces = _surfaces if (_surf_mode and _surf_aligned and _surfaces != null and is_instance_valid(_surfaces)) else null
+	if _surface_layer and is_instance_valid(_surface_layer):
+		_surface_layer.visible = s != null
+	var foreign := _showing_foreign_room()
+	if s != null:
+		if s.has("ledger"):
+			s.write("ledger", "IN THE BANK", _cash_str(),
+				PALETTE["coral"] if state.cash < 0 else PALETTE["ink"])
+		if s.has("whiteboard"):
+			s.write("whiteboard", "PRODUCT", "v0.%d" % state.product)
+		if s.has("wallchart"):
+			# the face is ~100px: "CUSTOMERS" measures wider than that and clipped
+			# itself to "CUSTOME" on the first capture
+			s.write("wallchart", "USERS", str(state.traction))
+		if s.has("sticky"):
+			s.write("sticky", "YOURS", "%.0f%%" % state.founder_pct)
+		if s.has("inventory"):
+			s.write("inventory", "IN THE BAG", _inventory_text())
+		if s.has("glass_wall"):
+			s.write("glass_wall", state.company_name.to_upper(), "WEEK %d" % state.week)
+	if _money_tag and is_instance_valid(_money_tag):
+		_money_tag.visible = s == null or not s.has("ledger")
+		# on our own stage the plate sits where the art left room for it; on a room
+		# we did not build, the only ground we can trust is the calm top strip the
+		# compose prompt keeps clear, and one plate carries both numbers there.
+		_money_tag.position = Vector2(24, 76) if foreign else (Vector2(268, 714) if _scene_mode else Vector2(64, 700))
+		_money_tag.set_deferred("size", Vector2(346, 48) if foreign else Vector2(180, 48))
+	if _money_label and is_instance_valid(_money_label):
+		_money_label.text = _money_text()
+	if _cap_paper and is_instance_valid(_cap_paper):
+		_cap_paper.visible = (s == null or not s.has("sticky")) and not foreign
+		if _cap_label and is_instance_valid(_cap_label):
+			_cap_label.text = "%.0f%%\nyours" % state.founder_pct
+
+## Are we standing in a room composed somewhere other than this stage? Then its
+## walls are not our walls: no writable face is where we measured it.
+func _showing_foreign_room() -> bool:
+	return _composed != null and is_instance_valid(_composed) and _composed.visible and not _surf_aligned
+
+## The equity plate has nowhere to hang in a room we did not build, so the cash
+## plate carries the share count too rather than dropping it.
+func _money_text() -> String:
+	if state == null:
+		return ""
+	if _showing_foreign_room():
+		return "%s  ·  %.0f%% yours" % [_cash_str(), state.founder_pct]
+	return _cash_str()
+
+## An overdraft is written "-$300", not "$-300": the minus belongs to the money,
+## not to the digits after the sign.
+func _cash_str() -> String:
+	if state == null:
+		return ""
+	return ("-$%s" % _fmt(absi(state.cash))) if state.cash < 0 else ("$%s" % _fmt(state.cash))
+
+## What is in the bag, as a list, on the one surface built to hold a list.
+func _inventory_text() -> String:
+	var names: Array = []
+	for id in state.items:
+		var nm := String(content.items.get(String(id), {}).get("name", ""))
+		if nm == "":
+			nm = String(id).replace("itm_", "").replace("_", " ").capitalize()
+		names.append(nm)
+	if names.is_empty():
+		return "nothing but nerve"
+	if names.size() > 3:
+		var head: Array = names.slice(0, 3)
+		head.append("+%d more" % (names.size() - 3))
+		names = head
+	var txt := ""
+	for i in names.size():
+		txt += ("\n" if i > 0 else "") + String(names[i])
+	return txt
 
 func _scene_base_tex() -> Texture2D:
 	for cand in ["res://assets/scenes/%s/room_bg.png" % _scene_id,
@@ -441,129 +810,21 @@ func _scene_base_tex() -> Texture2D:
 			return load(cand)
 	return null
 
-## Layers only come with the scenes that shipped a layout; the rest render as a
-## single painted plate and fall back to the sprite path for state objects.
+## The stage's own annotation table. Read ONLY for the crew marks — SceneRoom
+## does the rendering — so it can no longer decide whether a stage is renderable.
 func _load_scene_layout() -> void:
 	_scene_layout = {}
-	_scene_mode = false
 	var lp := "res://assets/scenes/%s/layout.json" % _scene_id
 	if not FileAccess.file_exists(lp):
 		return
-	if not (ResourceLoader.exists("res://assets/scenes/%s/room_bg.png" % _scene_id) or ResourceLoader.exists("res://assets/scenes/%s/scene.png" % _scene_id)):
-		return
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string(lp))
-	if parsed is Dictionary and not parsed.is_empty():
+	if parsed is Dictionary:
 		_scene_layout = parsed
-		_scene_mode = true
 
-func _scene_cut(cut_name: String) -> void:
-	var spec: Dictionary = _scene_layout.get(cut_name, {})
-	var path := "res://assets/scenes/%s/%s.png" % [_scene_id, cut_name]
-	if spec.is_empty() or not ResourceLoader.exists(path):
-		return
-	var tr := TextureRect.new()
-	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	tr.texture = load(path)
-	tr.position = Vector2(float(spec.get("x", 0)), float(spec.get("y", 0)))
-	var sz := Vector2(float(spec.get("w", 64)), float(spec.get("h", 64)))
-	tr.size = sz
-	tr.set_deferred("size", sz)
-	tr.pivot_offset = Vector2(sz.x / 2.0, sz.y)   # feet-anchored for bobs/scales
-	_room.add_child(tr)
-	_scene_cuts[cut_name] = tr
-
-const SCENE_NOTES := {
-	"money": ["The Runway", "This is not a metaphor. It is the money. Watch it."],
-	"whiteboard": ["The Plan", "Product progress lives here. It fills as you ship."],
-	"chart": ["User Growth", "Pinned where everyone can see it. No pressure."],
-	"founder": ["You", "Morale in the shoulders. Watch the cowlick."],
-	"crew_headphones": ["The Builder", "Loyalty drains weekly. Gestures refill it."],
-	"crew_vest": ["The Talker", "Currently pointing at the chart. Someone has to."],
-	"pizza": ["Dinner, Historically", "Appears when morale slips. It never lies."],
-	"mug": ["Coffee", "The real fuel. The jar was a decoy."],
-}
-
-func _scene_hover_notes() -> void:
-	for key in _scene_cuts:
-		var tr: TextureRect = _scene_cuts[key]
-		tr.mouse_filter = Control.MOUSE_FILTER_STOP
-		tr.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		var k: String = key
-		tr.mouse_entered.connect(func():
-			var t := create_tween()
-			t.tween_property(tr, "scale", Vector2(1.03, 1.03), 0.08))
-		tr.mouse_exited.connect(func():
-			var t := create_tween()
-			t.tween_property(tr, "scale", Vector2.ONE, 0.1))
-		tr.gui_input.connect(func(ev):
-			if ev is InputEventMouseButton and ev.pressed:
-				_scene_note(k, tr))
-
-func _scene_note(key: String, anchor: Control) -> void:
-	var spec: Array = SCENE_NOTES.get(key, ["?", ""])
-	for c in _note_layer.get_children():
-		c.queue_free()
-	var note := Panel.new()
-	var st2 := StyleBoxFlat.new()
-	st2.bg_color = PALETTE["cream"]
-	st2.border_color = PALETTE["ink"]
-	st2.set_border_width_all(3)
-	st2.set_corner_radius_all(6)
-	st2.shadow_color = Color(0, 0, 0, 0.25)
-	st2.shadow_size = 6
-	note.add_theme_stylebox_override("panel", st2)
-	note.size = Vector2(300, 104)
-	var pos := anchor.position + Vector2(anchor.size.x * 0.5 - 150, -114)
-	note.position = Vector2(clampf(pos.x, 12, 1224), maxf(12, pos.y))
-	note.rotation = 0.015
-	_note_layer.add_child(note)
-	var nm := _mk_dlabel(String(spec[0]), 25, PALETTE["ink"])
-	nm.position = Vector2(14, 6)
-	note.add_child(nm)
-	var bl := _mk_label(String(spec[1]), 22, Color(PALETTE["ink"], 0.8))
-	bl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	bl.custom_minimum_size = Vector2(272, 0)
-	bl.position = Vector2(14, 40)
-	note.add_child(bl)
-	bl.set_deferred("size", Vector2(272, 0))
-	_sfx["tick"].play()
-	note.modulate.a = 0.0
-	note.pivot_offset = Vector2(150, 104)
-	var tw := create_tween()
-	tw.tween_property(note, "modulate:a", 1.0, 0.12)
-	tw.parallel().tween_property(note, "scale", Vector2.ONE, 0.14).from(Vector2(0.9, 0.9)).set_trans(Tween.TRANS_BACK)
-	tw.tween_interval(2.6)
-	tw.tween_property(note, "modulate:a", 0.0, 0.35)
-	tw.tween_callback(note.queue_free)
-
-## Scene-mode living state: mood/droop on the painted crew, money pile scale.
-func _refresh_scene_crew() -> void:
-	var low := state.morale <= 35
-	var happy := state.morale >= 70
-	for key in ["founder", "crew_headphones", "crew_vest"]:
-		var tr: TextureRect = _scene_cuts.get(key)
-		if tr == null:
-			continue
-		var droop := 0.0
-		var tint := Color(1, 1, 1, 1)
-		if low:
-			droop = 0.04
-			tint = Color(0.92, 0.92, 0.95, 1)
-		elif happy:
-			droop = -0.01
-		var tw := create_tween()
-		tw.tween_property(tr, "rotation", droop, 0.5)
-		tr.modulate = tint
-	var cf_n := state.cofounders.size()
-	if _scene_cuts.has("crew_headphones"):
-		_scene_cuts["crew_headphones"].visible = cf_n >= 1
-	if _scene_cuts.has("crew_vest"):
-		_scene_cuts["crew_vest"].visible = cf_n >= 2
-
+## Sprite crew is the ART-LESS fallback only. In a real room nobody is pasted in:
+## the people arrive painted into the composed scene or they do not arrive at all.
 func _build_crew() -> void:
 	if _scene_mode:
-		_refresh_scene_crew()
 		return
 	for n in _crew_nodes:
 		if is_instance_valid(n):
@@ -615,24 +876,18 @@ func _idle_bob(node: Control, phase: float) -> void:
 
 ## The room reflects the state. Called after every change.
 ## Called on every state change — this is where the room stops being the garage.
+## THE ERA TURNS THE ROOM OVER. A new stage means a new set of marks and a new
+## set of writable faces, so the cast and the numbers are both re-laid onto it.
 func _refresh_scene() -> void:
-	if state == null or _room_bg == null:
+	if state == null:
 		return
 	var want := SceneRoomPicker.scene_id_for(state)
 	if want == _scene_id:
 		return
 	_scene_id = want
-	_load_scene_layout()
-	for key in _scene_cuts:
-		var old: TextureRect = _scene_cuts[key]
-		if is_instance_valid(old):
-			old.queue_free()
-	_scene_cuts.clear()
-	_room_bg.texture = _scene_base_tex()
-	if _scene_mode:
-		for cut_name in _scene_cut_order():
-			_scene_cut(String(cut_name))
-	_refresh_scene_crew()
+	_drop_composed()
+	_mount_scene()
+	_write_state_surfaces()
 
 func _sync_room(instant: bool = false) -> void:
 	_refresh_scene()
@@ -642,15 +897,16 @@ func _sync_room(instant: bool = false) -> void:
 	if state.cash > 30000: mtier = 4
 	elif state.cash > 12000: mtier = 3
 	elif state.cash > 3000: mtier = 2
+	_write_state_surfaces()
 	if _scene_mode:
-		var mc: TextureRect = _scene_cuts.get("money")
+		var mc: TextureRect = _room_scene.get_layer("money") if (_room_scene and is_instance_valid(_room_scene)) else null
 		if mc:
 			var msc: float = [0.7, 0.85, 1.0, 1.14][mtier - 1]
 			var mt := create_tween()
 			mt.tween_property(mc, "scale", Vector2(msc, msc), 0.4).set_trans(Tween.TRANS_BACK)
 	else:
 		_set_spot_tex("money", GV + "money_%d.png" % mtier)
-	_money_label.text = "$%s" % _fmt(state.cash)
+	_money_label.text = _money_text()
 	if state.cash < state.burn_per_week() * 2:
 		_money_label.add_theme_color_override("font_color", PALETTE["coral"])
 	if not instant and state.cash != _last_cash:
@@ -678,7 +934,7 @@ func _sync_room(instant: bool = false) -> void:
 				tr.visible = state.has_item(id)
 	# decay tracks morale; badges track flags
 	if _scene_mode:
-		var pz: TextureRect = _scene_cuts.get("pizza")
+		var pz: TextureRect = _room_scene.get_layer("pizza") if (_room_scene and is_instance_valid(_room_scene)) else null
 		if pz:
 			pz.visible = state.morale < 45
 	else:
@@ -688,8 +944,8 @@ func _sync_room(instant: bool = false) -> void:
 	_show_spot("decay_graffiti", state.morale < 15)
 	_show_spot("badge_camp", state.has_flag("camp_alum"))
 	_show_spot("badge_launched", state.has_flag("first_user"))
-	# crew moods refresh
 	_build_crew()
+	_compose_room()
 
 func _fmt(v: int) -> String:
 	var t := str(absi(v))
