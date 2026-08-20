@@ -19,24 +19,36 @@ The pipeline, per era room (garage / coworking / office / floor / hq):
                 furniture-shaped hole wherever the scene occluded the body
   E ambient     one 4s seedance loop of the BLANK -> additive light deltas
 
-Spot regions are MEASURED, never authored: the founder's region is exactly where
-the swap edits disagree with the populated render, and the remaining crew's
-regions are the other components of diff(populated, blank).
+Spot regions are MEASURED, never authored. A character is the only solid INK-BLACK
+mass in this palette, so `ink AND changed-against-the-blank` is the set of body
+pixels and nothing else; each body's region then grows to whatever changed beside
+it — sneakers on a pale floor, a held laptop, a contact shadow — and the founder's
+region is widened again to hold all four of its renditions, so a rolling suitcase
+that only the consultant brings is never sliced in half.
 
 Usage
   patch_factory.py refs                      upload the identity references (once)
   patch_factory.py plan  <era>               print the jobs this era needs
+  patch_factory.py push  <era>               upload the populated render, before
+                                             the jobs that reference it fan out
   patch_factory.py edit  <era> <name>        one seedream edit (resumable: skips
                                              a file that already decodes)
   patch_factory.py empty <era>               eye-in-ink test on the blank
   patch_factory.py spots <era>               measure the spot regions
-  patch_factory.py swapcheck <era>           swap edits must only touch the founder
+  patch_factory.py swapcheck <era>           report how far each re-cast reached
+  patch_factory.py sheet <era>               the four renditions side by side —
+                                             the read that actually gates a swap
   patch_factory.py patches <era>             cut every patch + patches.json
   patch_factory.py eyes <era>                find the eyes in every patch
   patch_factory.py assemble <era> <out> <spot>=<who> ...
   patch_factory.py ambient <era>             seedance loop of the blank
   patch_factory.py deltas <era>              loop -> seam measurement -> deltas
+  patch_factory.py verify                    every PNG decodes, every table ships
   patch_factory.py report <era>              one line per stage, for the log
+
+Order for a fresh scene, parallel across eras at every step:
+  refs -> edit <era> populated -> push -> edit blank + the three swaps -> spots
+  -> patches -> eyes -> ambient -> deltas -> assemble and LOOK -> verify
 """
 import base64, io, json, math, os, subprocess, sys, time, urllib.request
 
