@@ -110,3 +110,16 @@ Next (master TODO critical path): author to 25 events · Door mechanic (4 visito
 - OpenAI + AtlasCloud keys currently in tool auth are **test keys** provided in chat — rotate before anything public.
 - `concept_02_founder_archetypes.json` not yet rendered — render after core game milestone, as first check that blob v2 consistency holds across a multi-character sheet.
 - LLM event-generation layer (PRD §7) untouched — comes after authored spine works.
+
+## 2026-08-20 — Scenes are STATIC IMAGES for now (owner decision)
+Owner reviewed the animation attempts end to end and called it: static stills.
+Evidence trail (all in ~/Downloads/runway-scene-3-gpt-ladder/): 07 procedural-only
+rejected ("all shit" — broken blink placement, imperceptible motion); 08 seedance
+on the POPULATED scene restages it (camera breathes, props morph) — documented
+negative result; 09 one-video-on-blank + composited characters was technically
+clean (landmarks locked at (0,0), verified blinks) but still not good enough.
+Change: PatchScene mounts NO ambient and starts NO life by default; the whole
+life layer stays built + tested behind RUNWAY_LIFE=1 (patch_scene.gd
+life_enabled(); suite exercises life explicitly and proves the static default —
+44 checks, PASS; real-scene shot verified static and clean).
+700-scene rollout implication: images only (~$400 at GPT medium), no video cost.

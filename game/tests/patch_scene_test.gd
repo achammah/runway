@@ -35,7 +35,8 @@ const OFF := {
 const STEPS := ["_test_full_build", "_test_unknown_who_is_skipped", "_test_missing_era",
 	"_test_missing_ambient_still_builds", "_test_f2_alternation", "_test_empty_is_never_cast",
 	"_test_archetype_picks_the_chair", "_test_undrawn_archetype_leaves_the_chair_empty",
-	"_test_a_hire_is_never_the_cofounder", "_test_a_blank_alone_is_not_a_scene"]
+	"_test_a_hire_is_never_the_cofounder", "_test_a_blank_alone_is_not_a_scene",
+	"_test_static_default"]
 
 ## Steps that must run frames rather than just assert, so the life tweens actually
 ## tick. They are awaited from _go, which is why they are not in STEPS.
@@ -51,6 +52,9 @@ func _init() -> void:
 
 func _go() -> void:
 	await process_frame
+	# Life defaults OFF (static images, the owner's call). The suite switches it on
+	# so every life contract stays exercised; _test_static_default proves the default.
+	OS.set_environment("RUNWAY_LIFE", "1")
 	_build_fixtures()
 	# quit() is DEFERRED and a failed assert() only unwinds the function it sits in,
 	# so a suite leaning on either keeps running and prints PASS over its own failure.
@@ -65,6 +69,9 @@ func _go() -> void:
 		if _failed:
 			quit(1)
 			return
+	# The shot promises "the path the game takes" — clear the suite's life switch so
+	# the picture shows the shipped default (static), not the contract-test setting.
+	OS.set_environment("RUNWAY_LIFE", "")
 	await _optional_shot()
 	print("%d checks held" % _checks)
 	print("PATCH TEST PASS")
@@ -146,6 +153,24 @@ func _test_missing_ambient_still_builds() -> void:
 	_ok(ok, "a scene with no ambient/ must still build")
 	_ok(ps.ambient_frames() == 0, "a scene with no ambient/ must report 0 delta frames")
 	_ok(ps.placements().size() == 1, "the patch must still be drawn without ambient")
+	ps.queue_free()
+
+
+## The DEFAULT is the owner's call: static images. With RUNWAY_LIFE unset, a build
+## draws the room and its whole cast but mounts no ambient loop and starts no life.
+func _test_static_default() -> void:
+	OS.set_environment("RUNWAY_LIFE", "")
+	var ps := _scene()
+	var ok := ps.build(LOFT, [
+		{"who": "founder", "kind": "founder", "mood": "fine", "doing": "types all night"},
+		{"who": "tech", "kind": "cofounder", "mood": "fine", "doing": "fixes the build"},
+	])
+	OS.set_environment("RUNWAY_LIFE", "1")
+	_ok(ok, "a static build must still succeed")
+	_ok(ps.placements().size() == 2,
+		"a static build must still place its cast, got %d" % ps.placements().size())
+	_ok(ps.ambient_frames() == 0,
+		"the static default must mount no ambient deltas, got %d" % ps.ambient_frames())
 	ps.queue_free()
 
 

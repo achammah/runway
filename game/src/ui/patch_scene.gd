@@ -102,6 +102,13 @@ var _skipped: Array = []             # every `who` this scene has no patch for
 var _rng := RandomNumberGenerator.new()
 
 
+## Scenes are STATIC IMAGES for now — the owner's call after reviewing the animated
+## composites. The whole life layer (ambient deltas, bob, blinks, f2 alternation)
+## stays built and under test, but it mounts only when RUNWAY_LIFE=1 is set.
+static func life_enabled() -> bool:
+	return OS.get_environment("RUNWAY_LIFE") == "1"
+
+
 ## Does a FINISHED scene ship for this era? Cheap enough for a mount key.
 static func exists_for(p_era: String) -> bool:
 	if p_era == "":
@@ -196,8 +203,9 @@ func build(p_era: String, cast: Array) -> bool:
 	rows.sort_custom(func(a, b): return _bottom_of(a) < _bottom_of(b))
 	for row in rows:
 		_draw_patch(dir, row as Dictionary)
-	_mount_ambient(dir)
-	_begin_life()
+	if life_enabled():
+		_mount_ambient(dir)
+		_begin_life()
 	return true
 
 
