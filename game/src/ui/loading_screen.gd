@@ -185,7 +185,12 @@ func _reveal(beat: Dictionary) -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if is_instance_valid(_scroll):
+		# snap the scroll to a WHOLE line: stopping mid-line leaves the top row of
+		# glyphs half-clipped ("says sne aoes noT wanT" in the capture), which reads
+		# as a rendering bug rather than a scroll position
+		var line_h := float(SIZE_BODY) * 1.5
 		var to: float = maxf(0.0, _col.size.y - _scroll.size.y)
+		to = ceilf(to / line_h) * line_h
 		var st := create_tween()
 		st.tween_property(_scroll, "scroll_vertical", int(to), 0.45).set_trans(Tween.TRANS_SINE)
 

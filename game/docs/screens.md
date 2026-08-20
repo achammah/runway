@@ -58,10 +58,11 @@ company, so they can be reviewed in seconds. Exits itself, 5 PNGs.
 
 Not yet in any capture mode: YC screens, investor/deal screens, deaths gallery, settings.
 
-## Known gap
+## Capture modes added since
+`RUNWAY_TURN=<dir>` renders one full generative turn (reading beat opening, mid-read,
+the composed room, and the beat after a dead render). `RUNWAY_TURN_ART=1` makes the
+render real (1-3 min, paid). `RUNWAY_READING=<dir>` renders the reading beat alone.
 
-The room does not change with the era — a floor-era company is still shown the garage.
-The art exists for all five eras; `SceneRoomPicker.scene_id_for(state)`
-(`src/ui/scene_picker.gd`) returns the right scene id for the era and the company's
-mood, existence-checked with a fallback chain. It has no caller yet: the room is built
-in `garage_view_screen.gd`, which hardcodes the garage base image.
+The era rooms DO change with the era (QA-confirmed: five visually distinct sets);
+the room is composed by SceneDirector or assembled by SceneStage, with the empty
+stage as fallback.
