@@ -414,39 +414,32 @@ func _autopilot() -> void:
 			gv._open_journal()
 			await get_tree().create_timer(0.6).timeout
 			await _shot(dir, "09_journal")
+			# THE TWO-SPREAD WALK: quiet decision page, event decision page, a
+			# written move (ready), and the considering state — the real states.
 			gv._page_i = 1
 			gv._show_spread()
 			await get_tree().create_timer(0.4).timeout
-			await _shot(dir, "11_people")
-			gv._page_i = 2
-			gv._show_spread()
-			await get_tree().create_timer(0.4).timeout
-			await _shot(dir, "12_work")
-			gv._page_i = 3
-			gv._show_spread()
-			await get_tree().create_timer(0.4).timeout
-			await _shot(dir, "12b_situation")
-			# force a real event so the event branches of situation/decision are photographed
+			await _shot(dir, "11_decision_quiet")
 			if gv._current_event.is_empty():
 				var forced: Dictionary = content.events.get("evt_cofounder_pitch", {})
 				if forced.is_empty() and not content.events.is_empty():
 					forced = content.events.values()[0]
 				gv._current_event = forced
-				gv._show_spread()
-				await get_tree().create_timer(0.4).timeout
-				await _shot(dir, "12c_situation_event")
-			gv._page_i = 4
 			gv._show_spread()
 			await get_tree().create_timer(0.4).timeout
-			await _shot(dir, "13_decision")
-			# a chosen option + a gesture + a work preset → the decision page in its "ready to lock" state
-			if not gv._current_event.is_empty() and not gv._current_event.get("choices", []).is_empty():
-				gv._pending_choice = gv._current_event["choices"][0]
-			gv._pending_people[0] = "pay"
-			gv._pending_work["PRODUCT"] = {"kind": "preset", "id": "sprint"}
-			gv._show_spread()
-			await get_tree().create_timer(0.4).timeout
-			await _shot(dir, "13b_decision_ready")
+			await _shot(dir, "12_decision_event")
+			var fld2: TextEdit = gv._jp.input_field()
+			if fld2 != null:
+				fld2.text = "Call all nine groomers and own the poodle incident personally."
+				gv._free_text[1] = fld2.text
+			gv._lock_button()
+			await get_tree().create_timer(0.3).timeout
+			await _shot(dir, "13_decision_written")
+			gv._adjudicating = true
+			gv._lock_button()
+			await get_tree().create_timer(0.3).timeout
+			await _shot(dir, "13b_decision_considering")
+			gv._adjudicating = false
 			# pivot panel
 			gv._open_pivot()
 			await get_tree().create_timer(0.4).timeout

@@ -1766,9 +1766,10 @@ func _spread_ahead() -> void:
 	# WHERE YOU STAND, one faint line — the ask is meaningless without it
 	var net := state.burn_per_week()
 	var weeks := 999 if net <= 0 else maxi(0, int(floor(float(state.cash) / float(net))))
+	# full ink on purpose: faint text under a printed rule reads struck-through
 	_jp.line("$%s · %s · %d customers · v0.%d" % [
 			_fmt(state.cash), ("%d wks left" % weeks) if weeks < 999 else "making money",
-			state.traction, state.product], true)
+			state.traction, state.product])
 	var situation := ""
 	if _current_event.is_empty():
 		situation = "Nothing came for you this week. The week is yours."
