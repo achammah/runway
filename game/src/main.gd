@@ -120,6 +120,10 @@ func _fullrun(dir: String) -> void:
 			if not _still_playing(gv):
 				continue
 		gv._commit_from_text()
+		if OS.get_environment("RUNWAY_CURTAIN_FILM") != "" and state.week <= 2:
+			for ci in 4:
+				await get_tree().create_timer([0.1, 0.2, 0.25, 0.6][ci]).timeout
+				await _shot(dir, "curtain_%02d_wk%02d_%d" % [state.week, state.week, ci])
 		# a live adjudication takes seconds; keyless answers instantly — wait it out
 		var adj_cap := 40
 		while bool(gv.get("_adjudicating")) and adj_cap > 0:
@@ -1158,6 +1162,9 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 	l.say("", String(dm.get("reality_check", "")))
 	if _curtain != null and is_instance_valid(_curtain):
 		move_child(_curtain, get_child_count() - 1)
+		# never rise mid-drop: the drop is 0.45s; hold one beat of full black so
+		# the reveal reads as a reveal even when the world answered instantly
+		await get_tree().create_timer(0.65).timeout
 	_raise_curtain()
 
 	var deadline := Time.get_ticks_msec() + int(HOLD_CEILING * 1000.0)
