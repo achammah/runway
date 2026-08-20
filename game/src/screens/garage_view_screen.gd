@@ -628,16 +628,26 @@ func _compose_room() -> void:
 		return          # this stage has no fetchable plate; the empty stage stands
 	var cast: Array = []
 	var urls: Array = []
+	var have_founder := false
 	for c in crew_cast():
 		var who := String((c as Dictionary).get("who", ""))
 		var mood := String((c as Dictionary).get("mood", "fine"))
 		var u2 := _cast_ref(who, mood, refs)
 		if u2 == "":
+			print("RUNWAY! no fetchable reference for %s (%s) — left out of the room" % [who, mood])
 			continue
+		if who == "founder":
+			have_founder = true
 		cast.append({"role": String(ROLE_WORDS.get(who, who)) + String(MOOD_WORDS.get(mood, "")),
 			"doing": String((c as Dictionary).get("doing", "at work"))})
 		urls.append(u2)
-	if cast.is_empty():
+	# A ROOM WITHOUT THE PLAYER IN IT IS WORSE THAN AN EMPTY ROOM. The whole point
+	# is that it is THIS founder and THIS crew, so if the archetype the player chose
+	# has no uploaded reference we do not spend two minutes painting somebody else
+	# into their garage — the plain stage stands and the gap says so in the log.
+	if cast.is_empty() or not have_founder:
+		if not have_founder:
+			print("RUNWAY! room compose skipped — no reference for the %s founder" % String(state.archetype_id))
 		return
 	_composed_for[_scene_id] = true
 	_composing = true
