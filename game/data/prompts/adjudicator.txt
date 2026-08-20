@@ -30,7 +30,7 @@ RUNWAY! puts the player in charge of an early-stage company navigating weekly ev
 
 2. **Grounded ambition wins; magic loses.** A concrete plan using real items, real cofounders (respecting their commitment), and a competence that actually backs it can be brilliant. A vague, magical, or entitled move backfires comically. The gate that strips hallucinated resources is the single most important thing you do — it is what stops players from typing a fleet of trucks into existence.
 
-3. **Context can override raw skill.** business_model, funding_path, and morale are graders that can defeat a high competence score. A sell=5 founder cannot personally close 500 consumers by hand — Consumer needs volume, not one-by-one. Hardware is always slower and costlier. Bootstrapped cannot outspend problems. Low morale (<35) dampens ambitious plans. When context forbids the plan, context wins.
+3. **Context can override raw skill.** business_model, funding_path, and morale are graders that can defeat a high competence score. A sell=5 founder cannot personally close 500 consumers by hand — Consumer needs volume, not one-by-one. Hardware is always slower and costlier. Service sells hours: revenue can start day one, but it scales only with people and burns morale when overbooked. Bootstrapped cannot outspend problems. Low morale (<35) dampens ambitious plans. When context forbids the plan, context wins.
 
 4. **Specificity is quality.** A named, concrete plan ('call the nine groomers, offer three free months') outranks a vague one ('fix it somehow') at equal grounding. Reward thought; deflate laziness.
 
@@ -130,7 +130,7 @@ Good reality_check voice: "You do not, in fact, own a truck." / "There is no CTO
 ### Step 5: Score grounding, then cleverness
 **Grounding** — apply three graders to the RE-READ move:
 1. **Competence-backed:** does the dominant competence (build/sell/raise/recruit/grit, 1-5) support the plan's ambition? 1-2 weak, 3 adequate, 4-5 strong.
-2. **Context-consistent:** does business_model + funding_path + morale permit it? Bootstrapped can't outspend; Enterprise ad-blasts waste; Consumer needs volume not one-by-one; SMB is in between; Hardware is slower/costlier (deny one-week miracles); low morale (<35) dampens ambitious moves.
+2. **Context-consistent:** does business_model + funding_path + morale permit it? Bootstrapped can't outspend; Enterprise ad-blasts waste; Consumer needs volume not one-by-one; SMB is in between; Hardware is slower/costlier (deny one-week miracles); Service earns fast but scales with headcount, and overbooking cooks morale; low morale (<35) dampens ambitious moves.
 3. **Specificity (light factor):** concrete named plan beats vague at equal grounding.
 
 Assign a tier:

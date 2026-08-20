@@ -80,6 +80,8 @@ func _fullrun(dir: String) -> void:
 	d._do_launch()
 	await get_tree().create_timer(1.6).timeout
 	var week_cap := 95
+	if OS.get_environment("RUNWAY_WEEK_CAP") != "":
+		week_cap = maxi(int(OS.get_environment("RUNWAY_WEEK_CAP")), 1)
 	var shots := 0
 	var eras_seen: Array[String] = ["garage"]
 	var rooms_shot: Array[String] = []   # the room, tracked apart from the move beats
@@ -97,38 +99,33 @@ func _fullrun(dir: String) -> void:
 			await get_tree().create_timer(0.5).timeout
 			continue   # act break swapped the screen, or the run ended — the loop
 					   # condition decides which, and neither may be written to
-		# walk the spreads like a player
-		gv._page_i = 4
+		# walk the TWO spreads like a player: read the week, then write the move
+		gv._page_i = 1
 		gv._show_spread()
 		await get_tree().create_timer(0.3).timeout
 		if not _still_playing(gv):
 			await get_tree().create_timer(0.5).timeout
 			continue   # act break swapped the screen, or the run ended — the loop
 					   # condition decides which, and neither may be written to
-		if not gv._current_event.is_empty():
-			for choice in gv._current_event.get("choices", []):
-				if gv._choice_lock_reason(choice) == "":
-					gv._pending_choice = choice
-					break
-		if state.week % 4 == 0 and state.cofounders.size() > 0:
-			gv._pending_people[0] = "pay"
-		gv._pending_work["PRODUCT"] = {"kind": "preset", "id": "sprint"}
-		if state.week % 2 == 0:
-			gv._pending_work["MARKETING"] = {"kind": "preset", "id": "post_log"}
-			gv._pending_work["SALES"] = {"kind": "preset", "id": "demos"}
-		gv._show_spread()
-		await get_tree().create_timer(0.2).timeout
-		if not _still_playing(gv):
-			await get_tree().create_timer(0.5).timeout
-			continue   # act break swapped the screen, or the run ended — the loop
-					   # condition decides which, and neither may be written to
+		var moves := ["Head down and sprint on the product all week.",
+			"Get out of the building: demo to ten real customers.",
+			"Spend the week on money: chase invoices and warm up an angel."]
+		gv._free_text[1] = moves[state.week % moves.size()]
+		var fld: TextEdit = gv._jp.input_field()
+		if fld != null:
+			fld.text = String(gv._free_text[1])
 		if state.week % 5 == 0:
 			await _shot(dir, "wk%02d_%s" % [state.week, state.era])
 			shots += 1
 			if not _still_playing(gv):
 				continue
-		gv._lock_week()
-		await get_tree().create_timer(1.4).timeout
+		gv._commit_from_text()
+		# a live adjudication takes seconds; keyless answers instantly — wait it out
+		var adj_cap := 40
+		while bool(gv.get("_adjudicating")) and adj_cap > 0:
+			adj_cap -= 1
+			await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(1.2).timeout
 		while _era_overlay != null and is_instance_valid(_era_overlay):
 			await get_tree().create_timer(1.2).timeout
 			var moved := String((_era_overlay as EraTransitionScreen).to_era)
@@ -922,6 +919,19 @@ func _harness() -> bool:
 func _poll_turn(gv: GarageViewScreen) -> void:
 	if _turn_busy or director == null:
 		return
+	# THE DURABLE PATH: a locked week leaves its full DM payload ON the outcome.
+	# The one-press commit can set and consume the pending verdict inside a single
+	# frame, so racing it with a poll silently loses the beat — reading the outcome
+	# cannot lose. Consumed exactly once via the `dm_seen` stamp.
+	var outcome_now = gv.get("_last_outcome")
+	if outcome_now is Dictionary:
+		var od := outcome_now as Dictionary
+		var dm_p = od.get("dm")
+		if dm_p is Dictionary and not (dm_p as Dictionary).is_empty() and not bool(od.get("dm_seen", false)):
+			od["dm_seen"] = true
+			if state != null and not state.dead and not state.has_flag("exit_taken") and not bool(gv.get("_over")):
+				_begin_turn((dm_p as Dictionary).duplicate(true))
+				return
 	var pending = gv.get("_pending_free")
 	if pending is Dictionary and not (pending as Dictionary).is_empty():
 		_dm = (pending as Dictionary).duplicate(true)
@@ -951,6 +961,11 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 	# nothing to wait for it closes the moment the last line is read. With neither
 	# text nor art there is nothing to show, and the authored week runs untouched.
 	var want_art := stub_path != "" or (_art_enabled() and not scene.is_empty())
+	# one line per turn, permanently: this is the heartbeat a whole playthrough
+	# once went without, and nobody could see that from the log
+	print("TURN wk%02d: beat opens · narration %d chars · art %s · place %s" % [
+		state.week if state != null else -1, narration.length(),
+		"ON" if want_art else "off", String(scene.get("place", "-"))])
 	if narration == "" and not want_art:
 		return
 	_turn_busy = true

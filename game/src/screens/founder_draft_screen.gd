@@ -850,6 +850,7 @@ const SHAPE_WHAT := [
 	["Software", "itm_laptop", "Ships fast. Scales free. Everyone is doing it, and that is the problem."],
 	["Hardware", "itm_dads_server", "Real things for real shelves. Slower, costlier, defensible."],
 	["Marketplace", "env_boxes", "You own the middle. Nothing works until both sides show up."],
+	["Service", "itm_idea_napkin", "You ARE the product. Revenue on day one, margins made of hours."],
 ]
 const SHAPE_WHO := [
 	["Enterprise", "env_calendar", "Huge contracts, glacial sales. Bring patience and a blazer."],
@@ -873,8 +874,11 @@ func _build_shape_page() -> Control:
 	var wl := _dlabel("WHAT", 30, PALETTE["yellow"])
 	wl.position = Vector2(64, 172)
 	page.add_child(wl)
+	# four WHATs share the row three used to fill: the cards slim down together
+	var wcard: float = 340.0 if SHAPE_WHAT.size() > 3 else 440.0
+	var wstep: float = (1536.0 - 128.0 - wcard) / float(maxi(SHAPE_WHAT.size() - 1, 1))
 	for i in SHAPE_WHAT.size():
-		var card := _shape_card(SHAPE_WHAT[i], Vector2(64 + i * 470, 226), true)
+		var card := _shape_card(SHAPE_WHAT[i], Vector2(64 + float(i) * wstep, 226), true, wcard)
 		page.add_child(card)
 		_what_chips.append(card)
 	var hl := _dlabel("FOR WHO", 30, PALETTE["yellow"])
@@ -908,11 +912,11 @@ func _build_shape_page() -> Control:
 	page.add_child(next)
 	return page
 
-func _shape_card(spec: Array, pos: Vector2, is_what: bool) -> Button:
+func _shape_card(spec: Array, pos: Vector2, is_what: bool, w: float = 440.0) -> Button:
 	var card := Button.new()
 	card.position = pos
-	card.size = Vector2(440, 300)
-	card.pivot_offset = Vector2(220, 150)
+	card.size = Vector2(w, 300)
+	card.pivot_offset = Vector2(w * 0.5, 150)
 	_style_button(card, PALETTE["sage"], 20)
 	_paper_card(card)
 	card.rotation = (0.006 if is_what else -0.005) * (1.0 if pos.x < 500 else (-1.0 if pos.x > 900 else 0.45))
@@ -926,7 +930,7 @@ func _shape_card(spec: Array, pos: Vector2, is_what: bool) -> Button:
 		_restyle_chips())
 	# icon: fixed box at the top, texture assigned LAST so the box size wins
 	var icon := TextureRect.new()
-	icon.position = Vector2(158, 12)
+	icon.position = Vector2(w * 0.5 - 62.0, 12)
 	icon.size = Vector2(124, 124)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -936,18 +940,18 @@ func _shape_card(spec: Array, pos: Vector2, is_what: bool) -> Button:
 	var nm := _dlabel(String(spec[0]).to_upper(), 30, PALETTE["ink"])
 	nm.name = "nm"
 	nm.position = Vector2(20, 128)
-	nm.size = Vector2(400, 44)
+	nm.size = Vector2(w - 40.0, 44)
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(nm)
-	var ds := _label(String(spec[2]), 27, Color(PALETTE["ink"], 0.88))
+	var ds := _label(String(spec[2]), 27 if w >= 440.0 else 24, Color(PALETTE["ink"], 0.88))
 	ds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	ds.custom_minimum_size = Vector2(384, 0)
+	ds.custom_minimum_size = Vector2(w - 56.0, 0)
 	ds.position = Vector2(28, 184)
 	ds.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ds.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(ds)
-	ds.set_deferred("size", Vector2(384, 0))
+	ds.set_deferred("size", Vector2(w - 56.0, 0))
 	# the picked-state check chip
 	var chk := Label.new()
 	chk.name = "chk"
@@ -955,7 +959,7 @@ func _shape_card(spec: Array, pos: Vector2, is_what: bool) -> Button:
 	chk.add_theme_font_override("font", _font)
 	chk.add_theme_font_size_override("font_size", 34)
 	chk.add_theme_color_override("font_color", PALETTE["coral"])
-	chk.position = Vector2(396, 6)
+	chk.position = Vector2(w - 44.0, 6)
 	chk.visible = false
 	card.add_child(chk)
 	return card

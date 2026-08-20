@@ -36,6 +36,7 @@ var _page_body: Control            # every page element is a child of the tilted
 var _free_text: Dictionary = {}    # page index -> what the player has written there
 var _week_sheet := 0               # 0 = what your move caused, 1 = what is left
 var _turn_dir := 0                 # the pending page-turn: +1 forward, -1 back, 0 none
+var _lock_ready_last := false      # so typing only rebuilds the lock when readiness flips
 var _seen_spreads := {}            # "week:page:sheet" -> the ink is already dry
 var _week_told := 0                # how much of the story sheet one got through
 ## The capture harness in main.gd reaches for the old two-page frames; both now
@@ -1526,16 +1527,11 @@ func _show_spread() -> void:
 	# performs the writing; turning back (or forward again) opens a written page,
 	# because a log book that rewrote itself on every glance would be a screen,
 	# not a book.
-	var spread_key := "%d:%d:%d" % [state.week, _page_i, _week_sheet]
+	var spread_key := "%d:%d" % [state.week, _page_i]
 	pg.instant = _seen_spreads.has(spread_key)
 	_seen_spreads[spread_key] = true
 	pg.build("WEEK %d" % state.week, _scene_id)
 	pg.prev_page.connect(func():
-		if _page_i == 0 and _week_sheet == 1:
-			_week_sheet = 0
-			_turn_dir = -1
-			_show_spread()
-			return
 		if _page_i == 0:
 			_close_journal()
 			return
@@ -1543,28 +1539,25 @@ func _show_spread() -> void:
 		_turn_dir = -1
 		_show_spread())
 	pg.next_page.connect(func():
-		if _page_i == 0 and _week_sheet == 0:
-			_week_sheet = 1
-			_turn_dir = 1
-			_show_spread()
-			return
-		_week_sheet = 0
-		_page_i = mini(_page_i + 1, 4)
+		_page_i = mini(_page_i + 1, 1)
 		_turn_dir = 1
 		_show_spread())
-	pg.written.connect(func(t): _free_text[_page_i] = t)
+	pg.written.connect(func(t):
+		_free_text[_page_i] = t
+		var now_ready: bool = String(t).strip_edges() != "" or not _pending_free.is_empty()
+		if now_ready != _lock_ready_last and _page_i == 1:
+			_lock_button())
+	# THE 60-SECOND WEEK (owner redesign): the book holds exactly TWO spreads.
+	# Spread 0 — THE WEEK THAT WAS: the world's reply, the deltas, the crew. Read only.
+	# Spread 1 — THE WEEK AHEAD: the situation, a few chips, the big written move,
+	# and the only commit in the loop. Everything the five old pages asked for in
+	# widgets, the founder now simply WRITES, and the world adjudicates.
 	match _page_i:
 		0:
-			_page_consequences()
+			_spread_was()
 		1:
-			_page_people()
-		2:
-			_page_work()
-		3:
-			_page_situation()
-		4:
-			_page_decision()
-	pg.arrows(true, _page_i < 4)
+			_spread_ahead()
+	pg.arrows(_page_i > 0, _page_i < 1)
 	if _turn_dir != 0:
 		pg.enter_turn(_turn_dir)
 		_turn_dir = 0
@@ -1627,6 +1620,123 @@ func _line_h(zone: String, text: String) -> float:
 
 func _fits(zone: String, text: String) -> bool:
 	return _jp.room_left(zone) > _line_h(zone, text) + 12.0
+
+## ── SPREAD 0 · THE WEEK THAT WAS — the world's reply, then the numbers ─────
+## Read only. The voice leads: the DM's narration is the page; the short verdict
+## lines follow as faint annotations; then one strip of drawings for the numbers
+## and one strip of faces for the crew. Nothing here asks for input.
+func _spread_was() -> void:
+	# THE PAGE IS BUDGETED BACKWARDS: the two strips get ~310px above the fence,
+	# the annotations two rules, and the narration is trimmed to whatever remains.
+	# The first cut of this page did none of that and the numbers fell off the
+	# paper curl — the exact class of defect this book exists to never show.
+	var has_crew := _crew_faces().size() > 1
+	var strips_h: float = 160.0 + (150.0 if has_crew else 0.0)
+	var lines := _story_lines()
+	var vt := String(_last_outcome.get("verdict", ""))
+	if lines.is_empty():
+		_jp.line("Week one. Nothing has happened to you yet. After this, everything that does is yours."
+			if state.week <= 1
+			else "A quiet week. The rent noticed it anyway.")
+	else:
+		var narr := ""
+		var shorts: Array = []
+		for l in lines:
+			if bool((l as Array)[2]) and narr == "":
+				narr = String((l as Array)[0])
+			else:
+				shorts.append(l)
+		var short_h: float = 51.0 * float(mini(shorts.size(), 1))
+		if narr != "":
+			_jp.line_fitted(narr, strips_h + short_h)
+			if vt in ["brilliant", "backfired"]:
+				_jp.margin_mark("star" if vt == "brilliant" else "cross")
+		# ONE annotation, full ink. Faint text under a printed rule read as
+		# struck-through; the margin mark already carries the judgement.
+		if not shorts.is_empty():
+			_jp.line(String((shorts[0] as Array)[0]))
+	_delta_strip()
+	_crew_strip()
+
+## The week's numbers as drawings, not sentences: the jar of runway, the build,
+## the crowd. Values live in one-line captions; nothing is pressable.
+func _delta_strip() -> void:
+	if _jp.room_to_fence("ending") < 150.0:
+		_jp.line("$%s · v0.%d · %d customers" % [_fmt(state.cash), state.product, state.traction], false, "ending")
+		return
+	var net := state.burn_per_week()
+	var weeks := 999 if net <= 0 else maxi(0, int(floor(float(state.cash) / float(net))))
+	var runway_txt := ("%d wks" % weeks) if weeks < 999 else "gaining"
+	var chips := [
+		{"id": "cash", "tex": _jicon("cash", "itm_savings_jar"), "text": "$%s\n%s" % [_fmt(state.cash), runway_txt]},
+		{"id": "prod", "tex": _jicon("product", "itm_laptop"), "text": "v0.%d" % state.product},
+		{"id": "cust", "tex": _jicon("customers", "gv/chart_1"), "text": "%d customers" % state.traction},
+	]
+	var row := _jp.icon_row(chips, Vector2(124, 116), "ending")
+	for slot in row.get_children():
+		(slot as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+## The journal's OWN drawings first (doodles a founder would make), the big
+## art's sprites only until those land. The doodle set is generated + decomposed
+## offline into assets/journal_icons/.
+func _jicon(name: String, fallback: String) -> Texture2D:
+	var p := "res://assets/journal_icons/%s.png" % name
+	if ResourceLoader.exists(p):
+		var t: Texture2D = load(p)
+		if t != null:
+			return t
+	return _tex(fallback)
+
+## Who is still here, at a glance: small faces, moods drawn on them, no input.
+func _crew_strip() -> void:
+	var faces := _crew_faces()
+	if faces.size() <= 1 or _jp.room_to_fence("ending") < 150.0:
+		return
+	var row := _jp.icon_row(faces.slice(0, 5), Vector2(110, 100), "ending")
+	for slot in row.get_children():
+		(slot as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+func _crew_faces() -> Array:
+	var slugs := {"tech": "technical", "technical": "technical", "business": "business",
+		"sales": "business", "hustler": "idea", "the idea friend": "idea", "design": "design"}
+	var faces: Array = []
+	faces.append({"id": "you", "tex": _tex("chr_arch_%s" % state.archetype_id), "text": "you"})
+	for i in state.cofounders.size():
+		var cf: Dictionary = state.cofounders[i]
+		if not cf.has("loyalty"):
+			cf["loyalty"] = 70
+		var loy := int(cf["loyalty"])
+		var mood := "happy" if loy > 70 else ("neutral" if loy > 30 else "resentful")
+		var slug: String = slugs.get(String(cf.get("role", "Technical")).to_lower(), "technical")
+		faces.append({"id": "cf%d" % i, "tex": _tex("cf_%s_%s" % [slug, mood]),
+			"text": String(cf.get("role", "?")).to_lower()})
+	for e in state.employees:
+		var bs := GameState.burnout_state(int(e.get("burnout", 0)))
+		faces.append({"id": "emp", "tex": _tex("cf_technical_%s" % ("resentful" if bs in ["cooked", "gone"] else ("neutral" if bs == "frayed" else "happy"))),
+			"text": String(e.get("name", "hire")).to_lower()})
+	return faces
+
+## ── SPREAD 1 · THE WEEK AHEAD — the situation, then the pen. Nothing else. ──
+## Owner redesign: NO options before the player writes. The page states the
+## situation and offers one CLEAN, unmistakable writing area. What you write is
+## your move; the world adjudicates it; locking is the only button.
+func _spread_ahead() -> void:
+	var situation := ""
+	if _current_event.is_empty():
+		situation = "Nothing came for you this week. The week is yours — what do you do with it?"
+	else:
+		situation = String(_current_event.get("title", "")) + " — " + String(_current_event.get("body", ""))
+	# the field gets FIVE rules of reserved paper: it is the page's centrepiece
+	_jp.line_fitted(situation, _jp.rule_pitch() * 5.0 + 60.0)
+	if _adjudicating:
+		_jp.line("the world considers your move...", true, "ending")
+		_lock_button()
+		return
+	var te := _jp.write_field("", "ending")
+	te.placeholder_text = "write what you actually do…"
+	te.text = String(_free_text.get(_page_i, ""))
+	_wire_free(te)
+	_lock_button()
 
 func _page_consequences() -> void:
 	if _week_sheet == 1:
@@ -1953,7 +2063,7 @@ func _wire_free(te: TextEdit) -> void:
 			te.accept_event()
 			var t := te.text.strip_edges()
 			if t != "":
-				_free_move(t))
+				_commit_from_text())
 
 func _choice_lock_reason(choice: Dictionary) -> String:
 	if choice.has("needs_item") and not state.has_item(String(choice["needs_item"])):
@@ -1977,7 +2087,10 @@ func _lock_button() -> void:
 	for c in _jp.space.get_children():
 		if c.has_meta("lock"):
 			c.queue_free()
-	var ready := (not _pending_choice.is_empty()) or (not _pending_free.is_empty()) or _current_event.is_empty()
+	# READY = THE FOUNDER WROTE SOMETHING. The written move is the game's whole
+	# interface now; a verdict already in hand also counts (Enter path).
+	var ready := (not _pending_free.is_empty()) or _jp.written_text() != ""
+	_lock_ready_last = ready
 	var b := Button.new()
 	b.set_meta("lock", true)
 	b.text = "lock the week" if ready else "...decide first"
@@ -2020,7 +2133,33 @@ func _commit_week(b: Button) -> void:
 		stroke.progress = p
 		stroke.queue_redraw(), 0.0, 1.0, 0.14)
 	tw.tween_interval(0.10)
-	tw.tween_callback(_lock_week)
+	tw.tween_callback(_commit_from_text)
+
+## ONE press does the whole thing: the written move goes to the world, the
+## verdict comes back, the week applies, the beat opens. The old flow made the
+## player lock twice (once to ask, once to accept) — the 60-second week locks once.
+func _commit_from_text() -> void:
+	if _adjudicating:
+		return
+	if not _pending_free.is_empty():
+		_lock_week()
+		return
+	var t := _jp.written_text() if _jp != null and is_instance_valid(_jp) else ""
+	if t == "":
+		t = String(_free_text.get(1, "")).strip_edges()
+	if t == "":
+		_lock_week()
+		return
+	_adjudicating = true
+	state.log_action("wrote: %s" % t.left(80))
+	generator.adjudicate(state, _current_event, t, func(res: Dictionary):
+		_adjudicating = false
+		var verdict := res
+		if verdict.is_empty():
+			verdict = EventGenerator.keyless_adjudication()
+		verdict["player_text"] = t
+		_pending_free = verdict
+		_lock_week())
 
 ## One underline in the founder's pen, drawn left to right at commit.
 class _PenStroke:
@@ -2267,7 +2406,13 @@ func _apply_lock(work_results: Dictionary) -> void:
 			"heard": String(_pending_free.get("interpreted_as", "")),
 			"narration": String(_pending_free.get("narration", "")),
 			"reality": String(_pending_free.get("reality_check", "")),
-			"dec_log": log, "log": outcome_log}
+			"dec_log": log, "log": outcome_log,
+			# THE FULL DM PAYLOAD RIDES THE OUTCOME. The one-press commit sets the
+			# verdict and locks in the same frame, so a per-frame poll upstream can
+			# miss the pending dict entirely — the exact silent failure that kept
+			# the whole beat-and-render pipeline dark through a real playthrough.
+			# The outcome is the durable place; main consumes `dm` exactly once.
+			"dm": _pending_free.duplicate(true)}
 	elif not _pending_choice.is_empty():
 		var log2 := EffectOps.apply_all(_pending_choice.get("effects", []), state)
 		for l2 in log2:

@@ -81,7 +81,7 @@ func _go() -> void:
 
 	screen._open_journal()
 	await create_timer(0.6).timeout
-	for i in 5:
+	for i in 2:
 		screen._page_i = i
 		print("SPREAD %d composing" % i)
 		screen._show_spread()
@@ -89,13 +89,13 @@ func _go() -> void:
 		await RenderingServer.frame_post_draw
 		var img := root.get_viewport().get_texture().get_image()
 		img.save_png("%s/stress_p%d.png" % [dir, i])
-	print("STRESS DONE: 5 spreads captured to " + dir)
+	print("STRESS DONE: %d spreads captured to %s" % [2, dir])
 	# Optional second pass: film the page TURN (arrow press -> old sheet away,
 	# new sheet lands, reveal begins). Run WITHOUT RUNWAY_INSTANT_PAGES to see
 	# the writing start after the paper settles.
 	# Film the COMMIT: the pen stroke under "lock the week", the beat, the turn.
 	if OS.get_environment("RUNWAY_LOCK_FILM") != "":
-		screen._page_i = 4
+		screen._page_i = 1
 		screen._show_spread()
 		await create_timer(0.8).timeout
 		var lock: Button = null

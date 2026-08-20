@@ -408,9 +408,11 @@ func write_field(prompt: String = "...or write what you actually do", zone: Stri
 	_cascade(zone)
 	# When the sheet is nearly spent, the PROMPT is the line that steps aside — the
 	# ruled hint and the resting nib already say "write here", and a prompt printed
-	# on the page curl said something worse about the whole book.
+	# on the page curl said something worse about the whole book. An empty prompt
+	# skips the line on purpose: a page with choices above the field needs no words
+	# to explain the ruled lines.
 	var room_now: float = _hard_floor() - _snap(float(_cursor.get(zone, 0.0)))
-	if room_now >= _line_advance(SIZE_BODY) + rule_pitch() * 2.0:
+	if prompt != "" and room_now >= _line_advance(SIZE_BODY) + rule_pitch() * 2.0:
 		line(prompt, true, zone)
 	_cascade(zone)
 	var y: float = _cursor.get(zone, 0.0)
@@ -429,8 +431,9 @@ func write_field(prompt: String = "...or write what you actually do", zone: Stri
 	for s in ["normal", "focus", "read_only"]:
 		_input.add_theme_stylebox_override(s, StyleBoxEmpty.new())
 	# Give the writing area a real height: it must be a big, obvious place to write,
-	# not a one-line slot. Two ruled lines minimum, more when the page has room.
-	var hgt: float = maxf(rule_pitch() * 2.0, minf(rule_pitch() * 4.0, zone_bottom(zone) - y - 8.0))
+	# not a one-line slot. Two ruled lines minimum, up to five when the page has
+	# room — on the decision spread the field IS the page.
+	var hgt: float = maxf(rule_pitch() * 2.0, minf(rule_pitch() * 5.0, _hard_floor() - y - 8.0))
 	# ...but the CONTROLS FENCE wins over the zone: the field stops at the hard floor
 	# so the lock line and the arrows always keep their two rules. It still never
 	# drops under 1.2 rules — the written move is the game's core and a zero-height
@@ -449,18 +452,37 @@ func write_field(prompt: String = "...or write what you actually do", zone: Stri
 	nib.set_deferred("size", Vector2(sp.y - sp.x, hgt))
 	space.add_child(nib)
 	space.move_child(nib, max(space.get_child_count() - 2, 0))
+	# THE CARET BELONGS TO THE WRITER. An earlier version forced it to the last
+	# line on every keystroke "to follow the pen down the page" — which meant
+	# editing the middle of your own sentence teleported you to its end (reported
+	# live: "when finishing the line it goes back to the beginning"). TextEdit
+	# already keeps its caret in view; the page only watches the words.
 	_input.text_changed.connect(func() -> void:
 		nib.written = _input.text.strip_edges() != ""
 		nib.queue_redraw()
-		# follow the pen down the page as it fills
-		# maxi/maxf, never the untyped max(): it returns Variant, and this project
-		# treats warnings as errors, so one `max()` here failed journal_page, then
-		# garage_view_screen, then main — the whole game booted to a blank screen.
-		var last: int = maxi(_input.get_line_count() - 1, 0)
-		_input.set_caret_line(last)
-		var visible_rules: int = int(_input.size.y / maxf(rule_pitch(), 1.0))
-		_input.scroll_vertical = float(maxi(0, last - visible_rules + 1))
 		written.emit(_input.text))
+	# TYPED INK RIDES THE PRINTED RULES. The field's line height is pinned to the
+	# page's own rule pitch, so what you write sits on the ruling like every
+	# drawn line — and the hint's rules can never strike through your words.
+	_input.add_theme_constant_override("line_spacing",
+			maxi(int(rule_pitch() - _font.get_height(SIZE_BODY)), 0))
+	nib.pitch = rule_pitch()
+	nib.ascent = _font.get_ascent(SIZE_BODY)
+	# a scrollbar is a piece of software on a sheet of paper: invisible, inert
+	var vsb := _input.get_v_scroll_bar()
+	if vsb != null:
+		vsb.modulate = Color(1, 1, 1, 0)
+		vsb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# ghost handwriting says "this is yours to fill" before the first keystroke
+	_input.add_theme_color_override("font_placeholder_color", Color(INK, 0.30))
+	# the ruling presses coral while the pen is in your hand — the same signal
+	# PaperInput taught the setup screens
+	_input.focus_entered.connect(func() -> void:
+		nib.focused = true
+		nib.queue_redraw())
+	_input.focus_exited.connect(func() -> void:
+		nib.focused = false
+		nib.queue_redraw())
 	# THE FIELD IS INVISIBLE BY DESIGN — no box, no border, the ruling IS the field.
 	# That makes it undiscoverable unless it already has focus, which is why the
 	# owner reported "I actually cannot write at all": there was nothing to aim at.
@@ -718,6 +740,11 @@ func _item_secs(it: Dictionary) -> float:
 func written_text() -> String:
 	return _input.text.strip_edges() if _input != null else ""
 
+## The live field itself, for hosts whose chips write INTO the pen (a tapped
+## intent fills the sentence; the player edits or locks). Null before write_field.
+func input_field() -> TextEdit:
+	return _input if _input != null and is_instance_valid(_input) else null
+
 ## THE SHAPE EVERY PAGE ENDS IN (owner: each page states the situation, then asks
 ## what you want to do). Composing it here means no page can forget the written
 ## move or bury the question.
@@ -728,14 +755,17 @@ func written_text() -> String:
 ## laid, the prose gets what remains (and is cut to it, mid-story, with an
 ## ellipsis — a trimmed anecdote is a smaller loss than a missing answer), and
 ## the page always ends the way the game is played: with room to act.
-func ask(situation: String, options: Array, allow_write: bool = true) -> Control:
+func ask(situation: String, options: Array, allow_write: bool = true,
+		prompt: String = "...or write what you actually do") -> Control:
 	_cascade("body")
 	var pitch := rule_pitch()
 	var start: float = _snap(float(_cursor.get("body", 0.0)))
 	var reserve: float = _row_estimate(options) + GAP
 	if allow_write:
-		# the "...or write" prompt line, then at least two ruled lines of field
-		reserve += _line_advance(SIZE_BODY) + GAP + pitch * 2.0 + GAP
+		# the prompt line (when one is wanted), then two ruled lines of field
+		reserve += pitch * 2.0 + GAP
+		if prompt != "":
+			reserve += _line_advance(SIZE_BODY) + GAP
 	var avail: float = _hard_floor() - start - reserve
 	var fit: int = maxi(int(floor(avail / _line_advance(SIZE_BODY))), 2)
 	var lines := _wrap_lines(situation, SIZE_BODY)
@@ -751,7 +781,7 @@ func ask(situation: String, options: Array, allow_write: bool = true) -> Control
 	line(told, false, "body")
 	var row := icon_row(options)
 	if allow_write:
-		write_field()
+		write_field(prompt)
 	return row
 
 ## What an icon_row of these items WILL measure, computed the same way icon_row
@@ -794,7 +824,8 @@ func margin_mark(kind: String) -> void:
 	var m := _MarginMark.new()
 	m.kind = kind
 	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	m.position = Vector2(8.0, _last_block_y - 6.0)
+	# inside the paper: x=8 sat on the torn edge and the mark came out half-cut
+	m.position = Vector2(16.0, _last_block_y - 6.0)
 	m.set_deferred("size", Vector2(34, 40))
 	space.add_child(m)
 	if not instant:
@@ -875,23 +906,46 @@ func _shaped(text: String, sz: int, col: Color, zone: String, align: int) -> voi
 const CAP_MAX_LINES := 3
 
 func _cap_lines(text: String, w: float) -> String:
-	var words := text.split(" ", false)
+	# explicit newlines are the caller's layout and are kept as line breaks
 	var out := PackedStringArray()
-	var cur := ""
-	for wd in words:
-		var trial: String = String(wd) if cur == "" else cur + " " + String(wd)
-		if _font.get_string_size(trial, HORIZONTAL_ALIGNMENT_CENTER, -1, SIZE_BODY).x <= w or cur == "":
-			cur = trial
-		else:
+	for seg in text.split("\n"):
+		if out.size() >= CAP_MAX_LINES:
+			break
+		var words := String(seg).split(" ", false)
+		var cur := ""
+		for wd in words:
+			var trial: String = String(wd) if cur == "" else cur + " " + String(wd)
+			if _font.get_string_size(trial, HORIZONTAL_ALIGNMENT_CENTER, -1, SIZE_BODY).x <= w or cur == "":
+				cur = trial
+			else:
+				out.append(cur)
+				cur = String(wd)
+				if out.size() >= CAP_MAX_LINES:
+					break
+		if cur != "" and out.size() < CAP_MAX_LINES:
 			out.append(cur)
-			cur = String(wd)
-			if out.size() == CAP_MAX_LINES:
-				break
-	if out.size() < CAP_MAX_LINES and cur != "":
-		out.append(cur)
-	elif cur != "" and out.size() == CAP_MAX_LINES:
-		out[CAP_MAX_LINES - 1] = String(out[CAP_MAX_LINES - 1]) + " …"
+		elif cur != "" and out.size() >= CAP_MAX_LINES:
+			out[CAP_MAX_LINES - 1] = String(out[CAP_MAX_LINES - 1]) + " …"
+			break
 	return "\n".join(out)
+
+## Prose that must leave room for what follows it: trimmed with an ellipsis to
+## fit above `reserve` pixels of the fence, never below two rules. The same
+## contract ask() gives its situation, offered to any host block.
+func line_fitted(text: String, reserve: float, zone: String = "body", faint: bool = false) -> void:
+	_cascade(zone)
+	var start: float = _snap(float(_cursor.get(zone, 0.0)))
+	var avail: float = _hard_floor() - start - reserve
+	var fit: int = maxi(int(floor(avail / _line_advance(SIZE_BODY))), 2)
+	var lines := _wrap_lines(text, SIZE_BODY)
+	var told := text
+	if lines.size() > fit:
+		var kept := lines.slice(0, fit)
+		var lastl := String(kept[fit - 1])
+		var cut := lastl.rfind(" ")
+		kept[fit - 1] = (lastl.substr(0, cut) if cut > 24 else lastl) + " …"
+		told = " ".join(kept)
+	line(told, faint, zone)
 
 ## Greedy wrap against the constant writable span — one shared implementation, so
 ## measuring for a budget and placing for real can never disagree.
@@ -1029,24 +1083,30 @@ func _arrow(pos: Vector2, forward: bool) -> Button:
 	space.add_child(b)
 	return b
 
-## Marks the writing area as a writing area: the rule you write on, and a pen nib
-## resting at its start until you have written something.
+## Marks the writing area as a writing area: the rules you write on, and a pen nib
+## resting at the first one until you have written something. The rules sit at the
+## PAGE'S pitch, aligned just under where the field actually draws its baselines,
+## so the guide can never strike through the player's own words.
 class _WriteHint:
 	extends Control
 	var written := false
+	var focused := false
+	var pitch := 48.0
+	var ascent := 34.0
 	func _draw() -> void:
-		var pitch: float = max(size.y * 0.5, 30.0)
-		var y := pitch - 6.0
-		while y < size.y:
+		var strong := focused or not written
+		var y: float = ascent + 8.0
+		while y < size.y + 2.0:
 			var pts := PackedVector2Array()
 			var rng := RandomNumberGenerator.new()
 			rng.seed = 17
 			for i in 33:
 				pts.append(Vector2(size.x * float(i) / 32.0, y + rng.randf_range(-1.0, 1.0)))
-			draw_polyline(pts, Color(JournalPage.PEN, 0.30), 2.5, true)
-			y += pitch
+			draw_polyline(pts, Color(JournalPage.PEN, 0.55 if strong else 0.30),
+					3.0 if strong else 2.5, true)
+			y += maxf(pitch, 24.0)
 		if not written:
-			draw_circle(Vector2(2.0, pitch - 10.0), 4.0, Color(JournalPage.PEN, 0.75))
+			draw_circle(Vector2(2.0, ascent + 2.0), 4.5, Color(JournalPage.PEN, 0.9))
 
 ## The pen that rides the tip of the ink while the page writes itself. At page
 ## scale the first draft read as a stray tick, so this is a real slender pen:
