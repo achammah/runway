@@ -592,7 +592,11 @@ func _pump_era_queue() -> void:
 	scr.setup(_era_queue.pop_front())
 	scr.done.connect(func():
 		_era_overlay = null
-		_pump_era_queue())
+		_pump_era_queue()
+		# FIRST DAY IN THE NEW PLACE (owner: "space still empty"): arriving in an
+		# era renders the new home WITH the crew in it, exactly like founding day.
+		if _era_queue.is_empty():
+			_era_scene())
 	scr.z_index = 100   # a screen swapped in underneath must not bury the beat
 	_era_overlay = scr
 	add_child(scr)
@@ -630,6 +634,7 @@ func _start_run() -> void:
 			var g0 := GarageViewScreen.new()
 			g0.setup(state, content, rng, record, generator)
 			g0.done.connect(_after_grind)
+			g0.week_committing.connect(_drop_curtain)
 			_swap(g0)
 			return
 	var seed_value := int(Time.get_unix_time_from_system())
@@ -704,8 +709,45 @@ func _after_draft(result: Dictionary) -> void:
 	var g := GarageViewScreen.new()
 	g.setup(state, content, rng, record, generator)
 	g.done.connect(_after_grind)
+	g.week_committing.connect(_drop_curtain)
 	_swap(g)
 	_opening_scene()
+
+## Moving day: the new era's home, generated with the whole crew unpacking in it.
+const ERA_ROOMS := {
+	"garage": "a scrappy suburban garage workspace",
+	"coworking": "a bright coworking floor with hot desks, a phone booth and a coffee corner",
+	"office": "the company's first proper small office: a handful of desks and a window",
+	"floor": "a full open-plan startup floor of desk rows and monitors",
+	"hq": "a top-floor headquarters with floor-to-ceiling glass and a skyline",
+}
+
+func _era_scene() -> void:
+	if not _art_enabled() or OS.get_environment("RUNWAY_GPT_SCENES") == "0":
+		return
+	if director == null or state == null or state.dead:
+		return
+	var scene := {
+		"novel_place": ("%s — the new home of %s, a %s company for %s that %s. Moving day: "
+				+ "a few boxes still packed, the good chair already claimed.") % [
+			String(ERA_ROOMS.get(state.era, "a startup workspace")), state.company_name,
+			state.biz_what.to_lower(), state.biz_who.to_lower(),
+			state.company_idea if state.company_idea != "" else "keeps going anyway"],
+		"place": state.era, "condition": "steady", "time": "day", "framing": "wide",
+		"beat": "moving day",
+	}
+	var cast: Array = [{"who": "founder", "mood": "fine", "doing": "claiming the desk by the window"}]
+	var role_who := {"Technical": "tech", "Business": "business", "Design": "tech",
+		"Sales": "sales", "The Hustler": "hustler", "The Idea Friend": "idea_friend"}
+	for cf in state.cofounders:
+		cast.append({"who": String(role_who.get(String(cf.get("role", "Technical")), "tech")),
+			"mood": "fine", "doing": "carrying a labelled box"})
+	var pack := _cast_pack(cast)
+	_scene_seq = _turn_seq
+	_scene_headline = "MOVING DAY"
+	_last_stage_sig = ""
+	director.make_scene_v2(scene, pack["cast"], pack["urls"], "moving day",
+			"era_%s_run%d" % [state.era, record.seed_value if record != null else 0])
 
 ## THE FIRST IMAGE IS YOURS (owner directive): generated at launch from the type,
 ## the segment, the capital and the pitch itself, with the founder and the
@@ -815,6 +857,26 @@ func _next_chapter() -> void:
 
 ## The beat never holds a reader longer than this, whatever the render is doing.
 const HOLD_CEILING := 150.0
+
+## The lock answers INSTANTLY (owner: "it works but doesn't do anything on the
+## click"): the theater curtain drops the moment the week commits, the world
+## does its thinking behind it, and it rises on the reading beat. If nothing
+## arrives (keyless, dead network), it rises anyway — a curtain that stays shut
+## is a hang, and 12 seconds is the most a beat may keep its audience waiting.
+func _drop_curtain() -> void:
+	if _curtain == null or not is_instance_valid(_curtain):
+		_curtain = Curtain.new()
+		add_child(_curtain)
+	move_child(_curtain, get_child_count() - 1)
+	_curtain.close()
+	get_tree().create_timer(12.0).timeout.connect(func() -> void:
+		if _curtain != null and is_instance_valid(_curtain) and _curtain.visible \
+				and not _turn_busy:
+			_curtain.open())
+
+func _raise_curtain() -> void:
+	if _curtain != null and is_instance_valid(_curtain) and _curtain.visible:
+		_curtain.open()
 ## Cast sprite URLs, uploaded once by the scene pipeline. res:// paths are useless
 ## here — the image API has to be able to FETCH every reference.
 const CAST_REFS := "res://assets/scenes/refs.json"
@@ -853,6 +915,7 @@ var _last_stage_sig := ""           # place|condition|cast of the last rendered 
 var _scene_headline := ""           # the DM's title for it, kept for a late arrival
 var _beat: LoadingScreen
 var _scene_layer: Control
+var _curtain: Curtain
 
 ## A worker still running at shutdown must be joined, or the engine reports a thread
 ## that was never disposed. Blocking here is correct: the game is already closing.
@@ -966,8 +1029,8 @@ func _harness() -> bool:
 ## belongs to another lane's file, and if it is ever renamed this must fall back to
 ## the authored week, not take the game down with it.
 func _poll_turn(gv: GarageViewScreen) -> void:
-	if _turn_busy or director == null:
-		return
+	if _turn_busy or director == null or gv == null or not is_instance_valid(gv):
+		return   # the era overlay or an ending can free the screen mid-frame
 	# THE DURABLE PATH: a locked week leaves its full DM payload ON the outcome.
 	# The one-press commit can set and consume the pending verdict inside a single
 	# frame, so racing it with a poll silently loses the beat — reading the outcome
@@ -1093,6 +1156,9 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 	l.say("They heard", String(dm.get("interpreted_as", "")))
 	l.say("", String(dm.get("narration", "")))
 	l.say("", String(dm.get("reality_check", "")))
+	if _curtain != null and is_instance_valid(_curtain):
+		move_child(_curtain, get_child_count() - 1)
+	_raise_curtain()
 
 	var deadline := Time.get_ticks_msec() + int(HOLD_CEILING * 1000.0)
 	# THE ROOM HAS TO EXIST AT A URL BEFORE ANYTHING CAN BE PAINTED INTO IT. The reader

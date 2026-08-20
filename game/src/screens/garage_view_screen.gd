@@ -9,6 +9,7 @@ extends Control
 ## the Simulation Engine adjudicates.
 
 signal done(result: Dictionary)
+signal week_committing            # the lock was pressed: drop the curtain NOW
 
 const PALETTE := {
 	"cream": Color("F2EAD3"), "ink": Color("1E1E1E"), "coral": Color("E86A5C"),
@@ -1787,13 +1788,21 @@ func _crew_faces() -> Array:
 ## situation and offers one CLEAN, unmistakable writing area. What you write is
 ## your move; the world adjudicates it; locking is the only button.
 func _spread_ahead() -> void:
+	# WHERE YOU STAND, one faint line — the ask is meaningless without it
+	var net := state.burn_per_week()
+	var weeks := 999 if net <= 0 else maxi(0, int(floor(float(state.cash) / float(net))))
+	_jp.line("$%s · %s · %d customers · v0.%d" % [
+			_fmt(state.cash), ("%d wks left" % weeks) if weeks < 999 else "making money",
+			state.traction, state.product], true)
 	var situation := ""
 	if _current_event.is_empty():
-		situation = "Nothing came for you this week. The week is yours — what do you do with it?"
+		situation = "Nothing came for you this week. The week is yours."
 	else:
 		situation = String(_current_event.get("title", "")) + " — " + String(_current_event.get("body", ""))
-	# the field gets FIVE rules of reserved paper: it is the page's centrepiece
-	_jp.line_fitted(situation, _jp.rule_pitch() * 5.0 + 60.0)
+	# the field gets FOUR rules of reserved paper plus the ASK LINE, which is
+	# never trimmed: a situation that cannot ask is not a situation
+	_jp.line_fitted(situation, _jp.rule_pitch() * 4.0 + 60.0)
+	_jp.line("So — what do you do?")
 	if _adjudicating:
 		_jp.line("the world considers your move...", true, "ending")
 		_lock_button()
@@ -2157,9 +2166,12 @@ func _lock_button() -> void:
 	# interface now; a verdict already in hand also counts (Enter path).
 	var ready := (not _pending_free.is_empty()) or _jp.written_text() != ""
 	_lock_ready_last = ready
+	if _adjudicating:
+		ready = false
 	var b := Button.new()
 	b.set_meta("lock", true)
-	b.text = "lock the week" if ready else "...decide first"
+	b.text = ("the world considers..." if _adjudicating
+			else ("lock the week" if ready else "...decide first"))
 	b.add_theme_font_override("font", _font)
 	b.add_theme_font_size_override("font_size", 34)
 	b.add_theme_color_override("font_color", PALETTE["coral"] if ready else Color(PALETTE["ink"], 0.35))
@@ -2207,6 +2219,7 @@ func _commit_week(b: Button) -> void:
 func _commit_from_text() -> void:
 	if _adjudicating:
 		return
+	week_committing.emit()
 	if not _pending_free.is_empty():
 		_lock_week()
 		return
@@ -2217,6 +2230,7 @@ func _commit_from_text() -> void:
 		_lock_week()
 		return
 	_adjudicating = true
+	_lock_button()   # the button itself answers: "the world considers..."
 	state.log_action("wrote: %s" % t.left(80))
 	generator.adjudicate(state, _current_event, t, func(res: Dictionary):
 		_adjudicating = false
