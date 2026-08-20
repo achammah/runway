@@ -981,9 +981,10 @@ func _drop_curtain() -> void:
 				and not _turn_busy:
 			_curtain.open())
 
-## The table roll: cup + 3D d20 ON THE ROOM, then the curtain falls. The DM is
-## already thinking while the die tumbles, so the ceremony costs no extra wait.
-var _cup: DiceCup
+## The table roll: the pre-rendered cup-and-die clip for the rolled number plays
+## ON THE ROOM, then the curtain falls. The DM is already thinking while the die
+## tumbles, so the ceremony costs no extra wait.
+var _cup: DiceRoll
 
 func _show_die(n: int) -> void:
 	_roll_ceremony(n)
@@ -991,7 +992,7 @@ func _show_die(n: int) -> void:
 func _roll_ceremony(n: int) -> void:
 	if _cup != null and is_instance_valid(_cup):
 		return
-	_cup = DiceCup.new()
+	_cup = DiceRoll.new()
 	add_child(_cup)
 	move_child(_cup, get_child_count() - 1)
 	_cup.size = get_viewport().get_visible_rect().size

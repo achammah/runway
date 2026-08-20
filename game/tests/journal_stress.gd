@@ -93,6 +93,22 @@ func _go() -> void:
 	# Optional second pass: film the page TURN (arrow press -> old sheet away,
 	# new sheet lands, reveal begins). Run WITHOUT RUNWAY_INSTANT_PAGES to see
 	# the writing start after the paper settles.
+	# Film the DICE: cup shake, pour, 3D tumble, settle, inked number.
+	if OS.get_environment("RUNWAY_DICE_FILM") != "":
+		var cup := DiceRoll.new()
+		root.add_child(cup)
+		cup.size = Vector2(1536, 1024)
+		cup.roll(17)
+		var dts := [0.3, 0.7, 1.15, 1.5, 1.9, 2.5, 3.1]
+		var dt0 := Time.get_ticks_msec()
+		for i in dts.size():
+			var dw: float = float(dts[i]) - float(Time.get_ticks_msec() - dt0) / 1000.0
+			if dw > 0.0:
+				await create_timer(dw).timeout
+			await RenderingServer.frame_post_draw
+			root.get_viewport().get_texture().get_image().save_png("%s/dice_%02d.png" % [dir, i])
+		cup.queue_free()
+		print("DICE FILMED")
 	# Film the COMMIT: the pen stroke under "lock the week", the beat, the turn.
 	if OS.get_environment("RUNWAY_LOCK_FILM") != "":
 		screen._page_i = 1
