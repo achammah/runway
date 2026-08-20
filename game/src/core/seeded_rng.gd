@@ -33,3 +33,7 @@ func weighted_pick(arr: Array, weight_key: String = "weight") -> Variant:
 		if roll <= 0.0:
 			return e
 	return arr.back()
+
+## The week's die. Seeded like everything else, so a daily run's fate is shared.
+func roll_d20() -> int:
+	return randi_range(1, 20)

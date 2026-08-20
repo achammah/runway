@@ -10,6 +10,7 @@ extends Control
 
 signal done(result: Dictionary)
 signal week_committing            # the lock was pressed: drop the curtain NOW
+signal week_rolled(d20: int)      # the die is cast; the ceremony shows it tumble
 
 const PALETTE := {
 	"cream": Color("F2EAD3"), "ink": Color("1E1E1E"), "coral": Color("E86A5C"),
@@ -38,6 +39,7 @@ var _free_text: Dictionary = {}    # page index -> what the player has written t
 var _week_sheet := 0               # 0 = what your move caused, 1 = what is left
 var _turn_dir := 0                 # the pending page-turn: +1 forward, -1 back, 0 none
 var _lock_ready_last := false      # so typing only rebuilds the lock when readiness flips
+var _pending_d20 := 0              # the die this week was rolled on
 var _seen_spreads := {}            # "week:page:sheet" -> the ink is already dry
 var _week_told := 0                # how much of the story sheet one got through
 ## The capture harness in main.gd reaches for the old two-page frames; both now
@@ -1643,6 +1645,19 @@ func _story_lines() -> Array:
 		out.append([narration, false, true])
 	if reality != "":
 		out.append([reality, true, true])
+	# THE RECEIPTS (owner: every impact with its reasoning): each effect prints
+	# with its why — "+$1,200 — the pilot invoice cleared".
+	for eff in _last_outcome.get("dm", {}).get("effects", []):
+		var d: Dictionary = eff
+		var op := String(d.get("op", ""))
+		var why := String(d.get("why", ""))
+		if why == "" or op == "set_flag":
+			continue
+		var v := int(d.get("v", 0))
+		var label: String = {"cash_delta": "$", "product_delta": "product ", "traction_delta": "customers ",
+			"morale_delta": "morale ", "hype_delta": "hype "}.get(op, "")
+		var amt := ("+" if v >= 0 else "−") + (("$" + _fmt(absi(v))) if op == "cash_delta" else str(absi(v)))
+		out.append(["   %s %s — %s" % [amt, "" if op == "cash_delta" else String(label).strip_edges(), why], false, true])
 	return out
 
 func _spread_was() -> void:
@@ -1834,8 +1849,8 @@ func _lock_button() -> void:
 		ready = false
 	var b := Button.new()
 	b.set_meta("lock", true)
-	b.text = ("the world considers..." if _adjudicating
-			else ("lock the week" if ready else "...decide first"))
+	b.text = ("the dice are out..." if _adjudicating
+			else ("ROLL THE WEEK" if ready else "...decide first"))
 	b.add_theme_font_override("font", _font)
 	b.add_theme_font_size_override("font_size", 34)
 	b.add_theme_color_override("font_color", PALETTE["coral"] if ready else Color(PALETTE["ink"], 0.35))
@@ -1894,16 +1909,22 @@ func _commit_from_text() -> void:
 		_lock_week()
 		return
 	_adjudicating = true
-	_lock_button()   # the button itself answers: "the world considers..."
+	_lock_button()   # the button itself answers: "the dice are out..."
 	state.log_action("wrote: %s" % t.left(80))
+	# THE ROLL (owner design: D&D at the heart of the week). The die is cast HERE,
+	# before the world speaks — the DM judges the plan into a DC and narrates the
+	# outcome this exact number earned. Same plan, different die, different week.
+	_pending_d20 = rng.roll_d20() if rng != null and rng.has_method("roll_d20") else (randi() % 20 + 1)
+	week_rolled.emit(_pending_d20)
 	generator.adjudicate(state, _current_event, t, func(res: Dictionary):
 		_adjudicating = false
 		var verdict := res
 		if verdict.is_empty():
 			verdict = EventGenerator.keyless_adjudication()
 		verdict["player_text"] = t
+		verdict["d20"] = _pending_d20
 		_pending_free = verdict
-		_lock_week())
+		_lock_week(), _pending_d20)
 
 ## One underline in the founder's pen, drawn left to right at commit.
 class _PenStroke:
@@ -2177,6 +2198,19 @@ func _apply_lock(work_results: Dictionary) -> void:
 	# whatever branch wrote the week, the save remembers it (minus the one-shot dm)
 	state.last_outcome = _last_outcome.duplicate(true)
 	state.last_outcome.erase("dm")
+	# ...and the run's memory grows one week: what was said, what the die did,
+	# what it cost — the DM reads this back every week from now on
+	var fx: Array = []
+	for eff in _last_outcome.get("dm", {}).get("effects", []):
+		fx.append("%s %s — %s" % [String((eff as Dictionary).get("op", "")),
+			str((eff as Dictionary).get("v", "")), String((eff as Dictionary).get("why", ""))])
+	var roll_d: Dictionary = _last_outcome.get("dm", {}).get("roll", {})
+	state.run_history.append({"wk": state.week, "said": String(_last_outcome.get("said", "")).left(90),
+		"heard": String(_last_outcome.get("heard", "")).left(70),
+		"verdict": String(_last_outcome.get("verdict", "")),
+		"roll": ("d20=%d vs DC %d (%s)" % [int(_last_outcome.get("dm", {}).get("d20", 0)),
+			int(roll_d.get("dc", 0)), String(roll_d.get("stat", ""))]) if not roll_d.is_empty() else "",
+		"fx": fx})
 	_pending_choice = {}
 	_pending_free = {}
 	_pending_people.clear()

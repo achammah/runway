@@ -174,8 +174,8 @@ func _fullrun(dir: String) -> void:
 				continue
 		gv._commit_from_text()
 		if OS.get_environment("RUNWAY_CURTAIN_FILM") != "" and state.week <= 2:
-			for ci in 5:
-				await get_tree().create_timer([0.1, 0.2, 0.25, 0.6, 1.9][ci]).timeout
+			for ci in 6:
+				await get_tree().create_timer([0.1, 0.2, 0.25, 0.6, 1.9, 5.5][ci]).timeout
 				await _shot(dir, "curtain_%02d_wk%02d_%d" % [state.week, state.week, ci])
 		# a live adjudication takes seconds; keyless answers instantly — wait it
 		# out, and NEVER touch the screen again without checking it still exists:
@@ -692,6 +692,7 @@ func _start_run() -> void:
 			g0.setup(state, content, rng, record, generator)
 			g0.done.connect(_after_grind)
 			g0.week_committing.connect(_drop_curtain)
+			g0.week_rolled.connect(_show_die)
 			_swap(g0)
 			return
 	var seed_value := int(Time.get_unix_time_from_system())
@@ -767,8 +768,15 @@ func _after_draft(result: Dictionary) -> void:
 	g.setup(state, content, rng, record, generator)
 	g.done.connect(_after_grind)
 	g.week_committing.connect(_drop_curtain)
+	g.week_rolled.connect(_show_die)
 	_swap(g)
 	_opening_scene()
+
+func _company_ctx() -> Dictionary:
+	if state == null:
+		return {}
+	return {"name": state.company_name, "idea": state.company_idea,
+		"what": state.biz_what, "who": state.biz_who}
 
 ## Moving day: the new era's home, generated with the whole crew unpacking in it.
 const ERA_ROOMS := {
@@ -804,7 +812,7 @@ func _era_scene() -> void:
 	_scene_headline = "MOVING DAY"
 	_last_stage_sig = ""
 	director.make_scene_v2(scene, pack["cast"], pack["urls"], "moving day",
-			"era_%s_run%d" % [state.era, record.seed_value if record != null else 0])
+			"era_%s_run%d" % [state.era, record.seed_value if record != null else 0], _company_ctx())
 
 ## THE FIRST IMAGE IS YOURS (owner directive): generated at launch from the type,
 ## the segment, the capital and the pitch itself, with the founder and the
@@ -839,7 +847,7 @@ func _opening_scene() -> void:
 	_scene_seq = _turn_seq
 	_scene_headline = "DAY ONE"
 	director.make_scene_v2(scene, pack["cast"], pack["urls"], "founding day",
-			"opening_run%d" % (record.seed_value if record != null else 0))
+			"opening_run%d" % (record.seed_value if record != null else 0), _company_ctx())
 
 func _after_grind(result: Dictionary) -> void:
 	# money endings earn the ceremony first; ash goes straight to the last page
@@ -930,6 +938,10 @@ func _drop_curtain() -> void:
 		if _curtain != null and is_instance_valid(_curtain) and _curtain.visible \
 				and not _turn_busy:
 			_curtain.open())
+
+func _show_die(n: int) -> void:
+	if _curtain != null and is_instance_valid(_curtain):
+		_curtain.roll_die(n)
 
 func _raise_curtain() -> void:
 	if _curtain != null and is_instance_valid(_curtain) and _curtain.visible:
@@ -1193,7 +1205,7 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 	elif use_v2:
 		_last_stage_sig = stage_sig
 		director.make_scene_v2(scene, cast_pack["cast"], cast_pack["urls"],
-				String(scene.get("beat", "")), out_name)
+				String(scene.get("beat", "")), out_name, _company_ctx())
 	else:
 		_last_stage_sig = stage_sig
 		director.make_scene(want, String(scene.get("novel_place", "")), cast_pack["cast"],
@@ -1211,13 +1223,28 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 	l.say("", String(dm.get("headline", "")))
 	l.say("You said", String(dm.get("player_text", "")))
 	l.say("They heard", String(dm.get("interpreted_as", "")))
+	# THE JUDGEMENT: the settled die gets its DC and its band before anything
+	# else — the player watches the number they rolled become the week they got.
+	var roll_d: Dictionary = dm.get("roll", {})
+	var d20 := int(dm.get("d20", 0))
+	if d20 > 0 and not roll_d.is_empty():
+		var stt := String(roll_d.get("stat", "grit"))
+		var mod := int(state.competences.get(stt, 3)) - 3
+		var band: String = {"brilliant": "BRILLIANT", "fine": "IT LANDS",
+			"risky": "MIXED RESULT", "backfired": "IT BACKFIRES"}.get(String(dm.get("verdict", "fine")), "IT LANDS")
+		var total := d20 + mod
+		l.say("", "THE ROLL — %d %s%d (%s) = %d vs DC %d: %s." % [d20,
+			"+" if mod >= 0 else "−", absi(mod), stt, total, int(roll_d.get("dc", 10)), band.to_lower()])
+		if _curtain != null and is_instance_valid(_curtain):
+			_curtain.stamp_roll("%d %s%d (%s)  vs  DC %d" % [d20, "+" if mod >= 0 else "−",
+				absi(mod), stt, int(roll_d.get("dc", 10))], band)
 	l.say("", String(dm.get("narration", "")))
 	l.say("", String(dm.get("reality_check", "")))
 	if _curtain != null and is_instance_valid(_curtain):
 		move_child(_curtain, get_child_count() - 1)
-		# never rise mid-drop: the drop is 0.45s; hold one beat of full black so
-		# the reveal reads as a reveal even when the world answered instantly
-		await get_tree().create_timer(0.65).timeout
+		# never rise mid-drop, and let a stamped judgement be READ: the die's
+		# verdict holds a moment before the paper takes over
+		await get_tree().create_timer(1.5 if d20 > 0 else 0.65).timeout
 	_raise_curtain()
 
 	var deadline := Time.get_ticks_msec() + int(HOLD_CEILING * 1000.0)

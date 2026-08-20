@@ -352,7 +352,7 @@ func _v2_save_reg() -> void:
 ## The whole week in one image. `desc` is the DM's place (novel_place preferred,
 ## else the place phrase), `condition` dresses it, `cast` acts in it.
 func make_scene_v2(scene: Dictionary, cast: Array, cast_urls: Array, beat: String,
-		out_name: String) -> void:
+		out_name: String, company: Dictionary = {}) -> void:
 	_v2_load_reg()
 	var desc := String(scene.get("novel_place", "")).strip_edges()
 	if desc == "":
@@ -376,9 +376,18 @@ func make_scene_v2(scene: Dictionary, cast: Array, cast_urls: Array, beat: Strin
 		roster.append({"place": "reference image %d" % (i + 1),
 			"who": String(c.get("role", c.get("who", "founder"))),
 			"doing": String(c.get("doing", "at work"))})
+	# THE TRADE IS IN THE PICTURE. A spa's week happens among towels and treatment
+	# tables; a drone company's among props and battery crates. Without this the
+	# model defaulted every scene to generic desks (owner: "we are doing a spa in
+	# Brussels and we've seen just office spaces, makes no sense").
+	var trade := ""
+	if not company.is_empty():
+		trade = " The company in this scene: %s — %s (%s for %s). The room visibly belongs to THIS trade: its tools, stock and props are present and specific." % [
+			String(company.get("name", "")), String(company.get("idea", "")),
+			String(company.get("what", "")), String(company.get("who", ""))]
 	var instr := {
 		"task": "draw one finished game scene",
-		"scene": desc + ". " + dressing + (" This week: " + beat if beat != "" else ""),
+		"scene": desc + ". " + dressing + trade + (" This week: " + beat if beat != "" else ""),
 		"cast": roster,
 		"character_law": CHARACTER_LAW,
 		"style": STYLE_LAW,

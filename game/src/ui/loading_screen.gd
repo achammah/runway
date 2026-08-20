@@ -63,6 +63,7 @@ var _next_reveal_at := 0.0
 var _scratch: AudioStreamPlayer
 var _writing := 0                 ## blocks currently writing; scratch while > 0
 var _bodies: Array = []           ## every body label, so a skip can finish them all
+var _proceed := false             ## the reader clicked "look up"; the beat may close
 var _ready_hint: Label
 
 func begin(week_label: String) -> void:
@@ -133,7 +134,12 @@ func begin(week_label: String) -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	gui_input.connect(func(ev: InputEvent) -> void:
 		if ev is InputEventMouseButton and ev.pressed:
-			_skip_reading())
+			# first click catches the reading up; once everything is read (and the
+			# art is in), the next click is the "look up" that closes the beat
+			if _reveal_queue.is_empty() and _writing == 0 and _bar.amount >= 0.995 and _t >= MIN_LIFE:
+				_proceed = true
+			else:
+				_skip_reading())
 
 ## Queue one beat of the consequence chain. `label` is the small blue-grey lead-in
 ## ("You said", "They heard", "What happened"); pass "" for a bare paragraph.
@@ -153,9 +159,13 @@ func finish() -> void:
 	_target = 1.0
 	while _t < MIN_LIFE or not _reveal_queue.is_empty() or _bar.amount < 0.995:
 		await get_tree().process_frame
-	_ready_hint.text = "look up"
+	# THE READER DECIDES WHEN TO LOOK UP (owner: it auto-transitioned mid-read).
+	# The hint flips to a drawn invitation and the beat holds until a click.
+	_proceed = false
+	_ready_hint.text = "look up  →   (click)"
 	_ready_hint.add_theme_color_override("font_color", PEN)
-	await get_tree().create_timer(0.55).timeout
+	while not _proceed:
+		await get_tree().process_frame
 	_done = true
 	var tw := create_tween()
 	tw.tween_property(self, "modulate:a", 0.0, 0.30)

@@ -20,9 +20,7 @@ fi
 godot --headless --path "$GAME" --import >/dev/null 2>&1 || true
 
 echo "launching RUNWAY!  (close the window when you're done)"
-if [[ " $* " == *" --log "* ]]; then
-  godot --path "$GAME" 2>&1 | tee /tmp/runway_play.log
-  echo "log written to /tmp/runway_play.log"
-else
-  godot --path "$GAME"
-fi
+# the log ALWAYS writes: every live-play bug report needs it, and the one time
+# it mattered the session had launched without --log
+godot --path "$GAME" 2>&1 | tee /tmp/runway_play.log
+echo "log written to /tmp/runway_play.log"

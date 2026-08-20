@@ -54,18 +54,30 @@ const ADJUDICATE_SCHEMA := {
 	"type": "object",
 	"additionalProperties": false,
 	"required": ["interpreted_as", "reality_check", "narration", "verdict", "effects",
-		"headline", "scene", "cast"],
+		"headline", "scene", "cast", "roll"],
 	"properties": {
 		"interpreted_as": {"type": "string", "maxLength": 160},
 		"reality_check": {"type": "string", "maxLength": 240},
 		# THE WEEK'S SCENE, not a caption: 120-180 words in 3-4 paragraphs, read on its
 		# own screen while the art renders. 320 chars truncated it mid-sentence.
-		"narration": {"type": "string", "maxLength": 1400},
+		"narration": {"type": "string", "maxLength": 2400},
 		"verdict": {"type": "string", "enum": ["brilliant", "fine", "risky", "backfired"]},
 		# ONE CALL RETURNS THE WHOLE TURN: the text the player reads while the art
 		# renders, AND everything needed to build the scene. Splitting these into two
 		# calls would put a second round-trip on the critical path of every week.
 		"headline": {"type": "string", "maxLength": 90},
+		# THE DICE. The client rolls a d20 BEFORE the call and sends it; the DM
+		# judges the plan into a DC and a governing stat, and narrates the outcome
+		# that roll earned. The roll is shown to the player mid-ceremony, so the
+		# fairness is visible: same plan, different die, different week.
+		"roll": {
+			"type": "object", "additionalProperties": false,
+			"required": ["stat", "dc"],
+			"properties": {
+				"stat": {"type": "string", "enum": ["build", "sell", "raise", "recruit", "grit"]},
+				"dc": {"type": "integer", "minimum": 2, "maximum": 19},
+			},
+		},
 		"scene": {
 			"type": "object", "additionalProperties": false,
 			"required": ["family", "place", "time", "condition", "framing", "novel_place", "beat"],
@@ -97,14 +109,17 @@ const ADJUDICATE_SCHEMA := {
 			},
 		},
 		"effects": {
-			"type": "array", "minItems": 0, "maxItems": 3,
+			"type": "array", "minItems": 0, "maxItems": 4,
 			"items": {
 				"type": "object",
 				"additionalProperties": false,
-				"required": ["op", "v"],
+				# WHY IS NOT OPTIONAL: every delta names its in-world cause, and the
+				# journal prints it ("+$1,200 — the pilot invoice cleared").
+				"required": ["op", "v", "why"],
 				"properties": {
 					"op": {"type": "string", "enum": ["cash_delta", "product_delta", "traction_delta", "morale_delta", "hype_delta", "set_flag"]},
-					"v": {"type": ["number", "string"]}
+					"v": {"type": ["number", "string"]},
+					"why": {"type": "string", "maxLength": 90}
 				}
 			}
 		}

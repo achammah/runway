@@ -28,10 +28,11 @@ var _whoosh: AudioStreamPlayer
 var _shut_for := 0.0   ## seconds fully shut; after a beat, the curtain speaks
 
 func _process(delta: float) -> void:
+	_die_tick(delta)
 	if _t > 0.98:
 		_shut_for += delta
-		if _shut_for > 0.9:
-			queue_redraw()   # the considering line breathes
+		if _shut_for > 0.9 and _die_n == 0:
+			queue_redraw()   # the considering line breathes (the die replaces it)
 	else:
 		_shut_for = 0.0
 
@@ -70,8 +71,54 @@ func open(secs: float = 0.55) -> void:
 	_tw.tween_callback(func() -> void:
 		visible = false
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		clear_die()
 		opened.emit())
 	await _tw.finished
+
+# ── THE DIE ─────────────────────────────────────────────────────────────────
+## The week's d20, tumbling on the curtain while the world judges the plan.
+## roll_die(n) starts the tumble and settles on n; stamp_roll() writes the
+## judgement under it once the DM returns. Cleared on open().
+var _die_n := 0            ## the number the die will settle on (0 = no die)
+var _die_show := 0         ## the face currently showing while tumbling
+var _die_spin := 0.0       ## seconds of tumble remaining
+var _die_wobble := 0.0
+var _die_scale := 1.0
+var _stamp_top := ""
+var _stamp_band := ""
+
+func roll_die(n: int) -> void:
+	_die_n = clampi(n, 1, 20)
+	_die_spin = 1.05
+	_stamp_top = ""
+	_stamp_band = ""
+	set_process(true)
+
+func stamp_roll(top: String, band: String) -> void:
+	_stamp_top = top
+	_stamp_band = band
+	queue_redraw()
+
+func clear_die() -> void:
+	_die_n = 0
+	_stamp_top = ""
+	_stamp_band = ""
+
+func _die_tick(delta: float) -> void:
+	if _die_n == 0:
+		return
+	if _die_spin > 0.0:
+		_die_spin -= delta
+		_die_wobble = sin(_die_spin * 34.0) * 0.28 * minf(_die_spin * 1.6, 1.0)
+		if fmod(_die_spin, 0.07) < delta:
+			_die_show = (randi() % 20) + 1
+		if _die_spin <= 0.0:
+			_die_show = _die_n
+			_die_wobble = 0.0
+			_die_scale = 1.22    # the landing squash, eased back in _draw ticks
+	else:
+		_die_scale = move_toward(_die_scale, 1.0, delta * 1.4)
+	queue_redraw()
 
 func _step(v: float) -> void:
 	_t = v
@@ -106,8 +153,48 @@ func _draw() -> void:
 	for s in 12:
 		var cx: float = w * (float(s) + 0.5) / 12.0
 		draw_circle(Vector2(cx, 46), w / 24.0, va)
-	# a curtain shut longer than a breath says why, in hand on the fabric
-	if _shut_for > 0.9:
+	# the die owns the middle of a shut curtain; the considering line only
+	# appears in the rare beat before the roll is wired in
+	if _die_n > 0 and _t > 0.6:
+		var f2: Font = load("res://assets/fonts/PatrickHand-Regular.ttf")
+		var cx := w * 0.5
+		var cy := h * 0.44
+		var R := 120.0 * _die_scale
+		# the d20 silhouette: a hexagon, hand-wobbled, cream on the coral
+		var hexpts := PackedVector2Array()
+		var rngd := RandomNumberGenerator.new()
+		rngd.seed = 5
+		for i in 7:
+			var a2 := TAU * float(i % 6) / 6.0 - PI / 2.0 + _die_wobble
+			hexpts.append(Vector2(cx, cy) + Vector2(cos(a2), sin(a2)) * (R + rngd.randf_range(-3, 3)))
+		var fill := PackedColorArray()
+		for i in 7:
+			fill.append(Color(0.95, 0.92, 0.83))
+		draw_colored_polygon(hexpts, Color(0.95, 0.92, 0.83))
+		draw_polyline(hexpts, INK, 6.0, true)
+		# the inner face: a triangle pointing down, the classic d20 face
+		var tri := PackedVector2Array()
+		for i in 4:
+			var a3 := TAU * float(i % 3) / 3.0 + PI / 2.0 + _die_wobble
+			tri.append(Vector2(cx, cy) + Vector2(cos(a3), sin(a3)) * R * 0.72)
+		draw_polyline(tri, Color(INK, 0.55), 4.0, true)
+		var num := str(_die_show)
+		var nsz := f2.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, 88)
+		draw_string(f2, Vector2(cx - nsz.x * 0.5, cy + nsz.y * 0.26), num,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 88, INK)
+		if _stamp_top != "":
+			var s1 := f2.get_string_size(_stamp_top, HORIZONTAL_ALIGNMENT_LEFT, -1, 38)
+			draw_string(f2, Vector2(cx - s1.x * 0.5, cy + R + 64.0), _stamp_top,
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 38, Color(0.95, 0.92, 0.83))
+			var s2 := f2.get_string_size(_stamp_band, HORIZONTAL_ALIGNMENT_LEFT, -1, 56)
+			draw_string(f2, Vector2(cx - s2.x * 0.5, cy + R + 126.0), _stamp_band,
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 56, Color(0.98, 0.76, 0.28))
+		elif _die_spin <= 0.0:
+			var wt := "the world weighs it…"
+			var s3 := f2.get_string_size(wt, HORIZONTAL_ALIGNMENT_LEFT, -1, 34)
+			draw_string(f2, Vector2(cx - s3.x * 0.5, cy + R + 64.0), wt,
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Color(0.95, 0.92, 0.83, 0.8))
+	elif _shut_for > 0.9:
 		var f: Font = load("res://assets/fonts/PatrickHand-Regular.ttf")
 		var msg := "the world considers your week…"
 		var a := clampf((_shut_for - 0.9) * 2.0, 0.0, 1.0) * (0.75 + 0.25 * sin(_shut_for * 2.2))

@@ -17,6 +17,7 @@ var funding_id: String = "bootstrap"  # bootstrap | fnf | angel
 var pivots: int = 0
 var last_outcome: Dictionary = {}     # last week's story, so a resumed run remembers
 var ceremony_payout: int = 0          # the finale's multiplied figure; the book honors it
+var run_history: Array = []           # every week: {wk, said, verdict, roll, fx} — the DM's memory
 var weeks_in_red: int = 0                 # money IS the food — 3 weeks starved = dead
 var history: Array = []                   # {week:int, entry:String} — everything the player did
 var cofounders: Array = []   # {role, commitment, equity, vesting}
@@ -243,6 +244,20 @@ func active_arc_directives() -> Array[String]:
 	return out
 
 ## Compact digest for the LLM layer (PRD §7: run-state digest, stable field order).
+## The DM's memory: every week verbatim for the recent past, compressed further
+## back — decisions, verdicts, rolls and consequences compound across a run.
+func history_digest() -> Array:
+	var out: Array = []
+	var n := run_history.size()
+	for i in n:
+		var h: Dictionary = run_history[i]
+		if i >= n - 12:
+			out.append(h)
+		else:
+			out.append({"wk": h.get("wk", 0), "said": String(h.get("said", "")).left(40),
+				"verdict": h.get("verdict", "")})
+	return out
+
 func to_digest() -> Dictionary:
 	var staff: Array = []
 	for e in employees:
