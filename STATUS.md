@@ -14,17 +14,18 @@ labels. That must never be the recovery path again. Git now covers this too.
 
 ---
 
-## 1. Where the build actually is
+## 1. Where the build actually is (2026-08-20)
 
 | | |
 |---|---|
-| Compiles | 29 scripts, smoke gate green (now also requires can_instantiate + zero SCRIPT ERROR) |
+| Compiles | 31 scripts, smoke gate green (can_instantiate + zero SCRIPT ERROR) |
 | Full run | reaches all five eras and ENDS (IPO / acquisition / death / 78-week cap) |
-| Background library | **516 empty rooms**, verified intact and empty; +183-scene expansion packs authored |
-| Generative turn | WIRED and proven live: lock → DM (one call, fast tier, luna) → art renders while the player reads → the scene becomes the room |
-| The proof | a live turn composed the player's real move into the image: founder on the phone, burnt cofounder soldering, headline over the scene |
-| Blank-scenes architecture | piloted and greenlit — slots + 500-pose library + programmatic assembly = instant, free turns |
-| QA | 45 captures read individually; 12 verified blockers, all routed |
+| **The journal (the core mechanic)** | pages WRITE THEMSELVES: ink reveals behind a travelling pen, choices wake only once inked, the selection circle is DRAWN, page turns are physical (sheet lifts, room holds still), old spreads stay dry ink, one click skips any performance; procedural paper-scratch under the pen; lock-the-week is a ceremony (stroke under the words, latch, beat); brilliant/backfired get hand margin marks |
+| Journal layout | airtight under worst-case stress: answer space reserved before prose, captions cap at 3 lines, icon rows compress toward a sacred 2-rule controls fence, empty zones pull content up, crowded sheets trade pictures for writing room — 0px of ink off the paper across all five spreads |
+| Scenes | STATIC IMAGES (owner call after animation review); PatchScene assembles blank + spot patches per era; all life gated behind RUNWAY_LIFE=1 |
+| Background library | 516 empty rooms on disk + 183-scene packs (699 total); taxonomy v4 (~576 places / ~1,050 scenes incl. GTM channel worlds, type ladders, exits) authored for review in ~/Downloads |
+| Generative turn | DM one-call contract live (luna, fast tier); FULLY-GENERATIVE scene pivot (GPT medium on demand, ~$0.07/img, cache + edit-on-cast-change) APPROVED and parked with the full map in PROJECT_LOG — journal took priority |
+| QA | 23-screen capture sweep read individually — clean; journal reveal/turn/lock all FILMED frame by frame and verified; 40-week fullrun soak in CI habit |
 
 ### Fix wave: LANDED (all four lanes, verified)
 | lane | result |

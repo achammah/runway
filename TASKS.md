@@ -2,7 +2,21 @@
 
 Owner check-in file. Every task has an owner lane, a status, and a Definition of Done (DoD).
 Status legend: ☐ todo · ◐ in progress · ✔ done (owner-lane claim) · ✅ verified by main review · ✖ dropped (reason logged)
-Last updated: 2026-08-18 (session start of autonomous build)
+Last updated: 2026-08-20 (the journal wave)
+
+## THE JOURNAL WAVE (2026-08-20) — the core mechanic, rebuilt and verified
+- ✅ J1 Ink reveal: pages write themselves behind a travelling pen (real pen glyph), skippable, harness-instant via RUNWAY_INSTANT_PAGES
+- ✅ J2 Drawn selection: the pen DRAWS the circle (0.24s), neighbours quiet on an ease; scribble sfx
+- ✅ J3 Physical page turn: sheet lifts opaque, room breathes 80ms, new sheet lands, reveal starts on landing; old spreads stay dry ink
+- ✅ J4 Paper fence: answer space reserved first, captions cap 3 lines, rows compress, pull-up cascade, prompt degrade — 0 overruns in worst-case stress
+- ✅ J5 Lock ceremony: pen underline (under the words), lock_week latch sfx, one beat, then the week
+- ✅ J6 Verdict margin marks: star (brilliant) / double strike (backfired), only those two
+- ✅ J7 Pen sound: procedural paper scratch under writing, generated in-repo
+- ✅ J8 Films: reveal probe + turn film + lock film harnesses; every animation READ frame by frame
+- ✅ J9 Fullrun soak: 30 weeks, five eras, ended alive — zero journal warnings, zero script errors
+- ☐ J10 people-page composition polish (portrait sizing/dead paper with small crews) — cosmetic
+- SCENES MODE: static images (owner call); life layer intact behind RUNWAY_LIFE=1
+- PARKED: fully-generative GPT-medium scene pivot (map in PROJECT_LOG); 700-scene batch and taxonomy v4 build-out await owner go
 
 ## 0. Standing constraints (every lane inherits these)
 - PIPELINE ORDER (owner doctrine, 2026-08-18): 1) generate ASSETS (text→image) · 2) generate SCENES (image→image with refs = the consistency method) · 3) ANIMATE scenes (image→video, 4s, first==last). CRITICAL LESSON: i2v only moves what the still already depicts — if the animation needs a mechanism (a treadmill burning away, smoke rising, a crowd reacting), the STILL must show that mechanism (destruction gradients, mid-action poses); fix at step 2, never by prompting harder at step 3.
