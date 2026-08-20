@@ -127,12 +127,19 @@ func _fullrun(dir: String) -> void:
 			for ci in 4:
 				await get_tree().create_timer([0.1, 0.2, 0.25, 0.6][ci]).timeout
 				await _shot(dir, "curtain_%02d_wk%02d_%d" % [state.week, state.week, ci])
-		# a live adjudication takes seconds; keyless answers instantly — wait it out
+		# a live adjudication takes seconds; keyless answers instantly — wait it
+		# out, and NEVER touch the screen again without checking it still exists:
+		# a lock can trigger an era move that frees gv mid-iteration, and one
+		# freed-instance error kills this whole coroutine silently (the exact way
+		# two soaks hung at the coworking transition with no line in the log).
 		var adj_cap := 40
-		while bool(gv.get("_adjudicating")) and adj_cap > 0:
+		while adj_cap > 0 and is_instance_valid(gv) and bool(gv.get("_adjudicating")):
 			adj_cap -= 1
 			await get_tree().create_timer(0.5).timeout
 		await get_tree().create_timer(1.2).timeout
+		if not _still_playing(gv):
+			await get_tree().create_timer(0.5).timeout
+			continue
 		while _era_overlay != null and is_instance_valid(_era_overlay):
 			await get_tree().create_timer(1.2).timeout
 			var moved := String((_era_overlay as EraTransitionScreen).to_era)
