@@ -75,7 +75,7 @@ const ACTIVITY_TABLE: Array = [
 	["stand_wave_celebrate", ["celebrat", "cheer", "high five", "high-five", "toast",
 		"champagne", "party", "whoop", "fist pump", "victory", "rejoic", "waves"], []],
 	["sit_audience_clapping", ["clap", "applau", "ovation"], []],
-	["stand_reading_paper", ["read", "term sheet", "lawsuit", "letter", "contract",
+	["stand_reading_paper", [" read", "reads", "reading", "term sheet", "lawsuit", "letter", "contract",
 		"notice", "memo", "the report", "the filing", "studies the", "reviews the",
 		"subpoena"], []],
 	["crouch_pack", ["pack", "boxes up", "tapes up", "clears the desk", "shreds",
