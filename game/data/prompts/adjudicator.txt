@@ -522,8 +522,8 @@ You do not *choose* a place from a menu. You **read the place off the week you j
 
 | `era` | family / place | note |
 |---|---|---|
-| garage | `home_retreat`/`scrappy_workspace` — `garage` | the origin |
-| coworking | `scrappy_workspace` — `coworking_hotdesk` | borrowed legitimacy |
+| garage | `scrappy_workspace` — `garage` | the origin |
+| coworking | `legit_workspace` — `coworking_hotdesk` | borrowed legitimacy |
 | office | `legit_workspace` — `small_office` | |
 | floor | `legit_workspace` — `open_floor` | |
 | hq | `legit_workspace` — `hq_skyline` | the glass box |

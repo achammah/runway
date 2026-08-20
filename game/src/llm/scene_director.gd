@@ -36,13 +36,21 @@ const CACHE_DIR := "user://generated_scenes"
 ## Droppable in this order. `place` and `family` are deliberately absent: losing them
 ## means the library has nothing for this situation, which is a MISS, not a fallback.
 const DROP_ORDER := ["framing", "time", "condition"]
+const INDEX := "res://assets/backgrounds/index.json"
+const HOSTED := "user://hosted_backgrounds.json"
 
 var _entries: Array = []
+var _index: Dictionary = {}     # facet id -> flat filename
+var _hosted: Dictionary = {}    # facet id -> uploaded url, cached across runs
 var _http: HTTPRequest
 var _tree: SceneTree
 
 func _init(tree: SceneTree) -> void:
 	_tree = tree
+	if FileAccess.file_exists(HOSTED):
+		var h = JSON.parse_string(FileAccess.get_file_as_string(HOSTED))
+		if h is Dictionary:
+			_hosted = h
 	if FileAccess.file_exists(MANIFEST):
 		var d = JSON.parse_string(FileAccess.get_file_as_string(MANIFEST))
 		if d is Array:
@@ -243,13 +251,57 @@ func _remember(url: String, want: Dictionary, out_name: String) -> void:
 		f.store_string(JSON.stringify(have))
 		f.close()
 
+## THE ID IS NOT THE FILENAME. Manifest ids are slash-separated
+## (`legit_workspace/hq_skyline/night_steady_medium`) and the library is FLAT
+## (`legit_workspace__hq_skyline__night_steady_medium.png`). Returning the id with its
+## slashes intact produced 516 dead paths out of 516: resolution was perfect and then
+## every lookup missed. `index.json` maps every facet combination — not just the 516
+## exact ids — to its filename, so an absent key IS the miss, unambiguously.
+func _local_path(id: String) -> String:
+	if _index.is_empty() and FileAccess.file_exists(INDEX):
+		var d = JSON.parse_string(FileAccess.get_file_as_string(INDEX))
+		if d is Dictionary:
+			_index = d
+	var f := String(_index.get(id, ""))
+	if f == "":
+		f = id.replace("/", "__") + ".png"     # same rule the generator wrote them by
+	return "res://assets/backgrounds/%s" % f
+
+## The remote edit fetches its reference images over HTTP, so a res:// path is useless
+## to it. Library rooms are uploaded ON FIRST USE and cached, rather than uploading 516
+## rooms most runs will never visit.
 func _url_for(id: String) -> String:
 	for e in _entries:
 		if String((e as Dictionary).get("id", "")) == id:
 			var u := String((e as Dictionary).get("url", ""))
 			if u != "":
 				return u
-	return "res://assets/backgrounds/%s.png" % id
+	var cached: String = String(_hosted.get(id, ""))
+	if cached != "":
+		return cached
+	return ""      # caller must host it: see needs_upload()
+
+## True when this room has no fetchable url yet. The caller uploads the file at
+## _local_path(id) and calls remember_url() — kept out of here so the director does not
+## own an upload path, and so a failed upload degrades to "keep the previous room"
+## rather than to a broken compose.
+func needs_upload(id: String) -> bool:
+	return _url_for(id) == ""
+
+func remember_url(id: String, url: String) -> void:
+	if url == "":
+		return
+	_hosted[id] = url
+	var have: Dictionary = {}
+	if FileAccess.file_exists(HOSTED):
+		var d = JSON.parse_string(FileAccess.get_file_as_string(HOSTED))
+		if d is Dictionary:
+			have = d
+	have[id] = url                      # merge, never replace: parallel writes lost 18
+	var f := FileAccess.open(HOSTED, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(have))
+		f.close()
 
 func _run(body: Dictionary, out_name: String) -> void:
 	# progress is REPORTED, never faked: the pen stroke on the reading beat moves
