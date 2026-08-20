@@ -155,7 +155,7 @@ func _build_exit() -> void:
 	var tx: float = ax - 18.0 - tw
 	# written by the shell's own placer, so the corner mark is the same hand at the
 	# same body size as everything above it — it is simply not a full-width block
-	_place(text, SIZE_BODY, INK, Vector2(tx, tx + tw + 10.0), y, pitch,
+	_place_l(text, SIZE_BODY, INK, Vector2(tx, tx + tw + 10.0), y, pitch,
 		HORIZONTAL_ALIGNMENT_LEFT)
 	var lab := space.get_child(space.get_child_count() - 1) as Control
 	var mid: float = y + _font.get_ascent(SIZE_BODY) * 0.5

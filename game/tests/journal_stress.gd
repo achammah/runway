@@ -90,4 +90,21 @@ func _go() -> void:
 		var img := root.get_viewport().get_texture().get_image()
 		img.save_png("%s/stress_p%d.png" % [dir, i])
 	print("STRESS DONE: 5 spreads captured to " + dir)
+	# Optional second pass: film the page TURN (arrow press -> old sheet away,
+	# new sheet lands, reveal begins). Run WITHOUT RUNWAY_INSTANT_PAGES to see
+	# the writing start after the paper settles.
+	if OS.get_environment("RUNWAY_TURN_FILM") != "":
+		screen._page_i = 1
+		screen._show_spread()
+		await create_timer(0.8).timeout
+		screen._jp.next_page.emit()
+		var stamps := [0.06, 0.12, 0.2, 0.3, 0.45, 0.7, 1.1, 1.6]
+		var t0 := Time.get_ticks_msec()
+		for i in stamps.size():
+			var wait: float = float(stamps[i]) - float(Time.get_ticks_msec() - t0) / 1000.0
+			if wait > 0.0:
+				await create_timer(wait).timeout
+			await RenderingServer.frame_post_draw
+			root.get_viewport().get_texture().get_image().save_png("%s/turn_%02d.png" % [dir, i])
+		print("TURN FILMED")
 	quit(0)

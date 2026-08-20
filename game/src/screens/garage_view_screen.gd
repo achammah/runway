@@ -35,6 +35,8 @@ var _j_page: Control
 var _page_body: Control            # every page element is a child of the tilted sheet
 var _free_text: Dictionary = {}    # page index -> what the player has written there
 var _week_sheet := 0               # 0 = what your move caused, 1 = what is left
+var _turn_dir := 0                 # the pending page-turn: +1 forward, -1 back, 0 none
+var _seen_spreads := {}            # "week:page:sheet" -> the ink is already dry
 var _week_told := 0                # how much of the story sheet one got through
 ## The capture harness in main.gd reaches for the old two-page frames; both now
 ## alias the single live page so it keeps driving the book without changes.
@@ -1502,32 +1504,53 @@ func _open_journal() -> void:
 	_show_spread()
 
 func _show_spread() -> void:
-	for c in _j_page.get_children():
-		_j_page.remove_child(c)
-		c.queue_free()
+	# THE TURN IS PHYSICAL. On an arrow press the outgoing page keeps its sheet,
+	# loses its room (the incoming page shows the same room, so the world holds
+	# still), rides ON TOP of the new page and slides away while the new sheet
+	# lands from the side you are heading. Any other rebuild swaps instantly.
+	var old := _jp
+	if old != null and is_instance_valid(old) and _turn_dir != 0:
+		old.exit_turn(_turn_dir)
+	else:
+		for c in _j_page.get_children():
+			_j_page.remove_child(c)
+			c.queue_free()
 	_sfx["card_flip"].play()
 	_refresh_scene()
 	var pg := JournalPage.new()
 	_jp = pg
 	_j_page.add_child(pg)
+	if old != null and is_instance_valid(old) and _turn_dir != 0:
+		_j_page.move_child(old, _j_page.get_child_count() - 1)
+	# A page you have already read is DRY INK. Only a spread's first showing
+	# performs the writing; turning back (or forward again) opens a written page,
+	# because a log book that rewrote itself on every glance would be a screen,
+	# not a book.
+	var spread_key := "%d:%d:%d" % [state.week, _page_i, _week_sheet]
+	pg.instant = _seen_spreads.has(spread_key)
+	_seen_spreads[spread_key] = true
 	pg.build("WEEK %d" % state.week, _scene_id)
 	pg.prev_page.connect(func():
 		if _page_i == 0 and _week_sheet == 1:
 			_week_sheet = 0
+			_turn_dir = -1
 			_show_spread()
 			return
 		if _page_i == 0:
 			_close_journal()
 			return
 		_page_i -= 1
+		_turn_dir = -1
 		_show_spread())
 	pg.next_page.connect(func():
 		if _page_i == 0 and _week_sheet == 0:
 			_week_sheet = 1
+			_turn_dir = 1
 			_show_spread()
 			return
 		_week_sheet = 0
 		_page_i = mini(_page_i + 1, 4)
+		_turn_dir = 1
 		_show_spread())
 	pg.written.connect(func(t): _free_text[_page_i] = t)
 	match _page_i:
@@ -1542,6 +1565,9 @@ func _show_spread() -> void:
 		4:
 			_page_decision()
 	pg.arrows(true, _page_i < 4)
+	if _turn_dir != 0:
+		pg.enter_turn(_turn_dir)
+		_turn_dir = 0
 
 ## ── the week: WHAT YOUR LAST MOVE CAUSED, then what is left ──────────────
 ## The owner, after playing: "we don't have actual text output for week N about

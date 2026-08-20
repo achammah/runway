@@ -98,8 +98,8 @@ const FAINT := Color(Color("1E1E1E"), 0.45)
 const WRITE_CPS := 80.0
 const TITLE_CPS := 34.0
 const REVEAL_BUDGET := 3.6      ## the longest any page may spend arriving
-const ICON_IN := 0.16           ## one drawing's fade-up
-const ICON_STAGGER := 0.06      ## the beat between neighbours in a row
+const ICON_IN := 0.22           ## one drawing's fade-up
+const ICON_STAGGER := 0.09      ## the beat between neighbours — felt, not implied
 
 var instant := false            ## re-reading an old page: everything is already ink
 
@@ -118,6 +118,8 @@ var _zone_px: Dictionary = {}     ## name -> [top, bottom] in sheet-local pixels
 var _cursor: Dictionary = {}      ## name -> current y in page-local pixels
 var _input: TextEdit
 
+var _sheet: TextureRect           ## the drawn paper; the thing a page-turn moves
+var _enter_done := true           ## the sheet has landed; the reveal may start
 var _tag := ""                    ## the page's title, so a warning names its page
 var _seq: Array = []              ## the performance, in the order content was added
 var _revealing := false           ## the page is still arriving; a click skips it
@@ -166,6 +168,7 @@ func build(title_text: String, scene_id: String = "") -> void:
 	tex.rotation = PAGE_TILT
 	tex.set_deferred("size", PAGE_SIZE)
 	add_child(tex)
+	_sheet = tex
 
 	# THE SHEET. The paper is drawn ALREADY LEANING inside the texture, so the
 	# paper's edges and its printed rules are not parallel to the texture frame.
@@ -496,6 +499,54 @@ func _focus_writing(ev: InputEvent) -> void:
 	if _input != null and is_instance_valid(_input):
 		_input.grab_focus()
 
+# ---------- the page turn: paper moves, the room does not ----------
+
+## The new sheet arrives the way a turned page lands: from the side you are
+## heading, a touch rotated, settling with a small overshoot. Only the SHEET
+## moves — the room behind is the same room, so it holds still and the book
+## feels like an object sitting in a place. dir: +1 forward, -1 back.
+func enter_turn(dir: int) -> void:
+	if _sheet == null:
+		return
+	_enter_done = false
+	_sheet.rotation = PAGE_TILT + 0.05 * float(dir)
+	_sheet.position = PAGE_POS + Vector2(150.0 * float(dir), 18.0)
+	_sheet.modulate = Color(1, 1, 1, 0.0)
+	# The beat between sheets is the turn. The new paper WAITS 80ms while the old
+	# one clears, so for one breath the room alone is on screen — that gap is what
+	# makes two drawings read as pages of one book instead of a crossfade.
+	var tw := create_tween().set_parallel()
+	tw.tween_property(_sheet, "rotation", PAGE_TILT, 0.24) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(0.08)
+	tw.tween_property(_sheet, "position", PAGE_POS, 0.24) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(0.08)
+	tw.tween_property(_sheet, "modulate:a", 1.0, 0.12).set_delay(0.08)
+	tw.chain().tween_callback(func() -> void:
+		_enter_done = true
+		if _reveal_queued:
+			_play_reveal())
+
+## The old sheet leaves under the new one: its room winks out (the incoming page
+## shows the same room, so nothing changes on screen), the paper lifts away, and
+## the node frees itself when it is gone. The host puts this page on TOP first,
+## so the departure is actually seen.
+func exit_turn(dir: int) -> void:
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if room != null and is_instance_valid(room):
+		room.visible = false
+	if _sheet == null:
+		queue_free()
+		return
+	# It MOVES first and only then vanishes — a page that dissolves in place reads
+	# as a crossfade, not a lifted sheet of paper.
+	var tw := create_tween().set_parallel()
+	tw.tween_property(_sheet, "rotation", PAGE_TILT - 0.08 * float(dir), 0.18) \
+			.set_trans(Tween.TRANS_SINE)
+	tw.tween_property(_sheet, "position", PAGE_POS + Vector2(-280.0 * float(dir), 44.0), 0.18) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_property(_sheet, "modulate:a", 0.0, 0.12).set_delay(0.06)
+	tw.chain().tween_callback(queue_free)
+
 # ---------- the performance: the page writes itself in ----------
 
 func _enqueue(item: Dictionary) -> void:
@@ -507,7 +558,7 @@ func _enqueue(item: Dictionary) -> void:
 		call_deferred("_play_reveal")
 
 func _play_reveal() -> void:
-	if _seq.is_empty() or _revealing:
+	if _seq.is_empty() or _revealing or not _enter_done:
 		return
 	_revealing = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -515,7 +566,7 @@ func _play_reveal() -> void:
 		gui_input.connect(_focus_writing)
 	_pen = _PenTip.new()
 	_pen.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_pen.set_deferred("size", Vector2(26, 26))
+	_pen.set_deferred("size", Vector2(40, 42))
 	_pen.visible = false
 	space.add_child(_pen)
 	# The budget scales the hand, never the page: a long page writes faster,
@@ -562,7 +613,9 @@ func _write_line(r: float, l: Label, sz: int) -> void:
 	if _pen != null and is_instance_valid(_pen):
 		var shown := l.text.substr(0, int(ceil(r * l.text.length())))
 		var w := _font.get_string_size(shown, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
-		_pen.position = l.position + Vector2(w + 2.0, _font.get_ascent(sz) - 22.0)
+		# the pen's TIP (local 4,38) touches the baseline just past the last glyph
+		_pen.position = l.position + Vector2(w + 1.0, _font.get_ascent(sz) * 0.94) \
+				- Vector2(4.0, 38.0)
 
 func _pen_show(on: bool) -> void:
 	if _pen != null and is_instance_valid(_pen):
@@ -931,14 +984,16 @@ class _WriteHint:
 		if not written:
 			draw_circle(Vector2(2.0, pitch - 10.0), 4.0, Color(JournalPage.PEN, 0.75))
 
-## The nib that rides the tip of the ink while the page writes itself: a short
-## dark stroke with a coral heel, the pen the founder is holding.
+## The pen that rides the tip of the ink while the page writes itself. At page
+## scale the first draft read as a stray tick, so this is a real slender pen:
+## dark barrel at the writing angle, coral cap at the heel, tip on the baseline.
 class _PenTip:
 	extends Control
 	func _draw() -> void:
-		draw_line(Vector2(4, 22), Vector2(15, 4), JournalPage.INK, 4.0, true)
-		draw_line(Vector2(13, 7), Vector2(19, 1), Color(JournalPage.PEN, 0.9), 5.0, true)
-		draw_circle(Vector2(3, 23), 2.4, JournalPage.INK)
+		draw_line(Vector2(4, 37), Vector2(27, 9), JournalPage.INK, 5.0, true)
+		draw_line(Vector2(24, 13), Vector2(31, 4), Color(JournalPage.PEN, 0.95), 6.5, true)
+		draw_line(Vector2(4, 37), Vector2(10, 30), Color(0, 0, 0, 0.35), 2.0, true)
+		draw_circle(Vector2(3.4, 38.0), 2.6, JournalPage.INK)
 
 class _PenCircle:
 	extends Control
