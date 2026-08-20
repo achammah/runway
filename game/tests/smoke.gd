@@ -227,11 +227,21 @@ func _init() -> void:
 				# which flagged four healthy core scripts. get_instance_base_type()
 				# is empty only when the parse actually failed, and it disturbs
 				# nothing that is already live.
+				# THREE CHECKS, because each one alone lets a real break through.
+				# load() returns a GDScript object even when the parse failed, so a null
+				# check passes broken files. get_instance_base_type() goes empty for an
+				# unregistered script, but a script with a class_name that is ALREADY in
+				# the global registry keeps its cached base type even when it stops
+				# compiling — that is how one untyped max() took the whole game down to a
+				# blank screen while this gate printed SMOKE PASS. can_instantiate() is
+				# the one that is false the moment the script no longer compiles.
 				var sc = load(path)
 				if sc == null:
 					broken.append(path)
-				elif sc is GDScript and String((sc as GDScript).get_instance_base_type()) == "":
-					broken.append(path)
+				elif sc is GDScript:
+					var g := sc as GDScript
+					if String(g.get_instance_base_type()) == "" or not g.can_instantiate():
+						broken.append(path)
 			f = da.get_next()
 		da.list_dir_end()
 	if not broken.is_empty():

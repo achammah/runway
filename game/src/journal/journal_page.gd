@@ -294,9 +294,13 @@ func write_field(prompt: String = "...or write what you actually do", zone: Stri
 		nib.written = _input.text.strip_edges() != ""
 		nib.queue_redraw()
 		# follow the pen down the page as it fills
-		var last := max(_input.get_line_count() - 1, 0)
+		# maxi/maxf, never the untyped max(): it returns Variant, and this project
+		# treats warnings as errors, so one `max()` here failed journal_page, then
+		# garage_view_screen, then main — the whole game booted to a blank screen.
+		var last: int = maxi(_input.get_line_count() - 1, 0)
 		_input.set_caret_line(last)
-		_input.scroll_vertical = float(max(0, last - int(_input.size.y / max(rule_pitch(), 1.0)) + 1))
+		var visible_rules: int = int(_input.size.y / maxf(rule_pitch(), 1.0))
+		_input.scroll_vertical = float(maxi(0, last - visible_rules + 1))
 		written.emit(_input.text))
 	# THE FIELD IS INVISIBLE BY DESIGN — no box, no border, the ruling IS the field.
 	# That makes it undiscoverable unless it already has focus, which is why the
