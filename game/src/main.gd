@@ -118,6 +118,10 @@ func _fullrun(dir: String) -> void:
 			mv = "Ship it: public launch this week — post everywhere, email every signup."
 		elif state.has_flag("launched") and state.traction >= 20 and not state.has_flag("seed_raised"):
 			mv = "Run the seed round to a close: line up the angels, set a deadline, sign."
+		elif state.era == "office" and not state.has_flag("pmf") and state.traction >= 40:
+			mv = "Obsess over the keenest customers all week: interviews, retention fixes, referral asks — prove people would riot if we vanished."
+		elif state.era == "floor" and not state.has_flag("series_a") and state.traction >= 90:
+			mv = "Take the Series A to term sheets: three partners, one deadline, close it."
 		gv._free_text[1] = mv
 		var fld: TextEdit = gv._jp.input_field()
 		if fld != null:
