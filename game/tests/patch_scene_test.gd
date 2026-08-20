@@ -65,6 +65,7 @@ func _go() -> void:
 		if _failed:
 			quit(1)
 			return
+	await _optional_shot()
 	print("%d checks held" % _checks)
 	print("PATCH TEST PASS")
 	quit(0)
@@ -269,6 +270,48 @@ func _test_recast_ends_the_old_life() -> void:
 		await process_frame
 	_ok(ps.placements().size() == 1, "the room must still hold exactly the new cast")
 	ps.queue_free()
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# OPTIONAL: a real scene at full size, for eyes rather than asserts
+# ═════════════════════════════════════════════════════════════════════════════
+
+## RUNWAY_PATCH_SHOT=<dir> and no --headless: build a real era scene at its real
+## 2048x1360 resolution, fitted to the 1536x1024 room, and save the frame. The
+## fixtures above prove the CONTRACT; only a picture proves the composite — that
+## the people land on the furniture they were cut against, with no seam and nobody
+## floating. Nothing is stubbed: this is the path the game takes.
+##
+## RUNWAY_PATCH_ROOT overrides where the scene is read from, so the shot can be
+## taken against a scene sitting outside the shipped tree.
+func _optional_shot() -> void:
+	var out_dir := OS.get_environment("RUNWAY_PATCH_SHOT")
+	if out_dir == "":
+		return
+	DirAccess.make_dir_recursive_absolute(out_dir)
+	var art_root := OS.get_environment("RUNWAY_PATCH_ROOT")
+	var ps := PatchScene.new()
+	if art_root != "":
+		ps._root = art_root
+	ps.archetype = OS.get_environment("RUNWAY_PATCH_ARCH")
+	root.add_child(ps)
+	var era := OS.get_environment("RUNWAY_PATCH_ERA")
+	if era == "":
+		era = "garage"
+	var ok := ps.build(era, [
+		{"who": "founder", "kind": "founder", "mood": "fine", "doing": "types all night"},
+		{"who": "tech", "kind": "cofounder", "mood": "fine", "doing": "solders the board"},
+	])
+	print("shot era: %s  built=%s  placed=%d  skipped=%s  ambient=%d" % [era, str(ok),
+		ps.placements().size(), str(ps.skipped()), ps.ambient_frames()])
+	if not ok:
+		return
+	print("  ", ps.cast_line())
+	await create_timer(0.9).timeout
+	await RenderingServer.frame_post_draw
+	var img := root.get_viewport().get_texture().get_image()
+	img.save_png("%s/patch_room.png" % out_dir)
+	print("PATCH SHOT: %s/patch_room.png" % out_dir)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
