@@ -151,6 +151,9 @@ func setup(p_state: GameState, p_content: ContentDb, p_rng: SeededRng, p_record:
 	rng = p_rng
 	record = p_record
 	generator = p_gen
+	# a resumed run opens on last week's REAL story, not an amnesiac quiet-week
+	if _last_outcome.is_empty() and not state.last_outcome.is_empty():
+		_last_outcome = state.last_outcome.duplicate(true)
 
 func _ready() -> void:
 	_font = load("res://assets/fonts/PatrickHand-Regular.ttf")
@@ -2167,6 +2170,9 @@ func _apply_lock(work_results: Dictionary) -> void:
 	else:
 		_last_outcome = {"title": title, "verdict": "", "said": "", "heard": "",
 			"narration": "", "reality": "", "dec_log": [], "log": outcome_log}
+	# whatever branch wrote the week, the save remembers it (minus the one-shot dm)
+	state.last_outcome = _last_outcome.duplicate(true)
+	state.last_outcome.erase("dm")
 	_pending_choice = {}
 	_pending_free = {}
 	_pending_people.clear()
