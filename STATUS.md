@@ -51,12 +51,18 @@ from a native render of that same scene. Swapping is choosing, never pasting.
 | loops | ambient deltas + bob + blink over any assembly |
 
 ### The gate sequence (owner-set)
-1. **RUNNING: LANE-SCENE-CRAFT** — custom per-scene animation on the VC pitch: an
-   authored animation script (laser dot on the chart, skyline flicker, the angel
-   sips), a scene-specific ambient regeneration, and 2-frame character acting via
-   replace-edits. Its round log becomes the factory recipe.
-2. **GATED: regenerate-all** — only after the crafted scene is verified good. Phased:
-   5 era cores -> top-30 -> the library.
+1. **DONE — LANE-SCENE-CRAFT**: the VC pitch carries authored animation, verified
+   frame-by-frame: the laser travels the chart, the arm sweeps, the VC blinks, the
+   angel sips; nothing the script forbids moves. The script corrected its own brief
+   by looking (no lit windows exist in the towers, so none were invented).
+   ~/Downloads/runway-scene-2-vc-pitch/05_loops is the crafted set. **GATE OPEN.**
+2. **RUNNING — LANE-FACTORY**: the five era rooms through the full patch pipeline.
+   Stage A done (5 populated sources read and passed); erases + 15 founder swaps in
+   flight. LANE-RUNTIME is shipped and waiting (PatchScene, 41 checks; composite
+   indistinguishable from native in its fixture test; a blank with no patches is
+   mid-production, not a scene).
+3. NEXT: per-era RUNWAY_PATCH_SHOT verification -> full QA -> owner summary.
+   The 699-scene long tail (~$800) stays gated on an explicit go.
 
 ### Supporting libraries (all complete, roles updated for v3)
 699 blank scenes (erase targets + fallback rooms) · 4,262+ slots (spot regions) ·
