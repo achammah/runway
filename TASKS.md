@@ -15,8 +15,24 @@ Last updated: 2026-08-20 (the journal wave)
 - ✅ J8 Films: reveal probe + turn film + lock film harnesses; every animation READ frame by frame
 - ✅ J9 Fullrun soak: 30 weeks, five eras, ended alive — zero journal warnings, zero script errors
 - ☐ J10 people-page composition polish (portrait sizing/dead paper with small crews) — cosmetic
-- SCENES MODE: static images (owner call); life layer intact behind RUNWAY_LIFE=1
-- PARKED: fully-generative GPT-medium scene pivot (map in PROJECT_LOG); 700-scene batch and taxonomy v4 build-out await owner go
+- SCENES MODE: FULLY GENERATIVE (owner pivot executed) — GPT medium per staged beat, contract status surfaces inked, opening + moving-day scenes, change-beat cadence; static patch rooms remain the fallback floor
+- SUPERSEDED: the 700-scene pre-generation batch (fully-generative replaced it); taxonomy v4 lives on as the DM's staging vocabulary
+
+## THE LIVE-PLAY + AUTONOMY ROUND (2026-08-20 night)
+- ✅ K1 Two-spread 60-second week (read the world's reply → one clean written move), no options before the pen
+- ✅ K2 One-press commit: write → adjudicate → apply → beat; payload rides the outcome (race-proof)
+- ✅ K3 Theater curtain on lock (drawn drapes, fabric whoosh, scalloped valance, breathing considering line, 12s failsafe)
+- ✅ K4 Beat writes itself with paper scratch; click-to-skip; skip never skips the render
+- ✅ K5 Delta strip shows the week's CHANGES (+/−) with morale battery; crew strip in doodles; DM headline on the page
+- ✅ K6 Journal doodle icon set ×20 (generated + layer-decomposed, bean-blob law)
+- ✅ K7 Standing context + never-trimmed 'So — what do you do?'; DM staging vocabulary = the whole world (novel places first-class)
+- ✅ K8 Typed ink rides a scroll-tracking coral ruling; two-slot field floor + descender headroom (instrumented, filmed)
+- ✅ K9 Moving-day + founding-day generated scenes; era rooms never open empty
+- ✅ K10 Resume remembers last week's story (state.last_outcome persisted)
+- ✅ K11 Service as fourth WHAT everywhere
+- ✅ K12 ~330 lines of dead five-spread code purged; shot harness photographs the real states; screens.md updated
+- ✅ K13 Soak hang root-caused (freed screen mid-era-move killed the harness coroutine) and fixed — 41 live weeks clean
+- ◐ K14 Balance: one move carries the week (ranges retuned ±3000/±15 + generosity clause) — pace-check soak running
 
 ## 0. Standing constraints (every lane inherits these)
 - PIPELINE ORDER (owner doctrine, 2026-08-18): 1) generate ASSETS (text→image) · 2) generate SCENES (image→image with refs = the consistency method) · 3) ANIMATE scenes (image→video, 4s, first==last). CRITICAL LESSON: i2v only moves what the still already depicts — if the animation needs a mechanism (a treadmill burning away, smoke rising, a crowd reacting), the STILL must show that mechanism (destruction gradients, mid-action poses); fix at step 2, never by prompting harder at step 3.
