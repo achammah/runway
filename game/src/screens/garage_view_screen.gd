@@ -2099,9 +2099,11 @@ func _spread_ahead() -> void:
 				if id.begins_with("clr:"):
 					_answer_clarify("budget: $" + _fmt(int(id.substr(4)))))
 		var ce := _jp.write_field("", "ending")
-		ce.placeholder_text = "answer, then roll…"
+		ce.placeholder_text = "type an amount, or tap one…" \
+				if String(_clarify["kind"]) == "amount" else "answer, then roll…"
 		_wire_clarify(ce)
-		_lock_button()
+		# the world is waiting on the ANSWER: no lock row underneath to overlap
+		# the field (owner photo: "answer, then roll…" sat on "...decide first")
 		return
 	var te := _jp.write_field("", "ending")
 	te.placeholder_text = "write what you actually do…"
@@ -2299,7 +2301,15 @@ func _commit_from_text() -> void:
 							else " — whatever is simplest")
 					_commit_from_text()
 					return
-				_clarify = {"q": String(cq.get("question", "")),
+				# one clean Latin line: luna once leaked a stray Cyrillic token
+				# onto the page (owner photo) — the question is ONE line, ≤90,
+				# printable Latin-1 only
+				var q_raw := String(cq.get("question", "")).split("\n")[0].strip_edges()
+				var q_clean := ""
+				for ch in q_raw:
+					if ch.unicode_at(0) >= 32 and ch.unicode_at(0) < 592:
+						q_clean += ch
+				_clarify = {"q": q_clean.left(90),
 					"kind": String(cq.get("kind", "other")), "base": t}
 				_show_spread()
 				return

@@ -38,16 +38,30 @@ func _frames(prefix: String) -> Array:
 		i += 1
 	return out
 
+## FIRST FRAME NOW, THE REST WHILE THE TITLE BREATHES (owner: launch was
+## SUPER SLOW — 48 full-screen frames loaded synchronously before the first
+## pixel). The player array grows in place; the loop plays whatever exists.
 func _video_frames() -> Array:
 	var out: Array = []
-	var i := 1
-	while true:
-		var p := "res://assets/title/video/frame_%02d.png" % i
-		if not ResourceLoader.exists(p):
-			break
-		out.append(load(p))
-		i += 1
+	if ResourceLoader.exists("res://assets/title/video/frame_01.png"):
+		out.append(load("res://assets/title/video/frame_01.png"))
 	return out
+
+func _stream_video_frames(into: Array) -> void:
+	var i := into.size() + 1
+	if not ResourceLoader.exists("res://assets/title/video/frame_%02d.png" % i):
+		return
+	var ht := Timer.new()
+	ht.wait_time = 0.04
+	ht.timeout.connect(func() -> void:
+		for n in 3:
+			var p := "res://assets/title/video/frame_%02d.png" % (into.size() + 1)
+			if not ResourceLoader.exists(p):
+				ht.queue_free()
+				return
+			into.append(load(p)))
+	add_child(ht)
+	ht.start()
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -65,6 +79,7 @@ func _ready() -> void:
 		vr.stretch_mode = TextureRect.STRETCH_SCALE
 		_root.add_child(vr)
 		_players.append({"node": vr, "frames": vframes, "fps": 12.0, "t": 0.0, "mode": "loop"})
+		_stream_video_frames(vframes)
 		_arm()
 		return
 	if not ResourceLoader.exists(L + "base.png"):

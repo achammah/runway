@@ -411,10 +411,20 @@ func make_scene_v2(scene: Dictionary, cast: Array, cast_urls: Array, beat: Strin
 		body["referenceImages"] = cast_urls
 		endpoint = MIDDLEWARE_EDIT
 	progress.emit(0.05)
-	var path := await _middleware_call(endpoint, body, out_name)
+	# THE RENDER GETS THREE CHANCES (owner live: one middleware 502 left week
+	# after week on the stock room — a transient upstream error must never
+	# cost the picture). Backoff 3s, then 8s.
+	var path := ""
+	for attempt in 3:
+		path = await _middleware_call(endpoint, body, out_name)
+		if path != "":
+			break
+		print("SceneDirector v2: attempt %d failed%s" % [attempt + 1,
+				" — retrying" if attempt < 2 else " — giving up"])
+		if attempt < 2:
+			await _tree.create_timer(3.0 + 5.0 * float(attempt)).timeout
 	if path == "":
-		# the proven fallback ladder: seedream compose on a library room
-		failed.emit("v2 generation failed")
+		failed.emit("v2 generation failed after 3 attempts")
 		return
 	_v2_reg[key] = {"path": path}
 	_v2_save_reg()

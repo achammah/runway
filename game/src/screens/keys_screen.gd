@@ -32,16 +32,32 @@ func _ready() -> void:
 	sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(sheet)
 
-	# the mascot vouches for the ask
+	# the mascot vouches for the ask — ALIVE (owner: a small loop, transparent):
+	# the hacker's matted idle frames play at card scale; still art is the fallback
 	var mascot := TextureRect.new()
-	if ResourceLoader.exists("res://assets/title/layers/founder.png"):
-		mascot.texture = load("res://assets/title/layers/founder.png")
-	mascot.position = Vector2(1040, 116)
-	mascot.set_deferred("size", Vector2(240, 240))
+	mascot.position = Vector2(1010, 110)
+	mascot.set_deferred("size", Vector2(270, 270))
 	mascot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	mascot.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	mascot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(mascot)
+	var mframes: Array = []
+	var mi := 1
+	while mi <= 36 and ResourceLoader.exists("res://assets/sprites/chr_loop_hacker_%02d.png" % mi):
+		mframes.append(load("res://assets/sprites/chr_loop_hacker_%02d.png" % mi))
+		mi += 1
+	if mframes.is_empty() and ResourceLoader.exists("res://assets/title/layers/founder.png"):
+		mascot.texture = load("res://assets/title/layers/founder.png")
+	elif not mframes.is_empty():
+		mascot.texture = mframes[0]
+		var fidx := [0]
+		var mt := Timer.new()
+		mt.wait_time = 0.09
+		mt.timeout.connect(func() -> void:
+			fidx[0] = (fidx[0] + 1) % mframes.size()
+			mascot.texture = mframes[fidx[0]])
+		add_child(mt)
+		mt.start()
 
 	_ink("ONE KEY MAKES THE WORLD ALIVE", Vector2(250, 128), 48, INK)
 	_rule(Vector2(252, 204), 560.0)

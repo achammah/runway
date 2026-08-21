@@ -84,6 +84,9 @@ var _packed_row: VBoxContainer
 var _biz_what := "Software"
 var _biz_who := "Consumer"
 var _name_witness: TextureRect
+var _witness_frames: Array = []
+var _witness_i := 0
+var _witness_timer: Timer
 var _spinning := false
 var _what_chips: Array = []
 var _who_chips: Array = []
@@ -183,6 +186,16 @@ func _ready() -> void:
 	_show_page(0)
 	if not _archs.is_empty():
 		_select(0, false)
+
+	_witness_timer = Timer.new()
+	_witness_timer.wait_time = 0.09
+	_witness_timer.timeout.connect(func() -> void:
+		if _witness_frames.is_empty() or _name_witness == null or not is_instance_valid(_name_witness):
+			return
+		_witness_i = (_witness_i + 1) % _witness_frames.size()
+		_name_witness.texture = _witness_frames[_witness_i])
+	add_child(_witness_timer)
+	_witness_timer.start()
 
 	_anim_timer = Timer.new()
 	_anim_timer.wait_time = 0.32
@@ -318,6 +331,8 @@ func _show_page(i: int) -> void:
 		wtw.tween_property(_name_witness, "position", whome, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		wtw.tween_property(_name_witness, "modulate:a", 1.0, 0.24)
 	if i == 2 and _name_witness and not _sel_arch.is_empty():
+		_witness_frames = _anim_frames.get(String(_sel_arch.get("id", "")), [])
+		_witness_i = 0
 		var sp := "res://assets/sprites/%s.png" % String(_sel_arch.get("sprite", ""))
 		if ResourceLoader.exists(sp):
 			_name_witness.texture = load(sp)
@@ -478,15 +493,15 @@ func _build_select() -> Control:
 
 	# hero: the selected founder, big, in the spotlight
 	_hero_shadow = EllipseShadow.new()
-	_hero_shadow.position = Vector2(420, 796)
+	_hero_shadow.position = Vector2(465, 796)
 	_hero_shadow.size = Vector2(300, 46)
 	page.add_child(_hero_shadow)
 	_hero = TextureRect.new()
-	_hero.position = Vector2(220, 240)
+	_hero.position = Vector2(335, 240)
 	_hero.size = Vector2(560, 560)
 	_hero.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_hero.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_hero.pivot_offset = Vector2(280, 560)
+	_hero.pivot_offset = Vector2(280, 560)   # feet on the lit floor
 	page.add_child(_hero)
 	_hero_base_y = _hero.position.y
 

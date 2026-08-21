@@ -485,11 +485,13 @@ class _Clipboard:
 		draw_rect(Rect2(w * 0.5 - 70, -18, 140, 34), Binder.YELL)
 		draw_rect(Rect2(w * 0.5 - 70, -18, 140, 34), Binder.INK, false, 4.0)
 		# the pen ring around the active tab
-		var tx := 46.0 + float(active_tab) * 168.0
+		# 8 tabs at 150px pitch since the ledger arrived — the ring must match
+		# the buttons' own row (owner photos: it circled the gap, then thin air)
+		var tx := 30.0 + float(active_tab) * 150.0
 		var ring := PackedVector2Array()
 		for i in 33:
 			var t := TAU * float(i) / 32.0
-			ring.append(Vector2(tx + 80.0 + cos(t) * 84.0, 76.0 + sin(t) * 26.0)
+			ring.append(Vector2(tx + 73.0 + cos(t) * 76.0, 76.0 + sin(t) * 26.0)
 				+ Vector2(rng.randf_range(-2, 2), rng.randf_range(-2, 2)))
 		draw_polyline(ring, Binder.PEN, 3.5, true)
 		# a rule under the tab row

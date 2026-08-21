@@ -770,12 +770,14 @@ func _start_run() -> void:
 			var d2 := FounderDraftScreen.new()
 			d2.content_items = content.items.values()
 			d2.done.connect(_after_draft)
+			_hook_worldgen_prefetch(d2)
 			_swap(d2))
 		_swap(ht)
 		return
 	var draft := FounderDraftScreen.new()
 	draft.content_items = content.items.values()
 	draft.done.connect(_after_draft)
+	_hook_worldgen_prefetch(draft)
 	_swap(draft)
 	print("BOOT title->draft %d ms" % (Time.get_ticks_msec() - _boot_t))
 
@@ -857,23 +859,23 @@ func _after_draft(result: Dictionary) -> void:
 		var birth := BirthScreen.new()
 		_swap(birth)
 		birth.size = get_viewport().get_visible_rect().size
-		generator.generate_world(state, func(gen: Dictionary) -> void:
-			WorldGen.apply_llm_world(state, gen)
-			SimEngine.seed_beliefs(state)
-			# THE BOOK OPENS ON THE FOUNDER'S OWN ENTRY (owner, scrapping the
-			# old stats sheet): the founding is written while the reader holds
-			# the book; field notes (working assumptions) sit below the entry.
-			_prefetch_founding(g)
-			var bk := BookIntroScreen.new()
-			bk.setup(state)
-			if not _founding_res.is_empty():
-				bk.feed_entry(String(_founding_res.get("narration", "")))
-				_book_showed_entry = true
-			bk.done.connect(func() -> void:
-				_swap(g)
-				_cold_open(g))
-			_swap(bk)
-			bk.size = get_viewport().get_visible_rect().size)
+		var here_key := state.company_name + "|" + state.company_idea
+		if _worldgen_key != here_key:
+			# the bag-page prefetch missed (edited name at the last second, or
+			# direct entry): start it now
+			_worldgen_key = here_key
+			_worldgen_res = {}
+			_worldgen_inflight = true
+			generator.generate_world(state, func(gen: Dictionary) -> void:
+				_worldgen_inflight = false
+				_worldgen_res = gen)
+		# WAIT WITH A CEILING (owner: "I was on this screen for ages"): 25s,
+		# then the deterministic skeleton IS the world and the run moves on.
+		var waited := 0.0
+		while _worldgen_inflight and _worldgen_res.is_empty() and waited < 25.0:
+			await get_tree().create_timer(0.25).timeout
+			waited += 0.25
+		_finish_worldgen(g)
 	else:
 		_swap(g)
 		# the SHOT harness photographs screens, not story: a live-key founding
@@ -882,6 +884,55 @@ func _after_draft(result: Dictionary) -> void:
 			_opening_scene()
 		else:
 			_cold_open(g)
+
+## THE BAG PAGE STARTS THE WORLD (owner: the birth screen took ages): by the
+## time the founder is packing, the pitch is written — the bible generates in
+## the background so BIRTH usually only shows for a breath.
+func _hook_worldgen_prefetch(d: FounderDraftScreen) -> void:
+	d._page_shown.connect(func(i: int) -> void:
+		if i != 6 or not generator.llm.enabled():
+			return
+		var nm := d._name_edit.value().strip_edges()
+		var idea := d._idea_edit.value().strip_edges()
+		if nm == "":
+			return
+		var key := nm + "|" + idea
+		if _worldgen_key == key:
+			return
+		_worldgen_key = key
+		_worldgen_res = {}
+		_worldgen_inflight = true
+		var scratch := GameState.new()
+		scratch.company_name = nm
+		scratch.company_idea = idea
+		scratch.biz_what = d._biz_what
+		scratch.biz_who = d._biz_who
+		generator.generate_world(scratch, func(gen: Dictionary) -> void:
+			_worldgen_inflight = false
+			_worldgen_res = gen
+			print("WORLDGEN prefetched during the bag page")))
+
+## The bible lands (or the ceiling fired): apply it, then the book opens.
+func _finish_worldgen(g: GarageViewScreen) -> void:
+	var gen := _worldgen_res
+	if gen.is_empty():
+		print("WORLDGEN: skeleton world (prefetch empty or timed out)")
+	WorldGen.apply_llm_world(state, gen)
+	SimEngine.seed_beliefs(state)
+	# THE BOOK OPENS ON THE FOUNDER'S OWN ENTRY (owner, scrapping the old
+	# stats sheet): the founding is written while the reader holds the book;
+	# field notes (working assumptions) sit below the entry.
+	_prefetch_founding(g)
+	var bk := BookIntroScreen.new()
+	bk.setup(state)
+	if not _founding_res.is_empty():
+		bk.feed_entry(String(_founding_res.get("narration", "")))
+		_book_showed_entry = true
+	bk.done.connect(func() -> void:
+		_swap(g)
+		_cold_open(g))
+	_swap(bk)
+	bk.size = get_viewport().get_visible_rect().size
 
 ## WEEK ONE IS GENERATED TOO (owner: "it's just the bland standard situation").
 ## Day one gets its own DM story: a real roll, a real narration from the pitch,
@@ -895,6 +946,10 @@ func _after_draft(result: Dictionary) -> void:
 ## _founding_res; _cold_open consumes it instantly if it landed in time.
 var _founding_res := {}
 var _founding_inflight := false
+# the world bible, prefetched while the founder still packs their bag
+var _worldgen_res := {}
+var _worldgen_key := ""
+var _worldgen_inflight := false
 var _book_showed_entry := false   # the reader actually saw the founding text
 
 func _founding_move() -> String:
