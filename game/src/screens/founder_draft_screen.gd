@@ -1423,20 +1423,66 @@ func _build_bag_page() -> Control:
 	shelf_rule.position = Vector2(80, 214)
 	shelf_rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	page.add_child(shelf_rule)
-	var gi := 0
+	# THE SHELF HAS SECTIONS (owner: "maybe topics, like categories"): gear,
+	# the pitch, comforts, and — when the trade earns them — your trade's own
+	# tools. Items flow left-right under small sage captions.
+	var buckets := {"GEAR": [], "THE PITCH": [], "COMFORTS": [], "YOUR TRADE": []}
 	for def in content_items:
-		# TYPE-DEPENDENT SHELF (owner): hardware founders pack soldering irons,
-		# service founders pack the good blazer. An item with requirements only
-		# exists for the trade that would own it.
 		var rq_what: Array = (def as Dictionary).get("requires_what", [])
 		var rq_who: Array = (def as Dictionary).get("requires_who", [])
 		if not rq_what.is_empty() and not rq_what.has(_biz_what):
 			continue
 		if not rq_who.is_empty() and not rq_who.has(_biz_who):
 			continue
-		var col := gi % 6
-		var row := gi / 6
-		var org := Vector2(64 + col * 104, 236 + row * 132)
+		var tags: Array = (def as Dictionary).get("tags", [])
+		if not rq_what.is_empty() or not rq_who.is_empty():
+			(buckets["YOUR TRADE"] as Array).append(def)
+		elif tags.has("morale"):
+			(buckets["COMFORTS"] as Array).append(def)
+		elif tags.has("sales") or tags.has("marketing"):
+			(buckets["THE PITCH"] as Array).append(def)
+		else:
+			(buckets["GEAR"] as Array).append(def)
+	var placed: Array = []   # ["cap", name] or ["item", def]
+	for bname in ["GEAR", "THE PITCH", "COMFORTS", "YOUR TRADE"]:
+		if (buckets[bname] as Array).is_empty():
+			continue
+		placed.append(["cap", bname])
+		for def in buckets[bname]:
+			placed.append(["item", def])
+	# THE SHELF SCROLLS (owner: "scrolling or categories" — both): sections
+	# flow inside a scroll area; however many items a trade earns, the paper
+	# never overflows.
+	var shelf_scroll := ScrollContainer.new()
+	shelf_scroll.position = Vector2(52, 228)
+	shelf_scroll.set_deferred("size", Vector2(660, 484))
+	shelf_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	shelf_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	page.add_child(shelf_scroll)
+	var grid := Control.new()
+	grid.mouse_filter = Control.MOUSE_FILTER_PASS
+	shelf_scroll.add_child(grid)
+	# sized after placement (py accumulates); a closure keeps it honest
+	var px := 12.0
+	var py := 10.0
+	var gi := 0
+	for entry in placed:
+		if String((entry as Array)[0]) == "cap":
+			if px > 12.0:
+				px = 12.0
+				py += 132.0
+			var cap := _label(String((entry as Array)[1]).to_lower(), 22, Color(PALETTE["sage"], 0.95))
+			cap.position = Vector2(px + 6.0, py - 6.0)
+			grid.add_child(cap)
+			py += 26.0
+			continue
+		var def: Dictionary = (entry as Array)[1]
+		if px > 12.0 + 5.0 * 104.0:
+			px = 12.0
+			py += 132.0
+		var org := Vector2(px, py)
+		px += 104.0
+		gi += 1
 		var ib := Button.new()
 		ib.custom_minimum_size = Vector2(112, 112)
 		ib.size = Vector2(112, 112)
@@ -1477,7 +1523,7 @@ func _build_bag_page() -> Control:
 		ring.visible = false
 		ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ib.add_child(ring)
-		page.add_child(ib)
+		grid.add_child(ib)
 		_bag_btns[String(def["id"])] = ib
 		if int(def.get("carry_cost", 1)) > 1:
 			# the weight is written next to the thing in pen, not stamped on a
@@ -1487,8 +1533,13 @@ func _build_bag_page() -> Control:
 			wt.size = Vector2(112, 30)
 			wt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			wt.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			page.add_child(wt)
-		gi += 1
+			grid.add_child(wt)
+
+	grid.custom_minimum_size = Vector2(640, py + 132.0)
+	if py + 132.0 > 484.0:
+		var more := _label("▼ scroll — there's more on the shelf", 22, Color(PALETTE["cream"], 0.75))
+		more.position = Vector2(78, 740)
+		page.add_child(more)
 
 	# detail panel — what the thing is FOR, cut to the size of what it says. It
 	# was a 430x520 sheet holding a name and two lines, which made it the equal of

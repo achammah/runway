@@ -760,6 +760,16 @@ func _start_run() -> void:
 	record.seed_value = seed_value
 	generator.pool.clear()
 	music.play("selection")
+	# FIRST EVER RUN: the rules of the world, once, before anything is chosen
+	if not _harness() and OS.get_environment("RUNWAY_FIRSTFLOW") == "" and not HowToScreen.seen():
+		var ht := HowToScreen.new()
+		ht.done.connect(func() -> void:
+			var d2 := FounderDraftScreen.new()
+			d2.content_items = content.items.values()
+			d2.done.connect(_after_draft)
+			_swap(d2))
+		_swap(ht)
+		return
 	var draft := FounderDraftScreen.new()
 	draft.content_items = content.items.values()
 	draft.done.connect(_after_draft)
