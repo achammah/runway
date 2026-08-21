@@ -27,7 +27,14 @@ var clocks: Array = []                # [{weeks_left, consequence}] deadlines th
 var commitments: Array = []           # [{name, cash_wk, weeks_left}] recurring deltas
 var pipeline: Array = []              # hires onboarding: [{name, role, salary, weeks_in}]
 var price_mult: float = 1.0           # 0.5..2.0, elasticity applies
-var marketing_budget: int = 0         # $ per week
+var marketing_budget: int = 0
+# THE LEDGER (owner: manual weekly spend on the business's real levers).
+# Set in the Binder; consumed and applied by SimEngine.weekly_tick.
+var budgets: Dictionary = {"marketing": 0, "sales": 0, "care": 0, "rnd": 0}
+# WORKING ASSUMPTIONS (owner: nobody knows their LTV on day one): what the
+# founder BELIEVES about the market. Starts wrong, converges toward theta as
+# analytics, customers and R&D teach the truth. The binder shows THESE.
+var beliefs: Dictionary = {}         # $ per week
 var analytics_level: int = 0          # 0..3 — the binder's fog of war
 var tech_debt: float = 10.0
 var fatigue: float = 20.0

@@ -42,6 +42,10 @@ var _binder: Binder                # the operations dashboard, opened with TAB/B
 var _lock_ready_last := false      # so typing only rebuilds the lock when readiness flips
 var _pending_dice := {}            # {a, b, adv_map} — cast at commit, resolved post-DM
 var _world_busy := false           # main holds this true from beat-open to beat-closed
+# THE CLARIFY PRE-PASS (owner: luna asks ONE question before the dice when the
+# move is missing the number/name/resource that changes the week)
+var _clarify := {}                 # {q, kind, base} while a question is on the page
+var _clarify_checked := false      # this commit already passed the pre-pass
 var _seen_spreads := {}            # "week:page:sheet" -> the ink is already dry
 var _week_told := 0                # how much of the story sheet one got through
 ## The capture harness in main.gd reaches for the old two-page frames; both now
@@ -2059,6 +2063,25 @@ func _spread_ahead() -> void:
 		_jp.line("the world considers your move...", true, "ending")
 		_lock_button()
 		return
+	if not _clarify.is_empty():
+		# THE WORLD ASKS FIRST: the question in coral, then chips (amounts) or
+		# a plain answer line — answered, the move re-commits with it bound on
+		_jp.line(String(_clarify["q"]), false, "ending")
+		if String(_clarify["kind"]) == "amount":
+			var ccap := SimEngine.era_spend_cap(state.era)
+			var copts: Array = []
+			for amt in [ccap / 24, ccap / 6, ccap / 2]:
+				var a2 := int(round(float(amt) / 50.0) * 50.0)
+				copts.append({"id": "clr:%d" % a2, "text": "$%s" % _fmt(a2)})
+			_jp.icon_row(copts, Vector2(130, 42), "ending")
+			_jp.choice_made.connect(func(id: String) -> void:
+				if id.begins_with("clr:"):
+					_answer_clarify("budget: $" + _fmt(int(id.substr(4)))))
+		var ce := _jp.write_field("", "ending")
+		ce.placeholder_text = "answer, then roll…"
+		_wire_clarify(ce)
+		_lock_button()
+		return
 	var te := _jp.write_field("", "ending")
 	te.placeholder_text = "write what you actually do…"
 	te.text = String(_free_text.get(_page_i, ""))
@@ -2237,6 +2260,28 @@ func _commit_from_text() -> void:
 	if t == "":
 		_lock_week()
 		return
+	# ── THE PRE-PASS: one luna question when the move hides its number ──
+	if not _clarify_checked and generator != null and generator.llm.enabled():
+		_adjudicating = true
+		_lock_button()
+		generator.clarify(state, _current_event, t, func(cq: Dictionary) -> void:
+			_adjudicating = false
+			_clarify_checked = true
+			if bool(cq.get("needs_clarification", false)) and String(cq.get("question", "")) != "":
+				var auto := OS.get_environment("RUNWAY_FULLRUN") != "" \
+						or OS.get_environment("RUNWAY_FIRSTFLOW") != ""
+				if auto:
+					_free_text[1] = t + (" — budget: $1,000" if String(cq.get("kind", "")) == "amount"
+							else " — whatever is simplest")
+					_commit_from_text()
+					return
+				_clarify = {"q": String(cq.get("question", "")),
+					"kind": String(cq.get("kind", "other")), "base": t}
+				_show_spread()
+				return
+			_commit_from_text())
+		return
+	_clarify_checked = false
 	_adjudicating = true
 	_lock_button()   # the button itself answers: "the dice are out..."
 	state.log_action("wrote: %s" % t.left(80))
@@ -2278,6 +2323,22 @@ func _commit_from_text() -> void:
 					and String((ef as Dictionary).get("v", "")) == "fundraising_open":
 				state.set_meta("fundraising_week", state.week)
 		_lock_week(), _pending_dice)
+
+func _answer_clarify(ans: String) -> void:
+	var base := String(_clarify.get("base", ""))
+	_clarify = {}
+	_free_text[1] = base + " — " + ans
+	_clarify_checked = true
+	_commit_from_text()
+
+func _wire_clarify(te: TextEdit) -> void:
+	te.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventKey and ev.pressed and \
+				((ev as InputEventKey).keycode == KEY_ENTER or (ev as InputEventKey).keycode == KEY_KP_ENTER):
+			var ans := te.text.strip_edges()
+			if ans != "":
+				_answer_clarify(ans)
+			te.accept_event())
 
 ## One underline in the founder's pen, drawn left to right at commit.
 class _PenStroke:
@@ -2478,6 +2539,26 @@ func _apply_dm_effects(effects: Array) -> Array:
 				state.loan_principal += amt
 				state.cash += amt
 				out.append("bridge loan +$%d at 18%%/wk — %s" % [amt, why])
+			"spend":
+				# THE MONEY LAW, engine side: the DM names the outlay, the ENGINE
+				# decides what cash can actually cover. Era-capped; never below
+				# zero — an unaffordable plan simply doesn't get its full spend.
+				var want_amt := clampi(int(d.get("v", 0)), 0, SimEngine.era_spend_cap(state.era))
+				var can := mini(want_amt, maxi(state.cash, 0))
+				if can > 0:
+					state.cash -= can
+					out.append("spent $%d on %s — %s" % [can, String(d.get("cat", "one_off")), why])
+				if can < want_amt:
+					out.append("the bank stopped it at $%d (wanted $%d) — money you don't have doesn't spend" % [can, want_amt])
+			"set_budget":
+				var cat := String(d.get("cat", "marketing"))
+				if not state.budgets.has(cat):
+					cat = "marketing"
+				var wk_amt := clampi(int(d.get("v", 0)), 0, SimEngine.era_spend_cap(state.era))
+				state.budgets[cat] = wk_amt
+				if cat == "marketing":
+					state.marketing_budget = 0   # one source of truth once the ledger takes over
+				out.append("%s budget set to $%d/wk — %s" % [cat, wk_amt, why])
 			_:
 				classic.append(d)
 	var clog := EffectOps.apply_all(classic, state)

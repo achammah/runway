@@ -161,6 +161,45 @@ func _go() -> void:
 		"health band renders")
 	_ok(sg.has("runway_weeks") and sg.has("market_phase"), "signals carry the vitals")
 
+	# ── the ledger levers are real money with real effects
+	var lv := _state()
+	lv.set_flag("launched")
+	lv.traction = 600
+	var plain_r := SimEngine.weekly_tick(lv)
+	var lv2 := _state()
+	lv2.set_flag("launched")
+	lv2.traction = 600
+	lv2.budgets = {"marketing": 0, "sales": 0, "care": 2000, "rnd": 0}
+	var cared := SimEngine.weekly_tick(lv2)
+	_ok(int(cared.churn) < int(plain_r.churn),
+		"care budget retains (%s < %s churn)" % [str(cared.churn), str(plain_r.churn)])
+	_ok(int(cared.burn) >= int(plain_r.burn) + 2000, "care budget is real burn")
+	var lv3 := _state()
+	lv3.budgets = {"marketing": 0, "sales": 0, "care": 0, "rnd": 2400}
+	var p0 := lv3.product
+	SimEngine.weekly_tick(lv3)
+	_ok(lv3.product >= p0 + 2, "rnd budget ships product (+%d)" % (lv3.product - p0))
+	var lv4 := _state()
+	lv4.budgets = {"marketing": 3000, "sales": 1000, "care": 0, "rnd": 0}
+	lv4.set_flag("launched")
+	lv4.traction = 40
+	var ue := SimEngine.weekly_tick(lv4)
+	_ok(int(ue.get("cac", 0)) > 0 and int(ue.get("ltv", 0)) > 0,
+		"unit economics computed (CAC %d, LTV %d)" % [ue.get("cac", 0), ue.get("ltv", 0)])
+
+	# ── beliefs start wrong and converge with analytics
+	var bl := _state()
+	SimEngine.weekly_tick(bl)
+	var wrong: float = absf(float(bl.beliefs["tam"]) - float(bl.theta["tam"]))
+	bl.analytics_level = 2
+	bl.traction = 60
+	for i in 12:
+		bl.week += 1
+		SimEngine.weekly_tick(bl)
+	var closer: float = absf(float(bl.beliefs["tam"]) - float(bl.theta["tam"]))
+	_ok(closer < wrong * 0.6,
+		"beliefs converge toward truth (gap %d -> %d)" % [int(wrong), int(closer)])
+
 	# ── loan compounding punishes
 	var ln := _state()
 	ln.cash = 500

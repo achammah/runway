@@ -250,7 +250,41 @@ func adjudicate(state: GameState, ev: Dictionary, player_text: String, cb: Calla
 				final = result            # the first reply, sanitized below
 			_sanitize(state, final)
 			if cb.is_valid():
-				cb.call(final)))
+				cb.call(final), {"tier": "assess"}), {"tier": "assess"})
+
+## THE CLARIFY PRE-PASS (owner: terra assesses, luna clarifies): one cheap
+## call before the dice — does this move need ONE follow-up question?
+## cb receives {needs_clarification, question, kind} ({} keyless/failed).
+var _clarify_prompt := ""
+
+func clarify(state: GameState, ev: Dictionary, move: String, cb: Callable) -> void:
+	if not llm.enabled():
+		if cb.is_valid():
+			cb.call({})
+		return
+	if _clarify_prompt == "":
+		_clarify_prompt = FileAccess.get_file_as_string("res://data/prompts/clarify.txt")
+	var user := JSON.stringify({
+		"run_state": {"cash": state.cash, "week": state.week, "era": state.era,
+			"customers": state.traction, "crew": _crew_names(state),
+			"items": state.items, "budgets": state.budgets},
+		"event_card": {"title": String(ev.get("title", "")), "body": String(ev.get("body", "")).left(160)},
+		"move": move.substr(0, 300)})
+	llm.request_json(_clarify_prompt, user, LlmClient.CLARIFY_SCHEMA, func(res: Dictionary):
+		if cb.is_valid():
+			cb.call(res), {"tier": "clarify"})
+
+static func _crew_names(state: GameState) -> Array:
+	var out: Array = []
+	if state.founder_name != "":
+		out.append(state.founder_name + " (you)")
+	for cf in state.cofounders:
+		var n := str(cf.get("name", "")).strip_edges()
+		if n != "":
+			out.append(n)
+	for em in state.employees:
+		out.append(str(em.get("name", "")))
+	return out
 
 ## Deterministic continuity checks: hallucinated cast, premise drift, empty milestones.
 func _sentinel(state: GameState, res: Dictionary) -> Array:
@@ -326,7 +360,7 @@ func next_card(state: GameState, content: ContentDb, rng: SeededRng) -> Dictiona
 			return ev
 	return rng.weighted_pick(eligible)
 
-const ALLOWED_OPS := ["cash_delta", "product_delta", "traction_delta", "morale_delta", "hype_delta", "set_flag", "status", "clock", "set_price", "set_marketing", "hire", "take_loan"]
+const ALLOWED_OPS := ["cash_delta", "product_delta", "traction_delta", "morale_delta", "hype_delta", "set_flag", "status", "clock", "set_price", "set_marketing", "hire", "take_loan", "spend", "set_budget"]
 
 func _validate_effects(effects, allow_empty: bool = false) -> bool:
 	if not (effects is Array):

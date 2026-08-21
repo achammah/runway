@@ -62,11 +62,11 @@ func _go() -> void:
 	root.add_child(b)
 	b.size = Vector2(1536, 1024)
 	await create_timer(0.6).timeout
-	for i in 7:
+	for i in 8:
 		b.set("_tab", i)
 		b.call("_refresh")
 		await create_timer(0.35).timeout
 		await RenderingServer.frame_post_draw
 		root.get_viewport().get_texture().get_image().save_png("%s/binder_%d.png" % [dir, i])
-	print("BINDER SHOTS -> %s/binder_0..6.png" % dir)
+	print("BINDER SHOTS -> %s/binder_0..7.png" % dir)
 	quit(0)

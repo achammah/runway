@@ -10,6 +10,8 @@ extends Node
 var provider: String = ""
 var api_key: String = ""
 var model: String = ""
+var assess_model: String = ""
+var clarify_model: String = ""
 var director_model: String = ""   # optionally stronger model for Tier-3 run direction
 
 const OPENAI_URL := "https://api.openai.com/v1/chat/completions"
@@ -130,19 +132,33 @@ const ADJUDICATE_SCHEMA := {
 				"additionalProperties": false,
 				# WHY IS NOT OPTIONAL: every delta names its in-world cause, and the
 				# journal prints it ("+$1,200 — the pilot invoice cleared").
-				"required": ["op", "v", "why", "weeks"],
+				"required": ["op", "v", "why", "weeks", "cat"],
 				"properties": {
 					"op": {"type": "string", "enum": ["cash_delta", "product_delta",
 						"traction_delta", "morale_delta", "hype_delta", "set_flag",
-						"status", "clock", "set_price", "set_marketing", "hire", "take_loan"]},
+						"status", "clock", "set_price", "set_marketing", "hire", "take_loan",
+						"spend", "set_budget"]},
 					"v": {"type": ["number", "string"]},
 					"why": {"type": "string", "maxLength": 90},
 					# status: duration · clock: weeks until it fires · all other ops: 1
-					"weeks": {"type": "integer", "minimum": 1, "maximum": 12}
+					"weeks": {"type": "integer", "minimum": 1, "maximum": 12},
+					# spend/set_budget only: where the money goes. "" for every other op.
+					"cat": {"type": "string", "enum": ["", "marketing", "sales", "care", "rnd", "one_off"]}
 				}
 			}
 		}
 	}
+}
+
+## Schema for the clarify pre-pass (luna): one reluctant follow-up question.
+const CLARIFY_SCHEMA := {
+	"type": "object", "additionalProperties": false,
+	"required": ["needs_clarification", "question", "kind"],
+	"properties": {
+		"needs_clarification": {"type": "boolean"},
+		"question": {"type": "string", "maxLength": 90},
+		"kind": {"type": "string", "enum": ["amount", "target", "resource", "other"]},
+	},
 }
 
 ## Schema for run-start world generation: the bible born from the pitch.
@@ -247,6 +263,11 @@ func setup(env: Dictionary) -> void:
 			# missed_payroll flag that terra missed there. Both held the ladder itself.
 			# The adjudication gates the whole week, so the faster equal-quality model wins.
 			model = String(env.get("OPENAI_MODEL", "gpt-5.6-luna"))
+			# THE TWO-TIER SPLIT (owner): the ASSESSMENT (adjudicator) runs terra —
+			# the deepest judgment in the game; the CLARIFY pre-pass runs luna —
+			# one cheap question, speed is the feature.
+			assess_model = String(env.get("OPENAI_ASSESS_MODEL", "gpt-5.6-terra"))
+			clarify_model = String(env.get("OPENAI_CLARIFY_MODEL", "gpt-5.6-luna"))
 		"anthropic":
 			api_key = anthropic_key
 			model = String(env.get("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"))
@@ -259,6 +280,25 @@ func setup(env: Dictionary) -> void:
 		director_model = model
 	if api_key == "":
 		provider = ""
+
+func _model_for(opts: Dictionary) -> String:
+	if opts.get("director", false):
+		return director_model
+	match String(opts.get("tier", "")):
+		"assess":
+			return assess_model if assess_model != "" else model
+		"clarify":
+			return clarify_model if clarify_model != "" else model
+	return model
+
+## assessment = terra FAST (deep judgment, still on the week's critical path);
+## clarify = luna NORMAL (cheap, one question, no need for the fast lane).
+func _service_tier_for(opts: Dictionary) -> String:
+	if String(opts.get("tier", "")) == "clarify":
+		return "default"
+	if OS.has_environment("RUNWAY_LLM_TIER"):
+		return OS.get_environment("RUNWAY_LLM_TIER")
+	return "fast"
 
 func enabled() -> bool:
 	return provider != "" and api_key != ""
@@ -282,7 +322,7 @@ func request_json(system_prompt: String, user_prompt: String, schema: Dictionary
 			"Authorization: Bearer " + api_key,
 		])
 		body = {
-			"model": director_model if opts.get("director", false) else model,
+			"model": _model_for(opts),
 			"messages": [
 				{"role": "system", "content": system_prompt},
 				{"role": "user", "content": user_prompt},
@@ -297,7 +337,7 @@ func request_json(system_prompt: String, user_prompt: String, schema: Dictionary
 			# schema: 13.5s and 12.7s standard, 7.0s and 6.0s fast — about half, with
 			# no change in output (same place chosen, same narration length).
 			# It costs a per-token premium. Set RUNWAY_LLM_TIER=standard to opt out.
-			"service_tier": OS.get_environment("RUNWAY_LLM_TIER") if OS.has_environment("RUNWAY_LLM_TIER") else "fast",
+			"service_tier": _service_tier_for(opts),
 		}
 		if http.request(OPENAI_URL, headers, HTTPClient.METHOD_POST, JSON.stringify(body)) != OK:
 			http.queue_free()
@@ -310,7 +350,7 @@ func request_json(system_prompt: String, user_prompt: String, schema: Dictionary
 			"anthropic-version: 2023-06-01",
 		])
 		body = {
-			"model": director_model if opts.get("director", false) else model,
+			"model": _model_for(opts),
 			# a 180-word narration plus the other fields does not fit in 700
 			"max_tokens": int(opts.get("max_tokens", 1400)),
 			"system": system_prompt,

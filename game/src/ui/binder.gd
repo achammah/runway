@@ -22,7 +22,7 @@ const YELL := Color("F4B942")
 const BLUE := Color("6E8CA0")
 const HAND := "res://assets/fonts/PatrickHand-Regular.ttf"
 
-const TABS := ["vitals", "customers", "product", "crew", "cap table", "the street", "threats"]
+const TABS := ["vitals", "the ledger", "customers", "product", "crew", "cap table", "the street", "threats"]
 
 var state: GameState
 var _font: Font
@@ -61,13 +61,13 @@ func _ready() -> void:
 		b.flat = true
 		b.text = TABS[i]
 		b.add_theme_font_override("font", _font)
-		b.add_theme_font_size_override("font_size", 27)
+		b.add_theme_font_size_override("font_size", 25)
 		b.add_theme_color_override("font_color", INK)
 		b.add_theme_color_override("font_hover_color", PEN)
 		for stn in ["normal", "hover", "pressed", "focus"]:
 			b.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
-		b.position = Vector2(46 + i * 168, 54)
-		b.set_deferred("size", Vector2(160, 44))
+		b.position = Vector2(30 + i * 150, 54)
+		b.set_deferred("size", Vector2(146, 44))
 		var idx := i
 		b.pressed.connect(func() -> void:
 			_tab = idx
@@ -109,12 +109,13 @@ func _refresh() -> void:
 	_sheet.queue_redraw()
 	match _tab:
 		0: _tab_vitals()
-		1: _tab_customers()
-		2: _tab_product()
-		3: _tab_crew()
-		4: _tab_cap()
-		5: _tab_street()
-		6: _tab_threats()
+		1: _tab_ledger()
+		2: _tab_customers()
+		3: _tab_product()
+		4: _tab_crew()
+		5: _tab_cap()
+		6: _tab_street()
+		7: _tab_threats()
 
 func _label(text: String, pos: Vector2, sz: int = 30, col: Color = INK, w: float = 1100.0) -> Label:
 	var l := Label.new()
@@ -189,7 +190,91 @@ func _tab_vitals() -> void:
 		"warm" if state.market_trend > 1.05 else ("cold" if state.market_trend < 0.95 else "even")],
 		Vector2(10, 532), 27, Color(INK, 0.8))
 
-# ── tab 1: customers (fog of war) ────────────────────────────────────────────
+# ── tab 1: THE LEDGER — the levers, the math, the truth about the money ─────
+const LEVERS := [
+	["marketing", "reach — more people hear of you; saturates past ~$2k"],
+	["sales", "closing — every $600/wk closes like one more part-time seller"],
+	["care", "retention — up to 30% less churn as care approaches $3k"],
+	["rnd", "product — ships ~+1 quality per $1,200/wk and pays down debt"],
+]
+const LEVER_STEPS := [0, 250, 500, 1000, 2000, 4000, 8000]
+
+func _tab_ledger() -> void:
+	_label("the ledger — where this week's money goes", Vector2(10, 6), 38)
+	var y := 78.0
+	for lv in LEVERS:
+		var cat := String(lv[0])
+		var cur := int(state.budgets.get(cat, 0))
+		_label(cat.to_upper(), Vector2(10, y), 30)
+		_label(String(lv[1]), Vector2(10, y + 38), 23, Color(INK, 0.6))
+		_label("$%s/wk" % _fmt(cur), Vector2(560, y + 6), 32, PEN)
+		var minus := Button.new()
+		minus.text = "−"
+		minus.position = Vector2(760, y)
+		minus.size = Vector2(52, 46)
+		_ink_btn(minus)
+		minus.pressed.connect(func() -> void:
+			state.budgets[cat] = _lever_step(cur, -1)
+			_refresh())
+		_content.add_child(minus)
+		var plus := Button.new()
+		plus.text = "+"
+		plus.position = Vector2(824, y)
+		plus.size = Vector2(52, 46)
+		_ink_btn(plus)
+		plus.pressed.connect(func() -> void:
+			state.budgets[cat] = _lever_step(cur, 1)
+			_refresh())
+		_content.add_child(plus)
+		y += 92.0
+	# the math, honestly
+	var ue: Dictionary = state.get_meta("unit_econ", {})
+	var lever_sum := 0
+	for k in state.budgets:
+		lever_sum += int(state.budgets[k])
+	var rw := SimEngine.runway_weeks(state)
+	y += 6.0
+	_label("the math", Vector2(10, y), 30, BLUE)
+	var arpu := float(ue.get("arpu", 0.0))
+	var cacv := int(ue.get("cac", 0))
+	var ltvv := int(ue.get("ltv", 0))
+	var pb := int(ue.get("payback_wk", 0))
+	_label("a customer pays ≈ $%.0f/wk · costs $%s to win (CAC) · is worth $%s over their stay (LTV) · pays back in %s"
+		% [arpu, (_fmt(cacv) if cacv > 0 else "?"), (_fmt(ltvv) if ltvv > 0 else "?"),
+		("%d wks" % pb) if pb > 0 else "—"], Vector2(10, y + 40), 25, Color(INK, 0.75), 1100.0)
+	_label("levers total $%s/wk · runway %s" % [_fmt(lever_sum),
+		("%d weeks" % rw) if rw < 999 else "gaining money"], Vector2(10, y + 108), 28)
+	if rw <= 4 and rw < 999:
+		_label("⚠ this spend kills the company in %d weeks — cut it or earn it" % rw,
+			Vector2(10, y + 148.0), 28, PEN)
+	var ry := y + 148.0
+	if rw <= 4 and rw < 999:
+		ry += 40.0
+	if state.cash < 0:
+		_label("THE RED: %d of 3 weeks below zero. At three, it's over." % state.weeks_in_red,
+			Vector2(10, ry), 28, PEN)
+		ry += 44.0
+	_label("the rules of this world: reach saturates · only capacity closes · churn is a leaky bucket · debt slows everything · three weeks below zero ends it",
+		Vector2(10, ry + 8.0), 22, Color(INK, 0.5), 1100.0)
+
+func _lever_step(cur: int, dir: int) -> int:
+	var idx := 0
+	for i in LEVER_STEPS.size():
+		if LEVER_STEPS[i] <= cur:
+			idx = i
+	idx = clampi(idx + dir, 0, LEVER_STEPS.size() - 1)
+	return mini(LEVER_STEPS[idx], SimEngine.era_spend_cap(state.era))
+
+func _ink_btn(btn: Button) -> void:
+	btn.flat = true
+	btn.add_theme_font_override("font", _font)
+	btn.add_theme_font_size_override("font_size", 40)
+	btn.add_theme_color_override("font_color", INK)
+	btn.add_theme_color_override("font_hover_color", PEN)
+	for stn in ["normal", "hover", "pressed", "focus"]:
+		btn.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
+
+# ── tab 2: customers (fog of war) ────────────────────────────────────────────
 func _tab_customers() -> void:
 	_icon("customers", Vector2(10, 6))
 	if state.analytics_level <= 0:
@@ -203,9 +288,15 @@ func _tab_customers() -> void:
 	_label("customers, weekly:", Vector2(10, 100), 24, Color(INK, 0.6))
 	_spark(_series("customers"), Vector2(10, 132), Vector2(1120, 200), SAGE)
 	var th := state.theta
-	var pen_pct := float(state.traction) / maxf(float(th.get("tam", 100000.0)), 1.0) * 100.0
-	_label("market: %.1f%% of ~%s buyers  ·  mood %s" % [pen_pct, _fmt(int(th.get("tam", 0))),
-		"%.2f" % state.market_trend], Vector2(10, 356), 28)
+	# WORKING ASSUMPTIONS (owner: nobody knows their TAM on day one): the
+	# binder shows what the founder BELIEVES; operating and analytics refine it
+	var believed_tam := float(state.beliefs.get("tam", th.get("tam", 100000.0)))
+	var pen_pct := float(state.traction) / maxf(believed_tam, 1.0) * 100.0
+	_label("market, as you believe it: ~%s buyers (%.1f%% reached) · a customer stays ≈ %d wks" % [
+		_fmt(int(believed_tam)), pen_pct,
+		int(state.beliefs.get("lifetime_wk", th.get("lifetime_wk", 40)))],
+		Vector2(10, 356), 27)
+	_label("working assumptions — they sharpen as you learn", Vector2(10, 392), 22, Color(INK, 0.5))
 	if state.analytics_level >= 2:
 		var mk := float(state.marketing_budget)
 		var cac := "∞" if mk <= 0.0 else "$%d" % int(mk / maxf(1.0, mk / 900.0))

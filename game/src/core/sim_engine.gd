@@ -228,7 +228,17 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	var N := float(th.tam)
 	var P := maxf(N - A, 0.0)
 	var hype_mult := 0.6 + float(state.hype) / 100.0 * 0.9
-	var mk_budget := float(state.marketing_budget)
+	# THE LEVERS (owner: "actually spending money on different topics"): four
+	# weekly budgets the player sets in the Binder's ledger. Every dollar is
+	# real: it leaves cash in section 9, and it does exactly this —
+	#   marketing -> reach (diminishing via cac_sat), sales -> closing capacity,
+	#   care -> retention, rnd -> product quality and debt paydown.
+	var bud: Dictionary = state.budgets
+	var b_mk := float(int(bud.get("marketing", 0)) + state.marketing_budget)
+	var b_sales := float(bud.get("sales", 0))
+	var b_care := float(bud.get("care", 0))
+	var b_rnd := float(bud.get("rnd", 0))
+	var mk_budget := b_mk
 	var mk_mult := 1.0 + 1.4 * (1.0 - exp(-mk_budget / float(th.cac_sat)))
 	var status_adopt := 1.0
 	var status_churn := 1.0
@@ -261,10 +271,13 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	match state.biz_who:
 		"SMB": cap_scale = 3.0
 		"Consumer": cap_scale = 40.0
-	var gtm_cap := (1.5 + 0.8 * float(state.competences.get("sell", 3)) 			+ 3.0 * float(sales_heads) + mk_budget / 400.0) * cap_scale
+	# a sales budget hires fractional closing power (an SDR-hour equivalent)
+	var gtm_cap := (1.5 + 0.8 * float(state.competences.get("sell", 3)) 			+ 3.0 * float(sales_heads) + mk_budget / 400.0 + b_sales / 600.0) * cap_scale
 	adds = minf(adds, gtm_cap)
 	var residence := float(th.lifetime_wk) * (0.4 + float(state.product) / 100.0 * 1.2)
-	var churn := A / maxf(residence, 2.0) * float(th.churn_mult) * status_churn
+	# customer care keeps people: churn eases toward −30% as care approaches ~$3k/wk
+	var care_mult := 1.0 - 0.30 * (1.0 - exp(-b_care / 1500.0))
+	var churn := A / maxf(residence, 2.0) * float(th.churn_mult) * status_churn * care_mult
 	var net := int(round(adds - churn))
 	state.traction = maxi(state.traction + net, 0)
 	rep["adds"] = int(round(adds))
@@ -283,15 +296,39 @@ static func weekly_tick(state: GameState) -> Dictionary:
 		payroll += int(h2.get("salary", 0))          # paid before productive
 	var rent := int(GameState.ERA_RENT.get(state.era, 150))
 	var infra := 50 + int(float(state.traction) * 0.05)
-	var burn := int((float(rent + payroll + infra) + mk_budget) * float(th.burn_mult))
+	# R&D: a real budget ships real product — +1 quality per ~$1200/wk (seeded
+	# remainder), and it pays down tech debt as it goes
+	if b_rnd > 0.0:
+		var quality_gain := b_rnd / 1200.0
+		var whole := int(floor(quality_gain))
+		if _rng(state, 77).randf() < quality_gain - float(whole):
+			whole += 1
+		if whole > 0:
+			state.product = mini(state.product + whole, 100)
+			rep["lines"].append("R&D shipped: product v0.%d" % state.product)
+		state.tech_debt = maxf(state.tech_debt - b_rnd / 1500.0, 0.0)
+	var burn := int((float(rent + payroll + infra) + mk_budget + b_sales + b_care + b_rnd) * float(th.burn_mult))
 	state.cash += int(round(revenue)) - burn
 	if state.get_meta("prev_revenue", 0.0) > 1.0:
 		state.last_growth = clampf((revenue - float(state.get_meta("prev_revenue"))) / float(state.get_meta("prev_revenue")), -0.5, 0.5)
 	state.set_meta("prev_revenue", revenue)
 	rep["revenue"] = int(round(revenue))
 	rep["burn"] = burn
-	rep["lines"].append("$%d in · $%d out (rent %d · payroll %d · infra %d · marketing %d)" % [
-		int(round(revenue)), burn, rent, payroll, infra, int(mk_budget)])
+	var lever_txt := ""
+	if b_sales + b_care + b_rnd > 0.0:
+		lever_txt = " · sales %d · care %d · rnd %d" % [int(b_sales), int(b_care), int(b_rnd)]
+	rep["lines"].append("$%d in · $%d out (rent %d · payroll %d · infra %d · marketing %d%s)" % [
+		int(round(revenue)), burn, rent, payroll, infra, int(mk_budget), lever_txt])
+	# ── UNIT ECONOMICS, computed honestly every week (the simulator SHOWS its
+	# math): CAC from what acquisition actually cost / who actually arrived;
+	# LTV from residence × margin-per-week; payback in weeks.
+	var arpu := float(th.arpu_wk) * state.price_mult * status_arpu
+	var new_adds := maxf(adds, 0.0)
+	rep["cac"] = int(round((b_mk + b_sales) / new_adds)) if new_adds >= 0.5 and (b_mk + b_sales) > 0.0 else 0
+	rep["ltv"] = int(round(residence * arpu))
+	rep["payback_wk"] = int(ceil(float(rep["cac"]) / maxf(arpu, 0.01))) if int(rep["cac"]) > 0 else 0
+	state.set_meta("unit_econ", {"arpu": arpu, "cac": rep["cac"], "ltv": rep["ltv"],
+		"payback_wk": rep["payback_wk"], "residence": int(residence)})
 	if state.loan_principal > 0:
 		var interest := int(ceil(float(state.loan_principal) * 0.18))
 		state.loan_principal += interest
@@ -301,6 +338,21 @@ static func weekly_tick(state: GameState) -> Dictionary:
 			state.cash -= pay
 			state.loan_principal -= pay
 			rep["lines"].append("auto-repaid $%d of the loan" % pay)
+
+	# 9b ── the founder's working assumptions converge toward the truth.
+	# Rate: analytics tooling, real customers, and R&D all teach.
+	if state.beliefs.is_empty():
+		var br := _rng(state, 88)
+		state.beliefs = {
+			"tam": float(th.tam) * br.randf_range(0.35, 2.6),
+			"lifetime_wk": float(th.lifetime_wk) * br.randf_range(0.4, 2.2),
+		}
+	else:
+		var k := clampf(0.02 + 0.05 * float(state.analytics_level)
+				+ 0.003 * float(state.traction) + b_rnd / 40000.0, 0.0, 0.30)
+		state.beliefs["tam"] = float(state.beliefs["tam"]) + (float(th.tam) - float(state.beliefs["tam"])) * k
+		state.beliefs["lifetime_wk"] = float(state.beliefs["lifetime_wk"]) \
+				+ (float(th.lifetime_wk) - float(state.beliefs["lifetime_wk"])) * k
 
 	# 10 ── commitments (recurring deltas with duration)
 	var kept_comm: Array = []
@@ -435,14 +487,23 @@ static func apply_round(state: GameState, amount: int, equity_pct: float) -> voi
 	state.morale = clampi(state.morale + 5, 0, 100)
 
 # ───────────────────────────── derived signals ───────────────────────────────
+## What one week may plausibly spend at this stage — the DM's inputs are
+## clamped here so no narration can invent hq money in a garage.
+static func era_spend_cap(era: String) -> int:
+	return int({"garage": 6_000, "coworking": 25_000, "office": 80_000,
+		"floor": 300_000, "hq": 1_200_000}.get(era, 6_000))
+
 static func runway_weeks(state: GameState) -> int:
 	var th := state.theta
 	var revenue := float(state.traction) * float(th.get("arpu_wk", 4.0)) * state.price_mult
 	var payroll := 0
 	for e in state.employees:
 		payroll += int(e.get("salary", 0))
+	var lever_sum := 0
+	for k in state.budgets:
+		lever_sum += int(state.budgets[k])
 	var burn := float(int(GameState.ERA_RENT.get(state.era, 150)) + payroll + 50) \
-			+ float(state.marketing_budget) - revenue
+			+ float(state.marketing_budget + lever_sum) - revenue
 	if burn <= 0.0:
 		return 999
 	return maxi(int(floor(float(state.cash) / burn)), 0)
