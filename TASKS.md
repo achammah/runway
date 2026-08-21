@@ -239,27 +239,27 @@ UX (prior stream)
 - [x] U10 Studio card, swap fades, trackpad pan, dice full-height, journal anim, select/name layout
 
 ## THE OWNER'S LIST — GRADED (0% = untouched · 100% = award-winning, manually verified)
-Grading is honest and hard, per the owner's calibration examples.
-- [ 85%] Latency title→select — 1440ms measured → frame-01-now + streamed hydration; needs one live re-measure to confirm <300ms
-- [ 75%] #133 Founder select — overlap fixed, clean matted idle loops regenerated (4/4); still stills-in-a-row thumbs, no entrance motion
-- [ 80%] #134 Name screen witness — stands whole on the floor; could get a settle-in animation
-- [ 80%] #135 Bag — categories + scrolling shelf + trade gating + 29 items with generated sprites; hint overlapped once (fixed), wants a scroll bar
-- [ 20%] Mechanics tutorial — one drawn sheet exists; owner wants 1-3 pages of LOOPED VIDEO explainers → video factory queued
-- [ 70%] Saves + title menu — 3 slots, meta, migration, ease-in buttons + panel; buttons were bare text (paper cards + words fixed, needs reshoot grade); slots to become a FULL-SCREEN table
-- [ 85%] #136 Birth screen — full-frame seedance unpacking loop + title + status; verify live feel
-- [ 60%] #138 Curtain loop — Opus agent generating the sway loop now; drawn fallback stays
-- [ 90%] #137 Book intro — first-person entry + FIELD NOTES on beliefs, scroll + drawn bar, live-verified (founding fed mid-read)
-- [ 90%] Working assumptions — beliefs seeded wrong, converge via analytics/customers/R&D, shown in binder + field notes, tested
-- [ 90%] Scrolling — wheel + trackpad pan on beat/book; bag native; drawn scrollbars on beat/book
-- [ 85%] Screen flicker — swap overlap+fade, ink boot, no engine splash; #143 stock-room window now carries a "being painted…" ribbon
-- [ 80%] #140 Journal open — rises off the desk (slide+straighten+fade)
-- [ 85%] #139 Dice — full screen height, fade-in entry, felt backdrop; could add a whoosh
-- [ 85%] Money law — spend/set_budget ops engine-clamped, cash-must-move law, bankruptcy visible (THE RED); needs one live week with a paid plan verified
-- [ 80%] Clarify pre-pass — luna prompt (PA-authored), page question UI + amount chips + binding suffix; ask-path not yet exercised live
-- [ 85%] Ledger tab — four levers, unit economics, warnings, rules line; steppers could preview effect deltas
-- [ 75%] YC lessons layer — PA-authored block grafted; not yet observed in live narration
-- [ 85%] RW! logo — title-hand lettering icon, icns, window icon
-- [ 70%] macOS launcher/installer — .app exports, styled DMG builds; 6.5GB (size agent running: webp strategy target)
-- [ 90%] Studio card — ASSEM STUDIO fade in/out, self-drawing underline, click-skip
-- [ 90%] Keys desk — first-boot gate, user://keys.env override, keyless choice kept
-- [100%] OpenAI-key-at-start — the desk gates exactly when no key is present
+Grading is honest and hard, per the owner's calibration examples. (v2 — after the agent wave)
+- [ 85%] Latency title→select — 1440ms root-caused (144 sync frame loads) → frame-01 + streaming hydrator; live re-measure pending
+- [ 75%] #133 Founder select — occlusion fixed, clean matted idle loops ×4; thumbs row static, no entrance motion yet
+- [ 80%] #134 Name screen — witness whole on the floor; no settle-in animation yet
+- [ 85%] #135 Bag — categories (gear/pitch/comforts/your trade) + scrolling shelf + 29 items w/ generated sprites, hint fixed
+- [ 35%] Tutorial — video-page rebuild IN FLIGHT (agent): 3 pages, each a seamless loop + caption; static sheet stays fallback
+- [ 90%] Saves + title menu — real paper buttons (word above paper), full-screen slot TABLE (dossier cards, ago-times, back), ghost text fixed — screenshot-verified
+- [ 95%] #136 Birth screen — REBUILT: true 16:9 (squish root-caused), real painted logotype, on-model mascot, seamless wrap (RMS 1.3 vs 30) — verified frame
+- [ 90%] #138 Curtain — sway loop live full-frame + seam rebake (97 frames sampled evenly); drawn fallback intact — screenshot-verified
+- [ 90%] #137 Book intro — first-person entry + FIELD NOTES, scroll + drawn bar, live-fed founding — probe-verified
+- [ 90%] Working assumptions — beliefs seeded wrong → converge (engine-tested), binder + field notes show beliefs only
+- [ 90%] Scrolling — wheel + trackpad pan everywhere it matters; drawn scrollbars
+- [ 85%] Flicker — swap overlap+fade, ink boot, splash off; painting ribbon on the art window (#143)
+- [ 80%] #140 Journal open — rises off the desk; page-turn could get paper sound + arc
+- [ 85%] #139 Dice — full height, fade-in, felt screen; entry whoosh sound pending
+- [ 85%] Money law — spend/set_budget engine-clamped, THE RED countdown; paid-plan live probe pending
+- [ 80%] Clarify pre-pass — luna prompt + page UI + binding suffix; ask-path live exercise pending
+- [ 85%] Ledger tab — levers, unit economics, warnings, rules; delta previews pending
+- [ 75%] YC lessons — grafted; live narration observation pending
+- [ 95%] RW! logo — title-hand lettering, icns + window icon, verified
+- [ 85%] macOS installer — .app 6.65GB→2.77GB (-58%, PSNR-verified), styled DMG rebuilding now
+- [ 90%] Studio card — fade in/out, drawn underline, click-skip
+- [ 90%] Keys desk — REDESIGNED: OpenAI-only + the generative pitch, mascot, honest bullets, no cleartext, keyless remembered — screenshot-verified
+- [100%] OpenAI-key-at-start — gates exactly when keyless
