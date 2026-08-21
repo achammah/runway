@@ -54,7 +54,7 @@ const ADJUDICATE_SCHEMA := {
 	"type": "object",
 	"additionalProperties": false,
 	"required": ["interpreted_as", "reality_check", "narration", "verdict", "effects",
-		"headline", "scene", "cast", "roll", "traits", "memory"],
+		"headline", "scene", "cast", "roll", "traits", "memory", "journal_note"],
 	"properties": {
 		"interpreted_as": {"type": "string", "maxLength": 160},
 		"reality_check": {"type": "string", "maxLength": 240},
@@ -106,6 +106,10 @@ const ADJUDICATE_SCHEMA := {
 		# THE COMPACTED MEMORY: the DM's own ≤120-word third-person summary of
 		# the run so far, replacing the previous one. The engine hard-caps it.
 		"memory": {"type": "string", "maxLength": 1200},
+		# THE LOG LINE: 1-2 sentences in the FOUNDER'S OWN first-person hand for
+		# the journal page — different words than the narration, the way a diary
+		# entry differs from the chapter it summarizes.
+		"journal_note": {"type": "string", "maxLength": 220},
 		"cast": {
 			"type": "array", "minItems": 0, "maxItems": 5,
 			"items": {
@@ -139,6 +143,54 @@ const ADJUDICATE_SCHEMA := {
 			}
 		}
 	}
+}
+
+## Schema for run-start world generation: the bible born from the pitch.
+const WORLD_SCHEMA := {
+	"type": "object", "additionalProperties": false,
+	"required": ["market", "investors", "rivals"],
+	"properties": {
+		"market": {
+			"type": "object", "additionalProperties": false,
+			"required": ["tam_buyers", "customer_patience_weeks", "one_liner"],
+			"properties": {
+				"tam_buyers": {"type": "integer", "minimum": 2000, "maximum": 5000000},
+				"customer_patience_weeks": {"type": "integer", "minimum": 6, "maximum": 200},
+				"one_liner": {"type": "string", "maxLength": 140},
+			},
+		},
+		"investors": {
+			"type": "array", "minItems": 3, "maxItems": 3,
+			"items": {
+				"type": "object", "additionalProperties": false,
+				"required": ["name", "archetype", "thesis", "trait", "bond", "flaw", "secret"],
+				"properties": {
+					"name": {"type": "string", "maxLength": 40},
+					"archetype": {"type": "string", "enum": ["the momentum fund",
+						"the contrarian angel", "the operator VC", "the shark", "the thesis tourist"]},
+					"thesis": {"type": "string", "maxLength": 110},
+					"trait": {"type": "string", "maxLength": 80},
+					"bond": {"type": "string", "maxLength": 90},
+					"flaw": {"type": "string", "maxLength": 80},
+					"secret": {"type": "string", "maxLength": 90},
+				},
+			},
+		},
+		"rivals": {
+			"type": "array", "minItems": 2, "maxItems": 2,
+			"items": {
+				"type": "object", "additionalProperties": false,
+				"required": ["name", "what_they_do", "strength", "tactics"],
+				"properties": {
+					"name": {"type": "string", "maxLength": 30},
+					"what_they_do": {"type": "string", "maxLength": 100},
+					"strength": {"type": "string", "enum": ["struggling", "scrappy", "strong", "dominant"]},
+					"tactics": {"type": "array", "minItems": 3, "maxItems": 3,
+						"items": {"type": "string", "maxLength": 60}},
+				},
+			},
+		},
+	},
 }
 
 ## Schema for the Tier-3 run director: the run's narrative arcs.

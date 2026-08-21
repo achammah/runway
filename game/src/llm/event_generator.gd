@@ -10,7 +10,7 @@ var _pending := false
 
 const SYSTEM_PROMPT := """You write event cards for RUNWAY!, a satirical startup survival game. Voice: dry, specific, wince-funny. Body 60 words max. Choice labels 8 words max. Never real companies or people. Never break the fourth wall. You receive the run state as JSON, including the player's company_name and what it does (company_does) — write events that are SPECIFIC to that business (its customers, its industry's absurdities, its failure modes), and refer to the company by name when natural. Output ONLY a card matching the schema. Effects use ONLY the allowed ops within sane ranges (meter deltas within ±15; cash_delta proportionate to the era in the state — ±2000 garage, ±10k coworking, ±60k office, ±250k floor, ±1M hq). Match the event to the era and its cast: the state carries era_name, staff (named employees with burnout levels), rounds_raised and board — a garage event smells of ramen, an HQ event of lawyers; a Service business bills hours and juggles clients, a Marketplace juggles two sides, Hardware waits on parts; name a staff member when one fits, and never invent people who are not in the state. Choices must be genuine dilemmas — no strictly-correct option. Reference at least one specific item, cofounder, or flag from the state. The state includes recent_actions — the log of what the player actually did each week. USE IT: create continuity and follow-ups. Some weeks, instead of a problem, write an OPPORTUNITY that grows directly out of a recent action (a prospect who saw the marketing post and liked it, a demo attendee who wants an intro, a customer who mentioned them somewhere) — opportunities still carry tradeoffs, never free wins."""
 
-const ADJUDICATE_PROMPT := """You are the world of RUNWAY!, a satirical startup survival game, adjudicating a founder's free-form action during an event. You receive the full run state — company, business_model (what × who), funding_path, employees, customers, product_version, items owned, cofounders with roles and commitment, archetype competences, meters — then the event and the player's written move. Judge it fairly but the world is harsh, and CONTEXT-AWARE: concrete plans that use things the founder ACTUALLY HAS work better; a bootstrapped company can be scrappy but can't outspend problems; a VC-backed one has money but answers for it; enterprise sales are slow and relationship-driven, consumer needs volume and virality, hardware makes everything slower and costlier; part-time cofounders are less available; more customers means more to lose. Vague, magical, or entitled answers backfire with comedy. narration: 210-290 words in 4-6 short dry wince-funny second-person paragraphs — read while the art renders (~70s), it must hold that long. verdict: brilliant / fine / risky / backfired. effects: 1-3 ops from the whitelist, magnitudes proportionate to the era in the state (cash within ±3000 in the garage, scaling up by era; meters within ±15 always). The player makes ONE move per week — your effects carry seven days of work, so a sound grounded plan earns the generous end of the range. MILESTONES: when the written week genuinely constitutes it, set the gating flag via set_flag — first_revenue, launched, pmf, seed_raised, series_a (max one per week; pair a closed round with its cash). THE ROLL: the user message carries d20=N and competences; pick the governing stat, mod=stat-3, judge DC 6-16 by boldness, and narrate what total EARNED (beat by 5+ brilliant / 0+ fine / -1..-2 risky-mixed / -3- backfired); output roll={stat,dc}. Every effect includes "why": its concrete in-world cause (<=10 words). Staff named in the state are real: leaning on a cooked employee is risky, and plans ignoring an investor board draw friction. Never more than one strongly positive effect unless the plan is genuinely brilliant AND grounded in what the founder actually has."""
+const ADJUDICATE_PROMPT := """You are the world of RUNWAY!, a satirical startup survival game, adjudicating a founder's free-form action during an event. You receive the full run state — company, business_model (what × who), funding_path, employees, customers, product_version, items owned, cofounders with roles and commitment, archetype competences, meters — then the event and the player's written move. Judge it fairly but the world is harsh, and CONTEXT-AWARE: concrete plans that use things the founder ACTUALLY HAS work better; a bootstrapped company can be scrappy but can't outspend problems; a VC-backed one has money but answers for it; enterprise sales are slow and relationship-driven, consumer needs volume and virality, hardware makes everything slower and costlier; part-time cofounders are less available; more customers means more to lose. Vague, magical, or entitled answers backfire with comedy. narration: 210-290 words in 4-6 short second-person paragraphs — read while the art renders (~70s). PLAIN FIRST: simple declaratives a tired reader follows first pass; at most one wry line per two paragraphs; no riddle headlines. verdict: brilliant / fine / risky / backfired. effects: 1-3 ops from the whitelist, magnitudes proportionate to the era in the state (cash within ±3000 in the garage, scaling up by era; meters within ±15 always). The player makes ONE move per week — your effects carry seven days of work, so a sound grounded plan earns the generous end of the range. MILESTONES: when the written week genuinely constitutes it, set the gating flag via set_flag — first_revenue, launched, pmf, seed_raised, series_a (max one per week; pair a closed round with its cash). THE ROLL: the user message carries d20=N and competences; pick the governing stat, mod=stat-3, judge DC 6-16 by boldness, and narrate what total EARNED (beat by 5+ brilliant / 0+ fine / -1..-2 risky-mixed / -3- backfired); output roll={stat,dc}. Every effect includes "why": its concrete in-world cause (<=10 words). Staff named in the state are real: leaning on a cooked employee is risky, and plans ignoring an investor board draw friction. Never more than one strongly positive effect unless the plan is genuinely brilliant AND grounded in what the founder actually has."""
 
 var _adjudicate_prompt := ""
 
@@ -21,6 +21,22 @@ func _init(p_llm: LlmClient) -> void:
 		_adjudicate_prompt = FileAccess.get_file_as_string("res://data/prompts/adjudicator.txt")
 	if _adjudicate_prompt.strip_edges() == "":
 		_adjudicate_prompt = ADJUDICATE_PROMPT
+
+## Run-start world generation: everything is ABOUT this company. Deterministic
+## WorldGen remains the keyless fallback and the shape both paths share.
+const WORLDGEN_PROMPT := """You are the world-builder for RUNWAY!, a satirical startup survival game. Given the company (its pitch, what it sells, to whom), invent THE WORLD IT WAS BORN INTO — specific to this exact business, never generic. market: honest intuitive numbers (how many real buyers exist for THIS product; how many weeks such a customer stays before churning) and a dry one-liner about this market's mood. investors: three funds/angels that would plausibly circle THIS space, each mapped to one archetype from the enum; thesis in their own voice ABOUT THIS MARKET (never the words 'growth is the only truth' or any stock phrase); a concrete trait, a bond connecting them to this founder's world, a flaw, and a SECRET the founder must never be told directly. rivals: two companies already competing for these exact customers — name (pronounceable, no real companies), what they do in one line, how strong they look, and three tactics they actually use in this market. Dry, wince-funny, PG-13, no real companies or people."""
+
+func generate_world(state: GameState, cb: Callable) -> void:
+	if not llm.enabled():
+		if cb.is_valid():
+			cb.call({})
+		return
+	var user := "The company:\n%s\nPitch: %s\nSells %s to %s.\nInvent its world." % [
+		state.company_name, state.company_idea, state.biz_what, state.biz_who]
+	llm.request_json(WORLDGEN_PROMPT, user, LlmClient.WORLD_SCHEMA, func(result: Dictionary):
+		if cb.is_valid():
+			cb.call(result),
+		{"max_tokens": 1400})
 
 # ── Tier-3: the RUN DIRECTOR (PRD §7) ─────────────────────────────────────
 const DIRECTOR_PROMPT := """You are the RUN DIRECTOR for RUNWAY!, a satirical startup survival game. Once per era, you design the run's narrative arcs — the recurring storylines that make this run feel authored instead of drawn from a deck: a named rival company with a strategy, a recurring journalist with an angle, a slow-burn cofounder or investor storyline. Rules: arcs grow out of THIS company (its name, what it does, its business model, its recent actions); invent names — never real companies or people; write 2-3 arcs, each with beats for the CURRENT era and eras after it (never past eras); every beat directive is one concrete, self-standing instruction to a downstream event writer who sees ONLY the directive — name the actors and what happens next; escalation_rule says when the arc intensifies or pays off. If arcs already exist, evolve them: carry actors forward, never drop a thread without a payoff beat. Dry, wince-funny, PG-13."""
@@ -91,7 +107,10 @@ func _arc_block(state: GameState) -> String:
 
 ## User-message composers (also exercised directly by tests/smoke.gd).
 func compose_event_user(state: GameState) -> String:
-	return "Run state:\n" + JSON.stringify(state.to_digest()) + _arc_block(state) + "\nWrite one new event card for this exact moment."
+	var no_repeat := ""
+	if not state.played_events.is_empty():
+		no_repeat = "\nALREADY PLAYED (never repeat these situations, characters, or their obvious sequels back-to-back): " + JSON.stringify(state.played_events)
+	return "Run state:\n" + JSON.stringify(state.to_digest()) + _arc_block(state) + no_repeat + "\nWrite one new event card for this exact moment."
 
 ## THE CONTEXT SANDWICH (plan C1): world bible -> compacted memory -> recent
 ## weeks verbatim -> numeric state + engine signals -> the dice -> directives.
@@ -259,8 +278,17 @@ func _sanitize(state: GameState, res: Dictionary) -> void:
 func next_card(state: GameState, content: ContentDb, rng: SeededRng) -> Dictionary:
 	if disabled:
 		pool.clear()
-	if not pool.is_empty():
-		return pool.pop_front()
+	while not pool.is_empty():
+		var cand: Dictionary = pool.pop_front()
+		var ct := String(cand.get("title", ""))
+		var dup := false
+		for pt in state.played_events.slice(maxi(state.played_events.size() - 4, 0)):
+			if String(pt).similarity(ct) > 0.6:
+				dup = true
+				break
+		if not dup:
+			return cand
+		push_warning("event pool: dropped near-duplicate '%s'" % ct)
 	var eligible := content.eligible_events(state)
 	if eligible.is_empty():
 		return {}

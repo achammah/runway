@@ -32,6 +32,7 @@ static func save_run(state: GameState, record: RunRecord) -> void:
 			"investors": state.investors, "xp": state.xp, "level": state.level,
 			"traits_tally": state.traits_tally, "story_so_far": state.story_so_far,
 			"xp_spent": state.xp_spent, "metric_history": state.metric_history,
+			"played_events": state.played_events,
 			"weeks_in_red": state.weeks_in_red, "history": state.history,
 			"cofounders": state.cofounders, "employees": state.employees,
 			"cash": state.cash, "product": state.product, "traction": state.traction,

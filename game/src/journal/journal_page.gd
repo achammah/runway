@@ -102,6 +102,7 @@ const ICON_IN := 0.22           ## one drawing's fade-up
 const ICON_STAGGER := 0.09      ## the beat between neighbours — felt, not implied
 
 var instant := false            ## re-reading an old page: everything is already ink
+var backdrop_path := ""         ## a composed week image to stand behind the sheet
 
 var space: Control                ## page-local content space; everything lands here
 var room: SceneRoom               ## the live animated room behind the sheet
@@ -149,6 +150,23 @@ func build(title_text: String, scene_id: String = "") -> void:
 	_zone = doc.get("zones", {})
 	_rules = doc.get("rules", {})
 
+	# a generated week image outranks the stock stage as the room behind the paper
+	if backdrop_path != "" and FileAccess.file_exists(backdrop_path):
+		var bimg := Image.new()
+		if bimg.load(backdrop_path) == OK:
+			var btr := TextureRect.new()
+			btr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			btr.stretch_mode = TextureRect.STRETCH_SCALE
+			btr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			btr.texture = ImageTexture.create_from_image(bimg)
+			btr.set_deferred("size", Vector2(1536, 1024))
+			add_child(btr)
+			var bdim := ColorRect.new()
+			bdim.color = Color(0, 0, 0, 0.45)
+			bdim.set_deferred("size", Vector2(1536, 1024))
+			bdim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			add_child(bdim)
+			scene_id = ""
 	if scene_id != "":
 		room = SceneRoom.new()
 		room.load_scene(scene_id)

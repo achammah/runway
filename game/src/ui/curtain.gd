@@ -155,6 +155,14 @@ func _draw() -> void:
 		draw_circle(Vector2(cx, 46), w / 24.0, va)
 	# the die owns the middle of a shut curtain; the considering line only
 	# appears in the rare beat before the roll is wired in
+	if _stamp_top != "" and _die_n == 0 and _t > 0.6:
+		var f3: Font = load("res://assets/fonts/PatrickHand-Regular.ttf")
+		var s1b := f3.get_string_size(_stamp_top, HORIZONTAL_ALIGNMENT_LEFT, -1, 38)
+		draw_string(f3, Vector2((w - s1b.x) * 0.5, h * 0.42), _stamp_top,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 38, Color(0.95, 0.92, 0.83))
+		var s2b := f3.get_string_size(_stamp_band, HORIZONTAL_ALIGNMENT_LEFT, -1, 56)
+		draw_string(f3, Vector2((w - s2b.x) * 0.5, h * 0.42 + 62.0), _stamp_band,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 56, Color(0.98, 0.76, 0.28))
 	if _die_n > 0 and _t > 0.6:
 		var f2: Font = load("res://assets/fonts/PatrickHand-Regular.ttf")
 		var cx := w * 0.5

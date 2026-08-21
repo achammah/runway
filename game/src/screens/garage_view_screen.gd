@@ -305,9 +305,9 @@ func _ready() -> void:
 	# the binder's doorway: a smaller drawn tab beside the journal button
 	var bb := Button.new()
 	bb.text = "THE BINDER (TAB)"
-	bb.position = Vector2(1010, 942)
-	bb.size = Vector2(250, 56)
-	bb.pivot_offset = Vector2(125, 28)
+	bb.position = Vector2(1272, 936)
+	bb.size = Vector2(240, 56)
+	bb.pivot_offset = Vector2(120, 28)
 	_style_button(bb, PALETTE["sage"], 24)
 	bb.pressed.connect(_open_binder)
 	add_child(bb)
@@ -1047,7 +1047,7 @@ func _scout_blanks(tex: Texture2D) -> Array:
 func _blankish(c: Color) -> bool:
 	var mx := maxf(c.r, maxf(c.g, c.b))
 	var mn := minf(c.r, minf(c.g, c.b))
-	return mx > 0.81 and (mx - mn) < 0.135
+	return mx > 0.86 and (mx - mn) < 0.09
 
 func _mark_contract_surfaces(on: bool, tex: Texture2D = null) -> void:
 	if _contract_ink != null and is_instance_valid(_contract_ink):
@@ -1060,15 +1060,32 @@ func _mark_contract_surfaces(on: bool, tex: Texture2D = null) -> void:
 	ink.size = Vector2(1536, 1024)
 	# scout the REAL blank surfaces; fall back to the contract zones when the
 	# picture kept none big enough
+	# HONEST SURFACES ONLY (owner): ink lands exclusively on scouted blank
+	# regions. One region found -> both blocks share it stacked. None found ->
+	# NO ink on the scene at all; the HUD chip and the binder carry the numbers.
 	var found: Array = _scout_blanks(tex) if tex != null else []
-	var money_r: Rect2 = found[0] if found.size() > 0 else Rect2(80, 90, 380, 260)
-	var sheet_r: Rect2 = found[1] if found.size() > 1 else Rect2(1130, 90, 300, 230)
-	if found.size() > 1 and found[1].position.x < found[0].position.x:
-		money_r = found[1]
-		sheet_r = found[0]
+	if found.is_empty():
+		ink.queue_free()
+		_contract_ink = null
+		return
+	var money_r: Rect2 = found[0]
+	var sheet_r: Rect2
+	var stacked := false
+	if found.size() > 1:
+		sheet_r = found[1]
+		if sheet_r.position.x < money_r.position.x:
+			var tmp := money_r
+			money_r = sheet_r
+			sheet_r = tmp
+	else:
+		stacked = true
+		sheet_r = Rect2(money_r.position + Vector2(money_r.size.x * 0.1, money_r.size.y * 0.55),
+				Vector2(money_r.size.x * 0.8, money_r.size.y * 0.4))
+		money_r = Rect2(money_r.position + Vector2(money_r.size.x * 0.1, money_r.size.y * 0.08),
+				Vector2(money_r.size.x * 0.8, money_r.size.y * 0.45))
 	var net := state.burn_per_week()
 	var weeks := 999 if net <= 0 else maxi(0, int(floor(float(state.cash) / float(net))))
-	var msz := clampi(int(money_r.size.x / 5.5), 26, 50)
+	var msz := clampi(mini(int(money_r.size.x / 5.5), int(money_r.size.y / 3.2)), 22, 50)
 	var wb := [
 		["$%s" % _fmt(state.cash), msz, Color("1E1E1E")],
 		[("%d weeks left" % weeks) if weeks < 999 else "cash positive", int(msz * 0.62), Color("E86A5C")],
@@ -1085,7 +1102,7 @@ func _mark_contract_surfaces(on: bool, tex: Texture2D = null) -> void:
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ink.add_child(l)
 		y += float(row[1]) * 1.35
-	var ssz := clampi(int(sheet_r.size.x / 9.0), 20, 30)
+	var ssz := clampi(mini(int(sheet_r.size.x / 9.0), int(sheet_r.size.y / 4.2)), 18, 30)
 	var sheet := [
 		"%d customers" % state.traction,
 		"%d on payroll" % (state.cofounders.size() + state.employees.size()),
@@ -1279,8 +1296,10 @@ func _money_text() -> String:
 	if state == null:
 		return ""
 	# a V2 scene already carries the money and the equity ON ITS OWN WALLS (the
-	# contract ink) — the chip repeating them was the one redundant UI in shot
-	if _contract_ink != null and is_instance_valid(_contract_ink):
+	# contract ink) — the chip repeating them was the one redundant UI in shot.
+	# But if the scout found NO honest surface, the ink node has no children and
+	# the chip keeps the job.
+	if _contract_ink != null and is_instance_valid(_contract_ink) 			and _contract_ink.get_child_count() > 0:
 		return ""
 	var parts := PackedStringArray()
 	if not _face_of.has("bank"):
@@ -1679,6 +1698,7 @@ func _show_spread() -> void:
 	# not a book.
 	var spread_key := "%d:%d" % [state.week, _page_i]
 	pg.instant = _seen_spreads.has(spread_key)
+	pg.backdrop_path = _composed_path
 	var first_open := not _seen_spreads.has(spread_key) and _turn_dir == 0
 	_seen_spreads[spread_key] = true
 	pg.build("WEEK %d" % state.week, _scene_id)
@@ -1735,10 +1755,7 @@ func _story_lines() -> Array:
 	var verdict := String(_last_outcome.get("verdict", "")).strip_edges()
 	var narration := String(_last_outcome.get("narration", "")).strip_edges()
 	var reality := String(_last_outcome.get("reality", "")).strip_edges()
-	if said != "":
-		out.append(["You said: \"%s\"" % said, false, false])
-	if heard != "":
-		out.append(["They heard: %s" % heard, false, false])
+	# said/heard live on the READING BEAT; the page is the diary and skips them
 	if verdict != "":
 		out.append(["The world called it %s." % verdict.to_lower(), false, false])
 	if narration != "":
@@ -1769,7 +1786,12 @@ func _spread_was() -> void:
 	var strips_h: float = 210.0 + (180.0 if has_crew else 0.0)
 	var lines := _story_lines()
 	var vt := String(_last_outcome.get("verdict", ""))
-	if lines.is_empty():
+	# THE PAGE IS THE DIARY, NOT THE CHAPTER (owner): the beat already read the
+	# narration; the log book prints the DM's journal_note — the founder's own
+	# scribble — and never replays the beat's text.
+	var dmd0: Dictionary = _last_outcome.get("dm", {})
+	var note := String(dmd0.get("journal_note", "")).strip_edges()
+	if lines.is_empty() and note == "":
 		_jp.line("Week one. Nothing has happened to you yet. After this, everything that does is yours."
 			if state.week <= 1
 			else "A quiet week. The rent noticed it anyway.")
@@ -1783,10 +1805,12 @@ func _spread_was() -> void:
 				shorts.append(l)
 		var short_h: float = 102.0 if shorts.size() > 0 else 0.0
 		# the DM titles every week; the log keeps the headline the beat announced
-		var hl := String((_last_outcome.get("dm", {}) as Dictionary).get("headline", ""))
+		var hl := String(dmd0.get("headline", ""))
 		if hl != "":
-			_jp.line(hl.to_upper())
-		if narr != "":
+			_jp.line(hl)
+		if note != "":
+			_jp.line_fitted(note, strips_h + short_h + 51.0)
+		elif narr != "":
 			_jp.line_fitted(narr, strips_h + short_h + 51.0)
 			if vt in ["brilliant", "backfired"]:
 				_jp.margin_mark("star" if vt == "brilliant" else "cross")
@@ -1806,9 +1830,9 @@ func _spread_was() -> void:
 				elif mode.begins_with("DIS"):
 					used = mini(a, b)
 				if used == 20:
-					_jp.line("NAT 20 — the universe co-signed.", false)
+					_jp.line("Rolled a natural 20. Some weeks the universe pays for lunch.", false)
 				elif used == 1:
-					_jp.line("NAT 1 — the universe filed a complaint.", false)
+					_jp.line("Rolled a 1. Everything that could go sideways did.", false)
 		# ONE annotation, full ink. Faint text under a printed rule read as
 		# struck-through; the margin mark already carries the judgement.
 		if not shorts.is_empty():
@@ -1999,6 +2023,23 @@ const STAT_SNIFF := {
 }
 var _tele: Label
 
+## The move's governing stat, classified from the text — authoritative for the
+## roll, previewed by the telegraph. Unclassifiable moves are GRIT: surviving
+## the week on will alone is the default startup verb.
+func _sniff_stat(t: String) -> String:
+	var low := t.to_lower()
+	var best := "grit"
+	var best_hits := 0
+	for st_n in STAT_SNIFF:
+		var hits := 0
+		for w in STAT_SNIFF[st_n]:
+			if low.contains(String(w)):
+				hits += 1
+		if hits > best_hits:
+			best_hits = hits
+			best = st_n
+	return best
+
 func _telegraph_setup(te: TextEdit) -> void:
 	_tele = Label.new()
 	_tele.add_theme_font_override("font", _font)
@@ -2127,8 +2168,8 @@ func _commit_week(b: Button) -> void:
 func _commit_from_text() -> void:
 	if _adjudicating:
 		return
-	week_committing.emit()
 	if not _pending_free.is_empty():
+		week_committing.emit()
 		_lock_week()
 		return
 	var t := _jp.written_text() if _jp != null and is_instance_valid(_jp) else ""
@@ -2143,16 +2184,26 @@ func _commit_from_text() -> void:
 	# THE ROLL (owner design: D&D at the heart of the week). The die is cast HERE,
 	# before the world speaks — the DM judges the plan into a DC and narrates the
 	# outcome this exact number earned. Same plan, different die, different week.
+	# THE DIE IS FINAL AT THE PRESS (owner: the roll happens right away). The
+	# engine classifies the move's governing stat from the text itself — the
+	# same classifier the telegraph showed the player — applies advantage or
+	# disadvantage from state, and the cup pours the TRUE number instantly.
+	var stat := _sniff_stat(t)
+	var cx := SimEngine.roll_context(state, stat)
 	var da: int = rng.roll_d20() if rng != null else (randi() % 20 + 1)
 	var db: int = rng.roll_d20() if rng != null else (randi() % 20 + 1)
-	var adv_map := {}
-	for st_n in ["build", "sell", "raise", "recruit", "grit"]:
-		var cx := SimEngine.roll_context(state, st_n)
-		if bool(cx.advantage):
-			adv_map[st_n] = "ADVANTAGE (%s)" % ", ".join(cx.adv_reasons)
-		elif bool(cx.disadvantage):
-			adv_map[st_n] = "DISADVANTAGE (%s)" % ", ".join(cx.dis_reasons)
-	_pending_dice = {"a": da, "b": db, "adv_map": adv_map}
+	var used := da
+	var mode := ""
+	if bool(cx.advantage):
+		used = maxi(da, db)
+		mode = "advantage (%s)" % ", ".join(cx.adv_reasons)
+	elif bool(cx.disadvantage):
+		used = mini(da, db)
+		mode = "disadvantage (%s)" % ", ".join(cx.dis_reasons)
+	_pending_dice = {"a": da, "b": db, "used": used, "stat": stat, "mode": mode,
+		"mod": int(state.competences.get(stat, 3)) - 3}
+	week_rolled.emit(used)
+	week_committing.emit()
 	generator.adjudicate(state, _current_event, t, func(res: Dictionary):
 		_adjudicating = false
 		var verdict := res
@@ -2160,6 +2211,7 @@ func _commit_from_text() -> void:
 			verdict = EventGenerator.keyless_adjudication()
 		verdict["player_text"] = t
 		verdict["dice"] = _pending_dice
+		verdict["week_played"] = state.week
 		_pending_free = verdict
 		for ef in verdict.get("effects", []):
 			if String((ef as Dictionary).get("op", "")) == "set_flag" \
@@ -2495,6 +2547,12 @@ func _apply_lock(work_results: Dictionary) -> void:
 	else:
 		_last_outcome = {"title": title, "verdict": "", "said": "", "heard": "",
 			"narration": "", "reality": "", "dec_log": [], "log": outcome_log}
+	# the world never asks the same question twice: remember what was played
+	var played_title := String(_current_event.get("title", "")).strip_edges()
+	if played_title != "":
+		state.played_events.append(played_title)
+		if state.played_events.size() > 12:
+			state.played_events = state.played_events.slice(state.played_events.size() - 12)
 	# whatever branch wrote the week, the save remembers it (minus the one-shot dm)
 	state.last_outcome = _last_outcome.duplicate(true)
 	state.last_outcome.erase("dm")

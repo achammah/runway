@@ -144,6 +144,55 @@ static func build(state: GameState) -> void:
 		})
 	state.rivals = rivals
 
+## Merge an LLM-generated world onto the deterministic skeleton: names, theses
+## and rivals come from the model (born from the pitch); coords and tactics
+## decks come from the archetype so the engine math never depends on prose.
+static func apply_llm_world(state: GameState, gen: Dictionary) -> bool:
+	if gen.is_empty():
+		return false
+	var market: Dictionary = gen.get("market", {})
+	if not market.is_empty():
+		var th := state.theta.duplicate()
+		th["tam"] = float(market.get("tam_buyers", th.get("tam", 100000.0)))
+		th["lifetime_wk"] = float(market.get("customer_patience_weeks", th.get("lifetime_wk", 40.0)))
+		state.theta = SimEngine.clamp_theta(th)
+		state.set_meta("market_line", String(market.get("one_liner", "")))
+	var by_arch := {}
+	for a in INVESTOR_ARCHETYPES:
+		by_arch[String(a.archetype)] = a
+	var invs: Array = []
+	for iv in gen.get("investors", []):
+		var d: Dictionary = iv
+		var arch: Dictionary = by_arch.get(String(d.get("archetype", "")), INVESTOR_ARCHETYPES[2])
+		invs.append({
+			"name": String(d.get("name", "an investor")).left(40),
+			"archetype": String(d.get("archetype", arch.archetype)),
+			"coords": arch.coords,
+			"thesis": String(d.get("thesis", "")),
+			"trait": String(d.get("trait", "")),
+			"bond": String(d.get("bond", "")),
+			"flaw": String(d.get("flaw", "")),
+			"secret": String(d.get("secret", "")),
+			"tactics": arch.tactics,
+		})
+	if invs.size() == 3:
+		state.investors = invs
+	var str_map := {"struggling": 12.0, "scrappy": 25.0, "strong": 45.0, "dominant": 70.0}
+	var rivals: Array = []
+	for rv in gen.get("rivals", []):
+		var r: Dictionary = rv
+		rivals.append({
+			"name": String(r.get("name", "a rival")).left(30),
+			"what": String(r.get("what_they_do", "")),
+			"strength": float(str_map.get(String(r.get("strength", "scrappy")), 25.0)),
+			"tactics": r.get("tactics", ["shipped something loud"]),
+			"weeks_since_move": 0,
+			"secret": "",
+		})
+	if rivals.size() == 2:
+		state.rivals = rivals
+	return true
+
 ## Investor-founder compatibility: the alignment dot product → a DC nudge on
 ## raise checks against THIS investor. Friendly-and-aligned = easier ask.
 static func investor_dc_mod(investor: Dictionary, founder_coords: Array) -> int:
@@ -161,6 +210,8 @@ static func bible_digest(state: GameState) -> String:
 			d.get("bond", ""), d.get("flaw", "")])
 	for rv in state.rivals:
 		var r: Dictionary = rv
-		bits.append("RIVAL %s (%s): plays %s" % [r.get("name", "?"),
-			SimEngine._fuzz(float(r.get("strength", 20.0))), ", ".join(r.get("tactics", []))])
+		var what := String(r.get("what", ""))
+		bits.append("RIVAL %s (%s)%s: plays %s" % [r.get("name", "?"),
+			SimEngine._fuzz(float(r.get("strength", 20.0))),
+			(" — " + what) if what != "" else "", ", ".join(r.get("tactics", []))])
 	return "\n".join(bits)

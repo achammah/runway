@@ -775,16 +775,20 @@ func _after_draft(result: Dictionary) -> void:
 	g.done.connect(_after_grind)
 	g.week_committing.connect(_drop_curtain)
 	g.week_rolled.connect(_show_die)
-	# THE MARKET MAP first (harnesses skip it): one look at the world you chose,
-	# then the room and day one.
+	# THE WORLD IS WRITTEN FROM THE PITCH (owner: the bible must not feel
+	# disconnected): one LLM call rewrites the deterministic skeleton — market
+	# numbers, investors circling THIS space, rivals selling to THESE customers.
+	# Keyless keeps the skeleton. Then the market map, then day one.
 	if OS.get_environment("RUNWAY_SHOT") == "" and OS.get_environment("RUNWAY_FULLRUN") == "":
-		var wr := WorldRevealScreen.new()
-		wr.setup(state)
-		wr.done.connect(func() -> void:
-			_swap(g)
-			_cold_open(g))
-		_swap(wr)
-		wr.size = get_viewport().get_visible_rect().size
+		generator.generate_world(state, func(gen: Dictionary) -> void:
+			WorldGen.apply_llm_world(state, gen)
+			var wr := WorldRevealScreen.new()
+			wr.setup(state)
+			wr.done.connect(func() -> void:
+				_swap(g)
+				_cold_open(g))
+			_swap(wr)
+			wr.size = get_viewport().get_visible_rect().size)
 	else:
 		_swap(g)
 		_cold_open(g)
@@ -794,39 +798,36 @@ func _after_draft(result: Dictionary) -> void:
 ## the type, the capital and the crew — and the DM's own scene staging drives
 ## the opening image. Keyless runs keep the authored line and the synthetic
 ## opening scene.
+## DAY ONE IS AN ORIGIN STORY, NOT A GAMBLE (owner): no dice, no "you said" —
+## the curtain drops the moment you settle in, the DM writes the founding, the
+## beat reads it while the first image of YOUR company renders behind it.
 func _cold_open(gv: GarageViewScreen) -> void:
 	if generator == null or not generator.llm.enabled():
 		_opening_scene()
 		return
-	var d_a := rng.roll_d20()
-	var d_b := rng.roll_d20()
-	var dice := {"a": d_a, "b": d_b, "adv_map": {}}
-	var move := ("Day one of %s: we sign the papers, unpack the boxes, and put the plan on "
-			+ "the whiteboard. Everyone takes their corner and we start.") % state.company_name
+	_drop_curtain()
+	var move := ("This is day one of %s — %s. Write the FOUNDING of this exact company: the "
+			+ "place, the crew, the first real stake in the ground. No dice language, no "
+			+ "verdict talk — an opening chapter.") % [state.company_name,
+			state.company_idea if state.company_idea != "" else "a company that refuses to explain itself"]
 	generator.adjudicate(state, {}, move, func(res: Dictionary) -> void:
 		if res.is_empty() or state == null:
+			_raise_curtain()
 			_opening_scene()
 			return
-		res["player_text"] = move
-		res["dice"] = dice
+		res["player_text"] = ""        # nothing was "said": this is the founding
+		res["interpreted_as"] = ""
+		res.erase("dice")
+		res.erase("roll")
 		state.last_outcome = {
-			"title": "day one", "verdict": String(res.get("verdict", "")),
-			"said": move, "heard": String(res.get("interpreted_as", "")),
+			"title": "day one", "verdict": "",
+			"said": "", "heard": "",
 			"narration": String(res.get("narration", "")),
 			"reality": String(res.get("reality_check", "")),
 			"dec_log": [], "log": [], "dm": res.duplicate(true)}
 		if is_instance_valid(gv):
 			gv.set("_last_outcome", state.last_outcome.duplicate(true))
-			if gv.has_method("refresh_week_story"):
-				gv.call("refresh_week_story")
-		# the DM staged day one; its scene drives the opening image
-		var cast_pack := _cast_pack(res.get("cast", []))
-		_scene_seq = _turn_seq
-		_scene_headline = String(res.get("headline", "DAY ONE"))
-		director.make_scene_v2(res.get("scene", {}), cast_pack["cast"], cast_pack["urls"],
-				String((res.get("scene", {}) as Dictionary).get("beat", "day one")),
-				"opening_run%d" % (record.seed_value if record != null else 0), _company_ctx()),
-		dice)
+		_begin_turn(res))
 
 func _company_ctx() -> Dictionary:
 	if state == null:
@@ -1019,8 +1020,7 @@ func _roll_ceremony(n: int) -> void:
 	if _cup != null and is_instance_valid(_cup):
 		_cup.queue_free()
 		_cup = null
-	if _curtain != null and is_instance_valid(_curtain):
-		_curtain.roll_die(n)   # the die persists small on the curtain for the DC stamp
+	# the cup already showed the die; the curtain stays clean until the stamp
 
 func _raise_curtain() -> void:
 	if _curtain != null and is_instance_valid(_curtain) and _curtain.visible:
@@ -1252,8 +1252,8 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 	# CHANGE-BEATS (owner-approved cadence): a fresh image is generated when the
 	# WEEK'S STAGE changes — new place, new condition, new cast. A quiet week in
 	# the same room keeps its scene, the beat still reads, and nothing is spent.
-	var stage_sig := "%s|%s|%s" % [String(scene.get("novel_place", want["place"])),
-			want["condition"], str((dm.get("cast", []) as Array).size())]
+	var stage_sig := "wk%d|%s|%s" % [state.week, String(scene.get("novel_place", want["place"])),
+			want["condition"]]
 	if want_art and stub_path == "" and stage_sig == _last_stage_sig and _scene_layer == null:
 		want_art = false
 	var pick := director.resolve(want)
@@ -1293,48 +1293,41 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 		# That is not a reason to skip the week: the beat carries on as reading.
 
 	var l := LoadingScreen.new()
-	l.begin("WEEK %d" % state.week)
+	l.begin("WEEK %d" % int(dm.get("week_played", state.week)))
 	add_child(l)
 	l.size = get_viewport().get_visible_rect().size
 	_beat = l
 	# the DM's own title for the week, and then the week itself. It has nowhere else
 	# to be: the room takes the picture, not the words.
 	l.say("", String(dm.get("headline", "")))
-	l.say("You said", String(dm.get("player_text", "")))
-	l.say("They heard", String(dm.get("interpreted_as", "")))
+	if String(dm.get("player_text", "")) != "":
+		l.say("You said", String(dm.get("player_text", "")))
+		l.say("They heard", String(dm.get("interpreted_as", "")))
 	# THE JUDGEMENT: the settled die gets its DC and its band before anything
 	# else — the player watches the number they rolled become the week they got.
 	var roll_d: Dictionary = dm.get("roll", {})
 	var dice_d: Dictionary = dm.get("dice", {})
-	var used_d20 := 0
-	if not dice_d.is_empty() and not roll_d.is_empty():
-		# THE ENGINE RESOLVES THE DIE (never the DM): higher under advantage,
-		# lower under disadvantage, first otherwise — from the pre-rolled pair.
-		var stt := String(roll_d.get("stat", "grit"))
-		var a := int(dice_d.get("a", 10))
-		var b := int(dice_d.get("b", 10))
-		var amap: Dictionary = dice_d.get("adv_map", {})
-		var mode := String(amap.get(stt, ""))
-		used_d20 = a
-		var mode_txt := ""
-		if mode.begins_with("ADV"):
-			used_d20 = maxi(a, b)
-			mode_txt = " (advantage: %d,%d)" % [a, b]
-		elif mode.begins_with("DIS"):
-			used_d20 = mini(a, b)
-			mode_txt = " (disadvantage: %d,%d)" % [a, b]
-		var mod := int(state.competences.get(stt, 3)) - 3
+	var used_d20 := int(dice_d.get("used", 0))
+	if used_d20 > 0 and not roll_d.is_empty():
+		# the die was FINAL at the press (the cup already showed it); here it
+		# meets the DC and is explained in plain words
+		var stt := String(dice_d.get("stat", "grit"))
+		var mod := int(dice_d.get("mod", 0))
+		var mode := String(dice_d.get("mode", ""))
 		var dc := int(roll_d.get("dc", 10))
 		var total := used_d20 + mod
 		var band_key := SimEngine.margin_band(total, dc)
 		var band: String = {"brilliant": "BRILLIANT", "fine": "IT LANDS",
 			"risky": "MIXED RESULT", "backfired": "IT BACKFIRES"}.get(band_key, "IT LANDS")
-		l.say("", "THE ROLL — %d%s %s%d (%s) = %d vs DC %d: %s." % [used_d20, mode_txt,
-			"+" if mod >= 0 else "−", absi(mod), stt, total, dc, band.to_lower()])
+		var mode_txt := ("  ·  " + mode) if mode != "" else ""
+		l.say("", "The die came up %d. Your %s adds %s%d — total %d, and this needed %d. %s%s" % [
+			used_d20, stt, "+" if mod >= 0 else "−", absi(mod), total, dc,
+			{"brilliant": "It lands beautifully.", "fine": "It lands.",
+			 "risky": "It half-lands: something gives.", "backfired": "It goes wrong."}.get(band_key, "It lands."),
+			mode_txt])
 		if _curtain != null and is_instance_valid(_curtain):
 			_curtain.stamp_roll("%d %s%d (%s)  vs  DC %d" % [used_d20, "+" if mod >= 0 else "−",
 				absi(mod), stt, dc], band)
-		_roll_ceremony(used_d20)
 	l.say("", String(dm.get("narration", "")))
 	l.say("", String(dm.get("reality_check", "")))
 	if _curtain != null and is_instance_valid(_curtain):

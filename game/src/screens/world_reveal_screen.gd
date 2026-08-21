@@ -36,11 +36,12 @@ func _ready() -> void:
 	sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(sheet)
 
-	_title("THE WORLD YOU JUST WALKED INTO", Vector2(220, 96), 46)
+	_title("THE WORLD %s WAS BORN INTO" % state.company_name.to_upper(), Vector2(220, 96), 44)
 	var th := state.theta
-	_line("the market: ~%s buyers of %s for %s · customer patience ≈ %d weeks" % [
-		_fmt(int(th.get("tam", 0))), state.biz_what.to_lower(), state.biz_who.to_lower(),
-		int(th.get("lifetime_wk", 40))], Vector2(220, 170), 29)
+	var mline := String(state.get_meta("market_line", ""))
+	_line("~%s real buyers · a customer stays ≈ %d weeks%s" % [
+		_fmt(int(th.get("tam", 0))), int(th.get("lifetime_wk", 40)),
+		("  ·  " + mline) if mline != "" else ""], Vector2(220, 168), 28)
 
 	_title("the money in town", Vector2(220, 240), 34, PEN)
 	var y := 292.0
@@ -55,9 +56,10 @@ func _ready() -> void:
 	y += 78.0
 	for rv in state.rivals:
 		var r: Dictionary = rv
-		_line("%s — looks %s · plays: %s" % [String(r.get("name", "?")),
+		var what := String(r.get("what", ""))
+		_line("%s — %s%s" % [String(r.get("name", "?")),
 			SimEngine._fuzz(float(r.get("strength", 20.0))),
-			String((r.get("tactics", ["?"]) as Array)[0])], Vector2(240, y), 27)
+			("  ·  " + what) if what != "" else ""], Vector2(240, y), 27)
 		y += 54.0
 
 	_line("everything above is true. nothing above is the whole truth.",

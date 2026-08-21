@@ -80,6 +80,7 @@ func founder_archetype() -> Dictionary:
 	return best if best_score > 0.0 else FOUNDER_ARCHETYPES[4]
 var story_so_far: String = ""         # the DM's compacted memory, ≤500 words, engine-capped
 var metric_history: Array = []        # weekly snapshots for the binder's hand-drawn charts
+var played_events: Array = []         # recent event titles, so the world never repeats itself
 var weeks_in_red: int = 0                 # money IS the food — 3 weeks starved = dead
 var history: Array = []                   # {week:int, entry:String} — everything the player did
 var cofounders: Array = []   # {role, commitment, equity, vesting}

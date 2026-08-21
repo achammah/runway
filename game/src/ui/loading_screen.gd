@@ -63,6 +63,7 @@ var _next_reveal_at := 0.0
 var _scratch: AudioStreamPlayer
 var _writing := 0                 ## blocks currently writing; scratch while > 0
 var _bodies: Array = []           ## every body label, so a skip can finish them all
+var _more: Label                  ## the ▼ that says unread lines wait below
 var _proceed := false             ## the reader clicked "look up"; the beat may close
 var _ready_hint: Label
 
@@ -119,6 +120,11 @@ func begin(week_label: String) -> void:
 	_bar.set_deferred("size", Vector2(760, 26))
 	_card.add_child(_bar)
 
+	_more = _mk("▼  more below — scroll", SIZE_LABEL, Color(PEN, 0.8), HORIZONTAL_ALIGNMENT_CENTER)
+	_more.position = Vector2(0, CARD_H - FOOTER_H - 6.0)
+	_more.custom_minimum_size = Vector2(1080, 0)
+	_more.visible = false
+	_card.add_child(_more)
 	_ready_hint = _mk("the week is still developing... (click to catch up)", SIZE_LABEL, Color(INK, 0.4), HORIZONTAL_ALIGNMENT_CENTER)
 	_ready_hint.position = Vector2(0, CARD_H - FOOTER_H + 54.0)
 	_ready_hint.custom_minimum_size = Vector2(1080, 0)
@@ -134,8 +140,13 @@ func begin(week_label: String) -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	gui_input.connect(func(ev: InputEvent) -> void:
 		if ev is InputEventMouseButton and ev.pressed:
-			# first click catches the reading up; once everything is read (and the
-			# art is in), the next click is the "look up" that closes the beat
+			# the wheel reads back and forth; a plain click catches up, then closes
+			if ev.button_index == MOUSE_BUTTON_WHEEL_UP:
+				_scroll.scroll_vertical -= 64
+				return
+			if ev.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				_scroll.scroll_vertical += 64
+				return
 			if _reveal_queue.is_empty() and _writing == 0 and _bar.amount >= 0.995 and _t >= MIN_LIFE:
 				_proceed = true
 			else:
@@ -185,6 +196,11 @@ func _process(delta: float) -> void:
 	var goal: float = _target if _target > 0.0 else minf(0.92, _t / 60.0)
 	_bar.amount = move_toward(_bar.amount, goal, delta * 0.5)
 	_bar.queue_redraw()
+	# MORE BELOW: a drawn ▼ pulses while unread lines wait under the fold
+	if _more != null and is_instance_valid(_more) and is_instance_valid(_scroll):
+		var maxs := maxf(_col.size.y - _scroll.size.y, 0.0)
+		_more.visible = float(_scroll.scroll_vertical) < maxs - 8.0
+		_more.modulate.a = 0.55 + 0.35 * sin(_t * 4.0)
 
 func _reveal(beat: Dictionary) -> void:
 	var block := VBoxContainer.new()
