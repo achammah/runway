@@ -168,6 +168,8 @@ func _fullrun(dir: String) -> void:
 		if fld != null:
 			fld.text = String(gv._free_text[1])
 		if state.week % 5 == 0:
+			# the page writes itself; a shot at 0.3s catches blank paper
+			await get_tree().create_timer(1.6).timeout
 			await _shot(dir, "wk%02d_%s" % [state.week, state.era])
 			shots += 1
 			if not _still_playing(gv):
