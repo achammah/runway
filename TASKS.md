@@ -191,5 +191,11 @@ Lanes run it after every batch and paste the line in their round log.
 - [x] T5 Level row wrap: "recruit 3" → "hire 3" caption
 - [x] T6 NPC repeat killer: played_events entries carry cast names; regex name filter rejects pool repeats; prompts forbid re-leading with recent people; plain-title law for cards
 - [x] T7 Fresh image every staged week (stage_sig carries the week)
-- [ ] T8 Live paid probe: 2+ weeks with art — verify dice match, no overlap, plain prose, new faces, new images
-- [ ] T9 Film harness re-shoot: dice film + turn film frames clean
+- [x] T8 Live paid probes ×3: gate/z-order/founding bugs found AND fixed; probe 3 graded PASS (plain prose, diary notes, dice keeps, art every week)
+- [x] T9 Films: cup own-screen at press, considering curtain, settled die = engine die
+- [x] T10 Founder + cofounder NAMES at the draft (owner ask): signed-by input, named cards, click-to-redeal, DM canon
+- [x] T11 Scene cache keyed per week — the 'same image forever' root cause (v2 registry served cross-run)
+- [x] T12 CASINO DICE LINE: owner-validated red master → 20 identical stills → 4s 720p seedance (cup → small die → zoom) → fal matte → RGBA sheets in-game; contact sheets in ~/Downloads; in-engine film verified
+- [x] T13 Screen sweep: was-page elision, shot-harness curtain, binder crew crash, world-reveal crowding — fixed with permanent harnesses (binder_shot, world_reveal_shot)
+- [x] T14 Prompt-editor pass on 8-week transcript: Monday-opener, joke-first, diary template broken; narration length contradiction healed (210-290 everywhere)
+- [ ] T15 Verify prompt edits live (probe 5 running: opener variety, diary shapes)
