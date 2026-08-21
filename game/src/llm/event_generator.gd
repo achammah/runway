@@ -93,17 +93,53 @@ func _arc_block(state: GameState) -> String:
 func compose_event_user(state: GameState) -> String:
 	return "Run state:\n" + JSON.stringify(state.to_digest()) + _arc_block(state) + "\nWrite one new event card for this exact moment."
 
-func compose_adjudicate_user(state: GameState, ev: Dictionary, player_text: String, d20: int = 0) -> String:
-	var die := ""
-	if d20 > 0:
-		die = "\n\nTHE DIE IS CAST: d20 = %d. Competences: %s. Pick the governing stat, mod = stat - 3, total = %d + mod. Judge the DC from the plan and the state, then narrate the outcome that total EARNS." % [
-			d20, JSON.stringify(state.competences), d20]
-	var hist := ""
+## THE CONTEXT SANDWICH (plan C1): world bible -> compacted memory -> recent
+## weeks verbatim -> numeric state + engine signals -> the dice -> directives.
+func compose_adjudicate_user(state: GameState, ev: Dictionary, player_text: String, dice: Dictionary = {}) -> String:
+	var parts := PackedStringArray()
+	parts.append("Run state:\n" + JSON.stringify(state.to_digest()))
+	parts.append("\nENGINE SIGNALS (ground truth this week — narrate FROM these):\n"
+		+ JSON.stringify(SimEngine.signals(state)))
+	if not state.investors.is_empty() or not state.rivals.is_empty():
+		parts.append("\nTHE WORLD (fixed cast — keep names and voices consistent):\n"
+			+ WorldGen.bible_digest(state))
+	if state.story_so_far != "":
+		parts.append("\nTHE STORY SO FAR (your own compacted memory):\n" + state.story_so_far)
 	if not state.run_history.is_empty():
-		hist = "\n\nTHE RUN SO FAR (every decision and what it caused — keep continuity, let consequences compound):\n" + JSON.stringify(state.history_digest())
-	return "Run state:\n%s%s%s%s\n\nEvent: %s — %s\n\nThe player writes their own move instead of picking an option:\n\"%s\"\n\nAdjudicate it." % [
-		JSON.stringify(state.to_digest()), _arc_block(state), hist, die,
-		String(ev.get("title", "")), String(ev.get("body", "")), player_text.substr(0, 300)]
+		var recent: Array = state.run_history.slice(maxi(state.run_history.size() - 3, 0))
+		parts.append("\nRECENT WEEKS VERBATIM:\n" + JSON.stringify(recent))
+	parts.append(_arc_block(state))
+	if not dice.is_empty():
+		parts.append(("\nTHE DICE ARE CAST: two d20s rolled: %d and %d. Competences: %s. "
+			+ "Advantage/disadvantage BY STAT (from items, hires, conditions): %s. "
+			+ "Pick the governing stat; the engine will use the HIGHER die under advantage, "
+			+ "the LOWER under disadvantage, the FIRST otherwise, add (stat - 3), and compare "
+			+ "to your DC. Set the DC honestly (floors: routine 6-8, solid 9-11, bold 12-14, "
+			+ "wild 15-16) and narrate the outcome the FINAL total earns.") % [
+			int(dice.get("a", 10)), int(dice.get("b", 10)),
+			JSON.stringify(state.competences), JSON.stringify(dice.get("adv_map", {}))])
+	var directives := _directives(state)
+	if directives != "":
+		parts.append("\nDIRECTIVES (non-negotiable this week):\n" + directives)
+	parts.append("\nEvent: %s — %s" % [String(ev.get("title", "")), String(ev.get("body", ""))])
+	parts.append("\nThe player writes their own move:\n\"%s\"\n\nAdjudicate it." % player_text.substr(0, 300))
+	return "\n".join(parts)
+
+## Deterministic, prescriptive, computed from state — the register LLM GMs obey.
+func _directives(state: GameState) -> String:
+	var out := PackedStringArray()
+	var rw := SimEngine.runway_weeks(state)
+	if rw <= 3:
+		out.append("- Runway is %d weeks. The world MUST escalate; nothing is routine." % rw)
+	if state.exhaustion >= 4:
+		out.append("- The founder is exhausted (%d/6). It shows in everything." % state.exhaustion)
+	for c in state.clocks:
+		if int((c as Dictionary).get("weeks_left", 9)) <= 2:
+			out.append("- A deadline looms (%d wks): %s. Reference it." % [
+				int((c as Dictionary).get("weeks_left", 0)), String((c as Dictionary).get("consequence", ""))])
+	if state.tech_debt >= 70.0:
+		out.append("- Tech debt is %d. The cracks are visible to customers." % int(state.tech_debt))
+	return "\n".join(out)
 
 ## Background prefetch of generated event cards.
 var disabled := false   # daily seeded runs: authored-only determinism
@@ -147,12 +183,12 @@ static func keyless_adjudication() -> Dictionary:
 ## Adjudicate the player's own written move for an event. cb gets
 ## {narration, verdict, effects} (validated), the keyless stub above when there is no
 ## key at all, or {} when a live call came back empty or failed its validator.
-func adjudicate(state: GameState, ev: Dictionary, player_text: String, cb: Callable, d20: int = 0) -> void:
+func adjudicate(state: GameState, ev: Dictionary, player_text: String, cb: Callable, dice: Dictionary = {}) -> void:
 	if not llm.enabled():
 		if cb.is_valid():
 			cb.call(keyless_adjudication())
 		return
-	llm.request_json(_adjudicate_prompt, compose_adjudicate_user(state, ev, player_text, d20), LlmClient.ADJUDICATE_SCHEMA, func(result: Dictionary):
+	llm.request_json(_adjudicate_prompt, compose_adjudicate_user(state, ev, player_text, dice), LlmClient.ADJUDICATE_SCHEMA, func(result: Dictionary):
 		if result.is_empty() or not _validate_effects(result.get("effects", []), true):
 			if cb.is_valid():
 				cb.call({})
@@ -175,7 +211,7 @@ func next_card(state: GameState, content: ContentDb, rng: SeededRng) -> Dictiona
 			return ev
 	return rng.weighted_pick(eligible)
 
-const ALLOWED_OPS := ["cash_delta", "product_delta", "traction_delta", "morale_delta", "hype_delta", "set_flag"]
+const ALLOWED_OPS := ["cash_delta", "product_delta", "traction_delta", "morale_delta", "hype_delta", "set_flag", "status", "clock", "set_price", "set_marketing", "hire", "take_loan"]
 
 func _validate_effects(effects, allow_empty: bool = false) -> bool:
 	if not (effects is Array):

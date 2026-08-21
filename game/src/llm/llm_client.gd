@@ -54,7 +54,7 @@ const ADJUDICATE_SCHEMA := {
 	"type": "object",
 	"additionalProperties": false,
 	"required": ["interpreted_as", "reality_check", "narration", "verdict", "effects",
-		"headline", "scene", "cast", "roll"],
+		"headline", "scene", "cast", "roll", "traits", "memory"],
 	"properties": {
 		"interpreted_as": {"type": "string", "maxLength": 160},
 		"reality_check": {"type": "string", "maxLength": 240},
@@ -95,6 +95,17 @@ const ADJUDICATE_SCHEMA := {
 				"beat": {"type": "string", "maxLength": 160},
 			},
 		},
+		# 1-3 tags from the fixed trait enum — the founder-archetype epilogue
+		"traits": {
+			"type": "array", "minItems": 0, "maxItems": 3,
+			"items": {"type": "string", "enum": ["long_term", "short_term",
+				"risk_taker", "risk_averse", "data_driven", "intuition_driven",
+				"quality_focused", "speed_focused", "hands_on", "delegator",
+				"collaborative", "independent", "diplomatic", "confrontational"]}
+		},
+		# THE COMPACTED MEMORY: the DM's own ≤120-word third-person summary of
+		# the run so far, replacing the previous one. The engine hard-caps it.
+		"memory": {"type": "string", "maxLength": 1200},
 		"cast": {
 			"type": "array", "minItems": 0, "maxItems": 5,
 			"items": {
@@ -115,11 +126,15 @@ const ADJUDICATE_SCHEMA := {
 				"additionalProperties": false,
 				# WHY IS NOT OPTIONAL: every delta names its in-world cause, and the
 				# journal prints it ("+$1,200 — the pilot invoice cleared").
-				"required": ["op", "v", "why"],
+				"required": ["op", "v", "why", "weeks"],
 				"properties": {
-					"op": {"type": "string", "enum": ["cash_delta", "product_delta", "traction_delta", "morale_delta", "hype_delta", "set_flag"]},
+					"op": {"type": "string", "enum": ["cash_delta", "product_delta",
+						"traction_delta", "morale_delta", "hype_delta", "set_flag",
+						"status", "clock", "set_price", "set_marketing", "hire", "take_loan"]},
 					"v": {"type": ["number", "string"]},
-					"why": {"type": "string", "maxLength": 90}
+					"why": {"type": "string", "maxLength": 90},
+					# status: duration · clock: weeks until it fires · all other ops: 1
+					"weeks": {"type": "integer", "minimum": 1, "maximum": 12}
 				}
 			}
 		}
@@ -258,7 +273,8 @@ func request_json(system_prompt: String, user_prompt: String, schema: Dictionary
 func _on_completed(result: int, code: int, _h: PackedStringArray, body: PackedByteArray, http: HTTPRequest, cb: Callable) -> void:
 	http.queue_free()
 	if result != HTTPRequest.RESULT_SUCCESS or code < 200 or code >= 300:
-		push_warning("LLM request failed (result=%d http=%d)" % [result, code])
+		push_warning("LLM request failed (result=%d http=%d): %s" % [result, code,
+			body.get_string_from_utf8().left(300)])
 		if cb.is_valid():
 			cb.call({})
 		return

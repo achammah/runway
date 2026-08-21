@@ -762,6 +762,12 @@ func _after_draft(result: Dictionary) -> void:
 		state.cash = 1500   # emergency couch cushions
 	record.log_event(0, {"id": "draft", "title": "The Founding of %s" % state.company_name},
 		"%s · %d cofounder(s) · %s · kept %.0f%%" % [state.archetype_name, cofounders.size(), funding.get("name", ""), state.founder_pct], [])
+	# THE WORLD IS BORN (plan A4/B5): seed the engine, then the bible
+	state.sim_seed = record.seed_value if state.sim_seed == 0 else state.sim_seed
+	if state.theta.is_empty():
+		state.theta = SimEngine.default_theta(state.biz_what, state.biz_who)
+	if state.investors.is_empty():
+		WorldGen.build(state)
 	generator.generate_arcs(state)   # Tier-3 run director: the run's narrative arcs
 	music.play("garage")
 	var g := GarageViewScreen.new()
@@ -781,7 +787,9 @@ func _cold_open(gv: GarageViewScreen) -> void:
 	if generator == null or not generator.llm.enabled():
 		_opening_scene()
 		return
-	var d20 := rng.roll_d20()
+	var d_a := rng.roll_d20()
+	var d_b := rng.roll_d20()
+	var dice := {"a": d_a, "b": d_b, "adv_map": {}}
 	var move := ("Day one of %s: we sign the papers, unpack the boxes, and put the plan on "
 			+ "the whiteboard. Everyone takes their corner and we start.") % state.company_name
 	generator.adjudicate(state, {}, move, func(res: Dictionary) -> void:
@@ -789,7 +797,7 @@ func _cold_open(gv: GarageViewScreen) -> void:
 			_opening_scene()
 			return
 		res["player_text"] = move
-		res["d20"] = d20
+		res["dice"] = dice
 		state.last_outcome = {
 			"title": "day one", "verdict": String(res.get("verdict", "")),
 			"said": move, "heard": String(res.get("interpreted_as", "")),
@@ -807,7 +815,7 @@ func _cold_open(gv: GarageViewScreen) -> void:
 		director.make_scene_v2(res.get("scene", {}), cast_pack["cast"], cast_pack["urls"],
 				String((res.get("scene", {}) as Dictionary).get("beat", "day one")),
 				"opening_run%d" % (record.seed_value if record != null else 0), _company_ctx()),
-		d20)
+		dice)
 
 func _company_ctx() -> Dictionary:
 	if state == null:
@@ -1286,25 +1294,44 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 	# THE JUDGEMENT: the settled die gets its DC and its band before anything
 	# else — the player watches the number they rolled become the week they got.
 	var roll_d: Dictionary = dm.get("roll", {})
-	var d20 := int(dm.get("d20", 0))
-	if d20 > 0 and not roll_d.is_empty():
+	var dice_d: Dictionary = dm.get("dice", {})
+	var used_d20 := 0
+	if not dice_d.is_empty() and not roll_d.is_empty():
+		# THE ENGINE RESOLVES THE DIE (never the DM): higher under advantage,
+		# lower under disadvantage, first otherwise — from the pre-rolled pair.
 		var stt := String(roll_d.get("stat", "grit"))
+		var a := int(dice_d.get("a", 10))
+		var b := int(dice_d.get("b", 10))
+		var amap: Dictionary = dice_d.get("adv_map", {})
+		var mode := String(amap.get(stt, ""))
+		used_d20 = a
+		var mode_txt := ""
+		if mode.begins_with("ADV"):
+			used_d20 = maxi(a, b)
+			mode_txt = " (advantage: %d,%d)" % [a, b]
+		elif mode.begins_with("DIS"):
+			used_d20 = mini(a, b)
+			mode_txt = " (disadvantage: %d,%d)" % [a, b]
 		var mod := int(state.competences.get(stt, 3)) - 3
+		var dc := int(roll_d.get("dc", 10))
+		var total := used_d20 + mod
+		var band_key := SimEngine.margin_band(total, dc)
 		var band: String = {"brilliant": "BRILLIANT", "fine": "IT LANDS",
-			"risky": "MIXED RESULT", "backfired": "IT BACKFIRES"}.get(String(dm.get("verdict", "fine")), "IT LANDS")
-		var total := d20 + mod
-		l.say("", "THE ROLL — %d %s%d (%s) = %d vs DC %d: %s." % [d20,
-			"+" if mod >= 0 else "−", absi(mod), stt, total, int(roll_d.get("dc", 10)), band.to_lower()])
+			"risky": "MIXED RESULT", "backfired": "IT BACKFIRES"}.get(band_key, "IT LANDS")
+		l.say("", "THE ROLL — %d%s %s%d (%s) = %d vs DC %d: %s." % [used_d20, mode_txt,
+			"+" if mod >= 0 else "−", absi(mod), stt, total, dc, band.to_lower()])
 		if _curtain != null and is_instance_valid(_curtain):
-			_curtain.stamp_roll("%d %s%d (%s)  vs  DC %d" % [d20, "+" if mod >= 0 else "−",
-				absi(mod), stt, int(roll_d.get("dc", 10))], band)
+			_curtain.stamp_roll("%d %s%d (%s)  vs  DC %d" % [used_d20, "+" if mod >= 0 else "−",
+				absi(mod), stt, dc], band)
+		_roll_ceremony(used_d20)
 	l.say("", String(dm.get("narration", "")))
 	l.say("", String(dm.get("reality_check", "")))
 	if _curtain != null and is_instance_valid(_curtain):
 		move_child(_curtain, get_child_count() - 1)
-		# never rise mid-drop, and let a stamped judgement be READ: the die's
-		# verdict holds a moment before the paper takes over
-		await get_tree().create_timer(1.5 if d20 > 0 else 0.65).timeout
+		# never rise mid-drop; let the ceremony play and the judgement be READ
+		if _cup != null and is_instance_valid(_cup):
+			await _cup.settled
+		await get_tree().create_timer(1.5 if used_d20 > 0 else 0.65).timeout
 	_raise_curtain()
 
 	var deadline := Time.get_ticks_msec() + int(HOLD_CEILING * 1000.0)

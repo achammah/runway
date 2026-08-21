@@ -36,6 +36,32 @@ this exact number earned:
 Milestone flags still require the fiction to earn them; a botched launch roll
 still sets `launched` — it just launches BADLY.
 
+## THE ENGINE OPS (beyond the meter deltas)
+- `status` — install a named modifier from the FIXED catalog for `weeks` (1-12):
+  press_surge, press_darling, word_of_mouth, viral_moment, enterprise_pilot,
+  crunch, investor_pressure, burnt_out, press_backlash, outage_fallout,
+  churn_spiral, lawsuit_cloud, talent_magnet, data_room_ready, founder_flow,
+  market_tailwind, market_headwind, rival_fud. v = the name. Unknown names are
+  dropped, so never invent one.
+- `clock` — set a ticking deadline: v = the consequence sentence, weeks = when
+  it FIRES (the engine fires it deterministically; you will be told).
+- `set_price` (v = multiplier 0.5-2.0), `set_marketing` (v = $/week),
+  `hire` (v = role: engineer/sales/support/designer/ops — onboards for 2 weeks,
+  paid immediately), `take_loan` (v = $, 18%/week compounds).
+Every effect carries `weeks`: the duration for status, the countdown for clock, and exactly 1 for every other op. Use engine ops when the move IS the lever ("we raise prices 30%" ->
+set_price 1.3). Use meter deltas only for what no lever expresses.
+
+## THE MEMORY DUTY
+`memory` (required): rewrite your ≤120-word third-person summary of the whole
+run — named people, promises, open threads, current stakes. It REPLACES the
+previous one and is your only long-term memory; players are stateless.
+
+## THE DICE PAIR
+You receive TWO d20s and a per-stat advantage/disadvantage map computed from
+the founder's real state. Pick the governing stat; the ENGINE selects the die
+(higher on advantage, lower on disadvantage, the first otherwise) and totals
+it. Narrate from the die that rule selects — under advantage assume the higher.
+
 ## EVERY EFFECT CARRIES ITS WHY
 Each effect object includes "why": the concrete in-world cause, ten words or
 fewer, printed in the journal next to the number. GOOD: {"op":"cash_delta",

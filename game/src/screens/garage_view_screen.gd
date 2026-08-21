@@ -39,7 +39,7 @@ var _free_text: Dictionary = {}    # page index -> what the player has written t
 var _week_sheet := 0               # 0 = what your move caused, 1 = what is left
 var _turn_dir := 0                 # the pending page-turn: +1 forward, -1 back, 0 none
 var _lock_ready_last := false      # so typing only rebuilds the lock when readiness flips
-var _pending_d20 := 0              # the die this week was rolled on
+var _pending_dice := {}            # {a, b, adv_map} — cast at commit, resolved post-DM
 var _seen_spreads := {}            # "week:page:sheet" -> the ink is already dry
 var _week_told := 0                # how much of the story sheet one got through
 ## The capture harness in main.gd reaches for the old two-page frames; both now
@@ -1991,17 +1991,25 @@ func _commit_from_text() -> void:
 	# THE ROLL (owner design: D&D at the heart of the week). The die is cast HERE,
 	# before the world speaks — the DM judges the plan into a DC and narrates the
 	# outcome this exact number earned. Same plan, different die, different week.
-	_pending_d20 = rng.roll_d20() if rng != null and rng.has_method("roll_d20") else (randi() % 20 + 1)
-	week_rolled.emit(_pending_d20)
+	var da: int = rng.roll_d20() if rng != null else (randi() % 20 + 1)
+	var db: int = rng.roll_d20() if rng != null else (randi() % 20 + 1)
+	var adv_map := {}
+	for st_n in ["build", "sell", "raise", "recruit", "grit"]:
+		var cx := SimEngine.roll_context(state, st_n)
+		if bool(cx.advantage):
+			adv_map[st_n] = "ADVANTAGE (%s)" % ", ".join(cx.adv_reasons)
+		elif bool(cx.disadvantage):
+			adv_map[st_n] = "DISADVANTAGE (%s)" % ", ".join(cx.dis_reasons)
+	_pending_dice = {"a": da, "b": db, "adv_map": adv_map}
 	generator.adjudicate(state, _current_event, t, func(res: Dictionary):
 		_adjudicating = false
 		var verdict := res
 		if verdict.is_empty():
 			verdict = EventGenerator.keyless_adjudication()
 		verdict["player_text"] = t
-		verdict["d20"] = _pending_d20
+		verdict["dice"] = _pending_dice
 		_pending_free = verdict
-		_lock_week(), _pending_d20)
+		_lock_week(), _pending_dice)
 
 ## One underline in the founder's pen, drawn left to right at commit.
 class _PenStroke:
@@ -2161,6 +2169,55 @@ func _lock_week() -> void:
 
 var _week_prev := {}               # last week's numbers, for the delta strip
 
+## THE EXTENDED EXECUTOR (plan C2): classic meter ops go through EffectOps'
+## clamps; engine ops (status/clock/levers/hire/loan) go through SimEngine —
+## typed, clamped, catalog-only. Every op returns a receipt line.
+func _apply_dm_effects(effects: Array) -> Array:
+	var classic: Array = []
+	var out: Array = []
+	for eff in effects:
+		var d: Dictionary = eff
+		var op := String(d.get("op", ""))
+		var why := String(d.get("why", ""))
+		match op:
+			"status":
+				var nm := String(d.get("v", ""))
+				var wk := int(d.get("weeks", 2))
+				if SimEngine.add_status(state, nm, wk):
+					out.append("status: %s for %d wks — %s" % [nm, wk, why])
+			"clock":
+				var cons := String(d.get("v", ""))
+				var cw := int(d.get("weeks", 3))
+				SimEngine.add_clock(state, cw, cons)
+				out.append("⏰ clock set (%d wks): %s" % [cw, cons])
+			"set_price":
+				state.price_mult = clampf(float(d.get("v", 1.0)), 0.5, 2.0)
+				out.append("price set to ×%.2f — %s" % [state.price_mult, why])
+			"set_marketing":
+				state.marketing_budget = clampi(int(d.get("v", 0)), 0, 50_000)
+				out.append("marketing $%d/wk — %s" % [state.marketing_budget, why])
+			"hire":
+				var role := String(d.get("v", "engineer"))
+				var rng_n := RandomNumberGenerator.new()
+				rng_n.seed = hash(str(state.sim_seed) + str(state.week) + str(state.pipeline.size()))
+				var nm2 := WorldGen.make_name(rng_n)
+				var sal: int = {"engineer": 1500, "sales": 1200, "support": 900,
+					"designer": 1100, "ops": 1000}.get(role, 1200)
+				state.pipeline.append({"name": nm2, "role": role, "salary": sal, "weeks_in": 0})
+				out.append("hired a %s ($%d/wk, onboarding) — %s" % [role, sal, why])
+			"take_loan":
+				var amt := clampi(int(d.get("v", 10_000)), 1_000, 250_000)
+				state.loan_principal += amt
+				state.cash += amt
+				out.append("bridge loan +$%d at 18%%/wk — %s" % [amt, why])
+			_:
+				classic.append(d)
+	var clog := EffectOps.apply_all(classic, state)
+	for l in clog:
+		out.append(l)
+	print("DM FX: %s" % "; ".join(PackedStringArray(out)))
+	return out
+
 func _apply_lock(work_results: Dictionary) -> void:
 	_week_prev = {"cash": state.cash, "traction": state.traction,
 		"product": state.product, "morale": state.morale}
@@ -2239,10 +2296,20 @@ func _apply_lock(work_results: Dictionary) -> void:
 				for l2 in wlog:
 					outcome_log.append("   " + l2)
 				state.log_action("%s initiative (%s): %s" % [String(dept).to_lower(), v, String(w.get("text", "")).left(60)])
+	# ── THE WORLD ACTS FIRST (plan A1): the hostile weekly tick runs before the
+	# founder's move lands, and its receipts open the week's ledger.
+	var tick := SimEngine.weekly_tick(state)
+	for tl in tick.get("lines", []):
+		outcome_log.append(String(tl))
+	for ev_l in tick.get("events", []):
+		outcome_log.append("⚡ " + String(ev_l))
+	for fc in tick.get("fired_clocks", []):
+		outcome_log.append("⏰ THE DEADLINE HIT: " + String(fc))
+		state.log_action("deadline fired: " + String(fc))
 	# the decision itself: a written move that the world judged, or a listed one
 	var title := String(_current_event.get("title", "a quiet week"))
 	if not _pending_free.is_empty():
-		var log := EffectOps.apply_all(_pending_free.get("effects", []), state)
+		var log := _apply_dm_effects(_pending_free.get("effects", []))
 		for l in log:
 			outcome_log.append(l)
 		record.log_event(state.week, _current_event, "[wrote] " + String(_pending_free.get("player_text", "")), log)
@@ -2275,6 +2342,22 @@ func _apply_lock(work_results: Dictionary) -> void:
 	# whatever branch wrote the week, the save remembers it (minus the one-shot dm)
 	state.last_outcome = _last_outcome.duplicate(true)
 	state.last_outcome.erase("dm")
+	# traits tally + the DM's compacted memory (hard-capped) + milestone XP
+	var dmres: Dictionary = _last_outcome.get("dm", {})
+	for tr in dmres.get("traits", []):
+		state.traits_tally[String(tr)] = int(state.traits_tally.get(String(tr), 0)) + 1
+	var mem := String(dmres.get("memory", "")).strip_edges()
+	print("DM MEMORY (%d chars) · traits %s" % [mem.length(), str(dmres.get("traits", []))])
+	if mem != "":
+		var words := mem.split(" ", false)
+		if words.size() > 130:
+			mem = " ".join(words.slice(0, 130)) + "…"
+		state.story_so_far = mem
+	for fl in ["launched", "first_revenue", "pmf", "seed_raised", "series_a"]:
+		if state.has_flag(fl) and not state.has_flag("xp_" + fl):
+			state.set_flag("xp_" + fl)
+			state.xp += 1
+			outcome_log.append("★ MILESTONE: %s — the founder levels (+1 stat to spend)" % fl)
 	# ...and the run's memory grows one week: what was said, what the die did,
 	# what it cost — the DM reads this back every week from now on
 	var fx: Array = []
