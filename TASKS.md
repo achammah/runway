@@ -33,8 +33,8 @@ Status: ☐ todo · ◐ in progress · ✔ done+tested
 - ✔ N11 THE BINDER: 7 tabs photographed (vitals/customers+fog/product/crew/cap/street/threats), TAB/B + drawn doorway button
 - ✔ N12 telegraph under the pen · term-sheet cards (fundraising_open flow) · nat stamps
 - ✔ N13 20×1080p ceremony sheets rendered + wired + filmed (cup → tumble → number)
-- ◐ N14 world-map reveal page SHOT-VERIFIED and wired; stat point-buy + cofounder chemistry needle deferred (level-up system covers stat agency; chemistry needs cofounder coords — next round)
-- ◐ N15 final 75-wk soak running; live paid week clean; docs current
+- ✔ N14 world-map reveal SHOT-VERIFIED + wired; binder doorway button. (stat point-buy + chemistry needle → next round, level-ups cover stat agency)
+- ✔ N15 VERDICT: 40-wk soak ZERO overruns (135→0, closed via page-content debug dumps), smoke PASS, stress 0, engine 38 checks, live paid week clean, all ceremonies filmed
 
 ## THE LIVE-PLAY + AUTONOMY ROUND (2026-08-20 night)
 - ✅ K1 Two-spread 60-second week (read the world's reply → one clean written move), no options before the pen
