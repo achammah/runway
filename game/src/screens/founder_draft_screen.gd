@@ -554,6 +554,19 @@ func _build_select() -> Control:
 	_d_pips.position = Vector2(44, 172)
 	_d_pips.size = Vector2(470, 260)
 	panel.add_child(_d_pips)
+	# EVERY ROW IS A RULE (owner: all the details clickable, D&D style): an
+	# invisible button over each pip row opens the same tip the traits use,
+	# with the stat's exact mechanics from the engine's own constants.
+	for si in STAT_NAMES.size():
+		var srow := Button.new()
+		srow.flat = true
+		for stn in ["normal", "hover", "pressed", "focus"]:
+			srow.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
+		srow.position = Vector2(44, 172 + float(si) * 52.0)
+		srow.set_deferred("size", Vector2(470, 46))
+		var sname := String(STAT_NAMES[si])
+		srow.pressed.connect(func() -> void: _show_stat_tip(sname))
+		panel.add_child(srow)
 	# THE SIX (owner: "double clicks on all the details of the characters like a
 	# D&D game"). Small, because they are what nobody puts on a pitch deck; and
 	# clickable, because every one of them is a rule the engine actually runs.
@@ -707,7 +720,12 @@ func _build_select() -> Control:
 		var mote := ColorRect.new()
 		var msz := mote_rng.randf_range(2.0, 4.5)
 		mote.size = Vector2(msz, msz)
-		mote.color = Color(PALETTE["cream"], 0.0)
+		# THE DUST FADES ON MODULATE, NOT ON COLOUR. A ColorRect is one flat
+		# rect, so the two look identical — but colour is draw data and every
+		# step of the fade made a 3px mote rebuild its command list, fourteen of
+		# them, eight hundred repaints a second. Modulate is applied at render.
+		mote.color = PALETTE["cream"]
+		mote.modulate.a = 0.0
 		mote.rotation = 0.6
 		var mx := mote_rng.randf_range(600.0, 990.0)
 		var my := mote_rng.randf_range(300.0, 840.0)
@@ -830,6 +848,34 @@ func _show_trait_tip(tname: String) -> void:
 	_sfx_click.play()
 	_tip_head.text = head
 	_tip_body.text = String(SimEngine.TRAIT_RULES.get(tname, ""))
+	_trait_tip.visible = true
+	_trait_tip.modulate.a = 0.0
+	_trait_tip.scale = Vector2(0.98, 0.98)
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(_trait_tip, "modulate:a", 1.0, 0.12)
+	tw.tween_property(_trait_tip, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+## The five muscles, in the engine's words — same tip widget as the traits.
+const STAT_RULES := {
+	"build": "Governs building moves: your level adds (level − 3) to the d20 when the week's plan is product work. Focus 4+ rolls build at advantage. R&D budget ships ≈ +1 product per $1,200/wk; product quality gates adoption AND retention.",
+	"sell": "Governs selling moves: adds (level − 3) to the d20. Sell also sets your weekly closing capacity — each level ≈ +0.8 customers/wk of go-to-market cap. Charisma 4+ rolls sell at advantage.",
+	"raise": "Governs fundraising moves: adds (level − 3) to the d20. Credibility + network ≥ 8 opens doors (advantage on every raise) and warms term sheets — up to 8% less equity asked.",
+	"recruit": "Governs hiring moves: adds (level − 3) to the d20. Charisma 4+ rolls recruit at advantage. Hires onboard for 2 weeks, paid before productive.",
+	"grit": "Governs pushing-through moves: adds (level − 3) to the d20. Exhaustion 4+ forces disadvantage; stamina ≤ 2 while tired does too. Luck 4+ rerolls a natural 1 anywhere.",
+}
+
+func _show_stat_tip(sname: String) -> void:
+	if _trait_tip == null:
+		return
+	var level := int((_sel_arch.get("stats", {}) as Dictionary).get(sname, 0))
+	var head := "%s  %d/5" % [sname.to_upper(), level]
+	if _trait_tip.visible and _tip_head.text == head:
+		_trait_tip.visible = false
+		return
+	_sfx_click.pitch_scale = 1.1
+	_sfx_click.play()
+	_tip_head.text = head
+	_tip_body.text = String(STAT_RULES.get(sname, ""))
 	_trait_tip.visible = true
 	_trait_tip.modulate.a = 0.0
 	_trait_tip.scale = Vector2(0.98, 0.98)
