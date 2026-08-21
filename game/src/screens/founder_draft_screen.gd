@@ -125,7 +125,10 @@ func _ready() -> void:
 	_surfaces = SceneSurfaces.new()
 	_surfaces.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_room = SceneRoom.new()
-	_room.size = Vector2(1536, 1024)
+	# widened 12% and slid left so the spotlight beam lands ON the founder
+	# (owner: the light pointed right of everyone standing in it)
+	_room.size = Vector2(1720, 1147)
+	_room.position = Vector2(-184, -62)
 	_room.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_room)
 	if _surfaces.mount(STAGE_SCENE):
