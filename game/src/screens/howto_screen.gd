@@ -4,7 +4,7 @@ extends Control
 ## mechanics" — the old static four-panel sheet graded 20%): three pages, each
 ## one a baked seedance loop playing large inside an inked film frame, with the
 ## REAL rule the engine runs written underneath it in plain words.
-## Shown once (user://seen_howto), then GOT IT.
+## Shown once (user://seen_howto_v2), then GOT IT.
 
 signal done
 
@@ -113,7 +113,7 @@ func _finish() -> void:
 	if _gone:
 		return          # a click landing on the button fires both doors: open it once
 	_gone = true
-	var f := FileAccess.open("user://seen_howto", FileAccess.WRITE)
+	var f := FileAccess.open("user://seen_howto_v2", FileAccess.WRITE)
 	f.store_string("1")
 	f.close()
 	done.emit()
@@ -141,7 +141,7 @@ func _show(i: int) -> void:
 	_card.queue_redraw()
 
 static func seen() -> bool:
-	return FileAccess.file_exists("user://seen_howto")
+	return FileAccess.file_exists("user://seen_howto_v2")
 
 ## Cream paper + wobbled ink border drawn behind the button's word.
 class _PaperBtn:

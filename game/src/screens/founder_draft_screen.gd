@@ -1646,11 +1646,11 @@ func _build_bag_page() -> Control:
 			py += 26.0
 			continue
 		var def: Dictionary = (entry as Array)[1]
-		if px > 12.0 + 5.0 * 104.0:
+		if px > 12.0 + 4.0 * 122.0:
 			px = 12.0
-			py += 132.0
+			py += 138.0
 		var org := Vector2(px, py)
-		px += 104.0
+		px += 122.0
 		gi += 1
 		var ib := Button.new()
 		ib.custom_minimum_size = Vector2(112, 112)
@@ -1705,17 +1705,17 @@ func _build_bag_page() -> Control:
 		ib.add_child(ring)
 		grid.add_child(ib)
 		_bag_btns[String(def["id"])] = ib
-		if int(def.get("carry_cost", 1)) > 1:
-			# the weight is written next to the thing in pen, not stamped on a
-			# rounded badge that covered the art it was describing
-			var wt := _label("2 slots", 24, PALETTE["coral"])
-			wt.position = org + Vector2(0, 101)
-			wt.size = Vector2(112, 30)
-			wt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			wt.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			grid.add_child(wt)
+		# no weight tags on the shelf (owner: cluttered) — the detail card
+		# says "takes 2 slots"; the shelf stays objects-only
 
-	grid.custom_minimum_size = Vector2(640, py + 132.0)
+	grid.custom_minimum_size = Vector2(640, py + 138.0)
+	var sbar := _ShelfBar.new()
+	sbar.scroll = shelf_scroll
+	sbar.grid = grid
+	sbar.position = Vector2(704, 232)
+	sbar.set_deferred("size", Vector2(14, 476))
+	sbar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.add_child(sbar)
 	if py + 132.0 > 484.0:
 		var more := _label("▼ scroll — there's more on the shelf", 22, Color(PALETTE["cream"], 0.75))
 		more.position = Vector2(78, 740)
@@ -2466,6 +2466,25 @@ func _do_launch() -> void:
 		"traps": trap_ids,
 	})
 
+
+## the shelf's drawn scrollbar: pencil track, coral thumb, redraws with scroll
+class _ShelfBar:
+	extends Control
+	var scroll: ScrollContainer
+	var grid: Control
+	func _process(_d: float) -> void:
+		queue_redraw()
+	func _draw() -> void:
+		if scroll == null or grid == null:
+			return
+		var maxs := maxf(grid.custom_minimum_size.y - scroll.size.y, 0.0)
+		if maxs <= 8.0:
+			return
+		draw_line(Vector2(7, 4), Vector2(7, size.y - 4), Color(0.12, 0.12, 0.12, 0.15), 3.0)
+		var frac := clampf(float(scroll.scroll_vertical) / maxs, 0.0, 1.0)
+		var th := maxf(size.y * clampf(scroll.size.y / grid.custom_minimum_size.y, 0.1, 1.0), 30.0)
+		var ty := 4.0 + (size.y - 8.0 - th) * frac
+		draw_line(Vector2(7, ty), Vector2(7, ty + th), Color("E86A5C", 0.85), 6.0)
 
 class BlobPlaceholder:
 	extends Control

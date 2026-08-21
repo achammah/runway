@@ -55,9 +55,9 @@ func _ready() -> void:
 			_t = 999.0)
 
 func roll(n: int) -> void:
-	modulate.a = 0.0
-	var tw := create_tween()
-	tw.tween_property(self, "modulate:a", 1.0, 0.25)
+	# THE TABLE ARRIVES ON THE ROOM (owner: the dice should come in over the
+	# previous screen while it fades to black behind them): the page stays
+	# visible and darkens under the cup — no popping felt card. _t drives it.
 	var path := "res://assets/dice/roll_%02d.png" % clampi(n, 1, 20)
 	if not ResourceLoader.exists(path):
 		push_warning("DiceRoll: no sheet for %d — ceremony skipped" % n)
@@ -92,10 +92,11 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	if _tex == null:
 		return
-	# ITS OWN SCREEN (owner: "the video dice roll ... on its own screen"): an
-	# opaque felt table so nothing — page, beat, room — can bleed through the roll
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.11, 0.095, 0.08, 1.0))
-	draw_circle(size * 0.5, minf(size.x, size.y) * 0.58, Color(0.145, 0.125, 0.10, 1.0))
+	# the previous screen fades to black UNDER the cup over 0.55s; by the time
+	# the die is tumbling the table is fully its own screen
+	var shade := clampf(_t / 0.55, 0.0, 1.0)
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.11, 0.095, 0.08, shade))
+	draw_circle(size * 0.5, minf(size.x, size.y) * 0.58, Color(0.145, 0.125, 0.10, shade))
 	# FULL HEIGHT (owner: "fill screen in height so we avoid video cropping"):
 	# the clip is square, so height IS the constraint — use all of it
 	var side := size.y
@@ -103,4 +104,5 @@ func _draw() -> void:
 	var src := Rect2(float(_frame % COLS) * CELL, float(_frame / COLS) * CELL, CELL, CELL)
 	# the sheets carry ALPHA (owner: background-removed clips): the cup and die
 	# sit straight on the felt, no card, no frame — just the drawing and the light
-	draw_texture_rect_region(_tex, Rect2(pos, Vector2(side, side)), src)
+	draw_texture_rect_region(_tex, Rect2(pos, Vector2(side, side)), src,
+			Color(1, 1, 1, clampf(_t / 0.22, 0.0, 1.0)))

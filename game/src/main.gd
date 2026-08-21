@@ -29,6 +29,8 @@ func _ready() -> void:
 	var t1 := Time.get_ticks_msec()
 	_setup_director()
 	print("BOOT director %d ms" % (Time.get_ticks_msec() - t1))
+	if FileAccess.file_exists("res://build_stamp.txt"):
+		print("RUNWAY! build: " + FileAccess.get_file_as_string("res://build_stamp.txt").strip_edges())
 	print("RUNWAY! content: %d items, %d events · LLM: %s" % [
 		content.items.size(), content.events.size(),
 		(llm.provider + "/" + llm.model) if llm.enabled() else "off (authored only)"])

@@ -14,6 +14,10 @@ BG="$DIST/dmg_bg.png"
 mkdir -p "$DIST"
 rm -rf "$APP" "$STAGE" "$DMG"
 
+echo "── stamping the build ──"
+date "+%Y-%m-%d %H:%M" | tr -d '\n' > "$GAME/build_stamp.txt"
+echo " · $(git -C "$ROOT" rev-parse --short HEAD)" >> "$GAME/build_stamp.txt"
+
 echo "── exporting the .app ──"
 godot --headless --path "$GAME" --export-release "macOS" "$APP"
 [ -d "$APP" ] || { echo "export failed"; exit 1; }

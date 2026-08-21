@@ -2195,7 +2195,11 @@ func _telegraph_update(t: String) -> void:
 		badge = "  ·  advantage (%s)" % ", ".join(cx.adv_reasons)
 	elif bool(cx.disadvantage):
 		badge = "  ·  disadvantage (%s)" % ", ".join(cx.dis_reasons)
-	_tele.text = "reads as a %s move  ·  %s%d%s" % [best.to_upper(),
+	# THE WHOLE FORMULA, visible at the pen (owner: "a better view of how
+	# build/sell/raise is taken into account"): stat level, its modifier, the
+	# roll shape, and the DC floors the world judges against.
+	_tele.text = "reads as %s  ·  your %s %d → d20 %s%d  ·  world sets DC: routine 6-8 · solid 9-11 · bold 12-14 · wild 15-16%s" % [
+		best.to_upper(), best, int(state.competences.get(best, 3)),
 		"+" if mod >= 0 else "−", absi(mod), badge]
 
 func _wire_free(te: TextEdit) -> void:

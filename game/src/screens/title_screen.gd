@@ -198,6 +198,16 @@ func _spawn_oneshot(prefix: String, pos: Vector2, sz: Vector2, fps: float, rise:
 		tw.tween_property(tr, "position:y", pos.y - rise, frames.size() / fps)
 
 func _arm() -> void:
+	if get_node_or_null("stamp") == null:
+		var st := Label.new()
+		st.name = "stamp"
+		st.text = _build_stamp()
+		st.add_theme_font_override("font", load("res://assets/fonts/PatrickHand-Regular.ttf"))
+		st.add_theme_font_size_override("font_size", 18)
+		st.add_theme_color_override("font_color", Color(0.12, 0.12, 0.12, 0.4))
+		st.position = Vector2(16, 996)
+		st.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(st)
 	await get_tree().create_timer(0.4).timeout
 	_armed = true
 
@@ -256,6 +266,12 @@ func _do_jump() -> void:
 	tw.tween_property(_founder, "scale", Vector2(1.12, 0.86), 0.08)
 	tw.tween_property(_founder, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_BOUNCE)
 	tw.tween_callback(func(): _jumping = false)
+
+## which build am I actually running — the question that cost a whole session
+func _build_stamp() -> String:
+	if FileAccess.file_exists("res://build_stamp.txt"):
+		return FileAccess.get_file_as_string("res://build_stamp.txt").strip_edges()
+	return "dev"
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not _armed:
@@ -338,6 +354,27 @@ func _build_menu_buttons() -> void:
 		tw.tween_property(b, "modulate:a", 1.0, 0.3)
 		tw.parallel().tween_property(b, "position:y", y, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		return b
+	# the rules, always one click away (and the versioned flag means the new
+	# video tutorial shows once even for veterans of the old sheet)
+	var how := Button.new()
+	how.flat = true
+	how.text = "how it works"
+	how.add_theme_font_override("font", hand)
+	how.add_theme_font_size_override("font_size", 24)
+	how.add_theme_color_override("font_color", Color(CREAM_M, 0.6))
+	how.add_theme_color_override("font_hover_color", PEN_M)
+	for stn in ["normal", "hover", "pressed", "focus"]:
+		how.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
+	how.position = Vector2(1310, 962)
+	how.set_deferred("size", Vector2(200, 44))
+	how.pressed.connect(func() -> void:
+		var ht2 := HowToScreen.new()
+		add_child(ht2)
+		ht2.size = get_viewport().get_visible_rect().size
+		ht2.done.connect(func() -> void:
+			if is_instance_valid(ht2):
+				ht2.queue_free()))
+	_menu.add_child(how)
 	var ng: Button = mk_btn.call("NEW GAME", 694.0, 0.05)
 	ng.pressed.connect(func() -> void: _pick_slot(true))
 	if any_save:
