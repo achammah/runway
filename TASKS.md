@@ -215,3 +215,25 @@ Lanes run it after every batch and paste the line in their round log.
 - [x] W11 Day-one curtain line ("day one is being written…")
 - [~] W12 14 item sprites generating in the game's hand (pilot approved, batch running)
 - [x] W13 Smoke expectation 29 items; suites green; probes 6 green (first-person founding verified live)
+
+## WINDOW 3 — "a true business simulator" (owner stream, 3h autonomy)
+MECHANICS
+- [x] M1 Engine levers (marketing/sales/care/rnd) — real burn, real effects, unit economics (CAC/LTV/payback), beliefs converge; 43 checks green
+- [x] M2 spend/set_budget DM ops — engine-clamped (era caps, cash floor), runway counts the ledger
+- [ ] M3 Graft PA MONEY LAW + LESSONS LAYER into adjudicator (wholesale PA rewrite dropped 43% of contracts — graft, not replace)
+- [ ] M4 Clarify pre-pass in the commit flow: luna question row on the page (amount chips), binding "— budget: $X" suffix, then dice
+- [ ] M5 Binder LEDGER tab: lever steppers, unit economics, plain mechanics, bankruptcy warning
+- [ ] M6 Beliefs on display: binder + field notes show working assumptions (~), never truth
+- [ ] M7 Bankruptcy comms: in-the-red countdown visible (3 weeks starved = dead)
+- [ ] M8 ENGINE OPS prompt section lists spend/set_budget semantics
+UX (prior stream)
+- [ ] U1 Title→select latency: measure, fix
+- [ ] U2 Archetype select idle videos (seedance + matte) — layout overlap already fixed
+- [ ] U3 Bag categories (#135)
+- [ ] U4 Mechanics explainer at first start (uses the REAL engine rules)
+- [ ] U5 Save slots + title CONTINUE/NEW GAME ease-in + slot list with last-played
+- [ ] U6 Seedance loop for BirthScreen + curtain (#136/#138)
+- [ ] U7 Book intro replaces world reveal (#137): first-person scrollable intro + FIELD NOTES (beliefs), old reveal scrapped, settle→no beat replay
+- [ ] U8 API keys setup screen (OpenAI + Atlas), user://keys, .env untouched
+- [ ] U9 App icon, macOS .app export, DMG installer, zero Godot tells (splash off ✓)
+- [x] U10 Studio card, swap fades, trackpad pan, dice full-height, journal anim, select/name layout
