@@ -186,3 +186,30 @@ game/docs/DND_STARTUP_PLAN.md. Built and verified in one night:
 - The ceremony: 20 pre-rendered 1080p seedance cup-and-die clips (GPT stills
   first/last frame), spritesheeted, played on the true engine-selected die.
 All filmed; live paid week verified; keyless soaks green.
+
+## 2026-08-21 — The transition rebuilt (owner's live-play storm)
+The owner played and filed the storm: unclear/esoteric text, log book cut and
+repeating the beat, dice everywhere and mismatched with the video, the same
+question with the same person week after week, no new images. The fullrun
+probe harness reproduced the structural half live:
+- A week could commit UNDER the previous week's open beat: dice rolled and
+  numbers applied while the beat and its art were silently swallowed. Now a
+  commit gate (_world_busy) holds the lock from beat-open to beat-close, and
+  the founding holds it too while day one is still being written.
+- The founding beat played TWICE (unstamped dm re-consumed by _poll_turn) —
+  the owner's "goes back to Week 1". Stamped; titled DAY ONE.
+- An already-shut curtain outranked the cup, so the whole ceremony could play
+  invisibly — "sometimes no video dice roll". The ceremony now always claims
+  the top; the curtain takes it only after the die settles.
+- The curtain's own drawn die + stamp deleted entirely: ONE die on screen,
+  the pre-rendered cup clip on its own opaque felt screen, always the
+  engine's exact number; the beat explains it in plain sentences.
+- The curtain failsafe (12s) was lifting mid-adjudication onto a stale page;
+  now 40s and never while a verdict is in flight.
+Repeats: played-event memory records cast names; a name filter blocks pool
+cards re-leading with recent people; both prompts forbid it; plain-title law.
+Log book: line_fitted shrinks the hand before it ever cuts; special pages
+print the ask whole; the level row never wraps. Fresh scene every staged
+week; art landings/failures and the week's headline/journal_note/narration
+now print for live verification. Suites green; 3-week paid probe filmed the
+exact spec sequence. Commit 35def8f.
