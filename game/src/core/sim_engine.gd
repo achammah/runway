@@ -397,7 +397,55 @@ static func add_clock(state: GameState, weeks: int, consequence: String) -> void
 # ───────────────────────── the D&D resolution layer ──────────────────────────
 const DC_FLOORS := {"routine": 6, "solid": 9, "bold": 12, "wild": 15}
 
-## Advantage/disadvantage from STATE — items, hires, statuses, exhaustion.
+# ─────────────────────────────── THE SIX TRAITS ──────────────────────────────
+## Competences are rolled; TRAITS are never rolled. They are who the founder is,
+## and they bend the dice and the terms from behind — an ex-FAANG PM walks into
+## the raise with credibility and a phone full of numbers, and the room is
+## simply easier for her than it is for the hacker, every single time.
+##
+## The numbers live HERE, once, in the same table as the words that explain
+## them: the select card, the bag page and the DM all print these strings, so a
+## rule can never drift from its own description. Thresholds:
+##   charisma   4+  advantage on sell and recruit
+##   focus      4+  advantage on build
+##   cred+net   8+  advantage on raise, and warmer term sheets
+##   luck       4+  a natural 1 is rerolled once  ·  1  a natural 20 is only 19
+##   stamina    2-  disadvantage on grit once exhaustion bites
+const TRAIT_RULES := {
+	"charisma": "People say yes to you. At 4+ you roll SELL and RECRUIT with advantage: two dice, keep the best.",
+	"luck": "The dice bend. At 4+ a natural 1 is rerolled once. At 1 a natural 20 only ever counts as 19.",
+	"network": "Counted together with CREDIBILITY. At 8+ combined the investor doors open: advantage on RAISE.",
+	"focus": "Deep work. At 4+ you roll BUILD with advantage: two dice, keep the best.",
+	"credibility": "Counted with NETWORK. At 8+ combined you raise with advantage, and offers ask up to 8% less equity.",
+	"stamina": "Reserves. At 2 or less, GRIT rolls go to disadvantage as soon as exhaustion reaches 3.",
+}
+
+## Which trait rules are ON for this founder right now, in the words the screens
+## print. The bag page reads this to answer "what did packing that actually buy".
+static func trait_effects(state: GameState) -> Array[String]:
+	var out: Array[String] = []
+	var doors := state.trait_level("credibility") + state.trait_level("network")
+	if doors >= 8:
+		out.append("doors open (cred+net %d): advantage on RAISE" % doors)
+	elif doors == 7:
+		out.append("one point from open doors (cred+net 7)")
+	if state.trait_level("charisma") >= 4:
+		out.append("people say yes: advantage on SELL + RECRUIT")
+	if state.trait_level("focus") >= 4:
+		out.append("deep work: advantage on BUILD")
+	if state.trait_level("luck") >= 4:
+		out.append("luck rerolls a natural 1")
+	if state.trait_level("luck") <= 1:
+		out.append("a natural 20 only counts as 19")
+	if state.trait_level("stamina") <= 2:
+		out.append("no reserves: disadvantage on GRIT when tired")
+	var warm := warmth_pct(state)
+	if warm > 0.0:
+		out.append("offers ask %.0f%% less equity" % warm)
+	return out
+
+## Advantage/disadvantage from STATE — items, hires, statuses, exhaustion, and
+## the six traits the founder never rolls.
 static func roll_context(state: GameState, stat: String) -> Dictionary:
 	var adv: Array[String] = []
 	var dis: Array[String] = []
@@ -415,12 +463,25 @@ static func roll_context(state: GameState, stat: String) -> Dictionary:
 		var role := String(e.get("role", ""))
 		if role.contains("sales") and stat == "sell" and not adv.has("sales team"):
 			adv.append("sales team")
+	# WHO YOU ARE, at the table. Same reasons the card promised, word for word.
+	if stat == "raise":
+		var doors := state.trait_level("credibility") + state.trait_level("network")
+		if doors >= 8:
+			adv.append("doors open (credibility+network %d)" % doors)
+	if (stat == "sell" or stat == "recruit") and state.trait_level("charisma") >= 4:
+		adv.append("people say yes to you")
+	if stat == "build" and state.trait_level("focus") >= 4:
+		adv.append("deep work")
+	if stat == "grit" and state.trait_level("stamina") <= 2 and state.exhaustion >= 3:
+		dis.append("no reserves")
 	var has_a := adv.size() > 0
 	var has_d := dis.size() > 0
 	return {"advantage": has_a and not has_d, "disadvantage": has_d and not has_a,
 			"adv_reasons": adv, "dis_reasons": dis}
 
-## The full roll: 1d20, or 2d20 keep best/worst under advantage/disadvantage.
+## The full roll: 1d20, or 2d20 keep best/worst under advantage/disadvantage,
+## and then LUCK, which only ever touches the two extremes and says so out loud.
+## Every die comes out of the caller's roller, so a run replays exactly.
 static func roll_d20_ctx(state: GameState, stat: String, rng_roll: Callable) -> Dictionary:
 	var ctx := roll_context(state, stat)
 	var a: int = rng_roll.call()
@@ -431,6 +492,18 @@ static func roll_d20_ctx(state: GameState, stat: String, rng_roll: Callable) -> 
 	elif bool(ctx.disadvantage):
 		used = mini(a, b)
 	ctx["rolls"] = [a, b] if (bool(ctx.advantage) or bool(ctx.disadvantage)) else [a]
+	# THE LUCKY ARE SPARED THE 1; THE UNLUCKY NEVER GET THE 20.
+	var luck := state.trait_level("luck")
+	var note := ""
+	if used == 1 and luck >= 4:
+		used = int(rng_roll.call())
+		note = "luck rerolls the 1"
+	elif used == 20 and luck <= 1:
+		used = 19
+		note = "never quite perfect"
+	ctx["a"] = a
+	ctx["b"] = b
+	ctx["luck_note"] = note
 	ctx["d20"] = used
 	ctx["mod"] = int(state.competences.get(stat, 3)) - 3
 	ctx["total"] = used + int(ctx["mod"])
@@ -454,21 +527,32 @@ static func valuation(state: GameState) -> int:
 	var mult := 8.0 + minf(12.0, growth * 60.0)
 	return maxi(state.cash, int(arr * mult * float(state.theta.get("funding_mult", 1.0))))
 
-## Three offers against fair price; desperation prices against you.
+## HOW WARM THE ROOM IS, in percent off the equity asked. Credibility and the
+## phone book are read together: every point over 6 combined is worth about 2%
+## less dilution, capped at 8%. This is the owner's ex-FAANG case, priced — the
+## same company raises on better terms because of who is asking.
+static func warmth_pct(state: GameState) -> float:
+	var doors := state.trait_level("credibility") + state.trait_level("network")
+	return minf(2.0 * float(maxi(doors - 6, 0)), 8.0)
+
+## Three offers against fair price; desperation prices against you, standing
+## in the room warms them back.
 static func generate_offers(state: GameState, investors: Array) -> Array:
 	var pre := valuation(state)
 	var r := _rng(state, 9)
 	var desperate := state.cash < 0 or runway_weeks(state) <= 4
+	var warm := warmth_pct(state)
 	var out: Array = []
 	for i in 3:
 		var inv: Dictionary = investors[i % maxi(investors.size(), 1)] if investors.size() > 0 else {"name": "an angel"}
 		var amount := int(float(pre) * r.randf_range(0.05, 0.15))
 		var fair := float(amount) / float(pre + amount) * 100.0
-		var spread := r.randf_range(1.15, 1.6) * (1.35 if desperate else 1.0)
+		var spread := r.randf_range(1.15, 1.6) * (1.35 if desperate else 1.0) * (1.0 - warm / 100.0)
 		out.append({"investor": String(inv.get("name", "?")),
 			"amount": maxi(amount, 5_000),
 			"equity_pct": snappedf(clampf(fair * spread, 1.0, 45.0), 0.1),
 			"fair_pct": snappedf(fair, 0.1),
+			"warmth": snappedf(warm, 0.1),
 			"thesis": String(inv.get("thesis", ""))})
 	return out
 

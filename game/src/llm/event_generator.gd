@@ -158,6 +158,9 @@ func compose_adjudicate_user(state: GameState, ev: Dictionary, player_text: Stri
 			int(dice.get("used", 10)), String(dice.get("stat", "grit")),
 			int(dice.get("mod", 0)),
 			int(dice.get("used", 10)) + int(dice.get("mod", 0))])
+	# WHO THE FOUNDER IS, 1-5, never rolled: the room already reacted to these
+	# before anyone picked up a die. Narrate as if they were simply true.
+	parts.append("\nTRAITS (fixed): " + JSON.stringify(state.trait_sheet()))
 	var directives := _directives(state)
 	if directives != "":
 		parts.append("\nDIRECTIVES (non-negotiable this week):\n" + directives)

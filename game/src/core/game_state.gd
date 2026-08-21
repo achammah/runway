@@ -8,6 +8,13 @@ var era: String = "garage"
 var archetype_id: String = ""
 var archetype_name: String = ""
 var competences: Dictionary = {"build": 3, "sell": 3, "raise": 3, "recruit": 3, "grit": 3}
+## THE SIX HIDDEN TRAITS (D&D character depth, owner: "REAL impact on decisions
+## and the world"). Competences are what the founder DOES and get rolled; these
+## are what the founder IS and are never rolled — they bend the dice and the
+## terms behind the scene. Authored per archetype in data/archetypes.json, bent
+## by what is in the bag, read by SimEngine.roll_context and generate_offers.
+var traits: Dictionary = {"charisma": 3, "luck": 3, "network": 3,
+	"focus": 3, "credibility": 3, "stamina": 3}
 var structure_id: String = "solo"
 var company_name: String = "Untitled Inc"
 var company_idea: String = ""
@@ -163,6 +170,50 @@ func burn_per_week() -> int:
 
 func has_item(id: String) -> bool:
 	return items.has(id)
+
+# ── the six traits ──────────────────────────────────────────────────────────
+const TRAIT_NAMES: Array[String] = ["charisma", "luck", "network", "focus",
+	"credibility", "stamina"]
+
+## Every item's trait modifiers, read once from the same JSON the shelf reads.
+## The engine has to be able to ask "what does this bag do to luck" without a
+## ContentDb in the room — headless tests, the draft screen and the weekly tick
+## all ask, and none of them share a loader.
+static var _item_traits: Dictionary = {}
+static var _item_traits_read := false
+
+static func item_trait_table() -> Dictionary:
+	if _item_traits_read:
+		return _item_traits
+	_item_traits_read = true
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string("res://data/items.json"))
+	if parsed is Dictionary:
+		for it in (parsed as Dictionary).get("items", []):
+			var mods: Dictionary = (it as Dictionary).get("trait_mods", {})
+			if not mods.is_empty():
+				_item_traits[String((it as Dictionary).get("id", ""))] = mods
+	return _item_traits
+
+## What the bag alone does to a trait — the number the loadout line prints.
+func item_trait_delta(name: String) -> int:
+	var tbl := item_trait_table()
+	var d := 0
+	for id in items:
+		d += int((tbl.get(String(id), {}) as Dictionary).get(name, 0))
+	return d
+
+## THE ONE READING anything is allowed to use: archetype base + what you packed,
+## clamped to the 1..5 the whole game speaks. Nothing else may add to a trait,
+## so a screen and the engine can never disagree about who you are.
+func trait_level(name: String) -> int:
+	return clampi(int(traits.get(name, 3)) + item_trait_delta(name), 1, 5)
+
+## All six, resolved. The sheet the DM is handed and the card prints.
+func trait_sheet() -> Dictionary:
+	var out := {}
+	for t in TRAIT_NAMES:
+		out[t] = trait_level(t)
+	return out
 
 func has_flag(f: String) -> bool:
 	return flags.has(f)
@@ -354,6 +405,7 @@ func to_digest() -> Dictionary:
 		"recent_actions": recent_actions(),
 		"founder_archetype": archetype_name,
 		"competences": competences,
+		"traits": trait_sheet(),
 		"cofounders": cofounders,
 		"cash": cash,
 		"weekly_burn": burn_per_week(),

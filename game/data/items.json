@@ -48,6 +48,10 @@
    "event_hooks": [
     "evt_napkin_doubt"
    ],
+   "trait_mods": {
+    "charisma": 1,
+    "credibility": -1
+   },
    "blurb": "The founding myth. Pitches land a little better."
   },
   {
@@ -62,6 +66,10 @@
    "event_hooks": [
     "evt_cofounder_pitch"
    ],
+   "trait_mods": {
+    "network": 1,
+    "focus": -1
+   },
    "blurb": "Your future first hire, currently asleep. Unlocks the cofounder talk."
   },
   {
@@ -81,6 +89,10 @@
    "event_hooks": [
     "evt_energy_crash"
    ],
+   "trait_mods": {
+    "stamina": 1,
+    "focus": -1
+   },
    "blurb": "Ship faster, crash harder. Fuels late-night events."
   },
   {
@@ -100,6 +112,10 @@
    "event_hooks": [
     "evt_goodwill_test"
    ],
+   "trait_mods": {
+    "stamina": 1,
+    "network": -1
+   },
    "blurb": "Someone still believes in you. Keeps morale from hitting bottom."
   },
   {
@@ -114,6 +130,10 @@
    "event_hooks": [
     "evt_dignity_sale"
    ],
+   "trait_mods": {
+    "credibility": 1,
+    "luck": -1
+   },
    "blurb": "Weighs nothing. Surprisingly sellable, much later."
   },
   {
@@ -128,6 +148,10 @@
    "event_hooks": [
     "evt_gym_cancel"
    ],
+   "trait_mods": {
+    "stamina": 1,
+    "focus": -1
+   },
    "blurb": "$40/week you never use. Cancelable for cash when broke."
   },
   {
@@ -142,6 +166,10 @@
    "event_hooks": [
     "evt_paddle_networking"
    ],
+   "trait_mods": {
+    "network": 1,
+    "focus": -1
+   },
    "blurb": "A networking device, technically. Unlocks schmoozing events."
   },
   {
@@ -162,6 +190,10 @@
    "event_hooks": [
     "evt_server_overheats"
    ],
+   "trait_mods": {
+    "focus": 1,
+    "luck": -1
+   },
    "blurb": "Heavy. Warm. Hosts everything. +1 product/week, fire hazard."
   },
   {
@@ -179,6 +211,10 @@
     }
    ],
    "event_hooks": [],
+   "trait_mods": {
+    "charisma": 1,
+    "credibility": -1
+   },
    "blurb": "Founder armor. Confidence in every pitch."
   },
   {
@@ -193,6 +229,10 @@
    "event_hooks": [
     "evt_bus_meeting"
    ],
+   "trait_mods": {
+    "network": 1,
+    "stamina": -1
+   },
    "blurb": "You can physically get to meetings. Underrated."
   },
   {
@@ -205,6 +245,10 @@
    "cash_value": 120,
    "grind_passives": [],
    "event_hooks": [],
+   "trait_mods": {
+    "credibility": 1,
+    "charisma": -1
+   },
    "blurb": "Sellable for ~$120. Sorry, education."
   },
   {
@@ -219,6 +263,10 @@
    "event_hooks": [
     "evt_guitar_solace"
    ],
+   "trait_mods": {
+    "charisma": 1,
+    "focus": -1
+   },
    "blurb": "Four chords against the dark. Restores morale when it counts."
   },
   {
@@ -238,6 +286,10 @@
    "event_hooks": [
     "evt_plant_talk"
    ],
+   "trait_mods": {
+    "focus": 1,
+    "network": -1
+   },
    "blurb": "Attends your standups. Listens. +morale each week."
   },
   {
@@ -258,6 +310,10 @@
    "requires_what": [
     "Hardware"
    ],
+   "trait_mods": {
+    "focus": 1,
+    "charisma": -1
+   },
    "blurb": "Real things need real heat. Hardware builds go a little faster."
   },
   {
@@ -273,6 +329,10 @@
    "requires_what": [
     "Hardware"
    ],
+   "trait_mods": {
+    "credibility": 1,
+    "charisma": -1
+   },
    "blurb": "Tells you which of the three identical boards is lying."
   },
   {
@@ -288,6 +348,10 @@
    "requires_what": [
     "Marketplace"
    ],
+   "trait_mods": {
+    "credibility": 1,
+    "focus": -1
+   },
    "blurb": "Both sides of the market get a tracking number. Feels like control."
   },
   {
@@ -304,6 +368,10 @@
     "Marketplace",
     "Hardware"
    ],
+   "trait_mods": {
+    "stamina": 1,
+    "charisma": -1
+   },
    "blurb": "Holds boxes, demos, and occasionally the business together."
   },
   {
@@ -319,6 +387,11 @@
    "requires_what": [
     "Service"
    ],
+   "trait_mods": {
+    "credibility": 1,
+    "charisma": 1,
+    "luck": -1
+   },
    "blurb": "You ARE the product, and the product irons its blazer."
   },
   {
@@ -334,6 +407,10 @@
    "requires_what": [
     "Service"
    ],
+   "trait_mods": {
+    "credibility": 1,
+    "charisma": -1
+   },
    "blurb": "Every glance at it converts guilt into an invoice line."
   },
   {
@@ -349,6 +426,10 @@
    "requires_who": [
     "Enterprise"
    ],
+   "trait_mods": {
+    "network": 1,
+    "focus": -1
+   },
    "blurb": "Gets you into buildings where the buyers hide behind procurement."
   },
   {
@@ -364,6 +445,10 @@
    "requires_who": [
     "SMB"
    ],
+   "trait_mods": {
+    "focus": 1,
+    "luck": -1
+   },
    "blurb": "Fourteen days to track a thousand small checks. Day 15 is a decision."
   },
   {
@@ -379,6 +464,10 @@
    "requires_who": [
     "Consumer"
    ],
+   "trait_mods": {
+    "charisma": 1,
+    "credibility": -1
+   },
    "blurb": "Consumer apps live and die on camera. You will too."
   },
   {
@@ -391,6 +480,10 @@
    "cash_value": 0,
    "grind_passives": [],
    "event_hooks": [],
+   "trait_mods": {
+    "network": 1,
+    "focus": -1
+   },
    "blurb": "The only piece of infrastructure nobody ever questions."
   },
   {
@@ -403,6 +496,10 @@
    "cash_value": 0,
    "grind_passives": [],
    "event_hooks": [],
+   "trait_mods": {
+    "focus": 1,
+    "network": -1
+   },
    "blurb": "Twice the pixels, twice the tabs, the same one brain."
   },
   {
@@ -415,6 +512,10 @@
    "cash_value": 0,
    "grind_passives": [],
    "event_hooks": [],
+   "trait_mods": {
+    "stamina": 1,
+    "network": -1
+   },
    "blurb": "Your back will invoice you later if you skip this. 2 slots."
   },
   {
@@ -427,6 +528,10 @@
    "cash_value": 0,
    "grind_passives": [],
    "event_hooks": [],
+   "trait_mods": {
+    "stamina": 1,
+    "credibility": -1
+   },
    "blurb": "Commute, cardio, and one guaranteed emergency-room story."
   },
   {
@@ -439,7 +544,229 @@
    "cash_value": 0,
    "grind_passives": [],
    "event_hooks": [],
+   "trait_mods": {
+    "luck": 1,
+    "stamina": -1
+   },
    "blurb": "Demos die at 4%. This is the difference between a pitch and an apology."
+  },
+  {
+   "id": "itm_mech_keyboard",
+   "name": "Mechanical keyboard",
+   "tags": [
+    "tech"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "trait_mods": {
+    "focus": 1,
+    "charisma": -1
+   },
+   "blurb": "Types like a typewriter and sounds like one. Nobody on the call can hear you."
+  },
+  {
+   "id": "itm_headphones",
+   "name": "Noise-cancelling headphones",
+   "tags": [
+    "tech"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "trait_mods": {
+    "focus": 2,
+    "network": -1
+   },
+   "blurb": "The world goes quiet. So does everyone who was trying to tell you something."
+  },
+  {
+   "id": "itm_standing_desk",
+   "name": "Standing desk",
+   "tags": [
+    "morale"
+   ],
+   "carry_cost": 2,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "trait_mods": {
+    "stamina": 1,
+    "focus": 1
+   },
+   "blurb": "Eleven hours upright, called a lifestyle. Takes 2 slots and most of the wall."
+  },
+  {
+   "id": "itm_lucky_socks",
+   "name": "Lucky socks",
+   "tags": [
+    "sentimental"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "trait_mods": {
+    "luck": 1,
+    "credibility": -1
+   },
+   "blurb": "Unwashed since the first demo that worked. You will tell people about them."
+  },
+  {
+   "id": "itm_conf_pass",
+   "name": "Conference pass",
+   "tags": [
+    "sales"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "trait_mods": {
+    "network": 2,
+    "focus": -1
+   },
+   "blurb": "Three days of lanyards and hallway coffee. You meet everyone and ship nothing."
+  },
+  {
+   "id": "itm_whiteboard",
+   "name": "Whiteboard",
+   "tags": [
+    "tech"
+   ],
+   "carry_cost": 2,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "trait_mods": {
+    "focus": 1,
+    "charisma": 1
+   },
+   "blurb": "Anything drawn on it sounds true. Wipe it before investors arrive. 2 slots."
+  },
+  {
+   "id": "itm_rack_server",
+   "name": "Secondhand rack server",
+   "tags": [
+    "tech",
+    "heavy"
+   ],
+   "carry_cost": 2,
+   "cash_value": 0,
+   "grind_passives": [
+    {
+     "stat": "build_speed",
+     "v": 0.2
+    }
+   ],
+   "event_hooks": [],
+   "trait_mods": {
+    "credibility": 1,
+    "stamina": -1
+   },
+   "blurb": "Your own metal, no monthly bill. It screams all night, and so do you. 2 slots."
+  },
+  {
+   "id": "itm_cushion",
+   "name": "Meditation cushion",
+   "tags": [
+    "morale"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "trait_mods": {
+    "focus": 1,
+    "stamina": 1,
+    "network": -1
+   },
+   "blurb": "Twenty minutes where nobody reaches you. Including the ones who needed to."
+  },
+  {
+   "id": "itm_espresso_sub",
+   "name": "Espresso subscription",
+   "tags": [
+    "vice"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "trait_mods": {
+    "stamina": 1,
+    "luck": -1
+   },
+   "blurb": "Four a day, delivered. You are never tired and never once still."
+  },
+  {
+   "id": "itm_brand_course",
+   "name": "Personal-brand course",
+   "tags": [
+    "marketing"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "trait_mods": {
+    "charisma": 1,
+    "credibility": -1
+   },
+   "blurb": "Eight modules on being yourself, louder. Somebody always recognises the script."
+  },
+  {
+   "id": "itm_alumni_ring",
+   "name": "Alumni ring",
+   "tags": [
+    "sales"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "requires_who": [
+    "Enterprise"
+   ],
+   "trait_mods": {
+    "network": 1,
+    "credibility": 1
+   },
+   "blurb": "Procurement notices it before they notice you. Then the meeting changes."
+  },
+  {
+   "id": "itm_crystal_ball",
+   "name": "Crystal ball",
+   "tags": [
+    "sentimental"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "trait_mods": {
+    "luck": 2,
+    "credibility": -1
+   },
+   "blurb": "From an aunt who was right about the last three things. Keep it off board calls."
+  },
+  {
+   "id": "itm_burner_phone",
+   "name": "Second phone",
+   "tags": [
+    "sales"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "trait_mods": {
+    "network": 1,
+    "focus": -1
+   },
+   "blurb": "One line for customers, one for the people you owe. Both ring at 2am."
   }
  ]
 }

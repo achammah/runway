@@ -47,6 +47,11 @@ var _hero_shadow: Control
 var _d_name: Label
 var _d_tag: Label
 var _d_pips: Control
+var _d_traits: Control
+var _trait_btns: Array = []
+var _trait_tip: Control
+var _tip_head: Label
+var _tip_body: Label
 var _d_cash: Label
 var _d_perk: Label
 var _cofounders: Array = []
@@ -63,6 +68,7 @@ var _anim_frames: Dictionary = {}
 var _anim_i := 0
 var _anim_timer: Timer
 var _sfx_click: AudioStreamPlayer
+var _hero_base_x := 0.0
 var _hero_base_y := 0.0
 var _hero_tween: Tween
 var _title_label: Label
@@ -80,6 +86,10 @@ var _bagd_art: TextureRect
 var _bagd_name: Label
 var _bagd_blurb: Label
 var _bagd_cost: Label
+var _bagd_mods: Control
+var _bagd_ghost: Control
+var _loadout: Control
+var _loadout_note: Label
 var _packed_row: VBoxContainer
 var _biz_what := "Software"
 var _biz_who := "Consumer"
@@ -491,9 +501,14 @@ func _build_select() -> Control:
 	page.add_child(_title_label)
 	_rule_under(page, "CHOOSE YOUR FOUNDER", 58, Vector2(60, 28))
 
-	# hero: the selected founder, big, in the spotlight
+	# hero: the selected founder, big, in the spotlight.
+	# The idle sheets are cut to one house frame: the feet land at 345/368 of a
+	# square canvas, so in this 560 rect they land at 240 + 345/368*560 = 765.
+	# The shadow used to assume the feet reached the bottom of the rect (800),
+	# which no sheet has ever done, and the founder stood 55px above his own
+	# shadow. Centre the ellipse on the real baseline instead.
 	_hero_shadow = EllipseShadow.new()
-	_hero_shadow.position = Vector2(465, 796)
+	_hero_shadow.position = Vector2(465, 742)
 	_hero_shadow.size = Vector2(300, 46)
 	page.add_child(_hero_shadow)
 	_hero = TextureRect.new()
@@ -503,12 +518,15 @@ func _build_select() -> Control:
 	_hero.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_hero.pivot_offset = Vector2(280, 560)   # feet on the lit floor
 	page.add_child(_hero)
+	_hero_base_x = _hero.position.x
 	_hero_base_y = _hero.position.y
 
-	# stat sheet: open, borderless, BIG type — readable from the couch
+	# stat sheet: open, borderless, BIG type — readable from the couch. Two
+	# ledgers on one page: the five COMPETENCES that get rolled, and under them
+	# the six TRAITS that never do, because a founder is more than their verbs.
 	var panel := Control.new()
-	panel.position = Vector2(936, 100)
-	panel.size = Vector2(540, minf(740.0, SHEET_BOTTOM_MAX - 100.0))
+	panel.position = Vector2(936, 72)
+	panel.size = Vector2(540, SHEET_BOTTOM_MAX - 72.0)
 	panel.rotation = -0.008
 	page.add_child(panel)
 	var sheet := PaperEdge.new()
@@ -518,38 +536,111 @@ func _build_select() -> Control:
 	sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(sheet)
 	_d_name = _dlabel("", 46, PALETTE["ink"])
-	_d_name.position = Vector2(44, 28)
+	_d_name.position = Vector2(44, 20)
 	panel.add_child(_d_name)
-	_d_tag = _label("", 27, Color(PALETTE["ink"], 0.9))
-	_d_tag.position = Vector2(44, 96)
-	_d_tag.size = Vector2(470, 70)
+	_d_tag = _label("", 26, Color(PALETTE["ink"], 0.9))
+	_d_tag.position = Vector2(44, 82)
+	_d_tag.size = Vector2(470, 58)
 	_d_tag.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	panel.add_child(_d_tag)
 	var rule2 := HandRule.new()
 	rule2.length = 140.0
 	rule2.color = PALETTE["coral"]
 	rule2.size = Vector2(140, 14)
-	rule2.position = Vector2(44, 168)
+	rule2.position = Vector2(44, 146)
 	rule2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(rule2)
 	_d_pips = StatPips.new()
-	_d_pips.position = Vector2(44, 196)
-	_d_pips.size = Vector2(470, 290)
+	_d_pips.position = Vector2(44, 172)
+	_d_pips.size = Vector2(470, 260)
 	panel.add_child(_d_pips)
-	var cash_cap := _label("IN THE BANK, DAY ONE", 24, Color(PALETTE["ink"], 0.6))
-	cash_cap.position = Vector2(44, 506)
+	# THE SIX (owner: "double clicks on all the details of the characters like a
+	# D&D game"). Small, because they are what nobody puts on a pitch deck; and
+	# clickable, because every one of them is a rule the engine actually runs.
+	var tcap := _dlabel("HIDDEN TRAITS", 22, Color(PALETTE["ink"], 0.62))
+	tcap.position = Vector2(44, 434)
+	panel.add_child(tcap)
+	var thint := _label("click any trait for what it does", 20, Color(PALETTE["ink"], 0.45))
+	thint.position = Vector2(232, 436)
+	panel.add_child(thint)
+	_d_traits = TraitPips.new()
+	_d_traits.position = Vector2(44, 462)
+	_d_traits.size = Vector2(470, 132)
+	_d_traits.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(_d_traits)
+	for i in GameState.TRAIT_NAMES.size():
+		var cell := TraitPips.cell_rect(i)
+		var tb := Button.new()
+		tb.position = Vector2(44, 462) + cell.position + Vector2(-6, 0)
+		tb.size = cell.size + Vector2(6, 0)
+		tb.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		_bare_button(tb)
+		var tname := String(GameState.TRAIT_NAMES[i])
+		var row := i
+		tb.pressed.connect(func(): _show_trait_tip(tname))
+		tb.mouse_entered.connect(func():
+			(_d_traits as TraitPips).hot = row
+			_d_traits.queue_redraw())
+		tb.mouse_exited.connect(func():
+			if (_d_traits as TraitPips).hot == row:
+				(_d_traits as TraitPips).hot = -1
+				_d_traits.queue_redraw())
+		panel.add_child(tb)
+		_trait_btns.append(tb)
+	var cash_cap := _label("IN THE BANK, DAY ONE", 23, Color(PALETTE["ink"], 0.6))
+	cash_cap.position = Vector2(44, 614)
 	panel.add_child(cash_cap)
-	_d_cash = _dlabel("", 42, PALETTE["ink"])
-	_d_cash.position = Vector2(44, 534)
+	_d_cash = _dlabel("", 40, PALETTE["ink"])
+	_d_cash.position = Vector2(44, 638)
 	panel.add_child(_d_cash)
-	var perk_cap := _label("PERK", 24, Color(PALETTE["ink"], 0.6))
-	perk_cap.position = Vector2(44, 610)
+	var perk_cap := _label("PERK", 23, Color(PALETTE["ink"], 0.6))
+	perk_cap.position = Vector2(44, 692)
 	panel.add_child(perk_cap)
-	_d_perk = _label("", 28, PALETTE["ink"])
-	_d_perk.position = Vector2(44, 640)
-	_d_perk.size = Vector2(470, 90)
+	_d_perk = _label("", 25, PALETTE["ink"])
+	_d_perk.position = Vector2(44, 714)
+	_d_perk.size = Vector2(470, 52)
 	_d_perk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	panel.add_child(_d_perk)
+	# the answer to a click: a torn note laid over the bottom of the sheet, in
+	# the same pen. It covers the money and the perk while it is open, and one
+	# more click puts it away — a footnote, not a second screen.
+	_trait_tip = Control.new()
+	_trait_tip.position = Vector2(28, 604)
+	_trait_tip.size = Vector2(486, 142)
+	_trait_tip.rotation = 0.006
+	_trait_tip.visible = false
+	panel.add_child(_trait_tip)
+	var tip_paper := PaperEdge.new()
+	tip_paper.size = _trait_tip.size
+	tip_paper.thick = 3.5
+	tip_paper.lean = 2
+	tip_paper.edge = PALETTE["coral"]
+	tip_paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_trait_tip.add_child(tip_paper)
+	_tip_head = _dlabel("", 26, PALETTE["ink"])
+	_tip_head.position = Vector2(22, 12)
+	_trait_tip.add_child(_tip_head)
+	var tip_rule := HandRule.new()
+	tip_rule.length = 100.0
+	tip_rule.color = Color(PALETTE["sage"], 0.9)
+	tip_rule.size = Vector2(100, 14)
+	tip_rule.position = Vector2(22, 44)
+	tip_rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_trait_tip.add_child(tip_rule)
+	_tip_body = _label("", 21, PALETTE["ink"])
+	_tip_body.position = Vector2(22, 58)
+	_tip_body.custom_minimum_size = Vector2(440, 0)
+	_tip_body.set_deferred("size", Vector2(440, 92))
+	_tip_body.max_lines_visible = 3
+	_tip_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_trait_tip.add_child(_tip_body)
+	var tip_close := Button.new()
+	tip_close.position = Vector2(430, 4)
+	tip_close.size = Vector2(48, 42)
+	tip_close.text = "×"
+	_ink_button(tip_close, Color(PALETTE["ink"], 0.35), 30)
+	tip_close.pressed.connect(func(): _trait_tip.visible = false)
+	_trait_tip.add_child(tip_close)
 
 	# roster: the cast stands ON one sheet of paper. They used to be cream tiles
 	# with printed borders laid on that same cream sheet — a plate on a plate,
@@ -693,6 +784,10 @@ func _select(i: int, animate_swap: bool = true) -> void:
 	pips.progress = 0.0
 	var rt := create_tween()
 	rt.tween_method(func(v): pips.progress = v; pips.queue_redraw(), 0.0, 1.0, 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if _d_traits:
+		(_d_traits as TraitPips).set_traits(_sel_arch.get("traits", {}))
+	if _trait_tip:
+		_trait_tip.visible = false
 	var cash_total := 8000 + int(_sel_arch.get("start_cash_bonus", 0))
 	_d_cash.text = "$%s" % _fmt_money(cash_total)
 	_d_cash.add_theme_color_override("font_color", PALETTE["sage"] if cash_total >= 8000 else PALETTE["coral"])
@@ -706,19 +801,41 @@ func _select(i: int, animate_swap: bool = true) -> void:
 	var from_right := _sel_i > prev or (prev == _archs.size() - 1 and _sel_i == 0)
 	if animate_swap:
 		_hero_tween = create_tween()
-		_hero_tween.tween_property(_hero, "position:x", 560.0 + (-90.0 if from_right else 90.0), 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		_hero_tween.tween_property(_hero, "position:x", _hero_base_x + (-90.0 if from_right else 90.0), 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		_hero_tween.parallel().tween_property(_hero, "modulate:a", 0.0, 0.1)
 		_hero_tween.tween_callback(func():
 			if not frames.is_empty():
 				_hero.texture = frames[0]
-			_hero.position.x = 560.0 + (110.0 if from_right else -110.0))
-		_hero_tween.tween_property(_hero, "position:x", 560.0, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			_hero.position.x = _hero_base_x + (110.0 if from_right else -110.0))
+		_hero_tween.tween_property(_hero, "position:x", _hero_base_x, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		_hero_tween.parallel().tween_property(_hero, "modulate:a", 1.0, 0.12)
 		_hero_tween.tween_property(_hero, "scale", Vector2(1.08, 0.92), 0.07)
 		_hero_tween.tween_property(_hero, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BOUNCE)
 	else:
 		if not frames.is_empty():
 			_hero.texture = frames[0]
+
+## What one trait actually DOES, in the engine's own words — SimEngine.TRAIT_RULES
+## is the single copy, so the promise on this card and the rule at the table can
+## never drift apart. Clicking the open one puts the note away.
+func _show_trait_tip(tname: String) -> void:
+	if _trait_tip == null:
+		return
+	var level := int((_sel_arch.get("traits", {}) as Dictionary).get(tname, 3))
+	var head := "%s  %d/5" % [tname.to_upper(), level]
+	if _trait_tip.visible and _tip_head.text == head:
+		_trait_tip.visible = false
+		return
+	_sfx_click.pitch_scale = 1.15
+	_sfx_click.play()
+	_tip_head.text = head
+	_tip_body.text = String(SimEngine.TRAIT_RULES.get(tname, ""))
+	_trait_tip.visible = true
+	_trait_tip.modulate.a = 0.0
+	_trait_tip.scale = Vector2(0.98, 0.98)
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(_trait_tip, "modulate:a", 1.0, 0.12)
+	tw.tween_property(_trait_tip, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _lock_in() -> void:
 	if _sel_arch.is_empty() or _stamping:
@@ -1564,6 +1681,17 @@ func _build_bag_page() -> Control:
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ib.add_child(art)
 		art.texture = _clean_tex("res://assets/sprites/%s.png" % String(def["id"]))
+		if art.texture == null:
+			# THE SHELF IS NEVER EMPTY. New things arrive on it before anyone has
+			# drawn them; until the object exists it is a hand-labelled card, which
+			# is what an unpacked thing in a cardboard box looks like anyway.
+			var card := ItemCard.new()
+			card.title = String(def.get("name", "?"))
+			card.wobble_seed = gi
+			card.position = Vector2(8, 6)
+			card.size = Vector2(96, 84)
+			card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ib.add_child(card)
 		var ring := InkTag.new()
 		ring.name = "packed"
 		ring.color = PALETTE["coral"]
@@ -1597,8 +1725,8 @@ func _build_bag_page() -> Control:
 	# was a 430x520 sheet holding a name and two lines, which made it the equal of
 	# the shelf beside it: three big cream rectangles all shouting at once.
 	var dp := Control.new()
-	dp.position = Vector2(760, 200)
-	dp.size = Vector2(340, 400)
+	dp.position = Vector2(760, 178)
+	dp.size = Vector2(340, 452)
 	dp.rotation = 0.007
 	page.add_child(dp)
 	var dp_sheet := PaperEdge.new()
@@ -1607,6 +1735,14 @@ func _build_bag_page() -> Control:
 	dp_sheet.lean = 4
 	dp_sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dp.add_child(dp_sheet)
+	# the blob stands in while the object is still being drawn — the same
+	# stand-in the roster uses, never a hole in the layout
+	_bagd_ghost = BlobPlaceholder.new()
+	_bagd_ghost.size = Vector2(150, 150)
+	_bagd_ghost.position = Vector2(95, 18)
+	_bagd_ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bagd_ghost.visible = false
+	dp.add_child(_bagd_ghost)
 	_bagd_art = TextureRect.new()
 	_bagd_art.size = Vector2(150, 150)
 	_bagd_art.position = Vector2(95, 18)
@@ -1625,13 +1761,22 @@ func _build_bag_page() -> Control:
 	rule.position = Vector2(115, 226)
 	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dp.add_child(rule)
+	# EXACTLY WHAT IT DOES TO YOU (owner: "we should see EXACTLY how each
+	# buffs/nerfs CRUCIAL characteristics"): the arithmetic sits above the joke,
+	# because the joke is why you want it and this is what it costs.
+	_bagd_mods = ModStrip.new()
+	_bagd_mods.position = Vector2(14, 240)
+	_bagd_mods.size = Vector2(312, 34)
+	(_bagd_mods as ModStrip).fsize = 23
+	_bagd_mods.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dp.add_child(_bagd_mods)
 	_bagd_blurb = _label("", 26, PALETTE["ink"])
-	_bagd_blurb.position = Vector2(30, 248)
+	_bagd_blurb.position = Vector2(30, 280)
 	_bagd_blurb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_wrap(_bagd_blurb, 280.0)
 	dp.add_child(_bagd_blurb)
 	_bagd_cost = _label("", 24, Color(PALETTE["ink"], 0.6))
-	_bagd_cost.position = Vector2(16, 356)
+	_bagd_cost.position = Vector2(16, 408)
 	_bagd_cost.size = Vector2(308, 34)
 	_bagd_cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	dp.add_child(_bagd_cost)
@@ -1700,17 +1845,34 @@ func _build_bag_page() -> Control:
 	_refresh_packed()
 
 	var sum_strip := PaperEdge.new()
-	sum_strip.position = Vector2(48, 832)
-	sum_strip.size = Vector2(940, 64)
+	sum_strip.position = Vector2(48, 788)
+	sum_strip.size = Vector2(940, 122)
 	sum_strip.thick = 3.0
 	sum_strip.lean = 4
 	sum_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	page.add_child(sum_strip)
 	_bag_summary = _label("", 28, PALETTE["ink"])
-	_bag_summary.position = Vector2(70, 846)
+	_bag_summary.position = Vector2(70, 796)
 	_bag_summary.size = Vector2(896, 40)
 	_bag_summary.autowrap_mode = TextServer.AUTOWRAP_OFF
 	page.add_child(_bag_summary)
+	# THE RUNNING TOTAL. Four slots is a build, not a shopping list, and this is
+	# the line that makes it one: everything the bag adds up to, and underneath
+	# it the engine's own account of which rules that just switched on.
+	_loadout = ModStrip.new()
+	_loadout.position = Vector2(70, 834)
+	_loadout.size = Vector2(896, 32)
+	(_loadout as ModStrip).fsize = 25
+	(_loadout as ModStrip).centered = false
+	_loadout.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.add_child(_loadout)
+	_loadout_note = _label("", 20, Color(PALETTE["ink"], 0.6))
+	_loadout_note.position = Vector2(70, 862)
+	_loadout_note.custom_minimum_size = Vector2(890, 0)
+	_loadout_note.set_deferred("size", Vector2(890, 66))
+	_loadout_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_loadout_note.max_lines_visible = 3
+	page.add_child(_loadout_note)
 
 	var back := Button.new()
 	back.text = "←"
@@ -1738,10 +1900,85 @@ func _bag_detail(def: Dictionary) -> void:
 	if _bagd_name == null:
 		return
 	_bagd_art.texture = _clean_tex("res://assets/sprites/%s.png" % String(def["id"]))
+	if _bagd_ghost:
+		_bagd_ghost.visible = _bagd_art.texture == null
 	_bagd_name.text = String(def["name"])
 	_bagd_blurb.text = String(def.get("blurb", ""))
+	if _bagd_mods:
+		(_bagd_mods as ModStrip).set_tokens(_mod_tokens(def.get("trait_mods", {})))
 	var cost := int(def.get("carry_cost", 1))
 	_bagd_cost.text = ("takes %d slot%s" % [cost, "s" if cost > 1 else ""]) + ("  ·  PACKED ✓" if _bag.has(String(def["id"])) else "")
+
+## One item's trait arithmetic, gains before costs, in the trait order the whole
+## game speaks. Sage gives, coral takes; a thing that bends nothing says so
+## rather than leaving a silence the player has to interpret.
+func _mod_tokens(mods: Dictionary) -> Array:
+	var gains: Array = []
+	var costs: Array = []
+	for t in GameState.TRAIT_NAMES:
+		var v := int(mods.get(String(t), 0))
+		if v > 0:
+			gains.append(["+%d %s" % [v, String(t).to_upper()], PALETTE["sage"]])
+		elif v < 0:
+			costs.append(["−%d %s" % [absi(v), String(t).to_upper()], PALETTE["coral"]])
+	if gains.is_empty() and costs.is_empty():
+		return [["bends none of your traits", Color(PALETTE["ink"], 0.45)]]
+	return gains + costs
+
+## The bag totalled, computed BY THE ENGINE — this screen never does trait math
+## of its own. A scratch state carries the archetype and what is packed, and
+## SimEngine answers what that founder now is, in its own words.
+func _probe_state() -> GameState:
+	var s := GameState.new()
+	var base: Dictionary = _sel_arch.get("traits", {})
+	if not base.is_empty():
+		s.traits = base.duplicate()
+	var packed: Array[String] = []
+	for bid in _bag:
+		packed.append(String(bid))
+	s.items = packed
+	return s
+
+func _refresh_loadout() -> void:
+	if _loadout == null or not is_instance_valid(_loadout):
+		return
+	var probe := _probe_state()
+	var tokens: Array = [["your loadout:", Color(PALETTE["ink"], 0.55)]]
+	var gains: Array = []
+	var costs: Array = []
+	var capped := PackedStringArray()
+	for t in GameState.TRAIT_NAMES:
+		var tname := String(t)
+		var raw := probe.item_trait_delta(tname)
+		if raw == 0:
+			continue
+		# what LANDS, not what was promised: a +1 on a trait already at 5 is a
+		# slot spent on nothing, and the player deserves to be told that here
+		var landed := probe.trait_level(tname) - clampi(int(probe.traits.get(tname, 3)), 1, 5)
+		if landed > 0:
+			gains.append(["+%d %s" % [landed, tname], PALETTE["sage"]])
+		elif landed < 0:
+			costs.append(["−%d %s" % [absi(landed), tname], PALETTE["coral"]])
+		if landed != raw:
+			capped.append(tname)
+	if gains.is_empty() and costs.is_empty():
+		tokens.append(["nothing bent yet", Color(PALETTE["ink"], 0.4)])
+	else:
+		tokens += gains + costs
+	(_loadout as ModStrip).set_tokens(tokens)
+	if _loadout_note == null or not is_instance_valid(_loadout_note):
+		return
+	var eff := PackedStringArray()
+	for line in SimEngine.trait_effects(probe):
+		eff.append(String(line))
+	var note := ""
+	if eff.is_empty():
+		note = "nothing switched on yet — the founder card says what each trait unlocks"
+	else:
+		note = "in play:  " + "   ·   ".join(eff)
+	if not capped.is_empty():
+		note += "      (already at the ceiling: %s)" % ", ".join(capped)
+	_loadout_note.text = note
 
 func _add_cofounder() -> void:
 	if _cofounders.size() >= MAX_COFOUNDERS:
@@ -1933,6 +2170,7 @@ func _refresh_capline() -> void:
 		_bag_summary.text = "%s · %s · %d %s · you keep %.0f%% · ~$%s day one" % [
 			_name_edit.value() if _name_edit else "?", String(_sel_arch.get("name", "?")),
 			n_cf, "cofounder" if n_cf == 1 else "cofounders", founder_pct, _fmt_money(cash)]
+	_refresh_loadout()
 	if _launch:
 		var blocked := ""
 		if _sel_arch.is_empty():
@@ -2362,18 +2600,192 @@ class StatPips:
 		var font: Font = load("res://assets/fonts/Baloo2-Bold.ttf")
 		var n := FounderDraftScreen.STAT_NAMES.size()
 		for i in n:
-			var y := i * 58.0
-			draw_string(font, Vector2(0, y + 34), FounderDraftScreen.STAT_LABELS[i], HORIZONTAL_ALIGNMENT_LEFT, 150, 27, Color("1E1E1E"))
+			# 52 to the row, not 58: the six traits moved in underneath and the
+			# sheet still has to end above the roster band.
+			var y := i * 52.0
+			draw_string(font, Vector2(0, y + 31), FounderDraftScreen.STAT_LABELS[i], HORIZONTAL_ALIGNMENT_LEFT, 150, 26, Color("1E1E1E"))
 			var v := int(stats.get(FounderDraftScreen.STAT_NAMES[i], 0))
 			var revealed := float(v) * clampf(progress, 0.0, 1.0)
 			for pp in 5:
-				var r := Rect2(160 + pp * 62, y + 8, 50, 30)
+				var r := Rect2(158 + pp * 60, y + 7, 48, 28)
 				if pp < int(round(revealed)):
 					draw_rect(r, Color("E86A5C"))
 					draw_rect(r, Color("1E1E1E"), false, 2.5)
 				else:
 					draw_rect(r, Color(Color("1E1E1E"), 0.06))
 					draw_rect(r, Color(Color("1E1E1E"), 0.32), false, 2.0)
+
+
+class TraitPips:
+	extends Control
+	## THE SIX, in the size of a footnote: two columns of three, name in ink,
+	## five small pips each, and the swing the bag put on them written beside.
+	## StatPips shouts the verbs a founder rolls; this whispers who they are —
+	## same half-second read, a third of the height, because these numbers are
+	## the ones nobody puts on a pitch deck and the world checks anyway.
+	var traits: Dictionary = {}
+	var deltas: Dictionary = {}       # what the packed bag did, per trait
+	var hot := -1                     # the row the pen is resting on
+
+	const COL_W := 235.0
+	const ROW_H := 44.0
+
+	## Column-major so the pairs the engine reads together stay side by side.
+	static func cell_rect(i: int) -> Rect2:
+		return Rect2(float(i / 3) * COL_W, float(i % 3) * ROW_H, COL_W - 10.0, ROW_H - 6.0)
+
+	func set_traits(v: Dictionary, d: Dictionary = {}) -> void:
+		traits = v
+		deltas = d
+		queue_redraw()
+
+	func _draw() -> void:
+		var font: Font = load("res://assets/fonts/PatrickHand-Regular.ttf")
+		var fontd: Font = load("res://assets/fonts/Baloo2-Bold.ttf")
+		var ink := Color("1E1E1E")
+		for i in GameState.TRAIT_NAMES.size():
+			var tname := String(GameState.TRAIT_NAMES[i])
+			var r := cell_rect(i)
+			var v: int = clampi(int(traits.get(tname, 3)) + int(deltas.get(tname, 0)), 1, 5)
+			if hot == i:
+				draw_rect(Rect2(r.position + Vector2(-6, -1), r.size + Vector2(8, 2)), Color(ink, 0.06))
+			draw_string(fontd, r.position + Vector2(0, 20), tname.to_upper(),
+				HORIZONTAL_ALIGNMENT_LEFT, 124, 19, ink)
+			# the dotted rule under the word is the affordance: it is a footnote,
+			# and footnotes are for reading
+			draw_line(r.position + Vector2(0, 26), r.position + Vector2(
+				minf(fontd.get_string_size(tname.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 19).x, 124.0), 26),
+				Color(ink, 0.22 if hot != i else 0.5), 1.5)
+			for pp in 5:
+				var pr := Rect2(r.position + Vector2(128.0 + pp * 17.0, 5.0), Vector2(13, 13))
+				if pp < v:
+					draw_rect(pr, Color("E86A5C"))
+					draw_rect(pr, ink, false, 1.6)
+				else:
+					draw_rect(pr, Color(ink, 0.07))
+					draw_rect(pr, Color(ink, 0.30), false, 1.4)
+			var d := int(deltas.get(tname, 0))
+			if d != 0:
+				draw_string(font, r.position + Vector2(216, 19), "%+d" % d,
+					HORIZONTAL_ALIGNMENT_LEFT, 40, 20,
+					Color("8FA582") if d > 0 else Color("E86A5C"))
+
+
+class ItemCard:
+	extends Control
+	## A thing on the shelf whose object has not been drawn yet: a wobbly card
+	## with the name written on it in pen. The name is broken to the card by
+	## hand, because a Label set to autowrap refuses to break "Noise-cancelling"
+	## and grows straight across its neighbours instead — which is exactly what
+	## it did the first time this shelf held a thing with no picture.
+	var title := ""
+	var wobble_seed := 0
+
+	func _draw() -> void:
+		var ink := Color("1E1E1E")
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 11 + wobble_seed
+		var inset := 4.0
+		var corners := [Vector2(inset, inset), Vector2(size.x - inset, inset),
+			Vector2(size.x - inset, size.y - inset), Vector2(inset, size.y - inset)]
+		var pts := PackedVector2Array()
+		for i in 4:
+			var a: Vector2 = corners[i]
+			var b: Vector2 = corners[(i + 1) % 4]
+			var n := Vector2(b.y - a.y, a.x - b.x).normalized()
+			for k in 8:
+				pts.append(a.lerp(b, float(k) / 7.0) + n * rng.randf_range(-1.4, 1.4))
+		pts.append(pts[0])
+		draw_polyline(pts, Color(ink, 0.42), 2.5, true)
+		var font: Font = load("res://assets/fonts/PatrickHand-Regular.ttf")
+		var w := size.x - 14.0
+		var fs := 19
+		var lines: Array = _fit(font, fs, w)
+		while fs > 12 and (lines.size() > 4 or _widest(font, lines, fs) > w):
+			fs -= 2
+			lines = _fit(font, fs, w)
+		var lh := float(fs) + 3.0
+		var y := (size.y - lh * float(lines.size())) / 2.0 + float(fs) * 0.86
+		for ln in lines:
+			var tw: float = font.get_string_size(String(ln), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			draw_string(font, Vector2((size.x - tw) / 2.0, y), String(ln),
+				HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(ink, 0.85))
+			y += lh
+
+	## Greedy fit on word boundaries, and on the hyphens a compound name already
+	## offers — never mid-word, so nothing reads as a typo.
+	func _fit(font: Font, fs: int, w: float) -> Array:
+		var words: Array = []
+		for raw in title.split(" ", false):
+			var chunk := String(raw)
+			while chunk.contains("-") and chunk.find("-") < chunk.length() - 1:
+				var cut := chunk.find("-") + 1
+				words.append(chunk.left(cut))
+				chunk = chunk.substr(cut)
+			words.append(chunk)
+		var out: Array = []
+		var cur := ""
+		for word in words:
+			var probe: String = String(word) if cur == "" else (
+				cur + ("" if cur.ends_with("-") else " ") + String(word))
+			if cur != "" and font.get_string_size(probe, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > w:
+				out.append(cur)
+				cur = String(word)
+			else:
+				cur = probe
+		if cur != "":
+			out.append(cur)
+		return out
+
+	func _widest(font: Font, lines: Array, fs: int) -> float:
+		var m := 0.0
+		for ln in lines:
+			m = maxf(m, font.get_string_size(String(ln), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+		return m
+
+
+class ModStrip:
+	extends Control
+	## One line of trait arithmetic in the founder's own pen: what a thing gives
+	## in sage, what it costs in coral, separated the way the log book separates
+	## anything — a middle dot. A Label cannot hold two colours, and a rich text
+	## box would be the one web control on a screen where everything is drawn.
+	var tokens: Array = []            # [[text, Color], ...]
+	var fsize := 24
+	var centered := true
+
+	func set_tokens(t: Array) -> void:
+		tokens = t
+		queue_redraw()
+
+	func _draw() -> void:
+		if tokens.is_empty():
+			return
+		var font: Font = load("res://assets/fonts/PatrickHand-Regular.ttf")
+		var sep := "  ·  "
+		var sep_w: float = font.get_string_size(sep, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize).x
+		var widths: Array = []
+		var total := 0.0
+		for t in tokens:
+			var w: float = font.get_string_size(String((t as Array)[0]), HORIZONTAL_ALIGNMENT_LEFT, -1, fsize).x
+			widths.append(w)
+			total += w
+		total += sep_w * float(maxi(tokens.size() - 1, 0))
+		var x: float = ((size.x - total) / 2.0) if centered else 0.0
+		var y: float = float(fsize) * 0.92
+		for i in tokens.size():
+			draw_string(font, Vector2(x, y), String((tokens[i] as Array)[0]),
+				HORIZONTAL_ALIGNMENT_LEFT, -1, fsize, (tokens[i] as Array)[1])
+			x += float(widths[i])
+			if i < tokens.size() - 1:
+				# a caption ends in a colon and takes a space, not a dot: the dots
+				# separate the terms of the sum, they do not follow the heading
+				if String((tokens[i] as Array)[0]).ends_with(":"):
+					x += float(fsize) * 0.4
+				else:
+					draw_string(font, Vector2(x, y), sep, HORIZONTAL_ALIGNMENT_LEFT, -1,
+						fsize, Color("1E1E1E", 0.4))
+					x += sep_w
 
 
 class EllipseShadow:

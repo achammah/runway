@@ -6,8 +6,36 @@ extends SceneTree
 func _init() -> void:
 	var content := ContentDb.new()
 	content.load_all()
-	assert(content.items.size() == 29, "expected 29 items (20 core + 9 trade-specific)")
+	assert(content.items.size() == 42, "expected 42 items (31 core + 11 trade-specific)")
 	assert(content.events.size() >= 8, "expected authored events")
+
+	# ── the six traits: the data behind the character sheet ──
+	# Every trait modifier must name a real trait and stay inside ±2, or the bag
+	# stops being a set of trade-offs and becomes a stat vending machine.
+	var mod_carriers := 0
+	for it in content.items.values():
+		for k in (it.get("trait_mods", {}) as Dictionary):
+			assert(GameState.TRAIT_NAMES.has(String(k)),
+				"item %s modifies unknown trait %s" % [it.get("id"), k])
+			var mv := int((it["trait_mods"] as Dictionary)[k])
+			assert(mv != 0 and absi(mv) <= 2,
+				"item %s has an out-of-range mod on %s (%d)" % [it.get("id"), k, mv])
+		if not (it.get("trait_mods", {}) as Dictionary).is_empty():
+			mod_carriers += 1
+	assert(mod_carriers >= 30, "most of the shelf must actually bend a trait (%d)" % mod_carriers)
+	var arch_doc = JSON.parse_string(FileAccess.get_file_as_string("res://data/archetypes.json"))
+	var arch_list: Array = (arch_doc as Dictionary).get("archetypes", [])
+	assert(arch_list.size() >= 4, "expected the founder roster")
+	var seen_spreads: Array = []
+	for a in arch_list:
+		var tr: Dictionary = (a as Dictionary).get("traits", {})
+		assert(tr.size() == 6, "%s must author all six traits" % a.get("id"))
+		for t in GameState.TRAIT_NAMES:
+			var lv := int(tr.get(String(t), 0))
+			assert(lv >= 1 and lv <= 5, "%s.%s out of the 1-5 band (%d)" % [a.get("id"), t, lv])
+		assert(not seen_spreads.has(tr), "%s duplicates another founder's spread" % a.get("id"))
+		seen_spreads.append(tr)
+	print("traits OK — %d items bend one, %d distinct founder spreads" % [mod_carriers, seen_spreads.size()])
 
 	var deaths := 0
 	var victories := 0
@@ -188,8 +216,12 @@ func _init() -> void:
 	var u := gen.compose_event_user(s7)
 	assert(u.contains("Grindstone Labs demos"), "garage beat must inject into the Tier-2 prompt")
 	assert(not u.contains("poaches your first enterprise lead"), "office beat must NOT inject in garage era")
-	assert(gen.compose_adjudicate_user(s7, {"title": "T", "body": "B"}, "I do a thing").contains("Grindstone Labs demos"),
+	var adj_msg := gen.compose_adjudicate_user(s7, {"title": "T", "body": "B"}, "I do a thing")
+	assert(adj_msg.contains("Grindstone Labs demos"),
 		"directive must inject into the adjudicator message")
+	# the DM is told who the founder IS, not only what they can do
+	assert(adj_msg.contains("TRAITS (fixed)") and adj_msg.contains("credibility"),
+		"the six traits must reach the adjudicator")
 	s7.era = "office"
 	assert(gen.compose_event_user(s7).contains("poaches your first enterprise lead"),
 		"era transition must switch the active beat")
