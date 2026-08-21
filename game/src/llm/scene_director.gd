@@ -319,6 +319,7 @@ func remember_url(id: String, url: String) -> void:
 const MIDDLEWARE_EDIT := "https://nano-banana-production-e03b.up.railway.app/edit-image-openai"
 const MIDDLEWARE_GEN := "https://nano-banana-production-e03b.up.railway.app/generate-image-openai"
 const V2_DIR := "user://gen_scenes_v2"
+var _v2_inflight := {}   # cache keys currently being painted (coalesces callers)
 const V2_REG := "user://gen_scenes_v2/registry.json"
 
 const CHARACTER_LAW := ("EVERY person in this world — the cast, customers, strangers, "
@@ -371,6 +372,20 @@ func make_scene_v2(scene: Dictionary, cast: Array, cast_urls: Array, beat: Strin
 		progress.emit(1.0)
 		ready.emit(cached)
 		return
+	# a warm prefetch may already be painting this exact scene: wait for it
+	# instead of paying twice, then serve its result
+	if _v2_inflight.has(key):
+		while _v2_inflight.has(key):
+			await _tree.process_frame
+		var hit2: Dictionary = _v2_reg.get(key, {})
+		var cached2 := String(hit2.get("path", ""))
+		if cached2 != "" and FileAccess.file_exists(cached2):
+			progress.emit(1.0)
+			ready.emit(cached2)
+		else:
+			failed.emit("v2 generation failed (warm attempt)")
+		return
+	_v2_inflight[key] = true
 	var dressing: String = {
 		"thriving": "The place is well kept: good kit, full shelves, a sense of money.",
 		"steady": "The place is lived in and ordinary.",
@@ -424,10 +439,12 @@ func make_scene_v2(scene: Dictionary, cast: Array, cast_urls: Array, beat: Strin
 		if attempt < 2:
 			await _tree.create_timer(3.0 + 5.0 * float(attempt)).timeout
 	if path == "":
+		_v2_inflight.erase(key)
 		failed.emit("v2 generation failed after 3 attempts")
 		return
 	_v2_reg[key] = {"path": path}
 	_v2_save_reg()
+	_v2_inflight.erase(key)
 	ready.emit(path)
 
 func _cast_sig(cast: Array) -> String:
@@ -436,15 +453,14 @@ func _cast_sig(cast: Array) -> String:
 		bits.append(String((c as Dictionary).get("who", (c as Dictionary).get("role", "?"))))
 	return "+".join(bits)
 
+## THE ONE KEY, WHEREVER IT LIVES (the export bug that kept every shipped
+## room on the default art): the player's key is in user://keys.env, which
+## DotEnv layers over the dev .env — the renderer must read the SAME stack
+## the narrator does, never its own private path.
 func _openai_key() -> String:
 	if OS.has_environment("OPENAI_API_KEY"):
 		return OS.get_environment("OPENAI_API_KEY").strip_edges()
-	if FileAccess.file_exists("res://.env"):
-		for line in FileAccess.get_file_as_string("res://.env").split("\n"):
-			var t := line.strip_edges()
-			if t.begins_with("OPENAI_API_KEY="):
-				return t.split("=", true, 1)[1].strip_edges()
-	return ""
+	return String(DotEnv.load_env().get("OPENAI_API_KEY", "")).strip_edges()
 
 ## One middleware round-trip: the response carries imageUrl directly (no polling).
 ## Returns the downloaded local path, or "" on any failure — the caller owns the

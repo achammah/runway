@@ -1002,6 +1002,10 @@ func _prefetch_founding(gv: GarageViewScreen) -> void:
 	generator.adjudicate(state, {}, _founding_move(), func(res: Dictionary) -> void:
 		_founding_inflight = false
 		_founding_res = res
+		# THE PAINT STARTS AT THE SIGNATURE (owner): the moment day one is
+		# written, its room starts rendering — while the book is still being
+		# read. The turn's own call later coalesces onto this warm render.
+		_warm_scene(res)
 		if _screen is BookIntroScreen:
 			(_screen as BookIntroScreen).feed_entry(String(res.get("narration", "")))
 			_book_showed_entry = true
@@ -1009,6 +1013,20 @@ func _prefetch_founding(gv: GarageViewScreen) -> void:
 		elif _screen is GarageViewScreen:
 			# the player is already in the room waiting on the curtain: play it
 			_consume_founding(_screen as GarageViewScreen))
+
+## Fire the week's v2 render early, fire-and-forget: the per-week cache key
+## means the real turn either finds the finished file or waits on this one.
+func _warm_scene(dm: Dictionary) -> void:
+	var scene: Dictionary = dm.get("scene", {})
+	if scene.is_empty() or not _art_enabled() or OS.get_environment("RUNWAY_GPT_SCENES") == "0":
+		return
+	if director == null or state == null:
+		return
+	var cast_pack := _cast_pack(dm.get("cast", []))
+	var out_name := "run%d_wk%02d" % [record.seed_value if record != null else 0, state.week]
+	print("TURN art WARM start (%s)" % out_name)
+	director.make_scene_v2(scene, cast_pack["cast"], cast_pack["urls"],
+			String(scene.get("beat", "")), out_name, _company_ctx())
 
 func _cold_open(gv: GarageViewScreen) -> void:
 	if generator == null or not generator.llm.enabled():
