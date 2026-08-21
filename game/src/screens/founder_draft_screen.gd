@@ -125,10 +125,7 @@ func _ready() -> void:
 	_surfaces = SceneSurfaces.new()
 	_surfaces.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_room = SceneRoom.new()
-	# widened 12% and slid left so the spotlight beam lands ON the founder
-	# (owner: the light pointed right of everyone standing in it)
-	_room.size = Vector2(1720, 1147)
-	_room.position = Vector2(-184, -62)
+	_room.size = Vector2(1536, 1024)
 	_room.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_room)
 	if _surfaces.mount(STAGE_SCENE):
@@ -948,10 +945,17 @@ func _transition_to(page_i: int) -> void:
 		bottom.queue_free()
 		sfx.queue_free())
 
+## THE PAGE BREATHES ON THE PAGE'S OWN CLOCK. Every line here hands Godot a new
+## rotation or scale each displayed frame, and each one is a repaint: the hero,
+## its shadow, the title, the LOCK IN card. Quantising the clock to the 12fps
+## the art is drawn at keeps the identical motion and lets Godot's "same value,
+## nothing to do" check swallow the frames in between.
+const BREATH_FPS := 12.0
+
 func _process(_delta: float) -> void:
 	if _page != 0 or _hero == null:
 		return
-	var t := Time.get_ticks_msec() / 1000.0
+	var t := floorf(Time.get_ticks_msec() / 1000.0 * BREATH_FPS) / BREATH_FPS
 	_hero.rotation = sin(t * 1.1) * 0.02                      # gentle sway
 	_hero.position.y = _hero_base_y + sin(t * 2.2) * 4.0      # breath float
 	if _hero_shadow:
@@ -2475,7 +2479,17 @@ class _ShelfBar:
 	extends Control
 	var scroll: ScrollContainer
 	var grid: Control
+	## the track only ever moves when the shelf does. It used to repaint on every
+	## displayed frame of every page, including the six pages it is not on and
+	## the case where _draw takes one look at a short shelf and returns.
+	var _last := -1.0
 	func _process(_d: float) -> void:
+		if scroll == null or not is_instance_valid(scroll):
+			return
+		var sv := float(scroll.scroll_vertical)
+		if is_equal_approx(sv, _last):
+			return
+		_last = sv
 		queue_redraw()
 	func _draw() -> void:
 		if scroll == null or grid == null:
