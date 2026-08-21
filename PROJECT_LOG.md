@@ -213,3 +213,18 @@ print the ask whole; the level row never wraps. Fresh scene every staged
 week; art landings/failures and the week's headline/journal_note/narration
 now print for live verification. Suites green; 3-week paid probe filmed the
 exact spec sequence. Commit 35def8f.
+
+## 2026-08-21b — The casino dice line + the everything sweep
+The owner validated a casino-red d20 master (solid red facets, white pips,
+no in-facet decoration); 20 stills were edited from it (only the number
+changes), seedance rendered 4s 720p clips (cup slam -> small die tumbles
+out -> camera zooms into the number), fal veed stripped the cream card
+(the earlier matte ate cream die faces — red die makes removal trivial),
+and 20 RGBA sheets landed in-game. Contact sheets in ~/Downloads. The
+ceremony player draws the drawing straight on the felt.
+The autonomous sweep walked every screen: was-page one-line elision fixed
+(two-line floor), shot harness skips the founding curtain, autopsy names
+the founder, world reveal flows with LLM verbosity (new shot harness),
+Binder got a 7-tab harness that immediately caught a Variant crash in the
+crew tab (now named + str()-safe). Deep 8-week probe: art every week,
+dedup firing, five straight dice keeps correct, prose graded clean.
