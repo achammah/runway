@@ -539,7 +539,8 @@ func _autopilot() -> void:
 			# force the end to photograph the last page
 			state.morale = 1
 			gv._lock_week()
-			await get_tree().create_timer(3.6).timeout
+			# the last page writes itself in real time — give it the full reveal
+			await get_tree().create_timer(9.0).timeout
 			await _shot(dir, "14_autopsy")
 	print("AUTOPILOT DONE")
 	get_tree().quit()
@@ -772,8 +773,10 @@ func _after_draft(result: Dictionary) -> void:
 		state.cash += int(content.items.get(id, {}).get("cash_value", 0))
 	if state.cash <= 0:
 		state.cash = 1500   # emergency couch cushions
+	var who_str := state.founder_name if state.founder_name != "" else state.archetype_name
 	record.log_event(0, {"id": "draft", "title": "The Founding of %s" % state.company_name},
-		"%s · %d cofounder(s) · %s · kept %.0f%%" % [state.archetype_name, cofounders.size(), funding.get("name", ""), state.founder_pct], [])
+		"%s (%s) · %d cofounder(s) · %s · kept %.0f%%" % [who_str, state.archetype_name,
+			cofounders.size(), funding.get("name", ""), state.founder_pct], [])
 	# THE WORLD IS BORN (plan A4/B5): seed the engine, then the bible
 	state.sim_seed = record.seed_value if state.sim_seed == 0 else state.sim_seed
 	if state.theta.is_empty():
@@ -803,7 +806,12 @@ func _after_draft(result: Dictionary) -> void:
 			wr.size = get_viewport().get_visible_rect().size)
 	else:
 		_swap(g)
-		_cold_open(g)
+		# the SHOT harness photographs screens, not story: a live-key founding
+		# would drop the curtain over the whole walk (every shot came back coral)
+		if OS.get_environment("RUNWAY_SHOT") != "":
+			_opening_scene()
+		else:
+			_cold_open(g)
 
 ## WEEK ONE IS GENERATED TOO (owner: "it's just the bland standard situation").
 ## Day one gets its own DM story: a real roll, a real narration from the pitch,

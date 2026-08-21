@@ -1810,9 +1810,9 @@ func _spread_was() -> void:
 		if hl != "":
 			_jp.line(hl)
 		if note != "":
-			_jp.line_fitted(note, strips_h + short_h + 51.0)
+			_jp.line_fitted(note, strips_h + short_h + 24.0)
 		elif narr != "":
-			_jp.line_fitted(narr, strips_h + short_h + 51.0)
+			_jp.line_fitted(narr, strips_h + short_h + 24.0)
 			if vt in ["brilliant", "backfired"]:
 				_jp.margin_mark("star" if vt == "brilliant" else "cross")
 			# nat 20 / nat 1: the die itself gets its stamp, computed the same

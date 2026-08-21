@@ -970,7 +970,9 @@ func line_fitted(text: String, reserve: float, zone: String = "body", faint: boo
 		if _wrap_lines(text, sz).size() <= fit_s:
 			_shaped(text, sz, FAINT if faint else INK, zone, HORIZONTAL_ALIGNMENT_LEFT)
 			return
-	var fit: int = maxi(int(floor(avail / _line_advance(24))), 1)
+	# even a starved page keeps TWO small lines — one line cut mid-sentence
+	# ("…own …") reads as a rendering bug, not a diary
+	var fit: int = maxi(int(floor(avail / _line_advance(24))), 2)
 	var lines := _wrap_lines(text, 24)
 	var told := text
 	if lines.size() > fit:
