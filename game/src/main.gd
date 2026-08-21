@@ -812,6 +812,8 @@ func _after_draft(result: Dictionary) -> void:
 	state.archetype_id = String(arch.get("id", ""))
 	state.archetype_name = String(arch.get("name", "founder"))
 	state.competences = (arch.get("stats", {}) as Dictionary).duplicate()
+	if not (arch.get("traits", {}) as Dictionary).is_empty():
+		state.traits = (arch.get("traits", {}) as Dictionary).duplicate()
 	state.company_name = String(result.get("company_name", "Untitled Inc"))
 	state.founder_name = String(result.get("founder_name", ""))
 	state.company_idea = String(result.get("company_idea", ""))
@@ -1598,6 +1600,10 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 	# BOOK-READ TURNS (the founding, read on the book-intro screen) skip the
 	# beat entirely: the words were the screen; only the art still lands.
 	if bool(dm.get("book_read", false)):
+		# nothing to hide: the words were the book. The curtain _cold_open just
+		# dropped rises immediately — without this it sat shut until the 40s
+		# failsafe (probe f5: 'day one is being written…' over a closed curtain)
+		_raise_curtain()
 		if _screen is GarageViewScreen:
 			(_screen as GarageViewScreen).set_painting(true)
 		var bdeadline := Time.get_ticks_msec() + int(HOLD_CEILING * 1000.0)
