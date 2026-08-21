@@ -168,7 +168,7 @@ const WORLD_SCHEMA := {
 					"name": {"type": "string", "maxLength": 40},
 					"archetype": {"type": "string", "enum": ["the momentum fund",
 						"the contrarian angel", "the operator VC", "the shark", "the thesis tourist"]},
-					"thesis": {"type": "string", "maxLength": 110},
+					"thesis": {"type": "string", "maxLength": 200},
 					"trait": {"type": "string", "maxLength": 80},
 					"bond": {"type": "string", "maxLength": 90},
 					"flaw": {"type": "string", "maxLength": 80},
@@ -183,7 +183,7 @@ const WORLD_SCHEMA := {
 				"required": ["name", "what_they_do", "strength", "tactics"],
 				"properties": {
 					"name": {"type": "string", "maxLength": 30},
-					"what_they_do": {"type": "string", "maxLength": 100},
+					"what_they_do": {"type": "string", "maxLength": 140},
 					"strength": {"type": "string", "enum": ["struggling", "scrappy", "strong", "dominant"]},
 					"tactics": {"type": "array", "minItems": 3, "maxItems": 3,
 						"items": {"type": "string", "maxLength": 60}},

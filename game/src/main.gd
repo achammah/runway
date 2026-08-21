@@ -98,21 +98,23 @@ func _fullrun(dir: String) -> void:
 		get_tree().quit(1)
 		return
 	var d := _screen as FounderDraftScreen
+	d._transition_to(1)     # past the sign page (the dealt name stands)
+	await get_tree().create_timer(0.5).timeout
 	d._select(1)
-	d._transition_to(1)
-	await get_tree().create_timer(0.8).timeout
 	d._transition_to(2)
 	await get_tree().create_timer(0.8).timeout
 	d._transition_to(3)
 	await get_tree().create_timer(0.8).timeout
+	d._transition_to(4)
+	await get_tree().create_timer(0.8).timeout
 	d._cofounders.append({"role": 0, "commitment": 0, "equity": 30.0, "vesting": true, "fresh": true})
 	d._refresh_capline()
-	d._transition_to(4)
+	d._transition_to(5)
 	await get_tree().create_timer(0.8).timeout
 	var funds: Array = d.data.get("fundings", [])
 	if funds.size() > 2 and d._fund_btns.size() > 2:
 		d._pick_fund(funds[2], d._fund_btns[2])
-	d._transition_to(5)
+	d._transition_to(6)
 	await get_tree().create_timer(0.8).timeout
 	for iid in ["itm_laptop", "itm_savings_jar", "itm_houseplant", "itm_guitar"]:
 		if d._bag_btns.has(iid):
@@ -445,16 +447,19 @@ func _autopilot() -> void:
 		# four archetypes ship, so 4 silently lands back on 0 — and this shot spent a
 		# whole QA pass calling a photograph of the hacker `03_select_consultant`.
 		# The consultant is the LAST of the four: index 3.
+		await _shot(dir, "02a_sign")
+		d._transition_to(1)
+		await get_tree().create_timer(0.8).timeout
 		d._select(3)
 		await get_tree().create_timer(0.9).timeout
 		await _shot(dir, "03_select_consultant")
-		d._transition_to(1)
-		await get_tree().create_timer(1.0).timeout
-		await _shot(dir, "04_name")
 		d._transition_to(2)
 		await get_tree().create_timer(1.0).timeout
-		await _shot(dir, "04b_shape")
+		await _shot(dir, "04_name")
 		d._transition_to(3)
+		await get_tree().create_timer(1.0).timeout
+		await _shot(dir, "04b_shape")
+		d._transition_to(4)
 		await get_tree().create_timer(1.0).timeout
 		d._cofounders.append({"role": 0, "commitment": 0, "equity": 30.0, "vesting": true, "fresh": true})
 		d._cofounders.append({"role": 3, "commitment": 1, "equity": 5.0, "vesting": false, "fresh": true})
@@ -465,14 +470,14 @@ func _autopilot() -> void:
 		await get_tree().create_timer(0.4).timeout
 		await _shot(dir, "06_recruit")
 		d._recruit_layer.visible = false
-		d._transition_to(4)
+		d._transition_to(5)
 		await get_tree().create_timer(1.0).timeout
 		var funds: Array = d.data.get("fundings", [])
 		if funds.size() > 2 and d._fund_btns.size() > 2:
 			d._pick_fund(funds[2], d._fund_btns[2])
 		await get_tree().create_timer(0.6).timeout
 		await _shot(dir, "07_money")
-		d._transition_to(5)
+		d._transition_to(6)
 		await get_tree().create_timer(1.0).timeout
 		for iid in ["itm_laptop", "itm_savings_jar", "itm_houseplant"]:
 			if d._bag_btns.has(iid):
@@ -797,8 +802,18 @@ func _after_draft(result: Dictionary) -> void:
 	# numbers, investors circling THIS space, rivals selling to THESE customers.
 	# Keyless keeps the skeleton. Then the market map, then day one.
 	if OS.get_environment("RUNWAY_SHOT") == "" and OS.get_environment("RUNWAY_FULLRUN") == "":
+		# THE BIRTH SCREEN (owner: signing looked dead while the world loaded):
+		# the moment the papers are signed, a drawn title card breathes
+		# "creating your world…" until the bible lands. No frozen draft page.
+		var birth := BirthScreen.new()
+		_swap(birth)
+		birth.size = get_viewport().get_visible_rect().size
 		generator.generate_world(state, func(gen: Dictionary) -> void:
 			WorldGen.apply_llm_world(state, gen)
+			# THE FOUNDING LOADS WHILE YOU READ (owner): day one's chapter is
+			# already being written while the market map is on screen, so
+			# SETTLE IN opens on a beat, not on a curtain.
+			_prefetch_founding(g)
 			var wr := WorldRevealScreen.new()
 			wr.setup(state)
 			wr.done.connect(func() -> void:
@@ -823,46 +838,81 @@ func _after_draft(result: Dictionary) -> void:
 ## DAY ONE IS AN ORIGIN STORY, NOT A GAMBLE (owner): no dice, no "you said" —
 ## the curtain drops the moment you settle in, the DM writes the founding, the
 ## beat reads it while the first image of YOUR company renders behind it.
+## The founding, written while the reveal is read. The result parks in
+## _founding_res; _cold_open consumes it instantly if it landed in time.
+var _founding_res := {}
+var _founding_inflight := false
+
+func _founding_move() -> String:
+	var who_founds := (" The founder writing this is %s." % state.founder_name) \
+			if state.founder_name != "" else ""
+	return ("This is day one of %s — %s." + who_founds
+			+ " Write DAY ONE as the FIRST ENTRY OF THE FOUNDER'S OWN LOGBOOK "
+			+ "(a journal de bord): first person, plain sentences, the opening "
+			+ "pages of a business memoir. I sign the lease, I look at the room, "
+			+ "I name what we are actually promising and what it will cost. The "
+			+ "place, the crew, the first stake in the ground. No dice language, "
+			+ "no verdict talk, no company-brochure tone — a person writing at "
+			+ "night on day one.") % [state.company_name,
+			state.company_idea if state.company_idea != "" else "a company that refuses to explain itself"]
+
+func _prefetch_founding(gv: GarageViewScreen) -> void:
+	if generator == null or not generator.llm.enabled() or _founding_inflight:
+		return
+	_founding_inflight = true
+	if is_instance_valid(gv):
+		gv.set("_adjudicating", true)   # the lock holds until day one lands
+	generator.adjudicate(state, {}, _founding_move(), func(res: Dictionary) -> void:
+		_founding_inflight = false
+		_founding_res = res
+		if _screen is GarageViewScreen:
+			# the player is already in the room waiting on the curtain: play it
+			_consume_founding(_screen as GarageViewScreen))
+
 func _cold_open(gv: GarageViewScreen) -> void:
 	if generator == null or not generator.llm.enabled():
 		_opening_scene()
 		return
 	_drop_curtain()
-	# day one is an adjudication like any other: the journal's lock must refuse
-	# until it lands, or a fast press stacks two in-flight turns (probe-caught)
+	if not _founding_res.is_empty():
+		_consume_founding(gv)
+		return
+	if _founding_inflight:
+		return   # the prefetch callback will consume it the moment it lands
+	# no prefetch happened (direct entry): write it now, then consume
 	gv.set("_adjudicating", true)
-	var who_founds := (" The founder signing the lease is %s." % state.founder_name) \
-			if state.founder_name != "" else ""
-	var move := ("This is day one of %s — %s." + who_founds
-			+ " Write the FOUNDING of this exact company: the "
-			+ "place, the crew, the first real stake in the ground. No dice language, no "
-			+ "verdict talk — an opening chapter.") % [state.company_name,
-			state.company_idea if state.company_idea != "" else "a company that refuses to explain itself"]
+	var move := _founding_move()
+	_legacy_found(gv, move)
+
+func _consume_founding(gv: GarageViewScreen) -> void:
+	var res := _founding_res
+	_founding_res = {}
+	if is_instance_valid(gv):
+		gv.set("_adjudicating", false)
+	if res.is_empty() or state == null:
+		_raise_curtain()
+		_opening_scene()
+		return
+	res["player_text"] = ""
+	res["interpreted_as"] = ""
+	res.erase("dice")
+	res.erase("roll")
+	res["week_played"] = 0
+	state.last_outcome = {
+		"title": "day one", "verdict": "",
+		"said": "", "heard": "",
+		"narration": String(res.get("narration", "")),
+		"reality": String(res.get("reality_check", "")),
+		"dec_log": [], "log": [],
+		"dm": res.duplicate(true), "dm_seen": true}
+	if is_instance_valid(gv):
+		gv.set("_last_outcome", state.last_outcome.duplicate(true))
+	_begin_turn(res)
+
+func _legacy_found(gv: GarageViewScreen, move: String) -> void:
 	generator.adjudicate(state, {}, move, func(res: Dictionary) -> void:
-		if is_instance_valid(gv):
-			gv.set("_adjudicating", false)
-		if res.is_empty() or state == null:
-			_raise_curtain()
-			_opening_scene()
-			return
-		res["player_text"] = ""        # nothing was "said": this is the founding
-		res["interpreted_as"] = ""
-		res.erase("dice")
-		res.erase("roll")
-		res["week_played"] = 0         # day one, before any week is played
-		state.last_outcome = {
-			"title": "day one", "verdict": "",
-			"said": "", "heard": "",
-			"narration": String(res.get("narration", "")),
-			"reality": String(res.get("reality_check", "")),
-			"dec_log": [], "log": [],
-			# ALREADY CONSUMED: _begin_turn is called directly below. Without the
-			# stamp, _poll_turn found this dm unseen and played the founding beat
-			# a second time (the owner's "goes back to Week 1").
-			"dm": res.duplicate(true), "dm_seen": true}
-		if is_instance_valid(gv):
-			gv.set("_last_outcome", state.last_outcome.duplicate(true))
-		_begin_turn(res))
+		_founding_res = res
+		_consume_founding(gv))
 
 func _company_ctx() -> Dictionary:
 	if state == null:

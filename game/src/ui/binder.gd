@@ -302,6 +302,11 @@ func _tab_cap() -> void:
 		Vector2(540, y + 128), 30, PEN)
 
 # ── tab 5: the street ────────────────────────────────────────────────────────
+## Wrapped text is MEASURED, never assumed one line — fixed steps stacked the
+## street on itself the first week a thesis wrapped (owner photo).
+func _wrap_h(text: String, sz: int, w: float) -> float:
+	return _font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, w, sz).y
+
 func _tab_street() -> void:
 	_label("the street", Vector2(10, 6), 40)
 	var y := 80.0
@@ -309,17 +314,18 @@ func _tab_street() -> void:
 		var r: Dictionary = rv
 		_label("%s — %s" % [String(r.get("name", "?")), SimEngine._fuzz(float(r.get("strength", 20.0)))],
 			Vector2(10, y), 32)
-		_label("plays: " + ", ".join(r.get("tactics", [])), Vector2(30, y + 42), 26, Color(INK, 0.7))
-		y += 110.0
+		var plays := "plays: " + ", ".join(r.get("tactics", []))
+		_label(plays, Vector2(30, y + 42), 26, Color(INK, 0.7), 1070.0)
+		y += 50.0 + _wrap_h(plays, 26, 1070.0) + 18.0
 	_label("the money:", Vector2(10, y + 10), 32)
 	y += 64.0
 	for inv in state.investors:
 		var d: Dictionary = inv
 		_label("%s (%s)" % [String(d.get("name", "?")), String(d.get("archetype", ""))],
 			Vector2(10, y), 29)
-		_label("\"%s\"  ·  %s" % [String(d.get("thesis", "")), String(d.get("trait", ""))],
-			Vector2(30, y + 38), 25, Color(INK, 0.65))
-		y += 96.0
+		var quote := "\"%s\"  ·  %s" % [String(d.get("thesis", "")), String(d.get("trait", ""))]
+		_label(quote, Vector2(30, y + 38), 25, Color(INK, 0.65), 1070.0)
+		y += 44.0 + _wrap_h(quote, 25, 1070.0) + 16.0
 
 # ── tab 6: threats & promises ────────────────────────────────────────────────
 func _tab_threats() -> void:

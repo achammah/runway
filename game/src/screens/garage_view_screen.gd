@@ -1045,6 +1045,37 @@ func _scout_blanks(tex: Texture2D) -> Array:
 				r.size.x * 1536.0 / W, r.size.y * 1024.0 / H))
 	return out
 
+## The surface's own lean: scan two columns of the region for the first
+## blank pixel from the top — the line between those hits is the edge the
+## drawn board actually has, and the ink lies down along it (owner: "there
+## should be tilt and all"). Clamped: a wild estimate reads worse than flat.
+func _region_tilt(tex: Texture2D, room_r: Rect2) -> float:
+	if tex == null:
+		return 0.0
+	var img := tex.get_image()
+	if img == null:
+		return 0.0
+	var W := img.get_width()
+	var H := img.get_height()
+	var r := Rect2(room_r.position.x * W / 1536.0, room_r.position.y * H / 1024.0,
+			room_r.size.x * W / 1536.0, room_r.size.y * H / 1024.0)
+	var xl := int(r.position.x + r.size.x * 0.22)
+	var xr := int(r.position.x + r.size.x * 0.78)
+	var y_top := maxi(int(r.position.y - r.size.y * 0.35), 0)
+	var y_stop := mini(int(r.position.y + r.size.y * 0.7), H - 1)
+	var yl := -1
+	var yr := -1
+	for y in range(y_top, y_stop):
+		if yl < 0 and _blankish(img.get_pixel(mini(xl, W - 1), y)):
+			yl = y
+		if yr < 0 and _blankish(img.get_pixel(mini(xr, W - 1), y)):
+			yr = y
+		if yl >= 0 and yr >= 0:
+			break
+	if yl < 0 or yr < 0:
+		return 0.0
+	return clampf(atan2(float(yr - yl), float(xr - xl)), -0.09, 0.09)
+
 func _blankish(c: Color) -> bool:
 	var mx := maxf(c.r, maxf(c.g, c.b))
 	var mn := minf(c.r, minf(c.g, c.b))
@@ -1091,15 +1122,18 @@ func _mark_contract_surfaces(on: bool, tex: Texture2D = null) -> void:
 		["$%s" % _fmt(state.cash), msz, Color("1E1E1E")],
 		[("%d weeks left" % weeks) if weeks < 999 else "cash positive", int(msz * 0.62), Color("E86A5C")],
 	]
+	var money_tilt := _region_tilt(tex, money_r)
 	var y := money_r.position.y + money_r.size.y * 0.22
 	for row in wb:
+		if y + float(row[1]) * 1.2 > money_r.position.y + money_r.size.y:
+			break   # the board is full; a spilled line reads as a bug
 		var l := Label.new()
 		l.add_theme_font_override("font", _font)
 		l.add_theme_font_size_override("font_size", int(row[1]))
 		l.add_theme_color_override("font_color", row[2])
 		l.text = String(row[0])
 		l.position = Vector2(money_r.position.x + money_r.size.x * 0.12, y)
-		l.rotation = -0.015
+		l.rotation = money_tilt
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ink.add_child(l)
 		y += float(row[1]) * 1.35
@@ -1109,15 +1143,18 @@ func _mark_contract_surfaces(on: bool, tex: Texture2D = null) -> void:
 		"%d on payroll" % (state.cofounders.size() + state.employees.size()),
 		"%d%% yours" % int(state.founder_pct),
 	]
+	var sheet_tilt := _region_tilt(tex, sheet_r) if not stacked else _region_tilt(tex, money_r)
 	var sy := sheet_r.position.y + sheet_r.size.y * 0.18
 	for t in sheet:
+		if sy + float(ssz) * 1.15 > sheet_r.position.y + sheet_r.size.y:
+			break   # drop trailing lines rather than write past the paper
 		var l2 := Label.new()
 		l2.add_theme_font_override("font", _font)
 		l2.add_theme_font_size_override("font_size", ssz)
 		l2.add_theme_color_override("font_color", Color("1E1E1E"))
 		l2.text = String(t)
 		l2.position = Vector2(sheet_r.position.x + sheet_r.size.x * 0.12, sy)
-		l2.rotation = 0.012
+		l2.rotation = sheet_tilt
 		l2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ink.add_child(l2)
 		sy += float(ssz) * 1.32
@@ -1784,7 +1821,7 @@ func _spread_was() -> void:
 	# The first cut of this page did none of that and the numbers fell off the
 	# paper curl — the exact class of defect this book exists to never show.
 	var has_crew := _crew_faces().size() > 1
-	var strips_h: float = 210.0 + (180.0 if has_crew else 0.0)
+	var strips_h: float = 150.0 + (130.0 if has_crew else 0.0)
 	var lines := _story_lines()
 	var vt := String(_last_outcome.get("verdict", ""))
 	# THE PAGE IS THE DIARY, NOT THE CHAPTER (owner): the beat already read the

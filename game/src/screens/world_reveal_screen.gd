@@ -39,33 +39,35 @@ func _ready() -> void:
 	_title("THE WORLD %s WAS BORN INTO" % state.company_name.to_upper(), Vector2(220, 96), 44)
 	var th := state.theta
 	var mline := String(state.get_meta("market_line", ""))
-	_line("~%s real buyers · a customer stays ≈ %d weeks%s" % [
+	var mkt := "~%s real buyers · a customer stays ≈ %d weeks%s" % [
 		_fmt(int(th.get("tam", 0))), int(th.get("lifetime_wk", 40)),
-		("  ·  " + mline) if mline != "" else ""], Vector2(220, 168), 28)
-
-	_title("the money in town", Vector2(220, 240), 34, PEN)
-	var y := 292.0
+		("  ·  " + mline) if mline != "" else ""]
+	_line(mkt, Vector2(220, 168), 28)
+	var money_y := 178.0 + _measure(mkt, 28, 1100.0) + 26.0
+	_title("the money in town", Vector2(220, money_y), 34, PEN)
+	var y := money_y + 52.0
 	for inv in state.investors:
 		var d: Dictionary = inv
 		_line("%s — %s" % [String(d.get("name", "?")), String(d.get("archetype", ""))],
 			Vector2(240, y), 29)
-		var thesis := String(d.get("thesis", ""))
-		_line("\"%s\"" % thesis, Vector2(268, y + 38), 25, Color(INK, 0.65))
-		# a two-line thesis pushes the list down instead of crowding the next name
-		y += 88.0 + (28.0 if thesis.length() > 92 else 0.0)
+		var thesis := "\"%s\"" % String(d.get("thesis", ""))
+		_line(thesis, Vector2(268, y + 38), 25, Color(INK, 0.65))
+		# MEASURED flow: the next name starts under the thesis's true wrap
+		y += 46.0 + _measure(thesis, 25, 1072.0) + 14.0
 
 	_title("already on the street", Vector2(220, y + 24), 34, BLUE)
 	y += 78.0
 	for rv in state.rivals:
 		var r: Dictionary = rv
 		var what := String(r.get("what", ""))
-		_line("%s — %s%s" % [String(r.get("name", "?")),
+		var rl := "%s — %s%s" % [String(r.get("name", "?")),
 			SimEngine._fuzz(float(r.get("strength", 20.0))),
-			("  ·  " + what) if what != "" else ""], Vector2(240, y), 27)
-		y += 54.0
+			("  ·  " + what) if what != "" else ""]
+		_line(rl, Vector2(240, y), 27)
+		y += _measure(rl, 27, 1096.0) + 18.0
 
 	_line("everything above is true. nothing above is the whole truth.",
-		Vector2(220, y + 34), 25, Color(INK, 0.5))
+		Vector2(220, minf(y + 34.0, 884.0)), 25, Color(INK, 0.5))
 
 	var go := Button.new()
 	go.flat = true
@@ -99,6 +101,9 @@ func _line(t: String, pos: Vector2, sz: int, col: Color = INK) -> void:
 	l.position = pos
 	l.custom_minimum_size = Vector2(1100, 0)
 	add_child(l)
+
+func _measure(t: String, sz: int, wpx: float) -> float:
+	return _font.get_multiline_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, wpx, sz).y
 
 func _fmt(n: int) -> String:
 	if n >= 1_000_000:

@@ -159,7 +159,14 @@ func _ready() -> void:
 				frames.append(load(still))
 		_anim_frames[aid] = frames
 
-	_pages = [_build_select(), _build_name(), _build_shape_page(), _build_crew_page(), _build_money_page(), _build_bag_page()]
+	_pages = [_build_sign_page(), _build_select(), _build_name(), _build_shape_page(), _build_crew_page(), _build_money_page(), _build_bag_page()]
+	# the shelf depends on the trade chosen on page 3: rebuild it on entry
+	_page_shown.connect(func(i: int) -> void:
+		if i == 6:
+			var old_bag: Control = _pages[6]
+			_pages[6] = _build_bag_page()
+			_pages[6].visible = true
+			old_bag.queue_free())
 	_show_page(0)
 	if not _archs.is_empty():
 		_select(0, false)
@@ -289,7 +296,8 @@ func _show_page(i: int) -> void:
 	_page = i
 	for p in _pages.size():
 		_pages[p].visible = p == i
-	if i == 1 and _name_witness and not _sel_arch.is_empty():
+	_page_shown.emit(i)
+	if i == 2 and _name_witness and not _sel_arch.is_empty():
 		var sp := "res://assets/sprites/%s.png" % String(_sel_arch.get("sprite", ""))
 		if ResourceLoader.exists(sp):
 			_name_witness.texture = load(sp)
@@ -682,9 +690,61 @@ func _lock_in() -> void:
 	tw.tween_callback(func():
 		stamp.queue_free()
 		_stamping = false
-		_transition_to(1))
+		_transition_to(2))
 
 ## Curtain-wipe page transition: two night panels close, page swaps, they open.
+## PAGE 0 — WHO IS DOING THIS (owner: the name comes before the character).
+## One big write-in, prefilled with a dealt name, redealt on a whim. Everything
+## after this — archetype, company, world — happens to THIS person.
+func _build_sign_page() -> Control:
+	var page := Control.new()
+	page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(page)
+	_dim(page)
+	var title := _ink_outline(_dlabel("FIRST, YOUR NAME", 58, PALETTE["cream"]))
+	title.position = Vector2(470, 200)
+	page.add_child(title)
+	_rule_under(page, "FIRST, YOUR NAME", 58, Vector2(470, 200))
+	var sub := _label("it goes on the lease, the deck, and every apology", 28, Color(PALETTE["cream"], 0.8))
+	sub.position = Vector2(478, 296)
+	page.add_child(sub)
+	_prng.randomize()
+	_founder_edit = PaperInput.new()
+	_founder_edit.setup("SIGNED", "", 52)
+	_founder_edit.set_value(WorldGen.person_name(_prng))
+	_founder_edit.position = Vector2(438, 400)
+	_founder_edit.set_deferred("size", Vector2(660, 150))
+	page.add_child(_founder_edit)
+	var redeal := Button.new()
+	redeal.text = "DEAL ME ANOTHER"
+	redeal.position = Vector2(568, 596)
+	redeal.size = Vector2(400, 62)
+	redeal.pivot_offset = Vector2(200, 31)
+	_style_button(redeal, PALETTE["yellow"], 24)
+	_paper_card(redeal)
+	_juice(redeal)
+	redeal.pressed.connect(func():
+		_founder_edit.set_value(WorldGen.person_name(_prng))
+		_sfx_click.play())
+	page.add_child(redeal)
+	var next := Button.new()
+	next.text = "CHOOSE YOUR FOUNDER  →"
+	next.position = Vector2(1010, 900)
+	next.size = Vector2(470, 76)
+	next.pivot_offset = Vector2(235, 38)
+	_style_button(next, PALETTE["cream"], 30)
+	_paper_card(next)
+	_juice(next)
+	next.pressed.connect(func():
+		if _founder_edit.value().strip_edges() == "":
+			_founder_edit.set_value(WorldGen.person_name(_prng))
+		_sfx_click.play()
+		_transition_to(1))
+	page.add_child(next)
+	return page
+
+signal _page_shown(i: int)
+
 func _transition_to(page_i: int) -> void:
 	var top := ColorRect.new()
 	top.color = PALETTE["ink"]
@@ -779,16 +839,6 @@ func _build_name() -> Control:
 	wsh.size = Vector2(180, 30)
 	page.add_child(wsh)
 
-	_prng.randomize()
-	_founder_edit = PaperInput.new()
-	# the suggestion is REAL text (value(), not placeholder): the sheet arrives
-	# already signed, and typing over it is the player's choice
-	_founder_edit.setup("SIGNED BY — your own name goes on everything", "", 32)
-	_founder_edit.set_value(WorldGen.person_name(_prng))
-	_founder_edit.position = Vector2(560, 196)
-	_founder_edit.set_deferred("size", Vector2(660, 96))
-	page.add_child(_founder_edit)
-
 	_name_edit = PaperInput.new()
 	_name_edit.setup("THE NAME", "Mossflow", 44)
 	_name_edit.position = Vector2(560, 300)
@@ -825,7 +875,7 @@ func _build_name() -> Control:
 	_style_button(back, PALETTE["blue"], 30)
 	_paper_card(back)
 	_juice(back)
-	back.pressed.connect(func(): _transition_to(0))
+	back.pressed.connect(func(): _transition_to(1))
 	page.add_child(back)
 	var next := Button.new()
 	next.text = "TO THE FOUNDING  →"
@@ -835,7 +885,7 @@ func _build_name() -> Control:
 	_paper_card(next)
 	next.pressed.connect(func():
 		_sfx_click.play()
-		_transition_to(2))
+		_transition_to(3))
 	page.add_child(next)
 	return page
 
@@ -909,7 +959,7 @@ func _build_shape_page() -> Control:
 	_style_button(back, PALETTE["blue"], 30)
 	_paper_card(back)
 	_juice(back)
-	back.pressed.connect(func(): _transition_to(1))
+	back.pressed.connect(func(): _transition_to(2))
 	page.add_child(back)
 	var next := Button.new()
 	next.text = "NEXT: THE CREW  →"
@@ -920,7 +970,7 @@ func _build_shape_page() -> Control:
 	_juice(next)
 	next.pressed.connect(func():
 		_sfx_click.play()
-		_transition_to(3))
+		_transition_to(4))
 	page.add_child(next)
 	return page
 
@@ -1059,7 +1109,7 @@ func _build_crew_page() -> Control:
 	_style_button(back, PALETTE["blue"], 30)
 	_paper_card(back)
 	_juice(back)
-	back.pressed.connect(func(): _transition_to(2))
+	back.pressed.connect(func(): _transition_to(3))
 	_crew_body.add_child(back)
 	var next := Button.new()
 	next.text = "NEXT: FIRST MONEY  →"
@@ -1070,7 +1120,7 @@ func _build_crew_page() -> Control:
 	_juice(next)
 	next.pressed.connect(func():
 		_sfx_click.play()
-		_transition_to(4))
+		_transition_to(5))
 	_crew_body.add_child(next)
 
 	# recruit modal lives above everything on this page
@@ -1321,7 +1371,7 @@ func _build_money_page() -> Control:
 	_style_button(back, PALETTE["blue"], 30)
 	_paper_card(back)
 	_juice(back)
-	back.pressed.connect(func(): _transition_to(3))
+	back.pressed.connect(func(): _transition_to(4))
 	page.add_child(back)
 	var next := Button.new()
 	next.text = "NEXT: PACK YOUR BAG  →"
@@ -1334,7 +1384,7 @@ func _build_money_page() -> Control:
 		if _sel_fund.is_empty():
 			return
 		_sfx_click.play()
-		_transition_to(5))
+		_transition_to(6))
 	page.add_child(next)
 	return page
 
@@ -1358,7 +1408,7 @@ func _build_bag_page() -> Control:
 	# became objects on it, each with a contact shadow and a pen ring when packed.
 	var shelf := PaperEdge.new()
 	shelf.position = Vector2(44, 166)
-	shelf.size = Vector2(676, 516)
+	shelf.size = Vector2(676, 566)
 	shelf.thick = 4.0
 	shelf.lean = 2
 	shelf.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1375,9 +1425,18 @@ func _build_bag_page() -> Control:
 	page.add_child(shelf_rule)
 	var gi := 0
 	for def in content_items:
-		var col := gi % 5
-		var row := gi / 5
-		var org := Vector2(74 + col * 123, 240 + row * 146)
+		# TYPE-DEPENDENT SHELF (owner): hardware founders pack soldering irons,
+		# service founders pack the good blazer. An item with requirements only
+		# exists for the trade that would own it.
+		var rq_what: Array = (def as Dictionary).get("requires_what", [])
+		var rq_who: Array = (def as Dictionary).get("requires_who", [])
+		if not rq_what.is_empty() and not rq_what.has(_biz_what):
+			continue
+		if not rq_who.is_empty() and not rq_who.has(_biz_who):
+			continue
+		var col := gi % 6
+		var row := gi / 6
+		var org := Vector2(64 + col * 104, 236 + row * 132)
 		var ib := Button.new()
 		ib.custom_minimum_size = Vector2(112, 112)
 		ib.size = Vector2(112, 112)
@@ -1557,7 +1616,7 @@ func _build_bag_page() -> Control:
 	_style_button(back, PALETTE["blue"], 30)
 	_paper_card(back)
 	_juice(back)
-	back.pressed.connect(func(): _transition_to(4))
+	back.pressed.connect(func(): _transition_to(5))
 	page.add_child(back)
 	_launch = Button.new()
 	_launch.text = "SIGN & QUIT YOUR JOB  →"

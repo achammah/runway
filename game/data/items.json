@@ -1,244 +1,385 @@
 {
-  "items": [
+ "items": [
+  {
+   "id": "itm_laptop",
+   "name": "Laptop",
+   "tags": [
+    "tech"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [
     {
-      "id": "itm_laptop",
-      "name": "Laptop",
-      "tags": [
-        "tech"
-      ],
-      "carry_cost": 1,
-      "cash_value": 0,
-      "grind_passives": [
-        {
-          "stat": "build_speed",
-          "v": 0.25
-        }
-      ],
-      "event_hooks": [
-        "evt_laptop_dies"
-      ],
-      "blurb": "You ship code on it. +2 product progress every week."
-    },
-    {
-      "id": "itm_savings_jar",
-      "name": "Savings Jar",
-      "tags": [
-        "liquid"
-      ],
-      "carry_cost": 1,
-      "cash_value": 8000,
-      "grind_passives": [],
-      "event_hooks": [],
-      "blurb": "+$8,000 in the bank on day one."
-    },
-    {
-      "id": "itm_idea_napkin",
-      "name": "Idea Napkin",
-      "tags": [
-        "sentimental"
-      ],
-      "carry_cost": 1,
-      "cash_value": 0,
-      "grind_passives": [
-        {
-          "stat": "pitch_bonus",
-          "v": 0.05
-        }
-      ],
-      "event_hooks": [
-        "evt_napkin_doubt"
-      ],
-      "blurb": "The founding myth. Pitches land a little better."
-    },
-    {
-      "id": "itm_roommate",
-      "name": "Roommate (asleep)",
-      "tags": [
-        "social"
-      ],
-      "carry_cost": 2,
-      "cash_value": 0,
-      "grind_passives": [],
-      "event_hooks": [
-        "evt_cofounder_pitch"
-      ],
-      "blurb": "Your future first hire, currently asleep. Unlocks the cofounder talk."
-    },
-    {
-      "id": "itm_energy_drinks",
-      "name": "Energy Drinks",
-      "tags": [
-        "vice"
-      ],
-      "carry_cost": 1,
-      "cash_value": 0,
-      "grind_passives": [
-        {
-          "stat": "burnout_rate",
-          "v": 0.15
-        }
-      ],
-      "event_hooks": [
-        "evt_energy_crash"
-      ],
-      "blurb": "Ship faster, crash harder. Fuels late-night events."
-    },
-    {
-      "id": "itm_goodwill",
-      "name": "Girlfriend's Goodwill",
-      "tags": [
-        "sentimental"
-      ],
-      "carry_cost": 1,
-      "cash_value": 0,
-      "grind_passives": [
-        {
-          "stat": "morale_floor",
-          "v": 10
-        }
-      ],
-      "event_hooks": [
-        "evt_goodwill_test"
-      ],
-      "blurb": "Someone still believes in you. Keeps morale from hitting bottom."
-    },
-    {
-      "id": "itm_dignity",
-      "name": "Dignity",
-      "tags": [
-        "sentimental"
-      ],
-      "carry_cost": 1,
-      "cash_value": 0,
-      "grind_passives": [],
-      "event_hooks": [
-        "evt_dignity_sale"
-      ],
-      "blurb": "Weighs nothing. Surprisingly sellable, much later."
-    },
-    {
-      "id": "itm_gym_card",
-      "name": "Gym Membership",
-      "tags": [
-        "vice"
-      ],
-      "carry_cost": 1,
-      "cash_value": 0,
-      "grind_passives": [],
-      "event_hooks": [
-        "evt_gym_cancel"
-      ],
-      "blurb": "$40/week you never use. Cancelable for cash when broke."
-    },
-    {
-      "id": "itm_paddle",
-      "name": "Ping-Pong Paddle",
-      "tags": [
-        "vice"
-      ],
-      "carry_cost": 1,
-      "cash_value": 0,
-      "grind_passives": [],
-      "event_hooks": [
-        "evt_paddle_networking"
-      ],
-      "blurb": "A networking device, technically. Unlocks schmoozing events."
-    },
-    {
-      "id": "itm_dads_server",
-      "name": "Dad's Old Server",
-      "tags": [
-        "tech",
-        "heavy"
-      ],
-      "carry_cost": 2,
-      "cash_value": 0,
-      "grind_passives": [
-        {
-          "stat": "build_speed",
-          "v": 0.1
-        }
-      ],
-      "event_hooks": [
-        "evt_server_overheats"
-      ],
-      "blurb": "Heavy. Warm. Hosts everything. +1 product/week, fire hazard."
-    },
-    {
-      "id": "itm_hoodie",
-      "name": "Hoodie of Confidence",
-      "tags": [
-        "sentimental"
-      ],
-      "carry_cost": 1,
-      "cash_value": 0,
-      "grind_passives": [
-        {
-          "stat": "pitch_bonus",
-          "v": 0.1
-        }
-      ],
-      "event_hooks": [],
-      "blurb": "Founder armor. Confidence in every pitch."
-    },
-    {
-      "id": "itm_bus_pass",
-      "name": "Bus Pass",
-      "tags": [
-        "liquid"
-      ],
-      "carry_cost": 1,
-      "cash_value": 0,
-      "grind_passives": [],
-      "event_hooks": [
-        "evt_bus_meeting"
-      ],
-      "blurb": "You can physically get to meetings. Underrated."
-    },
-    {
-      "id": "itm_textbook",
-      "name": "Textbook (sellable)",
-      "tags": [
-        "liquid"
-      ],
-      "carry_cost": 1,
-      "cash_value": 120,
-      "grind_passives": [],
-      "event_hooks": [],
-      "blurb": "Sellable for ~$120. Sorry, education."
-    },
-    {
-      "id": "itm_guitar",
-      "name": "Guitar",
-      "tags": [
-        "vice"
-      ],
-      "carry_cost": 2,
-      "cash_value": 0,
-      "grind_passives": [],
-      "event_hooks": [
-        "evt_guitar_solace"
-      ],
-      "blurb": "Four chords against the dark. Restores morale when it counts."
-    },
-    {
-      "id": "itm_houseplant",
-      "name": "Houseplant",
-      "tags": [
-        "sentimental"
-      ],
-      "carry_cost": 1,
-      "cash_value": 0,
-      "grind_passives": [
-        {
-          "stat": "burnout_confidant",
-          "v": 1
-        }
-      ],
-      "event_hooks": [
-        "evt_plant_talk"
-      ],
-      "blurb": "Attends your standups. Listens. +morale each week."
+     "stat": "build_speed",
+     "v": 0.25
     }
-  ]
+   ],
+   "event_hooks": [
+    "evt_laptop_dies"
+   ],
+   "blurb": "You ship code on it. +2 product progress every week."
+  },
+  {
+   "id": "itm_savings_jar",
+   "name": "Savings Jar",
+   "tags": [
+    "liquid"
+   ],
+   "carry_cost": 1,
+   "cash_value": 8000,
+   "grind_passives": [],
+   "event_hooks": [],
+   "blurb": "+$8,000 in the bank on day one."
+  },
+  {
+   "id": "itm_idea_napkin",
+   "name": "Idea Napkin",
+   "tags": [
+    "sentimental"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [
+    {
+     "stat": "pitch_bonus",
+     "v": 0.05
+    }
+   ],
+   "event_hooks": [
+    "evt_napkin_doubt"
+   ],
+   "blurb": "The founding myth. Pitches land a little better."
+  },
+  {
+   "id": "itm_roommate",
+   "name": "Roommate (asleep)",
+   "tags": [
+    "social"
+   ],
+   "carry_cost": 2,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [
+    "evt_cofounder_pitch"
+   ],
+   "blurb": "Your future first hire, currently asleep. Unlocks the cofounder talk."
+  },
+  {
+   "id": "itm_energy_drinks",
+   "name": "Energy Drinks",
+   "tags": [
+    "vice"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [
+    {
+     "stat": "burnout_rate",
+     "v": 0.15
+    }
+   ],
+   "event_hooks": [
+    "evt_energy_crash"
+   ],
+   "blurb": "Ship faster, crash harder. Fuels late-night events."
+  },
+  {
+   "id": "itm_goodwill",
+   "name": "Girlfriend's Goodwill",
+   "tags": [
+    "sentimental"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [
+    {
+     "stat": "morale_floor",
+     "v": 10
+    }
+   ],
+   "event_hooks": [
+    "evt_goodwill_test"
+   ],
+   "blurb": "Someone still believes in you. Keeps morale from hitting bottom."
+  },
+  {
+   "id": "itm_dignity",
+   "name": "Dignity",
+   "tags": [
+    "sentimental"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [
+    "evt_dignity_sale"
+   ],
+   "blurb": "Weighs nothing. Surprisingly sellable, much later."
+  },
+  {
+   "id": "itm_gym_card",
+   "name": "Gym Membership",
+   "tags": [
+    "vice"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [
+    "evt_gym_cancel"
+   ],
+   "blurb": "$40/week you never use. Cancelable for cash when broke."
+  },
+  {
+   "id": "itm_paddle",
+   "name": "Ping-Pong Paddle",
+   "tags": [
+    "vice"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [
+    "evt_paddle_networking"
+   ],
+   "blurb": "A networking device, technically. Unlocks schmoozing events."
+  },
+  {
+   "id": "itm_dads_server",
+   "name": "Dad's Old Server",
+   "tags": [
+    "tech",
+    "heavy"
+   ],
+   "carry_cost": 2,
+   "cash_value": 0,
+   "grind_passives": [
+    {
+     "stat": "build_speed",
+     "v": 0.1
+    }
+   ],
+   "event_hooks": [
+    "evt_server_overheats"
+   ],
+   "blurb": "Heavy. Warm. Hosts everything. +1 product/week, fire hazard."
+  },
+  {
+   "id": "itm_hoodie",
+   "name": "Hoodie of Confidence",
+   "tags": [
+    "sentimental"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [
+    {
+     "stat": "pitch_bonus",
+     "v": 0.1
+    }
+   ],
+   "event_hooks": [],
+   "blurb": "Founder armor. Confidence in every pitch."
+  },
+  {
+   "id": "itm_bus_pass",
+   "name": "Bus Pass",
+   "tags": [
+    "liquid"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [
+    "evt_bus_meeting"
+   ],
+   "blurb": "You can physically get to meetings. Underrated."
+  },
+  {
+   "id": "itm_textbook",
+   "name": "Textbook (sellable)",
+   "tags": [
+    "liquid"
+   ],
+   "carry_cost": 1,
+   "cash_value": 120,
+   "grind_passives": [],
+   "event_hooks": [],
+   "blurb": "Sellable for ~$120. Sorry, education."
+  },
+  {
+   "id": "itm_guitar",
+   "name": "Guitar",
+   "tags": [
+    "vice"
+   ],
+   "carry_cost": 2,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [
+    "evt_guitar_solace"
+   ],
+   "blurb": "Four chords against the dark. Restores morale when it counts."
+  },
+  {
+   "id": "itm_houseplant",
+   "name": "Houseplant",
+   "tags": [
+    "sentimental"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [
+    {
+     "stat": "burnout_confidant",
+     "v": 1
+    }
+   ],
+   "event_hooks": [
+    "evt_plant_talk"
+   ],
+   "blurb": "Attends your standups. Listens. +morale each week."
+  },
+  {
+   "id": "itm_soldering_iron",
+   "name": "Soldering iron",
+   "tags": [
+    "tech"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [
+    {
+     "stat": "build_speed",
+     "v": 0.15
+    }
+   ],
+   "event_hooks": [],
+   "requires_what": [
+    "Hardware"
+   ],
+   "blurb": "Real things need real heat. Hardware builds go a little faster."
+  },
+  {
+   "id": "itm_multimeter",
+   "name": "Multimeter",
+   "tags": [
+    "tech"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "requires_what": [
+    "Hardware"
+   ],
+   "blurb": "Tells you which of the three identical boards is lying."
+  },
+  {
+   "id": "itm_label_printer",
+   "name": "Label printer",
+   "tags": [
+    "ops"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "requires_what": [
+    "Marketplace"
+   ],
+   "blurb": "Both sides of the market get a tracking number. Feels like control."
+  },
+  {
+   "id": "itm_packing_tape",
+   "name": "Industrial tape",
+   "tags": [
+    "ops"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "requires_what": [
+    "Marketplace",
+    "Hardware"
+   ],
+   "blurb": "Holds boxes, demos, and occasionally the business together."
+  },
+  {
+   "id": "itm_nice_blazer",
+   "name": "The good blazer",
+   "tags": [
+    "sales"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "requires_what": [
+    "Service"
+   ],
+   "blurb": "You ARE the product, and the product irons its blazer."
+  },
+  {
+   "id": "itm_billable_watch",
+   "name": "Billable-hours watch",
+   "tags": [
+    "sales"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "requires_what": [
+    "Service"
+   ],
+   "blurb": "Every glance at it converts guilt into an invoice line."
+  },
+  {
+   "id": "itm_badge_lanyard",
+   "name": "Conference lanyard",
+   "tags": [
+    "sales"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "requires_who": [
+    "Enterprise"
+   ],
+   "blurb": "Gets you into buildings where the buyers hide behind procurement."
+  },
+  {
+   "id": "itm_crm_trial",
+   "name": "CRM free trial",
+   "tags": [
+    "sales"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "requires_who": [
+    "SMB"
+   ],
+   "blurb": "Fourteen days to track a thousand small checks. Day 15 is a decision."
+  },
+  {
+   "id": "itm_ring_light",
+   "name": "Ring light",
+   "tags": [
+    "marketing"
+   ],
+   "carry_cost": 1,
+   "cash_value": 0,
+   "grind_passives": [],
+   "event_hooks": [],
+   "requires_who": [
+    "Consumer"
+   ],
+   "blurb": "Consumer apps live and die on camera. You will too."
+  }
+ ]
 }

@@ -236,7 +236,37 @@ Borderline grounding defaults to the LOWER tier — reality is the referee. If c
 
 ### Step 7: Narrate and assign effects
 Write narration as THE SCENE OF THE WEEK: 210-290 words in 4-6 short paragraphs, second person, dry, in-character, understated. This is the only place the player reads what actually happened, so it must be theatrical and specific — it plays on its own screen while the art renders, and it is the most interesting thing in the game.
-The narration is always second person ("you") — but the state carries
+EXCEPTION — THE FOUNDING (day one only). When the user message asks for the
+first entry of the founder's own logbook (a journal de bord), the narration
+is that entry, written the night the lease was signed. Not a report to
+anyone: a person writing to themselves because the day was too big to leave
+unwritten.
+- FIRST person throughout ("I", "we"). Past or present tense — pick one and hold it.
+- Plain short sentences; a tired reader follows every line first pass. No
+  riddles; no metaphor that runs longer than one sentence.
+- Dry and lived-in, like the opening pages of a business memoir — never a
+  pitch, never marketing copy about the mission.
+- At MOST one wry line per two paragraphs, and never in the first two
+  sentences: earn the joke by describing something real first.
+- Must appear, grounded in THIS company: (1) signing the lease — the moment,
+  the paper, the number if it stings; (2) the actual room — at least three
+  concrete objects; (3) who is here — cofounders by NAME, or "alone" said
+  plainly; (4) what we actually promise customers, in blunt words, not the
+  website's; (5) what it will cost — money, time, or something given up;
+  (6) one honest fear, small and true, not dramatic.
+- Do NOT open with the date, the weather, "Today", "It's done", "So", or a
+  joke — start inside a concrete detail: an object, an action, a number.
+- No game language (dice, verdicts, weeks, stats). If a sentence could sit
+  on a landing page, cut it.
+GOOD opening (voice, not length — still write 4-6 short paragraphs):
+"The key doesn't turn the first time. I jiggle it, the door gives, and
+there's the room I just signed four years of my life to: two folding tables,
+a radiator that ticks, and a window facing the back of a laundromat. Marc is
+already measuring the wall for the whiteboard we can't afford yet."
+POOR: "Well, we did it! Today marks the beginning of an incredible journey.
+We're on a mission to revolutionize…" — front-loaded joke, brochure drift.
+Every other week:
+the narration is always second person ("you") — but the state carries
 founder_name and each cofounder's name: that is what OTHER characters call
 them in dialogue. Use the names; never rename anyone.
 Structure it as a scene, not a summary: open on a concrete image (a place, an hour, a sound — varied week to week: never the same opener shape two chapters running, and "On Monday..." is not a house style), let the consequence unfold through one or two specific beats with named people doing named things, and land the last line as the turn — the small humiliation, the unearned win, the thing that will matter later. Keep the voice dry; the funnier it is, the flatter you say it. But CLARITY IS THE LAW (the owner rejects clever-but-unclear): PLAIN FIRST — report what happened in short declarative sentences a tired reader follows on the first pass; the chapter's FIRST sentence is a plain report, never the week's joke. At most ONE wry observation per two paragraphs; never two jokes in a row; no metaphor chains; no riddle headlines. The headline states the week's event plainly with at most one twist word ("The pilot signs. The printer does not survive it."). If any sentence needs a second read, rewrite it simpler. Never explain the joke, never moralise, never tell the player how to feel. Concrete nouns beat adjectives every time.

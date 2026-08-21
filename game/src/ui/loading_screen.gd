@@ -55,6 +55,27 @@ var _card: Control
 var _col: VBoxContainer
 var _bar: _PenLine
 var _scroll: ScrollContainer
+var _sbar: _ScrollInk
+
+## The drawn scrollbar: a faint pencil track and a coral thumb, never chrome.
+class _ScrollInk:
+	extends Control
+	var frac := 0.0
+	var thumb_frac := 0.3
+	var track_h := 100.0
+	func _draw() -> void:
+		var w := size.x
+		draw_line(Vector2(w * 0.5, 4), Vector2(w * 0.5, track_h - 4),
+				Color(0.12, 0.12, 0.12, 0.18), 3.0)
+		var th := maxf(track_h * thumb_frac, 34.0)
+		var ty := 4.0 + (track_h - 8.0 - th) * frac
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 7
+		var pts := PackedVector2Array()
+		for i in 9:
+			pts.append(Vector2(w * 0.5 + rng.randf_range(-1.4, 1.4),
+					ty + th * float(i) / 8.0))
+		draw_polyline(pts, Color("E86A5C", 0.85), 6.0, true)
 var _t := 0.0
 var _target := 0.0
 var _done := false
@@ -99,6 +120,12 @@ func begin(week_label: String) -> void:
 	# and the progress stroke printed straight through a paragraph — the strikethrough
 	# bug class. So the column is clipped inside a scroller with a reserved footer band
 	# below it, and it scrolls itself as beats arrive.
+	_sbar = _ScrollInk.new()
+	_sbar.position = Vector2(1002, 126)
+	_sbar.set_deferred("size", Vector2(18, TEXT_H))
+	_sbar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_sbar.visible = false
+	_card.add_child(_sbar)
 	_scroll = ScrollContainer.new()
 	_scroll.position = Vector2(96, 126)
 	_scroll.set_deferred("size", Vector2(888, TEXT_H))
@@ -199,8 +226,17 @@ func _process(delta: float) -> void:
 	# MORE BELOW: a drawn ▼ pulses while unread lines wait under the fold
 	if _more != null and is_instance_valid(_more) and is_instance_valid(_scroll):
 		var maxs := maxf(_col.size.y - _scroll.size.y, 0.0)
-		_more.visible = float(_scroll.scroll_vertical) < maxs - 8.0
+		# HONEST ▼ (owner: "says more below but cannot go below"): only when
+		# there is placed text below the fold RIGHT NOW — pending reveals show
+		# as "the week is still developing", never as a scroll promise
+		_more.visible = maxs > 8.0 and float(_scroll.scroll_vertical) < maxs - 8.0
 		_more.modulate.a = 0.55 + 0.35 * sin(_t * 4.0)
+		if _sbar != null and is_instance_valid(_sbar):
+			_sbar.visible = maxs > 8.0
+			_sbar.track_h = _scroll.size.y
+			_sbar.frac = clampf(float(_scroll.scroll_vertical) / maxs, 0.0, 1.0) if maxs > 0.0 else 0.0
+			_sbar.thumb_frac = clampf(_scroll.size.y / maxf(_col.size.y, 1.0), 0.12, 1.0)
+			_sbar.queue_redraw()
 
 func _reveal(beat: Dictionary) -> void:
 	var block := VBoxContainer.new()
