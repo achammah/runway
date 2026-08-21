@@ -33,6 +33,8 @@ func _ready() -> void:
 		_autopilot()
 	elif OS.get_environment("RUNWAY_FULLRUN") != "":
 		_fullrun(OS.get_environment("RUNWAY_FULLRUN"))
+	elif OS.get_environment("RUNWAY_FIRSTFLOW") != "":
+		_firstflow(OS.get_environment("RUNWAY_FIRSTFLOW"))
 	elif OS.get_environment("RUNWAY_FINALE_SHOT") != "":
 		_finale_probe(OS.get_environment("RUNWAY_FINALE_SHOT"))
 	elif OS.get_environment("RUNWAY_LANEWIRE") != "":
@@ -699,7 +701,7 @@ func _to_title() -> void:
 func _start_run() -> void:
 	# one ongoing run at a time (60 Seconds! style): resume it if it exists;
 	# death/exit clears it. Autopilot modes always start fresh.
-	if OS.get_environment("RUNWAY_SHOT") == "" and OS.get_environment("RUNWAY_FULLRUN") == "" and SaveSystem.has_run():
+	if not _harness() and OS.get_environment("RUNWAY_FIRSTFLOW") == "" and SaveSystem.has_run():
 		var loaded := SaveSystem.load_run()
 		if not loaded.is_empty():
 			state = loaded["state"]
@@ -1264,7 +1266,7 @@ func _art_enabled() -> bool:
 	return not _harness()
 
 func _harness() -> bool:
-	for v in ["RUNWAY_SHOT", "RUNWAY_FULLRUN", "RUNWAY_LANEWIRE", "RUNWAY_READING", "RUNWAY_TURN"]:
+	for v in ["RUNWAY_SHOT", "RUNWAY_FULLRUN", "RUNWAY_FIRSTFLOW", "RUNWAY_LANEWIRE", "RUNWAY_READING", "RUNWAY_TURN"]:
 		if OS.get_environment(v) != "":
 			return true
 	return false
@@ -1308,6 +1310,60 @@ func _poll_turn(gv: GarageViewScreen) -> void:
 	if state == null or state.dead or state.has_flag("exit_taken") or bool(gv.get("_over")):
 		return   # the run ended on this very move; there is no next room to show
 	_begin_turn(_dm)
+
+## THE FIRST FIVE MINUTES, photographed on the REAL path: draft -> birth
+## screen -> world reveal (founding prefetching behind it) -> settle in ->
+## beat. The one flow every other harness skips, and the one the owner
+## replays every session. Paid: worldgen + founding + first art.
+func _firstflow(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	await get_tree().create_timer(1.0).timeout
+	if _screen is TitleScreen:
+		(_screen as TitleScreen).done.emit()
+	await get_tree().create_timer(1.2).timeout
+	if not (_screen is FounderDraftScreen):
+		print("FIRSTFLOW ABORT: no draft")
+		get_tree().quit(1)
+		return
+	var d := _screen as FounderDraftScreen
+	await _shot(dir, "f0_sign")
+	d._transition_to(1)
+	await get_tree().create_timer(0.6).timeout
+	d._select(1)
+	d._transition_to(2)
+	await get_tree().create_timer(0.6).timeout
+	d._transition_to(3)
+	await get_tree().create_timer(0.6).timeout
+	d._transition_to(4)
+	await get_tree().create_timer(0.6).timeout
+	d._transition_to(5)
+	await get_tree().create_timer(0.6).timeout
+	d._transition_to(6)
+	await get_tree().create_timer(0.8).timeout
+	await _shot(dir, "f1_bag")
+	d._do_launch()
+	await get_tree().create_timer(0.6).timeout
+	await _shot(dir, "f2_birth")
+	var cap := 90
+	while cap > 0 and not (_screen is WorldRevealScreen):
+		cap -= 1
+		await get_tree().create_timer(0.5).timeout
+	await get_tree().create_timer(0.4).timeout
+	await _shot(dir, "f3_reveal")
+	# read the map like a person while the founding prefetches behind it
+	await get_tree().create_timer(7.0).timeout
+	if _screen is WorldRevealScreen:
+		(_screen as WorldRevealScreen).done.emit()
+	await get_tree().create_timer(1.0).timeout
+	await _shot(dir, "f4_after_settle")
+	cap = 240
+	while cap > 0 and (_beat == null or not is_instance_valid(_beat)):
+		cap -= 1
+		await get_tree().create_timer(0.5).timeout
+	await get_tree().create_timer(1.6).timeout
+	await _shot(dir, "f5_day_one_beat")
+	print("FIRSTFLOW DONE: beat=%s" % str(_beat != null and is_instance_valid(_beat)))
+	get_tree().quit(0)
 
 ## `stub_path` is the harness seam ONLY: it stands in for the render so the beat and
 ## the scene opening can be reviewed without a network call. Empty in a real game.
