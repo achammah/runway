@@ -1439,11 +1439,14 @@ func _build_crew() -> void:
 	var fp := "res://assets/sprites/%s.png" % ("chr_arch_" + state.archetype_id)
 	if ResourceLoader.exists(fp):
 		f.texture = load(fp)
-	f.size = Vector2(190, 190)
-	f.position = Vector2(xs[0], 628)
+	# the normalized founder art carries 14% air (0.86 height, baseline 94%)
+	# that the cf_* cast does not: the rect compensates so both crews share
+	# one floor line in the room
+	f.size = Vector2(214, 214)
+	f.position = Vector2(xs[0] - 12, 628 - 11)
 	f.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	f.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	f.pivot_offset = Vector2(95, 190)
+	f.pivot_offset = Vector2(107, 214)
 	_room.add_child(f)
 	_crew_nodes.append(f)
 	_idle_bob(f, 0.0)
@@ -1911,6 +1914,7 @@ func _spread_was() -> void:
 					used = maxi(a, b)
 				elif mode.begins_with("DIS"):
 					used = mini(a, b)
+				used = int(dice_d.get("used", used))   # luck already bent it at the press
 				if used == 20:
 					_jp.line("Rolled a natural 20. Some weeks the universe pays for lunch.", false)
 				elif used == 1:
@@ -2036,6 +2040,10 @@ func _spread_ahead() -> void:
 		special_used = true
 		var offers := SimEngine.generate_offers(state, state.investors)
 		_jp.line("THE TERM SHEETS ARE ON THE TABLE:")
+		# why they are priced like this: the room was warm before you spoke
+		var warm := SimEngine.warmth_pct(state)
+		if warm > 0.0:
+			_jp.line("they knew your name: %.0f%% less equity asked." % warm, true)
 		# one row of three, captions clipped to wrap-proof width: "Harda 15k/24%"
 		var cards: Array = []
 		for i in offers.size():
@@ -2334,20 +2342,25 @@ func _commit_from_text() -> void:
 	# engine classifies the move's governing stat from the text itself — the
 	# same classifier the telegraph showed the player — applies advantage or
 	# disadvantage from state, and the cup pours the TRUE number instantly.
+	# The cup pours THROUGH THE ENGINE. The keep rule, the founder's traits and
+	# luck's one intervention all live in SimEngine.roll_d20_ctx, so the die that
+	# lands on this desk is the same die the contract suite proves every run.
 	var stat := _sniff_stat(t)
-	var cx := SimEngine.roll_context(state, stat)
-	var da: int = rng.roll_d20() if rng != null else (randi() % 20 + 1)
-	var db: int = rng.roll_d20() if rng != null else (randi() % 20 + 1)
-	var used := da
+	var roller := func() -> int:
+		return rng.roll_d20() if rng != null else (randi() % 20 + 1)
+	var cx := SimEngine.roll_d20_ctx(state, stat, roller)
+	var da := int(cx.a)
+	var db := int(cx.b)
+	var used := int(cx.d20)
 	var mode := ""
 	if bool(cx.advantage):
-		used = maxi(da, db)
 		mode = "advantage (%s)" % ", ".join(cx.adv_reasons)
 	elif bool(cx.disadvantage):
-		used = mini(da, db)
 		mode = "disadvantage (%s)" % ", ".join(cx.dis_reasons)
+	if String(cx.luck_note) != "":
+		mode += (" · " if mode != "" else "") + String(cx.luck_note)
 	_pending_dice = {"a": da, "b": db, "used": used, "stat": stat, "mode": mode,
-		"mod": int(state.competences.get(stat, 3)) - 3}
+		"mod": int(cx.mod)}
 	print("TURN dice used=%d of (%d,%d) stat=%s %s" % [used, da, db, stat, mode])
 	week_rolled.emit(used)
 	week_committing.emit()
