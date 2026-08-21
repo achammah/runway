@@ -263,3 +263,25 @@ entrances, journal close motion, dice whoosh, ledger live lever math from
 tick formulas, money law + clarify live-probed (spent $1500 exact,
 era-sane $300 for the amountless move, narration carried spend continuity
 across weeks), boot latency 1440→520ms (144 sync frame loads → streamed).
+
+## 2026-08-21e — Window 4: the DMG playthrough answered
+Owner played the shipped DMG and filed 16 reports. All closed:
+P0 — the week's art was dying of ONE middleware 502 (no retries; now 3
+attempts with backoff and per-attempt traces); luna leaked a Cyrillic
+token onto the clarify page (sanitized, one Latin line) and the answer
+field collided with the lock row (no lock row while the world waits); the
+binder ring circled thin air (old 7-tab geometry); launch slowness was 48
+full-screen title frames (68MB) loading before the first pixel (frame 1
+instant, rest streamed — 1440→382ms to draft); the birth wait now
+prefetches the bible during the bag page with a 25s skeleton ceiling.
+Agents (3, parallel): idle sets normalized to one baseline/height with a
+premultiplied-alpha pass (plus two real bugs found: the hero jumped 225px
+off the spotlight on every archetype switch — THE 'cropped characters';
+and the shadow floated); the D&D layer — six hidden traits with pips and
+click-for-rule on the card, engine-real effects (doors-open advantage,
+luck rerolling nat-1s, warmth discounting term sheets), 42 items with
+exact trait_mods and a live in-play line (engine suite 43→66 checks);
+the birth intro chain (walk in → open the box → seamless into the loop,
+seam RMS 5.6). Inline: title revealed by the parting sway curtain, binder
+rises, keys/name mascots idle, crew-line baseline compensated, 13 new
+item sprites generated. All screenshots verified by eye; suites green.
