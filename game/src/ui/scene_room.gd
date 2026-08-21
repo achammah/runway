@@ -26,6 +26,18 @@ var _cast: Array = []             # the TextureRects currently standing in the r
 var _ambient: TextureRect          # additive ambient-motion layer over the still
 var _ambient_frames: Array = []
 
+## PREFER THE WEBP MIRROR OF A PLATE.
+##
+## An anim frame, an ambient delta and a background are FULL-FRAME plates, not cutouts,
+## so a lossy mirror costs nothing the eye can find and the exported .app drops several
+## gigabytes: 4798 plates went from 6.3 GB of png to 325 MB of webp. Every png stays on
+## disk for the tools — only the export filter leaves it behind — so whichever of the
+## pair is present wins, webp first. Cutouts (layer_*, sprite, poses) keep their png:
+## lossy alpha haloes a character standing over a room.
+static func art_path(png_path: String) -> String:
+	var webp := png_path.get_basename() + ".webp"
+	return webp if ResourceLoader.exists(webp) else png_path
+
 func load_scene(p_scene_id: String) -> bool:
 	scene_id = p_scene_id
 	for c in get_children():
@@ -42,13 +54,17 @@ func load_scene(p_scene_id: String) -> bool:
 	# TWICE — that is the doubled crew and the ghost cowlicks in the room.
 	var base_path := ""
 	var layers_allowed := false
+	# scene.png carries no cutouts, so it mirrors to webp with the anim plates.
+	# room_bg.png does not: it is the plate the cast is composited ONTO, and a lossy
+	# seam under a cutout is exactly the artefact this room cannot afford.
+	var still := art_path(dir + "/scene.png")
 	if ResourceLoader.exists(dir + "/room_bg.png"):
 		base_path = dir + "/room_bg.png"
 		layers_allowed = true
-	elif ResourceLoader.exists(dir + "/scene.png"):
-		base_path = dir + "/scene.png"
+	elif ResourceLoader.exists(still):
+		base_path = still
 		layers_allowed = false
-	elif not ResourceLoader.exists(dir + "/anim/frame_01.png"):
+	elif not ResourceLoader.exists(art_path(dir + "/anim/frame_01.png")):
 		push_warning("SceneRoom: nothing renderable for " + scene_id)
 		return false
 	size = Vector2(1536, 1024)
@@ -67,7 +83,7 @@ func load_scene(p_scene_id: String) -> bool:
 	_anim_frames.clear()
 	var i := 1
 	while true:
-		var fp := "%s/anim/frame_%02d.png" % [dir, i]
+		var fp := art_path("%s/anim/frame_%02d.png" % [dir, i])
 		if not ResourceLoader.exists(fp):
 			break
 		_anim_frames.append(load(fp))
@@ -231,7 +247,7 @@ func ambient(scene_for_motion: String = "") -> void:
 	_ambient_frames.clear()
 	var i := 0
 	while true:
-		var fp := "%s/d_%02d.png" % [dir, i]
+		var fp := art_path("%s/d_%02d.png" % [dir, i])
 		if not ResourceLoader.exists(fp):
 			break
 		_ambient_frames.append(load(fp))

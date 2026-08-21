@@ -78,14 +78,16 @@ func _draw() -> void:
 			var x := w * 0.18 + float(i) * dash_w * 2.0 - off
 			if x > w * 0.2 and x + dash_w < w * 0.82:
 				draw_rect(Rect2(x, ry, dash_w, 6), Color(CREAM, 0.25))
-	# creating your world… — cream behind, ink in front, so it survives the art
+	# creating your world… — a cream ring behind, ink in front. a single offset
+	# copy only ghosted the glyphs; the ring is what carries it over the boxes.
 	var msg := "creating your world"
 	var dots := ".".repeat(1 + int(fmod(_t * 1.6, 3.0)))
 	var msz := _font.get_string_size(msg + "...", HORIZONTAL_ALIGNMENT_LEFT, -1, 34)
-	var a := 0.7 + 0.3 * sin(_t * 2.4)
+	var a := 0.82 + 0.18 * sin(_t * 2.4)   # breathes, never dims to unreadable
 	var at := Vector2((w - msz.x) * 0.5, h * 0.90 if _loop_tex != null else h * 0.66)
 	if _loop_tex != null:
-		draw_string(_font, at + Vector2(2, 2), msg + dots, HORIZONTAL_ALIGNMENT_LEFT, -1, 34,
-				Color(CREAM, a * 0.9))
+		for o in [Vector2(-2, 0), Vector2(2, 0), Vector2(0, -2), Vector2(0, 2)]:
+			draw_string(_font, at + o, msg + dots, HORIZONTAL_ALIGNMENT_LEFT, -1, 34,
+					Color(CREAM, a))
 	draw_string(_font, at, msg + dots, HORIZONTAL_ALIGNMENT_LEFT, -1, 34,
-			Color(INK, a * 0.85) if _loop_tex != null else Color(CREAM, a))
+			Color(INK, a) if _loop_tex != null else Color(CREAM, a))

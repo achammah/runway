@@ -63,8 +63,8 @@ static func has_scene(id: String) -> bool:
 		return false
 	var d := "res://assets/scenes/%s" % id
 	return ResourceLoader.exists(d + "/room_bg.png") \
-		or ResourceLoader.exists(d + "/scene.png") \
-		or ResourceLoader.exists(d + "/anim/frame_01.png")
+		or ResourceLoader.exists(SceneRoom.art_path(d + "/scene.png")) \
+		or ResourceLoader.exists(SceneRoom.art_path(d + "/anim/frame_01.png"))
 
 ## The mood of the company, in one word: starving | thriving | night | steady.
 static func mood_for(state: GameState) -> String:

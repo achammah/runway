@@ -224,7 +224,7 @@ func _ceremony_room() -> void:
 			"endings__signing_room__day_steady_wide",
 			"endings__signing_room__night_thriving_wide",
 			"endings__signing_room__night_steady_wide"]:
-		var path := "res://assets/backgrounds/%s.png" % f
+		var path := SceneRoom.art_path("res://assets/backgrounds/%s.png" % f)
 		if ResourceLoader.exists(path):
 			var plate := TextureRect.new()
 			plate.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

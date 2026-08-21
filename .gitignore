@@ -47,3 +47,6 @@ restored-*/
 # python bytecode
 __pycache__/
 *.pyc
+
+# build output
+dist/

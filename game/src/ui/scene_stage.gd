@@ -848,9 +848,12 @@ func _canonical(who: String, mood: String) -> Texture2D:
 # FILE ACCESS — res:// goes through the importer, everything else through Image
 # ═════════════════════════════════════════════════════════════════════════════
 
+## The library plates ship as webp and the png is left out of the export, so every
+## res:// lookup asks for the mirror first (SceneRoom.art_path). A path that has no
+## mirror comes back unchanged, which is what keeps the pose cutouts on their png.
 func _exists(path: String) -> bool:
 	if path.begins_with("res://"):
-		return ResourceLoader.exists(path)
+		return ResourceLoader.exists(SceneRoom.art_path(path))
 	return FileAccess.file_exists(path)
 
 
@@ -858,9 +861,10 @@ func _texture(path: String) -> Texture2D:
 	if path == "":
 		return null
 	if path.begins_with("res://"):
-		if not ResourceLoader.exists(path):
+		var res_path := SceneRoom.art_path(path)
+		if not ResourceLoader.exists(res_path):
 			return null
-		var res: Variant = load(path)
+		var res: Variant = load(res_path)
 		return res if res is Texture2D else null
 	# user:// and absolute paths are not imported resources, so load() cannot see
 	# them: the bytes are decoded directly.
