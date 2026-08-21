@@ -5,11 +5,16 @@ config_version=5
 
 config/name="RUNWAY!"
 config/description="You don't build a startup. You survive one."
+config/icon="res://icon.png"
 run/main_scene="res://Main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
 boot_splash/show_image=false
 boot_splash/bg_color=Color(0.133, 0.149, 0.169, 1)
+
+[rendering]
+
+textures/vram_compression/import_etc2_astc=true
 
 [display]
 

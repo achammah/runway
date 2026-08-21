@@ -10,6 +10,12 @@ const PEN := Color("E86A5C")
 
 var _t := 0.0
 var _font: Font
+## The unpacking loop (seedance-baked sheet, 5x8 grid of 1024x576 frames).
+## Missing sheet = the drawn fallback below keeps the screen alive.
+var _loop_tex: Texture2D
+const L_COLS := 5
+const L_FRAMES := 40
+const L_FPS := 12.0
 
 func _init() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -17,6 +23,8 @@ func _init() -> void:
 
 func _ready() -> void:
 	_font = load("res://assets/fonts/PatrickHand-Regular.ttf")
+	if ResourceLoader.exists("res://assets/title/birth_loop.png"):
+		_loop_tex = load("res://assets/title/birth_loop.png")
 	set_process(true)
 
 func _process(delta: float) -> void:
@@ -29,26 +37,47 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color("22262B"))
 	# the spotlight the run is born under
 	draw_circle(Vector2(w * 0.5, h * 0.55), minf(w, h) * 0.42, Color(1, 1, 1, 0.035))
+	if _loop_tex != null:
+		# THE UNPACKING LOOP (owner: a nice loop animation instead): the little
+		# founder unpacks its boxes on cream, cut in like a film frame
+		var fr := int(_t * L_FPS) % L_FRAMES
+		var src := Rect2(float(fr % L_COLS) * 1024.0, float(fr / L_COLS) * 576.0, 1024.0, 576.0)
+		var fw := 760.0
+		var fh := fw * 576.0 / 1024.0
+		var fpos := Vector2((w - fw) * 0.5, h * 0.30)
+		draw_texture_rect_region(_loop_tex, Rect2(fpos, Vector2(fw, fh)), src)
+		var rng2 := RandomNumberGenerator.new()
+		rng2.seed = 9
+		var pts := PackedVector2Array()
+		var cs := [fpos, fpos + Vector2(fw, 0), fpos + Vector2(fw, fh), fpos + Vector2(0, fh)]
+		for i in 4:
+			var a2: Vector2 = cs[i]
+			var b2: Vector2 = cs[(i + 1) % 4]
+			for k in 10:
+				pts.append(a2.lerp(b2, float(k) / 10.0) + Vector2(rng2.randf_range(-2, 2), rng2.randf_range(-2, 2)))
+		pts.append(pts[0])
+		draw_polyline(pts, Color("1E1E1E"), 4.0, true)
 	# RUNWAY! — the title in its own hand, the ! in pen
 	var title := "RUNWAY"
 	var tsz := 132
 	var ts := _font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, tsz)
 	var tx := (w - ts.x - 54.0) * 0.5
-	var ty := h * 0.42 + sin(_t * 1.4) * 4.0
+	var ty := (h * 0.20 if _loop_tex != null else h * 0.42) + sin(_t * 1.4) * 4.0
 	draw_string(_font, Vector2(tx, ty), title, HORIZONTAL_ALIGNMENT_LEFT, -1, tsz, CREAM)
 	draw_string(_font, Vector2(tx + ts.x + 10.0, ty), "!", HORIZONTAL_ALIGNMENT_LEFT, -1, tsz, PEN)
 	# the runway strip, drawn in dashes that crawl forward
-	var ry := h * 0.55
-	var dash_w := 46.0
-	var off := fmod(_t * 60.0, dash_w * 2.0)
-	for i in 18:
-		var x := w * 0.18 + float(i) * dash_w * 2.0 - off
-		if x > w * 0.2 and x + dash_w < w * 0.82:
-			draw_rect(Rect2(x, ry, dash_w, 6), Color(CREAM, 0.25))
+	if _loop_tex == null:
+		var ry := h * 0.55
+		var dash_w := 46.0
+		var off := fmod(_t * 60.0, dash_w * 2.0)
+		for i in 18:
+			var x := w * 0.18 + float(i) * dash_w * 2.0 - off
+			if x > w * 0.2 and x + dash_w < w * 0.82:
+				draw_rect(Rect2(x, ry, dash_w, 6), Color(CREAM, 0.25))
 	# creating your world…
 	var msg := "creating your world"
 	var dots := ".".repeat(1 + int(fmod(_t * 1.6, 3.0)))
 	var msz := _font.get_string_size(msg + "...", HORIZONTAL_ALIGNMENT_LEFT, -1, 40)
 	var a := 0.7 + 0.3 * sin(_t * 2.4)
-	draw_string(_font, Vector2((w - msz.x) * 0.5, h * 0.66), msg + dots,
+	draw_string(_font, Vector2((w - msz.x) * 0.5, h * 0.83 if _loop_tex != null else h * 0.66), msg + dots,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 40, Color(CREAM, a))

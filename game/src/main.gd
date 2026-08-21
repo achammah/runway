@@ -731,7 +731,9 @@ func _to_title() -> void:
 		_start_run())               # has_run() finds the slot and resumes it
 	_swap(t)
 
+var _boot_t := 0
 func _start_run() -> void:
+	_boot_t = Time.get_ticks_msec()
 	# one ongoing run at a time (60 Seconds! style): resume it if it exists;
 	# death/exit clears it. Autopilot modes always start fresh.
 	if not _harness() and OS.get_environment("RUNWAY_FIRSTFLOW") == "" and SaveSystem.has_run():
@@ -774,6 +776,7 @@ func _start_run() -> void:
 	draft.content_items = content.items.values()
 	draft.done.connect(_after_draft)
 	_swap(draft)
+	print("BOOT title->draft %d ms" % (Time.get_ticks_msec() - _boot_t))
 
 func _after_draft(result: Dictionary) -> void:
 	var arch: Dictionary = result.get("archetype", {})

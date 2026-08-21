@@ -144,14 +144,7 @@ func _ready() -> void:
 			if not ResourceLoader.exists(p):
 				break
 			var tex: Texture2D = load(p)
-			if aid == "consultant":
-				# the run-video union bbox baked a hard cut line; trim it off
-				var at := AtlasTexture.new()
-				at.atlas = tex
-				at.region = Rect2(16, 2, tex.get_width() - 18, tex.get_height() - 4)
-				frames.append(at)
-			else:
-				frames.append(tex)
+			frames.append(tex)   # the regenerated loops are clean-edged; no trims
 			i += 1
 		if frames.is_empty():
 			var still := "res://assets/sprites/%s.png" % String(arch.get("sprite", ""))
