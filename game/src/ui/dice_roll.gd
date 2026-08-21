@@ -88,16 +88,6 @@ func _draw() -> void:
 	var side := minf(size.x, size.y) * 0.66
 	var pos := Vector2((size.x - side) * 0.5, (size.y - side) * 0.5 - 20.0)
 	var src := Rect2(float(_frame % COLS) * CELL, float(_frame / COLS) * CELL, CELL, CELL)
+	# the sheets carry ALPHA (owner: background-removed clips): the cup and die
+	# sit straight on the felt, no card, no frame — just the drawing and the light
 	draw_texture_rect_region(_tex, Rect2(pos, Vector2(side, side)), src)
-	# the clip's own cream edge blends via a drawn ink frame — a card on the table
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 27
-	var pts := PackedVector2Array()
-	var corners := [pos, pos + Vector2(side, 0), pos + Vector2(side, side), pos + Vector2(0, side)]
-	for i in 4:
-		var a: Vector2 = corners[i]
-		var b: Vector2 = corners[(i + 1) % 4]
-		for k in 12:
-			pts.append(a.lerp(b, float(k) / 12.0) + Vector2(rng.randf_range(-2, 2), rng.randf_range(-2, 2)))
-	pts.append(pts[0])
-	draw_polyline(pts, Color("1E1E1E"), 5.0, true)

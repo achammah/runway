@@ -2420,7 +2420,7 @@ func _apply_dm_effects(effects: Array) -> Array:
 				var role := String(d.get("v", "engineer"))
 				var rng_n := RandomNumberGenerator.new()
 				rng_n.seed = hash(str(state.sim_seed) + str(state.week) + str(state.pipeline.size()))
-				var nm2 := WorldGen.make_name(rng_n)
+				var nm2 := WorldGen.person_name(rng_n)   # hires are people, not brands
 				var sal: int = {"engineer": 1500, "sales": 1200, "support": 900,
 					"designer": 1100, "ops": 1000}.get(role, 1200)
 				state.pipeline.append({"name": nm2, "role": role, "salary": sal, "weeks_in": 0})

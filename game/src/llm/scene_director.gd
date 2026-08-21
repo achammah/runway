@@ -360,7 +360,11 @@ func make_scene_v2(scene: Dictionary, cast: Array, cast_urls: Array, beat: Strin
 	if desc == "":
 		desc = String(scene.get("place", "a small startup workspace")).replace("_", " ")
 	var cond := String(scene.get("condition", "steady"))
-	var key := "%s|%s|%s" % [desc.left(80), cond, _cast_sig(cast)]
+	# THE KEY CARRIES THE WEEK (out_name is run+week). The old place|cond|cast
+	# key returned the SAME composed image for every similar week across ALL
+	# runs — the owner's "there is never a new image that generates". Now the
+	# cache only serves a same-week retry; every new week composes fresh.
+	var key := "%s|%s|%s|%s" % [out_name, desc.left(60), cond, _cast_sig(cast)]
 	var hit: Dictionary = _v2_reg.get(key, {})
 	var cached := String(hit.get("path", ""))
 	if cached != "" and FileAccess.file_exists(cached):

@@ -83,7 +83,8 @@ var metric_history: Array = []        # weekly snapshots for the binder's hand-d
 var played_events: Array = []         # recent event titles, so the world never repeats itself
 var weeks_in_red: int = 0                 # money IS the food — 3 weeks starved = dead
 var history: Array = []                   # {week:int, entry:String} — everything the player did
-var cofounders: Array = []   # {role, commitment, equity, vesting}
+var founder_name: String = ""   # the player's own name, written at the draft
+var cofounders: Array = []   # {role, commitment, equity, vesting, name}
 var employees: Array = []    # {name, role, salary, burnout 0-100, quirk}
 var cash: int = 0
 var product: int = 0        # 0-100 era gate
@@ -331,6 +332,7 @@ func to_digest() -> Dictionary:
 		"era": era,
 		"era_name": era_display_name(),
 		"company_name": company_name,
+		"founder_name": founder_name,
 		"company_does": company_idea,
 		"business_model": "%s for %s" % [biz_what, biz_who],
 		"funding_path": "bootstrapped" if funding_id == "bootstrap" else "outside money taken (%s)" % funding_id,

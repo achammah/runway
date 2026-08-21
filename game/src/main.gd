@@ -730,6 +730,7 @@ func _after_draft(result: Dictionary) -> void:
 	state.archetype_name = String(arch.get("name", "founder"))
 	state.competences = (arch.get("stats", {}) as Dictionary).duplicate()
 	state.company_name = String(result.get("company_name", "Untitled Inc"))
+	state.founder_name = String(result.get("founder_name", ""))
 	state.company_idea = String(result.get("company_idea", ""))
 	state.biz_what = String(result.get("biz_what", "Software"))
 	state.biz_who = String(result.get("biz_who", "Consumer"))
@@ -820,7 +821,10 @@ func _cold_open(gv: GarageViewScreen) -> void:
 	# day one is an adjudication like any other: the journal's lock must refuse
 	# until it lands, or a fast press stacks two in-flight turns (probe-caught)
 	gv.set("_adjudicating", true)
-	var move := ("This is day one of %s — %s. Write the FOUNDING of this exact company: the "
+	var who_founds := (" The founder signing the lease is %s." % state.founder_name) \
+			if state.founder_name != "" else ""
+	var move := ("This is day one of %s — %s." + who_founds
+			+ " Write the FOUNDING of this exact company: the "
 			+ "place, the crew, the first real stake in the ground. No dice language, no "
 			+ "verdict talk — an opening chapter.") % [state.company_name,
 			state.company_idea if state.company_idea != "" else "a company that refuses to explain itself"]

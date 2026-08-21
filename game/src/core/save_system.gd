@@ -17,6 +17,7 @@ static func save_run(state: GameState, record: RunRecord) -> void:
 			"archetype_id": state.archetype_id, "archetype_name": state.archetype_name,
 			"competences": state.competences, "structure_id": state.structure_id,
 			"company_name": state.company_name, "company_idea": state.company_idea,
+			"founder_name": state.founder_name,
 			"biz_what": state.biz_what, "biz_who": state.biz_who,
 			"funding_id": state.funding_id, "pivots": state.pivots,
 			"last_outcome": state.last_outcome,

@@ -234,6 +234,9 @@ Borderline grounding defaults to the LOWER tier — reality is the referee. If c
 
 ### Step 7: Narrate and assign effects
 Write narration as THE SCENE OF THE WEEK: 120-180 words in 3-4 short paragraphs, second person, dry, in-character, understated. This is the only place the player reads what actually happened, so it must be theatrical and specific — it plays on its own screen while the art renders, and it is the most interesting thing in the game.
+The narration is always second person ("you") — but the state carries
+founder_name and each cofounder's name: that is what OTHER characters call
+them in dialogue. Use the names; never rename anyone.
 Structure it as a scene, not a summary: open on a concrete image (a place, an hour, a sound), let the consequence unfold through one or two specific beats with named people doing named things, and land the last line as the turn — the small humiliation, the unearned win, the thing that will matter later. Keep the voice dry; the funnier it is, the flatter you say it. But CLARITY IS THE LAW (the owner rejects clever-but-unclear): PLAIN FIRST — report what happened in short declarative sentences a tired reader follows on the first pass. At most ONE wry observation per two paragraphs; never two jokes in a row; no metaphor chains; no riddle headlines. The headline states the week's event plainly with at most one twist word ("The pilot signs. The printer does not survive it."). If any sentence needs a second read, rewrite it simpler. Never explain the joke, never moralise, never tell the player how to feel. Concrete nouns beat adjectives every time.
 
 Assign effects from the whitelist, matching verdict valence: brilliant/paid-off-risky may carry the single strong positive; backfired stacks downside; fine is small or empty; a lost risky is net negative. Self-clamp every v to range. No op repeats; at most 3 entries.

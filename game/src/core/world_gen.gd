@@ -16,6 +16,18 @@ const NAME_SEEDS := ["vanta", "loomly", "brightside", "koda", "meridian", "fluxo
 	"maple", "cinder", "bluefin", "orchard", "signal", "lumen", "basalt"]
 const FUND_SUFFIX := ["Capital", "Ventures", "Partners", "Collective", "Fund", "Syndicate"]
 
+## People are not companies: hires, cofounders and walk-ons draw from these.
+const FIRST_NAMES := ["Mara", "Nico", "Priya", "Jonas", "Aiko", "Sam", "Lena",
+	"Ravi", "Ines", "Theo", "Dana", "Milo", "Zara", "Owen", "Nadia", "Felix",
+	"June", "Marco", "Elif", "Casper", "Rosa", "Ade", "Petra", "Yuki", "Bram"]
+const LAST_NAMES := ["Sorel", "Okafor", "Lindgren", "Vance", "Marchetti", "Bakker",
+	"Ito", "Novak", "Ferreira", "Duval", "Haddad", "Kowalski", "Mbeki", "Ander",
+	"Voss", "Reyes", "Tanaka", "Bergstrom", "Cissé", "Moreau", "Silva", "Grant"]
+
+static func person_name(rng: RandomNumberGenerator) -> String:
+	return "%s %s" % [FIRST_NAMES[rng.randi() % FIRST_NAMES.size()],
+		LAST_NAMES[rng.randi() % LAST_NAMES.size()]]
+
 static func _chain(rng: RandomNumberGenerator) -> Dictionary:
 	var initial: Dictionary = {}
 	var trans: Dictionary = {}

@@ -54,6 +54,8 @@ var _fund_btns: Array = []
 var _bag: Array[String] = []
 var _bag_btns: Dictionary = {}
 var _name_edit: PaperInput
+var _founder_edit: PaperInput
+var _prng := RandomNumberGenerator.new()   # person-name suggestions
 var _idea_edit: PaperInput
 var _donut: Control
 var _launch: Button
@@ -777,6 +779,16 @@ func _build_name() -> Control:
 	wsh.size = Vector2(180, 30)
 	page.add_child(wsh)
 
+	_prng.randomize()
+	_founder_edit = PaperInput.new()
+	# the suggestion is REAL text (value(), not placeholder): the sheet arrives
+	# already signed, and typing over it is the player's choice
+	_founder_edit.setup("SIGNED BY — your own name goes on everything", "", 32)
+	_founder_edit.set_value(WorldGen.person_name(_prng))
+	_founder_edit.position = Vector2(560, 196)
+	_founder_edit.set_deferred("size", Vector2(660, 96))
+	page.add_child(_founder_edit)
+
 	_name_edit = PaperInput.new()
 	_name_edit.setup("THE NAME", "Mossflow", 44)
 	_name_edit.position = Vector2(560, 300)
@@ -1157,7 +1169,8 @@ func _open_recruit() -> void:
 			_juice(card)
 		card.pressed.connect(func():
 			_close_recruit()
-			_cofounders.append({"role": i, "commitment": 0, "equity": 25.0, "vesting": true, "fresh": true})
+			_cofounders.append({"role": i, "commitment": 0, "equity": 25.0, "vesting": true, "fresh": true,
+				"name": WorldGen.person_name(_prng)})
 			_sfx_click.play()
 			_refresh_capline())
 		_recruit_layer.add_child(card)
@@ -1815,7 +1828,10 @@ func _rebuild_crew(founder_pct: float) -> void:
 	if founder_pct < 50.0:
 		yspr.rotation = 0.12
 	you.add_child(yspr)
-	var ylab := _dlabel("YOU · CEO", 28, PALETTE["ink"])
+	var yname := "YOU"
+	if _founder_edit != null and is_instance_valid(_founder_edit) and _founder_edit.value().strip_edges() != "":
+		yname = _founder_edit.value().strip_edges().split(" ")[0].to_upper()
+	var ylab := _dlabel("%s · CEO" % yname, 28, PALETTE["ink"])
 	ylab.position = Vector2(0, 210)
 	ylab.size = Vector2(cw, 40)
 	ylab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1891,10 +1907,22 @@ func _rebuild_crew(founder_pct: float) -> void:
 			_sfx_click.play()
 			_refresh_capline())
 		card.add_child(rm)
-		var rname := _dlabel(ROLES[int(cf["role"])].to_upper(), 27, PALETTE["ink"])
+		if String(cf.get("name", "")) == "":
+			cf["name"] = WorldGen.person_name(_prng)
+		var rname := _dlabel("%s · %s" % [String(cf["name"]).split(" ")[0],
+			ROLES[int(cf["role"])].to_upper()], 24, PALETTE["ink"])
 		rname.position = Vector2(0, 196)
 		rname.size = Vector2(cw, 36)
 		rname.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		rname.tooltip_text = "%s — click for another name" % String(cf["name"])
+		rname.mouse_filter = Control.MOUSE_FILTER_STOP
+		rname.gui_input.connect(func(ev: InputEvent) -> void:
+			if ev is InputEventMouseButton and ev.pressed:
+				cf["name"] = WorldGen.person_name(_prng)
+				rname.text = "%s · %s" % [String(cf["name"]).split(" ")[0],
+					ROLES[int(cf["role"])].to_upper()]
+				rname.tooltip_text = "%s — click for another name" % String(cf["name"])
+				_sfx_click.play())
 		card.add_child(rname)
 		var com := Button.new()
 		var ft: bool = int(cf["commitment"]) == 0
@@ -2019,7 +2047,7 @@ func _cf_state(cf: Dictionary, n: int) -> String:
 func _do_launch() -> void:
 	var cfs: Array = []
 	for cf in _cofounders:
-		cfs.append({"role": ROLES[int(cf["role"])], "commitment": COMMITMENTS[int(cf["commitment"])], "equity": float(cf["equity"]), "vesting": bool(cf["vesting"])})
+		cfs.append({"role": ROLES[int(cf["role"])], "commitment": COMMITMENTS[int(cf["commitment"])], "equity": float(cf["equity"]), "vesting": bool(cf["vesting"]), "name": String(cf.get("name", ""))})
 	var trap_ids: Array[String] = []
 	for t in _compute_traps():
 		if not trap_ids.has(String(t["id"])):
@@ -2029,6 +2057,8 @@ func _do_launch() -> void:
 		"cofounders": cfs,
 		"funding": _sel_fund,
 		"company_name": _name_edit.value(),
+		"founder_name": _founder_edit.value().strip_edges() \
+			if _founder_edit.value().strip_edges() != "" else WorldGen.person_name(_prng),
 		"company_idea": _idea_edit.value(),
 		"biz_what": _biz_what,
 		"biz_who": _biz_who,
