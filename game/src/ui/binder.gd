@@ -240,7 +240,8 @@ func _tab_product() -> void:
 # ── tab 3: crew ──────────────────────────────────────────────────────────────
 func _tab_crew() -> void:
 	_icon("you", Vector2(10, 6))
-	_label("the founder — lvl %d · XP %d/%d spent · exhaustion %d/6" % [
+	var who := state.founder_name if state.founder_name != "" else "the founder"
+	_label("%s — lvl %d · XP %d/%d spent · exhaustion %d/6" % [who,
 		state.level, state.xp_spent, state.xp, state.exhaustion], Vector2(100, 20), 32)
 	var stats := PackedStringArray()
 	for st_n in ["build", "sell", "raise", "recruit", "grit"]:
@@ -249,7 +250,10 @@ func _tab_crew() -> void:
 	var y := 130.0
 	for cf in state.cofounders:
 		_icon("cofd_tech", Vector2(10, y))
-		_label("%s cofounder · %.0f%% equity · loyalty %d" % [String(cf.get("role", "?")),
+		var cf_name := str(cf.get("name", "")).strip_edges()
+		var cf_role := str(cf.get("role", "?"))   # str(): a role can arrive as an int
+		_label("%s%s cofounder · %.0f%% equity · loyalty %d" % [
+			(cf_name + " — ") if cf_name != "" else "", cf_role,
 			float(cf.get("equity_diluted", cf.get("equity", 0))), int(cf.get("loyalty", 70))],
 			Vector2(100, y + 16), 28)
 		y += 84.0
