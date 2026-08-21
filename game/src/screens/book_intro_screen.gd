@@ -20,6 +20,7 @@ var _scroll: ScrollContainer
 var _col: VBoxContainer
 var _entry_lbl: Label
 var _waiting := true
+var _notes_nodes: Array = []   # field notes, revealed only once the entry lands
 var _t := 0.0
 var _sbar: Control
 
@@ -33,6 +34,9 @@ func feed_entry(text: String) -> void:
 	if _entry_lbl != null and is_instance_valid(_entry_lbl):
 		_entry_lbl.text = text
 		_entry_lbl.add_theme_color_override("font_color", INK)
+	for n in _notes_nodes:
+		if is_instance_valid(n):
+			n.visible = true
 
 func _ready() -> void:
 	_font = load(HAND)
@@ -82,28 +86,40 @@ func _ready() -> void:
 	_entry_lbl = _mk("the first entry is being written…", 30, Color(INK, 0.45))
 	_col.add_child(_entry_lbl)
 
-	# ── FIELD NOTES: the working assumptions, plainly marked as such ──
-	_col.add_child(_rule())
-	_col.add_child(_mk("FIELD NOTES — what I think I know", 32, PEN))
+	# ── FIELD NOTES: the working assumptions, plainly marked as such.
+	# They stay HIDDEN until the entry lands (owner: notes floating under a
+	# "being written…" placeholder read as noise) — feed_entry reveals them.
+	_notes_nodes.append(_rule())
+	_col.add_child(_notes_nodes[-1])
+	_notes_nodes.append(_mk("FIELD NOTES — what I think I know", 32, PEN))
+	_col.add_child(_notes_nodes[-1])
 	var th := state.theta
 	var b_tam := int(state.beliefs.get("tam", th.get("tam", 0)))
 	var b_life := int(state.beliefs.get("lifetime_wk", th.get("lifetime_wk", 40)))
 	var mline := String(state.get_meta("market_line", ""))
-	_col.add_child(_mk("the market, as far as I can tell: ~%s people who might buy this. A customer probably stays ≈ %d weeks. All of this is a guess I will be correcting for months.%s" % [
+	_notes_nodes.append(_mk("the market, as far as I can tell: ~%s people who might buy this. A customer probably stays ≈ %d weeks. All of this is a guess I will be correcting for months.%s" % [
 		_fmt(b_tam), b_life, ("  (" + mline + ")") if mline != "" else ""], 27, Color(INK, 0.8)))
-	_col.add_child(_mk("the money in town:", 29, BLUE))
+	_col.add_child(_notes_nodes[-1])
+	_notes_nodes.append(_mk("the money in town:", 29, BLUE))
+	_col.add_child(_notes_nodes[-1])
 	for inv in state.investors:
 		var d: Dictionary = inv
-		_col.add_child(_mk("%s — %s. \"%s\"" % [String(d.get("name", "?")),
+		_notes_nodes.append(_mk("%s — %s. \"%s\"" % [String(d.get("name", "?")),
 			String(d.get("archetype", "")), String(d.get("thesis", ""))], 25, Color(INK, 0.7)))
-	_col.add_child(_mk("already selling to my customers:", 29, BLUE))
+		_col.add_child(_notes_nodes[-1])
+	_notes_nodes.append(_mk("already selling to my customers:", 29, BLUE))
+	_col.add_child(_notes_nodes[-1])
 	for rv in state.rivals:
 		var r: Dictionary = rv
 		var what := String(r.get("what", ""))
-		_col.add_child(_mk("%s — looks %s%s" % [String(r.get("name", "?")),
+		_notes_nodes.append(_mk("%s — looks %s%s" % [String(r.get("name", "?")),
 			SimEngine._fuzz(float(r.get("strength", 20.0))),
 			(". " + what) if what != "" else ""], 25, Color(INK, 0.7)))
-	_col.add_child(_mk("everything above is honest. none of it is verified.", 24, Color(INK, 0.45)))
+		_col.add_child(_notes_nodes[-1])
+	_notes_nodes.append(_mk("everything above is honest. none of it is verified.", 24, Color(INK, 0.45)))
+	_col.add_child(_notes_nodes[-1])
+	for n in _notes_nodes:
+		n.visible = false
 
 	# drawn scrollbar
 	_sbar = _ScrollInk.new()
