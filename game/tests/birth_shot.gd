@@ -1,6 +1,7 @@
 extends SceneTree
-## Photograph the birth screen — the baked unpacking loop full-frame, the painted
-## RUNWAY! logotype over it, the status line at the bottom. Nothing else is in the
+## Photograph the birth screen TWICE — once mid-arrival (the founder walking in on
+## the taped-shut boxes) and once inside the unpacking loop it hands over to. One
+## shot can only ever prove one of the two phases exists. Nothing else is in the
 ## tree, so anything visible is the screen's own doing.
 ## Run (windowed — headless renders nothing):
 ##     RUNWAY_STRESS_DIR=<dir> godot --path . --script tests/birth_shot.gd
@@ -20,11 +21,16 @@ func _go() -> void:
 	var b := BirthScreen.new()
 	root.add_child(b)
 	b.size = Vector2(1536, 1024)   # the window, in case the preset has not settled
-	await create_timer(1.2).timeout   # a few loop frames in, the line faded up
-	await RenderingServer.frame_post_draw
 	var dir := OS.get_environment("RUNWAY_STRESS_DIR")
 	if dir == "":
 		dir = "/tmp"
-	root.get_viewport().get_texture().get_image().save_png(dir + "/birth_check.png")
-	print("BIRTH SHOT %s -> %s/birth_check.png" % [b.size, dir])
+	await create_timer(0.5).timeout   # mid-arrival, the fade-in already landed
+	await _shot(dir + "/birth_intro_check.png")
+	await create_timer(4.0).timeout   # 4.5s in: the arrival is spent, the loop runs
+	await _shot(dir + "/birth_loop_check.png")
+	print("BIRTH SHOT %s -> %s/birth_intro_check.png + birth_loop_check.png" % [b.size, dir])
 	quit(0)
+
+func _shot(path: String) -> void:
+	await RenderingServer.frame_post_draw
+	root.get_viewport().get_texture().get_image().save_png(path)
