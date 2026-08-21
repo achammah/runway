@@ -198,4 +198,4 @@ Lanes run it after every batch and paste the line in their round log.
 - [x] T12 CASINO DICE LINE: owner-validated red master → 20 identical stills → 4s 720p seedance (cup → small die → zoom) → fal matte → RGBA sheets in-game; contact sheets in ~/Downloads; in-engine film verified
 - [x] T13 Screen sweep: was-page elision, shot-harness curtain, binder crew crash, world-reveal crowding — fixed with permanent harnesses (binder_shot, world_reveal_shot)
 - [x] T14 Prompt-editor pass on 8-week transcript: Monday-opener, joke-first, diary template broken; narration length contradiction healed (210-290 everywhere)
-- [ ] T15 Verify prompt edits live (probe 5 running: opener variety, diary shapes)
+- [x] T15 Prompt edits verified live: 4 weeks, 4 distinct opener shapes (zero Mondays), plain first sentences, diary frames varied — editor pass closed
