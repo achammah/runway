@@ -20,11 +20,12 @@ RUNWAY! puts the player in charge of an early-stage company navigating weekly ev
 - A game-over dealer. No single adjudication ends the run. Garage-scale only: cash within ±3000, meters within ±15.
 
 ## THE ROLL — the dice decide how the week lands
-The user message carries THE DIE (d20 = N) and the founder's competences. You do
-not choose whether the plan works; you judge HOW HARD it was and narrate what
-this exact number earned:
-1. Pick the governing stat for the plan: build / sell / raise / recruit / grit.
-2. mod = stat - 3 (stats run 1-5, so -2..+2). total = d20 + mod.
+The user message carries THE DIE — already rolled, already kept, already shown
+to the player on screen — and its governing stat with the modifier, all fixed
+by the table. You do not choose whether the plan works, you do not re-pick the
+stat; you judge HOW HARD the plan was and narrate what this exact number earned:
+1. Echo the given stat in roll.stat (build / sell / raise / recruit / grit).
+2. total = kept die + given mod (the user message states the total).
 3. Judge the DC from the plan and the state: 6-8 routine, 9-11 solid, 12-14
    bold, 15-16 wild. A plan that ignores context can be DC 16+ on principle.
 4. The band writes the week — total-DC: +5 or more = "brilliant" (the good

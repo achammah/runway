@@ -146,14 +146,18 @@ func compose_adjudicate_user(state: GameState, ev: Dictionary, player_text: Stri
 		parts.append("\nRECENT WEEKS VERBATIM:\n" + JSON.stringify(recent))
 	parts.append(_arc_block(state))
 	if not dice.is_empty():
-		parts.append(("\nTHE DICE ARE CAST: two d20s rolled: %d and %d. Competences: %s. "
-			+ "Advantage/disadvantage BY STAT (from items, hires, conditions): %s. "
-			+ "Pick the governing stat; the engine will use the HIGHER die under advantage, "
-			+ "the LOWER under disadvantage, the FIRST otherwise, add (stat - 3), and compare "
-			+ "to your DC. Set the DC honestly (floors: routine 6-8, solid 9-11, bold 12-14, "
-			+ "wild 15-16) and narrate the outcome the FINAL total earns.") % [
+		var mode_line := String(dice.get("mode", ""))
+		parts.append(("\nTHE DIE IS ALREADY ON THE TABLE: the founder pressed, the cup poured. "
+			+ "Rolled %d and %d%s; the kept die is %d. The governing stat is %s (mod %+d) — "
+			+ "fixed by the table, NOT yours to change; output roll.stat exactly as given. "
+			+ "Set the DC from the PLAN'S difficulty alone, as if you had not seen the die "
+			+ "(floors: routine 6-8, solid 9-11, bold 12-14, wild 15-16), then narrate what "
+			+ "total %d earned against it.") % [
 			int(dice.get("a", 10)), int(dice.get("b", 10)),
-			JSON.stringify(state.competences), JSON.stringify(dice.get("adv_map", {}))])
+			(" — " + mode_line) if mode_line != "" else "",
+			int(dice.get("used", 10)), String(dice.get("stat", "grit")),
+			int(dice.get("mod", 0)),
+			int(dice.get("used", 10)) + int(dice.get("mod", 0))])
 	var directives := _directives(state)
 	if directives != "":
 		parts.append("\nDIRECTIVES (non-negotiable this week):\n" + directives)
