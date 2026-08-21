@@ -1710,6 +1710,17 @@ func _open_journal() -> void:
 	_j_left = _j_page
 	_j_right = _j_page
 	_show_spread()
+	# THE PAD COMES UP OFF THE DESK (owner: "a nice normal animation to open"):
+	# it rises from below with a slight straightening, the dim fades with it
+	_j_page.position.y = 90.0
+	_j_page.rotation = 0.012
+	_j_page.modulate.a = 0.0
+	dim.modulate.a = 0.0
+	var otw := create_tween().set_parallel(true)
+	otw.tween_property(_j_page, "position:y", 0.0, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	otw.tween_property(_j_page, "rotation", 0.0, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	otw.tween_property(_j_page, "modulate:a", 1.0, 0.2)
+	otw.tween_property(dim, "modulate:a", 1.0, 0.24)
 
 func _show_spread() -> void:
 	# THE TURN IS PHYSICAL. On an arrow press the outgoing page keeps its sheet,

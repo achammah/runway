@@ -28,7 +28,16 @@ func _ready() -> void:
 	print("RUNWAY! content: %d items, %d events · LLM: %s" % [
 		content.items.size(), content.events.size(),
 		(llm.provider + "/" + llm.model) if llm.enabled() else "off (authored only)"])
-	_to_title()
+	# THE STUDIO CARD (owner): a real release opens on its studio, then the
+	# title. Harnesses skip straight to work.
+	if _harness() or OS.get_environment("RUNWAY_FIRSTFLOW") != "":
+		_to_title()
+	else:
+		var card := StudioCard.new()
+		card.done.connect(_to_title)
+		_screen = card
+		add_child(card)
+		card.size = get_viewport().get_visible_rect().size
 	if OS.get_environment("RUNWAY_SHOT") != "":
 		_autopilot()
 	elif OS.get_environment("RUNWAY_FULLRUN") != "":
@@ -681,14 +690,24 @@ func _pump_era_queue() -> void:
 	(scr as Control).size = get_viewport().get_visible_rect().size
 
 func _swap(next: Node) -> void:
-	if _screen and is_instance_valid(_screen):
-		_screen.queue_free()
+	# ORDER MATTERS (owner: "we briefly see the previous image"): the new
+	# screen is added FIRST, then the old one is freed — no empty frame where
+	# the clear color (or a stale screen) shows through. The new screen also
+	# fades in over 0.18s so every transition reads as intended, not as a pop.
+	var old_screen := _screen
 	_screen = next
 	add_child(next)
-	# Controls parented to a plain Node never get a layout pass; give them the
-	# viewport size explicitly or full-rect-anchored children collapse to 0x0.
 	if next is Control:
 		(next as Control).size = get_viewport().get_visible_rect().size
+	if next is CanvasItem:
+		(next as CanvasItem).modulate.a = 0.0
+		var tw := create_tween()
+		tw.tween_property(next, "modulate:a", 1.0, 0.18)
+	if old_screen and is_instance_valid(old_screen):
+		# one frame of overlap so the swap is seamless, then the old goes
+		get_tree().process_frame.connect(func() -> void:
+			if is_instance_valid(old_screen):
+				old_screen.queue_free(), CONNECT_ONE_SHOT)
 
 func _to_title() -> void:
 	_cancel_turn()

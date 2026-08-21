@@ -458,15 +458,15 @@ func _build_select() -> Control:
 
 	# hero: the selected founder, big, in the spotlight
 	_hero_shadow = EllipseShadow.new()
-	_hero_shadow.position = Vector2(650, 776)
-	_hero_shadow.size = Vector2(280, 44)
+	_hero_shadow.position = Vector2(420, 796)
+	_hero_shadow.size = Vector2(300, 46)
 	page.add_child(_hero_shadow)
 	_hero = TextureRect.new()
-	_hero.position = Vector2(560, 268)
-	_hero.size = Vector2(460, 520)
+	_hero.position = Vector2(220, 240)
+	_hero.size = Vector2(560, 560)
 	_hero.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_hero.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_hero.pivot_offset = Vector2(230, 520)
+	_hero.pivot_offset = Vector2(280, 560)
 	page.add_child(_hero)
 	_hero_base_y = _hero.position.y
 
@@ -828,15 +828,15 @@ func _build_name() -> Control:
 	_rule_under(page, "NAME YOUR STARTUP", 58, Vector2(430, 120))
 
 	var witness := TextureRect.new()
-	witness.position = Vector2(150, 380)
-	witness.size = Vector2(280, 340)
+	witness.position = Vector2(130, 540)
+	witness.size = Vector2(330, 410)
 	witness.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	witness.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	page.add_child(witness)
 	_name_witness = witness
 	var wsh := EllipseShadow.new()
-	wsh.position = Vector2(200, 706)
-	wsh.size = Vector2(180, 30)
+	wsh.position = Vector2(210, 934)
+	wsh.size = Vector2(190, 32)
 	page.add_child(wsh)
 
 	_name_edit = PaperInput.new()

@@ -4,8 +4,12 @@ config_version=5
 [application]
 
 config/name="RUNWAY!"
+config/description="You don't build a startup. You survive one."
 run/main_scene="res://Main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+
+boot_splash/show_image=false
+boot_splash/bg_color=Color(0.133, 0.149, 0.169, 1)
 
 [display]
 
@@ -18,4 +22,4 @@ window/stretch/aspect="keep"
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-environment/defaults/default_clear_color=Color(0.949, 0.918, 0.827, 1)
+environment/defaults/default_clear_color=Color(0.133, 0.149, 0.169, 1)

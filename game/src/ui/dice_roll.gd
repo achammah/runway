@@ -47,6 +47,9 @@ func _ready() -> void:
 			_t = 999.0)
 
 func roll(n: int) -> void:
+	modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(self, "modulate:a", 1.0, 0.25)
 	var path := "res://assets/dice/roll_%02d.png" % clampi(n, 1, 20)
 	if not ResourceLoader.exists(path):
 		push_warning("DiceRoll: no sheet for %d — ceremony skipped" % n)
@@ -84,9 +87,11 @@ func _draw() -> void:
 	# ITS OWN SCREEN (owner: "the video dice roll ... on its own screen"): an
 	# opaque felt table so nothing — page, beat, room — can bleed through the roll
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.11, 0.095, 0.08, 1.0))
-	draw_circle(size * 0.5, minf(size.x, size.y) * 0.52, Color(0.145, 0.125, 0.10, 1.0))
-	var side := minf(size.x, size.y) * 0.66
-	var pos := Vector2((size.x - side) * 0.5, (size.y - side) * 0.5 - 20.0)
+	draw_circle(size * 0.5, minf(size.x, size.y) * 0.58, Color(0.145, 0.125, 0.10, 1.0))
+	# FULL HEIGHT (owner: "fill screen in height so we avoid video cropping"):
+	# the clip is square, so height IS the constraint — use all of it
+	var side := size.y
+	var pos := Vector2((size.x - side) * 0.5, (size.y - side) * 0.5)
 	var src := Rect2(float(_frame % COLS) * CELL, float(_frame / COLS) * CELL, CELL, CELL)
 	# the sheets carry ALPHA (owner: background-removed clips): the cup and die
 	# sit straight on the felt, no card, no frame — just the drawing and the light

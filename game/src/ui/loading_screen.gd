@@ -166,6 +166,11 @@ func begin(week_label: String) -> void:
 	# skipping the words never skips the render.
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	gui_input.connect(func(ev: InputEvent) -> void:
+		# TRACKPADS PAN, MICE WHEEL (owner: "impossible to scroll"): macOS
+		# two-finger scrolling arrives as a pan gesture, never as wheel buttons
+		if ev is InputEventPanGesture:
+			_scroll.scroll_vertical += int((ev as InputEventPanGesture).delta.y * 14.0)
+			return
 		if ev is InputEventMouseButton and ev.pressed:
 			# the wheel reads back and forth; a plain click catches up, then closes
 			if ev.button_index == MOUSE_BUTTON_WHEEL_UP:
