@@ -173,6 +173,8 @@ func _ready() -> void:
 	_pages = [_build_sign_page(), _build_select(), _build_name(), _build_shape_page(), _build_crew_page(), _build_money_page(), _build_bag_page()]
 	# the shelf depends on the trade chosen on page 3: rebuild it on entry
 	_page_shown.connect(func(i: int) -> void:
+		if i == 1:
+			_hero_entrance()
 		if i == 6:
 			var old_bag: Control = _pages[6]
 			_pages[6] = _build_bag_page()
@@ -308,6 +310,13 @@ func _show_page(i: int) -> void:
 	for p in _pages.size():
 		_pages[p].visible = p == i
 	_page_shown.emit(i)
+	if i == 2 and _name_witness and is_instance_valid(_name_witness):
+		var whome := _name_witness.position
+		_name_witness.position = whome + Vector2(0, 40)
+		_name_witness.modulate.a = 0.0
+		var wtw := create_tween().set_parallel(true)
+		wtw.tween_property(_name_witness, "position", whome, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		wtw.tween_property(_name_witness, "modulate:a", 1.0, 0.24)
 	if i == 2 and _name_witness and not _sel_arch.is_empty():
 		var sp := "res://assets/sprites/%s.png" % String(_sel_arch.get("sprite", ""))
 		if ResourceLoader.exists(sp):
@@ -616,6 +625,23 @@ func _build_select() -> Control:
 	_lockin_btn.pressed.connect(_lock_in)
 	page.add_child(_lockin_btn)
 	return page
+
+## the hero walks IN (owner: select needed motion): slide from stage left
+## with a settle, shadow fading up under the feet
+func _hero_entrance() -> void:
+	if _hero == null or not is_instance_valid(_hero):
+		return
+	var home := _hero.position
+	_hero.position = home + Vector2(-90, 0)
+	_hero.modulate.a = 0.0
+	if _hero_shadow != null and is_instance_valid(_hero_shadow):
+		_hero_shadow.modulate.a = 0.0
+		var st := create_tween()
+		st.tween_interval(0.12)
+		st.tween_property(_hero_shadow, "modulate:a", 1.0, 0.22)
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(_hero, "position", home, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_hero, "modulate:a", 1.0, 0.22)
 
 func _select(i: int, animate_swap: bool = true) -> void:
 	var prev := _sel_i

@@ -35,6 +35,14 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP   # the ceremony owns its beat
 
 func _ready() -> void:
+	# the table arrives with a breath of curtain-whoosh under the rattle
+	if FileAccess.file_exists("res://assets/sfx/curtain.wav"):
+		var wh := AudioStreamPlayer.new()
+		wh.stream = load("res://assets/sfx/curtain.wav")
+		wh.volume_db = -14.0
+		wh.pitch_scale = 1.25
+		add_child(wh)
+		wh.play()
 	if FileAccess.file_exists("res://assets/sfx/dice_rattle.wav"):
 		_rattle = AudioStreamPlayer.new()
 		_rattle.stream = load("res://assets/sfx/dice_rattle.wav")

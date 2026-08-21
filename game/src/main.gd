@@ -172,8 +172,9 @@ func _fullrun(dir: String) -> void:
 			continue   # act break swapped the screen, or the run ended — the loop
 					   # condition decides which, and neither may be written to
 		var moves := ["Head down and sprint on the product all week.",
+			"Put $1,500 into Google ads aimed at our exact niche this week.",
 			"Get out of the building: demo to ten real customers and close one paying.",
-			"Spend the week on money: chase invoices and warm up an angel."]
+			"Run some ads."]   # deliberately amountless: the clarify pre-pass must fire
 		var mv: String = moves[state.week % moves.size()]
 		if state.product >= 55 and not state.has_flag("launched"):
 			mv = "Ship it: public launch this week — post everywhere, email every signup."

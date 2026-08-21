@@ -2813,8 +2813,18 @@ func _do_pivot(layer: Control, new_idea: String, new_what: String, new_who: Stri
 	_open_journal()
 
 func _close_journal() -> void:
-	_journal.visible = false
-	_open_btn.visible = true
+	# the pad drops back to the desk the way it rose (owner: open/close motion)
+	if _j_page != null and is_instance_valid(_j_page):
+		_sfx["card_flip"].play()
+		var tw := create_tween().set_parallel(true)
+		tw.tween_property(_j_page, "position:y", 70.0, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+		tw.tween_property(_j_page, "modulate:a", 0.0, 0.18)
+		tw.chain().tween_callback(func() -> void:
+			_journal.visible = false
+			_open_btn.visible = true)
+	else:
+		_journal.visible = false
+		_open_btn.visible = true
 
 func _next_week() -> void:
 	if _over:

@@ -207,10 +207,13 @@ func _tab_ledger() -> void:
 		var cur := int(state.budgets.get(cat, 0))
 		_label(cat.to_upper(), Vector2(10, y), 30)
 		_label(String(lv[1]), Vector2(10, y + 38), 23, Color(INK, 0.6))
-		_label("$%s/wk" % _fmt(cur), Vector2(560, y + 6), 32, PEN)
+		_label("$%s/wk" % _fmt(cur), Vector2(520, y + 6), 32, PEN)
+		# WHAT THIS MONEY IS DOING RIGHT NOW, from the engine's own formulas —
+		# the mechanics visible at the point of the decision
+		_label(_lever_effect(cat, cur), Vector2(688, y + 12), 24, Color(INK, 0.75))
 		var minus := Button.new()
 		minus.text = "−"
-		minus.position = Vector2(760, y)
+		minus.position = Vector2(1000, y)
 		minus.size = Vector2(52, 46)
 		_ink_btn(minus)
 		minus.pressed.connect(func() -> void:
@@ -219,7 +222,7 @@ func _tab_ledger() -> void:
 		_content.add_child(minus)
 		var plus := Button.new()
 		plus.text = "+"
-		plus.position = Vector2(824, y)
+		plus.position = Vector2(1064, y)
 		plus.size = Vector2(52, 46)
 		_ink_btn(plus)
 		plus.pressed.connect(func() -> void:
@@ -256,6 +259,22 @@ func _tab_ledger() -> void:
 		ry += 44.0
 	_label("the rules of this world: reach saturates · only capacity closes · churn is a leaky bucket · debt slows everything · three weeks below zero ends it",
 		Vector2(10, ry + 8.0), 22, Color(INK, 0.5), 1100.0)
+
+## the engine's live math for one lever, in one plain phrase
+func _lever_effect(cat: String, v: int) -> String:
+	var th := state.theta
+	match cat:
+		"marketing":
+			var mult := 1.0 + 1.4 * (1.0 - exp(-float(v) / float(th.get("cac_sat", 900.0))))
+			return "reach ×%.2f" % mult if v > 0 else "no reach bought"
+		"sales":
+			return "+%.1f closers of capacity" % (float(v) / 600.0) if v > 0 else "founder sells alone"
+		"care":
+			var cut := 30.0 * (1.0 - exp(-float(v) / 1500.0))
+			return "churn −%d%%" % int(round(cut)) if v > 0 else "nobody picks up"
+		"rnd":
+			return "+%.1f product/wk, debt melts" % (float(v) / 1200.0) if v > 0 else "no extra shipping"
+	return ""
 
 func _lever_step(cur: int, dir: int) -> int:
 	var idx := 0
