@@ -287,5 +287,5 @@ Remaining to 100 across the board: live human play-feel confirmation (the one th
 - [x] W5-4 Telegraph prints the whole formula (stat level → d20 mod → DC floors → adv/dis reason)
 - [x] W5-5 Bag decluttered: 5 airy columns, no weight tags, drawn scrollbar — screenshot-verified
 - [x] W5-6 Ship diet II: patch_scenes src/assembly/_refs (~570MB never-loaded) out of the export
-- [~] W5-7 Fresh DMG building; stamp will be verified INSIDE the pck before reporting
-- [ ] W5-8 Gatekeeper: sign/notarize needs the owner's Apple ID; document the one-time verify + xattr bypass
+- [x] W5-7 DMG 2.2GB shipped; stamp '2026-08-21 23:23 · 27d3b25' verified inside the pck
+- [x] W5-8 Gatekeeper documented: one-time per copy, shortened by the 2.2GB diet; xattr bypass given; notarization offered (needs owner's Apple ID)
