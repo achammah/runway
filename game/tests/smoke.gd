@@ -6,7 +6,7 @@ extends SceneTree
 func _init() -> void:
 	var content := ContentDb.new()
 	content.load_all()
-	assert(content.items.size() == 24, "expected 24 items (15 core + 9 trade-specific)")
+	assert(content.items.size() == 29, "expected 29 items (20 core + 9 trade-specific)")
 	assert(content.events.size() >= 8, "expected authored events")
 
 	var deaths := 0

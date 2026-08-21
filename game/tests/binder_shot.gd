@@ -31,11 +31,23 @@ func _go() -> void:
 	s.cofounders = [{"role": 0, "commitment": 0, "equity": 25.0, "vesting": true, "name": "Nico Ferreira"}]
 	s.employees = [{"name": "Priya Voss", "role": "engineer", "salary": 1500, "burnout": 30.0}]
 	s.investors = [{"name": "Harborline Syndicate", "archetype": "the operator VC",
-		"thesis": "founders who ship beat founders who pitch", "coords": [-0.3, 0.2]}]
+		"thesis": "belgian wellness works when it sells a repeatable three-hour escape to people who cannot leave their jobs, not a lifestyle pivot",
+		"trait": "carries a stopwatch and notices queue lengths before introductions",
+		"coords": [-0.3, 0.2]},
+		{"name": "Soft Peak Capital", "archetype": "the thesis tourist",
+		"thesis": "the interesting part of this market is the ritual: work, rain, traffic, then warmth — package the ritual, not the room",
+		"trait": "arrives with a photographer and calls everyone part of the narrative",
+		"coords": [0.1, 0.6]}]
+	# LIVE-LENGTH text on purpose: the street tab once stacked itself the
+	# first week the LLM wrote three full-sentence tactics (owner photo)
 	s.rivals = [{"name": "Solacely", "strength": 45.0, "what": "legacy suite via trade associations",
-		"tactics": ["undercut pricing"], "weeks_since_move": 1},
+		"tactics": ["sells monthly rain-recovery memberships that renew before anyone reads the invoice",
+			"gives local employers discounted weekday vouchers, filling the quiet hours",
+			"offers free prosecco on thursday evenings, because hydration"], "weeks_since_move": 1},
 		{"name": "Eterna", "strength": 25.0, "what": "memorial pages with aggressive SEO",
-		"tactics": ["bought ads on your name"], "weeks_since_move": 3}]
+		"tactics": ["undercuts massage prices with tightly timed 25-minute slots",
+			"partners with beauty influencers for carefully cropped testimonials",
+			"runs last-minute WhatsApp deals whenever the steam rooms sit empty"], "weeks_since_move": 3}]
 	SimEngine.add_status(s, "investor_pressure", 2)
 	SimEngine.add_status(s, "word_of_mouth", 3)
 	SimEngine.add_clock(s, 3, "the bridge loan comes due")

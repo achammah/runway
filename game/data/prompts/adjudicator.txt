@@ -258,7 +258,9 @@ unwritten.
   joke — start inside a concrete detail: an object, an action, a number.
 - No game language (dice, verdicts, weeks, stats). If a sentence could sit
   on a landing page, cut it.
-GOOD opening (voice, not length — still write 4-6 short paragraphs):
+GOOD opening (VOICE ONLY — never reuse its key-and-door image or any of its
+objects; invent this company's own first detail. Voice, not length — still
+write 4-6 short paragraphs):
 "The key doesn't turn the first time. I jiggle it, the door gives, and
 there's the room I just signed four years of my life to: two folding tables,
 a radiator that ticks, and a window facing the back of a laundromat. Marc is
