@@ -237,3 +237,29 @@ UX (prior stream)
 - [ ] U8 API keys setup screen (OpenAI + Atlas), user://keys, .env untouched
 - [ ] U9 App icon, macOS .app export, DMG installer, zero Godot tells (splash off ✓)
 - [x] U10 Studio card, swap fades, trackpad pan, dice full-height, journal anim, select/name layout
+
+## THE OWNER'S LIST — GRADED (0% = untouched · 100% = award-winning, manually verified)
+Grading is honest and hard, per the owner's calibration examples.
+- [ 85%] Latency title→select — 1440ms measured → frame-01-now + streamed hydration; needs one live re-measure to confirm <300ms
+- [ 75%] #133 Founder select — overlap fixed, clean matted idle loops regenerated (4/4); still stills-in-a-row thumbs, no entrance motion
+- [ 80%] #134 Name screen witness — stands whole on the floor; could get a settle-in animation
+- [ 80%] #135 Bag — categories + scrolling shelf + trade gating + 29 items with generated sprites; hint overlapped once (fixed), wants a scroll bar
+- [ 20%] Mechanics tutorial — one drawn sheet exists; owner wants 1-3 pages of LOOPED VIDEO explainers → video factory queued
+- [ 70%] Saves + title menu — 3 slots, meta, migration, ease-in buttons + panel; buttons were bare text (paper cards + words fixed, needs reshoot grade); slots to become a FULL-SCREEN table
+- [ 85%] #136 Birth screen — full-frame seedance unpacking loop + title + status; verify live feel
+- [ 60%] #138 Curtain loop — Opus agent generating the sway loop now; drawn fallback stays
+- [ 90%] #137 Book intro — first-person entry + FIELD NOTES on beliefs, scroll + drawn bar, live-verified (founding fed mid-read)
+- [ 90%] Working assumptions — beliefs seeded wrong, converge via analytics/customers/R&D, shown in binder + field notes, tested
+- [ 90%] Scrolling — wheel + trackpad pan on beat/book; bag native; drawn scrollbars on beat/book
+- [ 85%] Screen flicker — swap overlap+fade, ink boot, no engine splash; #143 stock-room window now carries a "being painted…" ribbon
+- [ 80%] #140 Journal open — rises off the desk (slide+straighten+fade)
+- [ 85%] #139 Dice — full screen height, fade-in entry, felt backdrop; could add a whoosh
+- [ 85%] Money law — spend/set_budget ops engine-clamped, cash-must-move law, bankruptcy visible (THE RED); needs one live week with a paid plan verified
+- [ 80%] Clarify pre-pass — luna prompt (PA-authored), page question UI + amount chips + binding suffix; ask-path not yet exercised live
+- [ 85%] Ledger tab — four levers, unit economics, warnings, rules line; steppers could preview effect deltas
+- [ 75%] YC lessons layer — PA-authored block grafted; not yet observed in live narration
+- [ 85%] RW! logo — title-hand lettering icon, icns, window icon
+- [ 70%] macOS launcher/installer — .app exports, styled DMG builds; 6.5GB (size agent running: webp strategy target)
+- [ 90%] Studio card — ASSEM STUDIO fade in/out, self-drawing underline, click-skip
+- [ 90%] Keys desk — first-boot gate, user://keys.env override, keyless choice kept
+- [100%] OpenAI-key-at-start — the desk gates exactly when no key is present
