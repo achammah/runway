@@ -279,3 +279,13 @@ Remaining to 100 across the board: live human play-feel confirmation (the one th
 - [x] X12 Birth intro chain: walk in → open the box → seamless loop (seam RMS 5.6)
 - [x] X13 SIX HIDDEN TRAITS w/ engine-real effects (doors-open raises, luck rerolls, warmth-discounted term sheets), click-for-rule card UI; DM sees TRAITS; 66 engine checks
 - [x] X14 42 items, 40 w/ exact trait_mods, loadout + in-play lines, 13 new sprites generated — bag verified as a true loadout screen
+
+## WINDOW 5 — "you ignored my feedback" (root cause: stale deliverable + invisible tutorial flag)
+- [x] W5-1 PROOF OF BUILD: build_stamp.txt (date+sha) → title corner + boot log; never ambiguous again
+- [x] W5-2 Tutorial invisible = unversioned seen-flag surviving reinstalls → seen_howto_v2 + "how it works" replay on the title
+- [x] W5-3 Dice arrive ON the previous screen, which fades to black beneath (owner spec)
+- [x] W5-4 Telegraph prints the whole formula (stat level → d20 mod → DC floors → adv/dis reason)
+- [x] W5-5 Bag decluttered: 5 airy columns, no weight tags, drawn scrollbar — screenshot-verified
+- [x] W5-6 Ship diet II: patch_scenes src/assembly/_refs (~570MB never-loaded) out of the export
+- [~] W5-7 Fresh DMG building; stamp will be verified INSIDE the pck before reporting
+- [ ] W5-8 Gatekeeper: sign/notarize needs the owner's Apple ID; document the one-time verify + xattr bypass
