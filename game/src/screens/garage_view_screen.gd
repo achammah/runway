@@ -38,6 +38,7 @@ var _page_body: Control            # every page element is a child of the tilted
 var _free_text: Dictionary = {}    # page index -> what the player has written there
 var _week_sheet := 0               # 0 = what your move caused, 1 = what is left
 var _turn_dir := 0                 # the pending page-turn: +1 forward, -1 back, 0 none
+var _binder: Binder                # the operations dashboard, opened with TAB/B
 var _lock_ready_last := false      # so typing only rebuilds the lock when readiness flips
 var _pending_dice := {}            # {a, b, adv_map} — cast at commit, resolved post-DM
 var _seen_spreads := {}            # "week:page:sheet" -> the ink is already dry
@@ -156,6 +157,19 @@ func setup(p_state: GameState, p_content: ContentDb, p_rng: SeededRng, p_record:
 	# a resumed run opens on last week's REAL story, not an amnesiac quiet-week
 	if _last_outcome.is_empty() and not state.last_outcome.is_empty():
 		_last_outcome = state.last_outcome.duplicate(true)
+
+func _unhandled_key_input(ev: InputEvent) -> void:
+	if ev is InputEventKey and ev.pressed and ev.keycode in [KEY_TAB, KEY_B]:
+		if _binder != null and is_instance_valid(_binder):
+			return   # the binder handles its own dismissal
+		_open_binder()
+
+func _open_binder() -> void:
+	_binder = Binder.new()
+	_binder.setup(state)
+	add_child(_binder)
+	_binder.size = Vector2(1536, 1024)
+	_sfx["card_flip"].play()
 
 func _ready() -> void:
 	_font = load("res://assets/fonts/PatrickHand-Regular.ttf")
@@ -1874,6 +1888,22 @@ func _spread_ahead() -> void:
 		situation = "Nothing came for you this week. The week is yours."
 	else:
 		situation = String(_current_event.get("title", "")) + " — " + String(_current_event.get("body", ""))
+	# THE LEVEL-UP (plan B4): a banked milestone point is spent HERE, as a pen
+	# circle on the stat of your choice — the D&D moment, on paper.
+	if state.xp > state.xp_spent:
+		_jp.line("★ You leveled. Circle the muscle that grew:")
+		var stat_items: Array = []
+		for st_n in ["build", "sell", "raise", "recruit", "grit"]:
+			stat_items.append({"id": "lv:" + st_n,
+				"text": "%s %d" % [st_n, int(state.competences.get(st_n, 3))]})
+		_jp.icon_row(stat_items, Vector2(110, 60), "body")
+		_jp.choice_made.connect(func(id: String):
+			if id.begins_with("lv:") and state.xp > state.xp_spent:
+				var st2 := id.substr(3)
+				state.competences[st2] = mini(int(state.competences.get(st2, 3)) + 1, 5)
+				state.xp_spent += 1
+				state.log_action("leveled %s to %d" % [st2, int(state.competences[st2])])
+				_sfx["win"].play())
 	# the field gets FOUR rules of reserved paper plus the ASK LINE, which is
 	# never trimmed: a situation that cannot ask is not a situation
 	_jp.line_fitted(situation, _jp.rule_pitch() * 4.0 + 60.0)

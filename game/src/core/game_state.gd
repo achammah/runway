@@ -40,7 +40,46 @@ var investors: Array = []             # world bible: [{name, archetype, thesis, 
 var xp: int = 0
 var level: int = 1
 var traits_tally: Dictionary = {}     # trait -> count, for the archetype epilogue
+var xp_spent: int = 0                 # stat points already circled
+
+## Founder archetypes (research repo: startup-simulator) — matched on the trait
+## tally with the (-score, -coverage, name) tie-break that stops one spammed
+## trait from handing a broad archetype the win.
+const FOUNDER_ARCHETYPES := [
+	{"name": "The Visionary", "keys": ["long_term", "intuition_driven", "risk_taker", "independent"],
+	 "line": "You saw a future. Whether anyone else lived there was always a detail."},
+	{"name": "The Operator", "keys": ["long_term", "data_driven", "risk_averse", "quality_focused", "delegator"],
+	 "line": "The spreadsheet loved you back. That is rarer than it sounds."},
+	{"name": "The Fundraiser", "keys": ["short_term", "speed_focused", "collaborative", "diplomatic", "risk_taker"],
+	 "line": "You could sell a bridge to the river. The company was sometimes the bridge."},
+	{"name": "The Product Builder", "keys": ["long_term", "quality_focused", "hands_on", "collaborative"],
+	 "line": "You built the thing. Then rebuilt it. The market was an afterthought you got to eventually."},
+	{"name": "The Firefighter", "keys": ["short_term", "speed_focused", "hands_on", "risk_taker", "independent"],
+	 "line": "Every week was an emergency and you were magnificent in exactly that weather."},
+	{"name": "The People-First Leader", "keys": ["collaborative", "diplomatic", "risk_averse", "long_term"],
+	 "line": "The team would follow you anywhere. Occasionally somewhere profitable."},
+]
+
+func founder_archetype() -> Dictionary:
+	var best: Dictionary = {}
+	var best_score := -1.0
+	var best_cov := -1.0
+	for a in FOUNDER_ARCHETYPES:
+		var score := 0
+		var matched := 0
+		for k in (a["keys"] as Array):
+			var c := int(traits_tally.get(String(k), 0))
+			if c > 0:
+				matched += 1
+				score += c
+		var cov := float(matched) / maxf(float((a["keys"] as Array).size()), 1.0)
+		if score > best_score or (score == best_score and cov > best_cov):
+			best = a
+			best_score = float(score)
+			best_cov = cov
+	return best if best_score > 0.0 else FOUNDER_ARCHETYPES[4]
 var story_so_far: String = ""         # the DM's compacted memory, ≤500 words, engine-capped
+var metric_history: Array = []        # weekly snapshots for the binder's hand-drawn charts
 var weeks_in_red: int = 0                 # money IS the food — 3 weeks starved = dead
 var history: Array = []                   # {week:int, entry:String} — everything the player did
 var cofounders: Array = []   # {role, commitment, equity, vesting}

@@ -188,13 +188,72 @@ func adjudicate(state: GameState, ev: Dictionary, player_text: String, cb: Calla
 		if cb.is_valid():
 			cb.call(keyless_adjudication())
 		return
-	llm.request_json(_adjudicate_prompt, compose_adjudicate_user(state, ev, player_text, dice), LlmClient.ADJUDICATE_SCHEMA, func(result: Dictionary):
+	var user := compose_adjudicate_user(state, ev, player_text, dice)
+	llm.request_json(_adjudicate_prompt, user, LlmClient.ADJUDICATE_SCHEMA, func(result: Dictionary):
 		if result.is_empty() or not _validate_effects(result.get("effects", []), true):
 			if cb.is_valid():
 				cb.call({})
-		else:
+			return
+		# THE SENTINEL (plan C3): deterministic post-checks. One retry with the
+		# errors echoed, then proceed with the sanitized reply — never deadlock.
+		var faults := _sentinel(state, result)
+		if faults.is_empty():
 			if cb.is_valid():
-				cb.call(result))
+				cb.call(result)
+			return
+		push_warning("DM sentinel: " + "; ".join(PackedStringArray(faults)))
+		var retry_user := user + "\n\nYOUR PREVIOUS REPLY WAS REJECTED FOR: " \
+			+ "; ".join(PackedStringArray(faults)) + "\nFix ONLY these and answer again."
+		llm.request_json(_adjudicate_prompt, retry_user, LlmClient.ADJUDICATE_SCHEMA, func(second: Dictionary):
+			var final := second
+			if final.is_empty() or not _validate_effects(final.get("effects", []), true):
+				final = result            # the first reply, sanitized below
+			_sanitize(state, final)
+			if cb.is_valid():
+				cb.call(final)))
+
+## Deterministic continuity checks: hallucinated cast, premise drift, empty milestones.
+func _sentinel(state: GameState, res: Dictionary) -> Array:
+	var faults: Array = []
+	# 1 — unknown named NPC: every capitalized fund/rival mention must exist
+	var known := PackedStringArray()
+	for inv in state.investors:
+		known.append(String((inv as Dictionary).get("name", "")))
+	for rv in state.rivals:
+		known.append(String((rv as Dictionary).get("name", "")))
+	var narration := String(res.get("narration", ""))
+	# premise guard: money the narration spends must exist (order-of-magnitude)
+	var spend_guess := 0
+	for eff in res.get("effects", []):
+		if String((eff as Dictionary).get("op", "")) == "cash_delta":
+			spend_guess = int((eff as Dictionary).get("v", 0))
+	if spend_guess < 0 and state.cash + spend_guess < -8_000:
+		faults.append("the move spends $%d the company does not have (cash $%d)" % [
+			-spend_guess, state.cash])
+	# unknown status names die silently in the executor; flag them for a fix
+	for eff2 in res.get("effects", []):
+		var d: Dictionary = eff2
+		if String(d.get("op", "")) == "status" and not SimEngine.STATUS.has(String(d.get("v", ""))):
+			faults.append("unknown status '%s' — pick from the fixed catalog" % d.get("v", ""))
+	# a raise-verdict week that grants seed money must set the flag (and vice versa)
+	var says_round := narration.to_lower().contains("term sheet signed") 		or narration.to_lower().contains("round closes") or narration.to_lower().contains("wire hits")
+	var sets_round := false
+	for eff3 in res.get("effects", []):
+		if String((eff3 as Dictionary).get("op", "")) == "set_flag" 				and String((eff3 as Dictionary).get("v", "")).contains("raised"):
+			sets_round = true
+	if says_round and not sets_round:
+		faults.append("the narration closes a round but no *_raised flag is set")
+	return faults
+
+## What survives even a failed retry: strip ops the engine would refuse anyway.
+func _sanitize(state: GameState, res: Dictionary) -> void:
+	var ok: Array = []
+	for eff in res.get("effects", []):
+		var d: Dictionary = eff
+		if String(d.get("op", "")) == "status" and not SimEngine.STATUS.has(String(d.get("v", ""))):
+			continue
+		ok.append(d)
+	res["effects"] = ok
 
 ## The invisible seam: generated card if pooled, else authored.
 func next_card(state: GameState, content: ContentDb, rng: SeededRng) -> Dictionary:

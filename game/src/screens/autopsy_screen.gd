@@ -96,6 +96,11 @@ func _write_body() -> void:
 	line(_fit(_compress(headline.split("\n")[0]), CAUSE_LINES))
 	line("you walked away with $%s" % _fmt(state.ceremony_payout
 			if state and state.ceremony_payout > 0 else (state.payout_today() if state else 0)))
+	# THE ARCHETYPE EPILOGUE: who this run says you are, from every move's traits
+	if state != null and not state.traits_tally.is_empty():
+		var arch := state.founder_archetype()
+		line("the record says you were %s." % String(arch.get("name", "a founder")).to_upper())
+		line(String(arch.get("line", "")), true)
 
 ## The chain: one drawn icon and one handwritten line per beat, filling the ENDING
 ## zone and nothing beyond it. Beats are measured in PRINTED RULES, because that is

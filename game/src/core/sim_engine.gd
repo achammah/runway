@@ -316,6 +316,13 @@ static func weekly_tick(state: GameState) -> Dictionary:
 			rep["expired"].append(String(cmd.get("name", "")))
 	state.commitments = kept_comm
 
+	# the binder's memory: one snapshot per week, capped
+	state.metric_history.append({"wk": state.week, "cash": state.cash,
+		"customers": state.traction, "revenue": int(rep.get("revenue", 0)),
+		"burn": int(rep.get("burn", 0)), "morale": state.morale,
+		"debt": int(state.tech_debt), "hype": state.hype})
+	if state.metric_history.size() > 90:
+		state.metric_history = state.metric_history.slice(state.metric_history.size() - 90)
 	state.clampi_meters()
 	return rep
 
