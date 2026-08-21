@@ -199,3 +199,19 @@ Lanes run it after every batch and paste the line in their round log.
 - [x] T13 Screen sweep: was-page elision, shot-harness curtain, binder crew crash, world-reveal crowding — fixed with permanent harnesses (binder_shot, world_reveal_shot)
 - [x] T14 Prompt-editor pass on 8-week transcript: Monday-opener, joke-first, diary template broken; narration length contradiction healed (210-290 everywhere)
 - [x] T15 Prompt edits verified live: 4 weeks, 4 distinct opener shapes (zero Mondays), plain first sentences, diary frames varied — editor pass closed
+
+
+## THE 3-HOUR AUTONOMY WINDOW (owner reports #125-#132 + beyond)
+- [x] W1 #125 Name gets its own FIRST screen (sign page, deal-another, prefilled); identity page unsqueezed
+- [x] W2 #126 Inventory 15→29: 9 trade-gated + 5 universal items; shelf filters by biz what/who, rebuilt on entry, 6-col grid
+- [x] W3 #126b Birth screen: RUNWAY! + "creating your world…" while the bible generates (no more dead draft page)
+- [x] W4 #128 Founding prefetched during the reveal read — SETTLE IN opens on the beat
+- [x] W5 #127 Founding = first-person journal de bord, block authored via nexus prompt-assistant (thread closed); anti-copy pin after live test
+- [x] W6 #127b Reveal overlap fixed by measured flow; thesis/what schema 110→200/100→140 + complete-sentence law
+- [x] W7 #129 Honest ▼ + drawn scrollbar on the beat
+- [x] W8 #131 Binder street tab steps by measured wrap; harness feeds live-length text
+- [x] W9 #132 Was-page one hand: reserve 150/130, shrink floor 27px (soak-verified)
+- [x] W10 #130 Scene ink tilts to the surface's measured top edge; lines never spill past the board
+- [x] W11 Day-one curtain line ("day one is being written…")
+- [~] W12 14 item sprites generating in the game's hand (pilot approved, batch running)
+- [x] W13 Smoke expectation 29 items; suites green; probes 6 green (first-person founding verified live)

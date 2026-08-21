@@ -228,3 +228,18 @@ the founder, world reveal flows with LLM verbosity (new shot harness),
 Binder got a 7-tab harness that immediately caught a Variant crash in the
 crew tab (now named + str()-safe). Deep 8-week probe: art every week,
 dedup firing, five straight dice keeps correct, prose graded clean.
+
+## 2026-08-21c — The eight-report batch + the 3-hour window
+Owner streamed #125-#132 then left for 3 hours with "improve all of that
+autonomously and go beyond". Shipped: the name as its own first screen; a
+29-item trade-aware shelf (rebuilt on bag entry); the Birth screen; founding
+prefetched during the reveal; the founding rewritten as a first-person
+journal de bord — the instruction block co-authored with the Nexus prompt
+assistant (per the owner's explicit instruction), verified live, then
+pinned against example-copying; measured text flow on the reveal AND the
+binder street tab (schema caps raised so quotes stop cutting mid-word);
+honest ▼ + drawn scrollbar on the beat; the was-page back to one hand;
+scene ink tilted to each surface's measured edge and capped at its bottom;
+day-one curtain line. Diagnosed a triple "hang" to a stale smoke assertion
+(15 items) idling the tree. 14 new item sprites generated in-style (white
+keyed to alpha). Suites green; probe 6 confirmed the founding voice.
