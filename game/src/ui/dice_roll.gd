@@ -81,9 +81,11 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	if _tex == null:
 		return
-	# a soft vignette so the tabletop clip reads as ON the room, not a popup
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.08, 0.07, 0.06, 0.45))
-	var side := minf(size.x, size.y) * 0.62
+	# ITS OWN SCREEN (owner: "the video dice roll ... on its own screen"): an
+	# opaque felt table so nothing — page, beat, room — can bleed through the roll
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.11, 0.095, 0.08, 1.0))
+	draw_circle(size * 0.5, minf(size.x, size.y) * 0.52, Color(0.145, 0.125, 0.10, 1.0))
+	var side := minf(size.x, size.y) * 0.66
 	var pos := Vector2((size.x - side) * 0.5, (size.y - side) * 0.5 - 20.0)
 	var src := Rect2(float(_frame % COLS) * CELL, float(_frame / COLS) * CELL, CELL, CELL)
 	draw_texture_rect_region(_tex, Rect2(pos, Vector2(side, side)), src)

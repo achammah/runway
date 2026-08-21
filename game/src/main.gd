@@ -186,6 +186,17 @@ func _fullrun(dir: String) -> void:
 		while adj_cap > 0 and is_instance_valid(gv) and bool(gv.get("_adjudicating")):
 			adj_cap -= 1
 			await get_tree().create_timer(0.5).timeout
+		# READ THE BEAT LIKE A PLAYER: wait for it to open, let it breathe, then
+		# click "look up". Skipping this stacked unread beats and swallowed weeks.
+		var beat_cap := 30
+		while beat_cap > 0 and (_beat == null or not is_instance_valid(_beat)):
+			beat_cap -= 1
+			await get_tree().create_timer(0.5).timeout
+		var read_cap := 240
+		while read_cap > 0 and _beat != null and is_instance_valid(_beat):
+			read_cap -= 1
+			_beat.set("_proceed", true)
+			await get_tree().create_timer(0.5).timeout
 		await get_tree().create_timer(1.2).timeout
 		if not _still_playing(gv):
 			await get_tree().create_timer(0.5).timeout
@@ -806,11 +817,16 @@ func _cold_open(gv: GarageViewScreen) -> void:
 		_opening_scene()
 		return
 	_drop_curtain()
+	# day one is an adjudication like any other: the journal's lock must refuse
+	# until it lands, or a fast press stacks two in-flight turns (probe-caught)
+	gv.set("_adjudicating", true)
 	var move := ("This is day one of %s — %s. Write the FOUNDING of this exact company: the "
 			+ "place, the crew, the first real stake in the ground. No dice language, no "
 			+ "verdict talk — an opening chapter.") % [state.company_name,
 			state.company_idea if state.company_idea != "" else "a company that refuses to explain itself"]
 	generator.adjudicate(state, {}, move, func(res: Dictionary) -> void:
+		if is_instance_valid(gv):
+			gv.set("_adjudicating", false)
 		if res.is_empty() or state == null:
 			_raise_curtain()
 			_opening_scene()
@@ -819,12 +835,17 @@ func _cold_open(gv: GarageViewScreen) -> void:
 		res["interpreted_as"] = ""
 		res.erase("dice")
 		res.erase("roll")
+		res["week_played"] = 0         # day one, before any week is played
 		state.last_outcome = {
 			"title": "day one", "verdict": "",
 			"said": "", "heard": "",
 			"narration": String(res.get("narration", "")),
 			"reality": String(res.get("reality_check", "")),
-			"dec_log": [], "log": [], "dm": res.duplicate(true)}
+			"dec_log": [], "log": [],
+			# ALREADY CONSUMED: _begin_turn is called directly below. Without the
+			# stamp, _poll_turn found this dm unseen and played the founding beat
+			# a second time (the owner's "goes back to Week 1").
+			"dm": res.duplicate(true), "dm_seen": true}
 		if is_instance_valid(gv):
 			gv.set("_last_outcome", state.last_outcome.duplicate(true))
 		_begin_turn(res))
@@ -989,16 +1010,26 @@ func _drop_curtain() -> void:
 	if _curtain == null or not is_instance_valid(_curtain):
 		_curtain = Curtain.new()
 		add_child(_curtain)
-	move_child(_curtain, get_child_count() - 1)
-	# the table roll owns the screen first; the curtain waits for the die
+	# THE CEREMONY OUTRANKS THE CURTAIN, ALWAYS. The premature move_child here
+	# put an already-shut curtain (the founding's) ABOVE the cup and the whole
+	# roll played invisibly — the owner's "sometimes no video dice roll". The
+	# curtain claims the top only once the die has settled.
 	if _cup != null and is_instance_valid(_cup):
+		move_child(_cup, get_child_count() - 1)
 		await _cup.settled
 		await get_tree().create_timer(0.15).timeout
 	move_child(_curtain, get_child_count() - 1)
 	_curtain.close()
-	get_tree().create_timer(12.0).timeout.connect(func() -> void:
+	# The hang failsafe. 12s was WRONG: a live adjudication often takes 15-25s,
+	# and the curtain lifted onto the stale page mid-think (the owner's "goes
+	# back to blank background"). 40s only catches a truly dead network — and a
+	# week still mid-adjudication keeps the curtain down however long it takes.
+	get_tree().create_timer(40.0).timeout.connect(func() -> void:
+		var still_thinking := _screen is GarageViewScreen \
+				and bool((_screen as GarageViewScreen).get("_adjudicating"))
 		if _curtain != null and is_instance_valid(_curtain) and _curtain.visible \
-				and not _turn_busy:
+				and not _turn_busy and not still_thinking:
+			push_warning("curtain failsafe: nothing arrived in 40s, opening")
 			_curtain.open())
 
 ## The table roll: the pre-rendered cup-and-die clip for the rolled number plays
@@ -1015,7 +1046,7 @@ func _roll_ceremony(n: int) -> void:
 	_cup = DiceRoll.new()
 	add_child(_cup)
 	move_child(_cup, get_child_count() - 1)
-	_cup.size = get_viewport().get_visible_rect().size
+	_cup.set_deferred("size", get_viewport().get_visible_rect().size)
 	await _cup.roll(n)
 	if _cup != null and is_instance_valid(_cup):
 		_cup.queue_free()
@@ -1226,9 +1257,14 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 	print("TURN wk%02d: beat opens · narration %d chars · art %s · place %s" % [
 		state.week if state != null else -1, narration.length(),
 		"ON" if want_art else "off", String(scene.get("place", "-"))])
+	print("TURN headline: %s" % String(dm.get("headline", "")))
+	print("TURN journal_note: %s" % String(dm.get("journal_note", "")))
+	print("TURN narration[0:220]: %s" % narration.left(220).replace("\n", " / "))
 	if narration == "" and not want_art:
 		return
 	_turn_busy = true
+	if _screen is GarageViewScreen:
+		(_screen as GarageViewScreen)._world_busy = true
 	var seq := _turn_seq
 	_scene_seq = seq
 	_scene_path = ""
@@ -1293,7 +1329,8 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 		# That is not a reason to skip the week: the beat carries on as reading.
 
 	var l := LoadingScreen.new()
-	l.begin("WEEK %d" % int(dm.get("week_played", state.week)))
+	var wkp := int(dm.get("week_played", state.week))
+	l.begin("DAY ONE" if wkp <= 0 else "WEEK %d" % wkp)
 	add_child(l)
 	l.size = get_viewport().get_visible_rect().size
 	_beat = l
@@ -1325,17 +1362,17 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 			{"brilliant": "It lands beautifully.", "fine": "It lands.",
 			 "risky": "It half-lands: something gives.", "backfired": "It goes wrong."}.get(band_key, "It lands."),
 			mode_txt])
-		if _curtain != null and is_instance_valid(_curtain):
-			_curtain.stamp_roll("%d %s%d (%s)  vs  DC %d" % [used_d20, "+" if mod >= 0 else "−",
-				absi(mod), stt, dc], band)
 	l.say("", String(dm.get("narration", "")))
 	l.say("", String(dm.get("reality_check", "")))
 	if _curtain != null and is_instance_valid(_curtain):
 		move_child(_curtain, get_child_count() - 1)
-		# never rise mid-drop; let the ceremony play and the judgement be READ
+		# THE Z-ORDER OF THE TURN: beat under curtain under cup. Without the cup
+		# re-raise, a verdict landing mid-ceremony added the beat topmost and the
+		# reading text covered the playing die (the owner's overlap photo).
 		if _cup != null and is_instance_valid(_cup):
+			move_child(_cup, get_child_count() - 1)
 			await _cup.settled
-		await get_tree().create_timer(1.5 if used_d20 > 0 else 0.65).timeout
+		await get_tree().create_timer(0.9 if used_d20 > 0 else 0.65).timeout
 	_raise_curtain()
 
 	var deadline := Time.get_ticks_msec() + int(HOLD_CEILING * 1000.0)
@@ -1365,6 +1402,8 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 	if seq != _turn_seq:
 		return
 	_turn_busy = false
+	if _screen is GarageViewScreen:
+		(_screen as GarageViewScreen)._world_busy = false
 	if _scene_path != "":
 		_open_scene(_scene_path, String(dm.get("headline", "")))
 	_check_exit()   # deferred while the week was being read
@@ -1378,6 +1417,7 @@ func _on_scene_progress(f: float) -> void:
 func _on_scene_ready(path: String) -> void:
 	if _scene_seq != _turn_seq:
 		return   # belongs to a run that has already ended
+	print("TURN art landed: %s" % path)
 	_scene_path = path
 	_scene_done = true
 	if not _turn_busy:
@@ -1388,6 +1428,7 @@ func _on_scene_ready(path: String) -> void:
 func _on_scene_failed(reason: String) -> void:
 	if _scene_seq != _turn_seq:
 		return
+	print("TURN art FAILED: %s" % reason)
 	_scene_path = ""
 	_scene_done = true
 	if _from_library != "":
@@ -1426,6 +1467,8 @@ func _late_scene(path: String) -> void:
 func _cancel_turn() -> void:
 	_turn_seq += 1
 	_turn_busy = false
+	if _screen is GarageViewScreen:
+		(_screen as GarageViewScreen)._world_busy = false
 	_dm = {}
 	_dm_armed = false
 	_scene_path = ""

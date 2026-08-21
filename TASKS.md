@@ -182,3 +182,14 @@ Lanes run it after every batch and paste the line in their round log.
 ## Owner feedback ledger (append; each item becomes tasks above)
 - 2026-08-18 PM: "log book VERY FAR from award winning" → LANE-GARAGE re-scoped to JOURNAL-FIRST (perfect wrapping, page titles, structure, integration; may extract journal_view.gd). "hundreds of setups get small loop animations / video loops" → LANE-SCENES i2v mandate per hero scene + SceneRoom auto-plays anim/ frames (done, MAIN).
 - 2026-08-18: "assembled/not organic" garage → S6 scene-first (in progress). "All text small" → §0 type floor + S7/S8/S10. "Reviewer/redesigner should have caught it" → F3.
+
+## THE TRANSITION REWORK (owner storm, live play #118-#122)
+- [x] T1 ONE die only: curtain die/stamp apparatus deleted (roll_die/stamp_roll/hex gone); the cup video is the single die on screen
+- [x] T2 Ceremony on its OWN screen: opaque felt backdrop, nothing bleeds through; press → video roll → curtain considering → beat → page
+- [x] T3 Video number == engine roll by construction (single `used` source, TURN dice trace printed) — verify live
+- [x] T4 Log book cut text: line_fitted shrinks (34→30→27→24) before any ellipsis; squeezed pages print the event BODY (the ask), title dropped first
+- [x] T5 Level row wrap: "recruit 3" → "hire 3" caption
+- [x] T6 NPC repeat killer: played_events entries carry cast names; regex name filter rejects pool repeats; prompts forbid re-leading with recent people; plain-title law for cards
+- [x] T7 Fresh image every staged week (stage_sig carries the week)
+- [ ] T8 Live paid probe: 2+ weeks with art — verify dice match, no overlap, plain prose, new faces, new images
+- [ ] T9 Film harness re-shoot: dice film + turn film frames clean

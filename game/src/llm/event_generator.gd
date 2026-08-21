@@ -8,7 +8,7 @@ var llm: LlmClient
 var pool: Array = []
 var _pending := false
 
-const SYSTEM_PROMPT := """You write event cards for RUNWAY!, a satirical startup survival game. Voice: dry, specific, wince-funny. Body 60 words max. Choice labels 8 words max. Never real companies or people. Never break the fourth wall. You receive the run state as JSON, including the player's company_name and what it does (company_does) — write events that are SPECIFIC to that business (its customers, its industry's absurdities, its failure modes), and refer to the company by name when natural. Output ONLY a card matching the schema. Effects use ONLY the allowed ops within sane ranges (meter deltas within ±15; cash_delta proportionate to the era in the state — ±2000 garage, ±10k coworking, ±60k office, ±250k floor, ±1M hq). Match the event to the era and its cast: the state carries era_name, staff (named employees with burnout levels), rounds_raised and board — a garage event smells of ramen, an HQ event of lawyers; a Service business bills hours and juggles clients, a Marketplace juggles two sides, Hardware waits on parts; name a staff member when one fits, and never invent people who are not in the state. Choices must be genuine dilemmas — no strictly-correct option. Reference at least one specific item, cofounder, or flag from the state. The state includes recent_actions — the log of what the player actually did each week. USE IT: create continuity and follow-ups. Some weeks, instead of a problem, write an OPPORTUNITY that grows directly out of a recent action (a prospect who saw the marketing post and liked it, a demo attendee who wants an intro, a customer who mentioned them somewhere) — opportunities still carry tradeoffs, never free wins."""
+const SYSTEM_PROMPT := """You write event cards for RUNWAY!, a satirical startup survival game. Voice: dry, specific, wince-funny. Body 60 words max. Choice labels 8 words max. Never real companies or people. Never break the fourth wall. The title is a PLAIN statement of the situation in at most 7 words — 'The pilot customer wants a discount', never a mood-phrase riddle like 'Inner Calm, Concrete Floor'. If the user message lists PEOPLE ALREADY ON STAGE RECENTLY, none of them may appear in this card. You receive the run state as JSON, including the player's company_name and what it does (company_does) — write events that are SPECIFIC to that business (its customers, its industry's absurdities, its failure modes), and refer to the company by name when natural. Output ONLY a card matching the schema. Effects use ONLY the allowed ops within sane ranges (meter deltas within ±15; cash_delta proportionate to the era in the state — ±2000 garage, ±10k coworking, ±60k office, ±250k floor, ±1M hq). Match the event to the era and its cast: the state carries era_name, staff (named employees with burnout levels), rounds_raised and board — a garage event smells of ramen, an HQ event of lawyers; a Service business bills hours and juggles clients, a Marketplace juggles two sides, Hardware waits on parts; name a staff member when one fits, and never invent people who are not in the state. Choices must be genuine dilemmas — no strictly-correct option. Reference at least one specific item, cofounder, or flag from the state. The state includes recent_actions — the log of what the player actually did each week. USE IT: create continuity and follow-ups. Some weeks, instead of a problem, write an OPPORTUNITY that grows directly out of a recent action (a prospect who saw the marketing post and liked it, a demo attendee who wants an intro, a customer who mentioned them somewhere) — opportunities still carry tradeoffs, never free wins."""
 
 const ADJUDICATE_PROMPT := """You are the world of RUNWAY!, a satirical startup survival game, adjudicating a founder's free-form action during an event. You receive the full run state — company, business_model (what × who), funding_path, employees, customers, product_version, items owned, cofounders with roles and commitment, archetype competences, meters — then the event and the player's written move. Judge it fairly but the world is harsh, and CONTEXT-AWARE: concrete plans that use things the founder ACTUALLY HAS work better; a bootstrapped company can be scrappy but can't outspend problems; a VC-backed one has money but answers for it; enterprise sales are slow and relationship-driven, consumer needs volume and virality, hardware makes everything slower and costlier; part-time cofounders are less available; more customers means more to lose. Vague, magical, or entitled answers backfire with comedy. narration: 210-290 words in 4-6 short second-person paragraphs — read while the art renders (~70s). PLAIN FIRST: simple declaratives a tired reader follows first pass; at most one wry line per two paragraphs; no riddle headlines. verdict: brilliant / fine / risky / backfired. effects: 1-3 ops from the whitelist, magnitudes proportionate to the era in the state (cash within ±3000 in the garage, scaling up by era; meters within ±15 always). The player makes ONE move per week — your effects carry seven days of work, so a sound grounded plan earns the generous end of the range. MILESTONES: when the written week genuinely constitutes it, set the gating flag via set_flag — first_revenue, launched, pmf, seed_raised, series_a (max one per week; pair a closed round with its cash). THE ROLL: the user message carries d20=N and competences; pick the governing stat, mod=stat-3, judge DC 6-16 by boldness, and narrate what total EARNED (beat by 5+ brilliant / 0+ fine / -1..-2 risky-mixed / -3- backfired); output roll={stat,dc}. Every effect includes "why": its concrete in-world cause (<=10 words). Staff named in the state are real: leaning on a cooked employee is risky, and plans ignoring an investor board draw friction. Never more than one strongly positive effect unless the plan is genuinely brilliant AND grounded in what the founder actually has."""
 
@@ -105,11 +105,28 @@ func _arc_block(state: GameState) -> String:
 		return ""
 	return "\n\nACTIVE NARRATIVE DIRECTIVES (this run's authored storylines — weave ONE in when it fits, never force all):\n- " + "\n- ".join(dirs)
 
+## Proper names seen in the recent past — "Nico Sorel" looping week after week
+## is the exact failure this hunts. Capitalized first-last pairs from the last
+## few played entries; crude on purpose, a filter not a parser.
+static func recent_names(state: GameState, back: int = 4) -> PackedStringArray:
+	var rex := RegEx.new()
+	rex.compile("[A-Z][a-z]+ [A-Z][a-z]+")
+	var out := PackedStringArray()
+	for pt in state.played_events.slice(maxi(state.played_events.size() - back, 0)):
+		for hit in rex.search_all(String(pt)):
+			var nm := hit.get_string()
+			if not out.has(nm):
+				out.append(nm)
+	return out
+
 ## User-message composers (also exercised directly by tests/smoke.gd).
 func compose_event_user(state: GameState) -> String:
 	var no_repeat := ""
 	if not state.played_events.is_empty():
 		no_repeat = "\nALREADY PLAYED (never repeat these situations, characters, or their obvious sequels back-to-back): " + JSON.stringify(state.played_events)
+	var names := recent_names(state)
+	if not names.is_empty():
+		no_repeat += "\nPEOPLE ALREADY ON STAGE RECENTLY: %s. Do NOT lead with any of them again this week — bring in someone NEW (a different customer, a stranger, a rival\'s person), or let the world itself be the event." % ", ".join(names)
 	return "Run state:\n" + JSON.stringify(state.to_digest()) + _arc_block(state) + no_repeat + "\nWrite one new event card for this exact moment."
 
 ## THE CONTEXT SANDWICH (plan C1): world bible -> compacted memory -> recent
@@ -286,6 +303,13 @@ func next_card(state: GameState, content: ContentDb, rng: SeededRng) -> Dictiona
 			if String(pt).similarity(ct) > 0.6:
 				dup = true
 				break
+		if not dup:
+			# a returning lead character IS a repeat, whatever the title says
+			var blob := ct + " " + String(cand.get("body", ""))
+			for nm in recent_names(state):
+				if blob.contains(String(nm)):
+					dup = true
+					break
 		if not dup:
 			return cand
 		push_warning("event pool: dropped near-duplicate '%s'" % ct)

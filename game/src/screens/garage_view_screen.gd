@@ -41,6 +41,7 @@ var _turn_dir := 0                 # the pending page-turn: +1 forward, -1 back,
 var _binder: Binder                # the operations dashboard, opened with TAB/B
 var _lock_ready_last := false      # so typing only rebuilds the lock when readiness flips
 var _pending_dice := {}            # {a, b, adv_map} — cast at commit, resolved post-DM
+var _world_busy := false           # main holds this true from beat-open to beat-closed
 var _seen_spreads := {}            # "week:page:sheet" -> the ink is already dry
 var _week_told := 0                # how much of the story sheet one got through
 ## The capture harness in main.gd reaches for the old two-page frames; both now
@@ -1980,8 +1981,11 @@ func _spread_ahead() -> void:
 		_jp.line("★ You leveled — circle the muscle that grew:")
 		var stat_items: Array = []
 		for st_n in ["build", "sell", "raise", "recruit", "grit"]:
+			# "recruit 3" is the one caption that wraps inside a 110px cell; the
+			# sheet says "hire", the sheet's id stays canonical
 			stat_items.append({"id": "lv:" + st_n,
-				"text": "%s %d" % [st_n, int(state.competences.get(st_n, 3))]})
+				"text": "%s %d" % ["hire" if st_n == "recruit" else st_n,
+					int(state.competences.get(st_n, 3))]})
 		# caption-only cells: the row is one ruled line tall, not a portrait band
 		_jp.icon_row(stat_items, Vector2(110, 42), "body")
 		_jp.choice_made.connect(func(id: String):
@@ -1995,8 +1999,11 @@ func _spread_ahead() -> void:
 	# a term-sheet week, where the cards ARE the question and the prose yields
 	if special_used:
 		# the cards/level row already ask the question; the prose stays lean and
-		# no extra instruction line is spent — the fence math is exact here
-		_jp.line_fitted(situation, _jp.rule_pitch() * 2.0 + 72.0)
+		# no extra instruction line is spent — the fence math is exact here.
+		# On these squeezed pages the ASK must survive whole: the body carries it,
+		# the title is the first casualty (owner: "text is being too much cut").
+		var ask := String(_current_event.get("body", "")).strip_edges()
+		_jp.line_fitted(ask if ask != "" else situation, _jp.rule_pitch() * 2.0 + 72.0)
 	else:
 		_jp.line_fitted(situation, _jp.rule_pitch() * 4.0 + 60.0)
 		_jp.line("So — what do you do?")
@@ -2166,7 +2173,11 @@ func _commit_week(b: Button) -> void:
 ## verdict comes back, the week applies, the beat opens. The old flow made the
 ## player lock twice (once to ask, once to accept) — the 60-second week locks once.
 func _commit_from_text() -> void:
-	if _adjudicating:
+	# THE COMMIT GATE: one week in the world at a time. While the previous beat
+	# is still open (main holds _world_busy), a press must do nothing — the
+	# probe caught a week whose dice rolled and numbers applied while its beat
+	# and art were silently swallowed.
+	if _adjudicating or _world_busy:
 		return
 	if not _pending_free.is_empty():
 		week_committing.emit()
@@ -2202,6 +2213,7 @@ func _commit_from_text() -> void:
 		mode = "disadvantage (%s)" % ", ".join(cx.dis_reasons)
 	_pending_dice = {"a": da, "b": db, "used": used, "stat": stat, "mode": mode,
 		"mod": int(state.competences.get(stat, 3)) - 3}
+	print("TURN dice used=%d of (%d,%d) stat=%s %s" % [used, da, db, stat, mode])
 	week_rolled.emit(used)
 	week_committing.emit()
 	generator.adjudicate(state, _current_event, t, func(res: Dictionary):
@@ -2550,6 +2562,15 @@ func _apply_lock(work_results: Dictionary) -> void:
 	# the world never asks the same question twice: remember what was played
 	var played_title := String(_current_event.get("title", "")).strip_edges()
 	if played_title != "":
+		# remember the PEOPLE too — "same question, same Nico Sorel every week"
+		# was the failure: the title alone can change while the character loops
+		var who := PackedStringArray()
+		for cm in (_last_outcome.get("dm", {}) as Dictionary).get("cast", []):
+			var nm := String((cm as Dictionary).get("name", "")).strip_edges()
+			if nm != "" and not who.has(nm):
+				who.append(nm)
+		if who.size() > 0:
+			played_title += " (with %s)" % ", ".join(who)
 		state.played_events.append(played_title)
 		if state.played_events.size() > 12:
 			state.played_events = state.played_events.slice(state.played_events.size() - 12)

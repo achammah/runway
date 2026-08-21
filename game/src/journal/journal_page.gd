@@ -962,9 +962,16 @@ func line_fitted(text: String, reserve: float, zone: String = "body", faint: boo
 	_cascade(zone)
 	var start: float = _snap(float(_cursor.get(zone, 0.0)))
 	var avail: float = _hard_floor() - start - reserve
-	# a squeezed page keeps ONE line of story rather than stealing the answer's room
-	var fit: int = maxi(int(floor(avail / _line_advance(SIZE_BODY))), 1)
-	var lines := _wrap_lines(text, SIZE_BODY)
+	# SHRINK BEFORE CUTTING (owner: "text is being too much cut, so unclear"):
+	# a smaller hand keeps the whole thought; the ellipsis only survives as the
+	# final fallback when even 24px cannot hold it.
+	for sz in [SIZE_BODY, 30, 27, 24]:
+		var fit_s: int = maxi(int(floor(avail / _line_advance(sz))), 1)
+		if _wrap_lines(text, sz).size() <= fit_s:
+			_shaped(text, sz, FAINT if faint else INK, zone, HORIZONTAL_ALIGNMENT_LEFT)
+			return
+	var fit: int = maxi(int(floor(avail / _line_advance(24))), 1)
+	var lines := _wrap_lines(text, 24)
 	var told := text
 	if lines.size() > fit:
 		var kept := lines.slice(0, fit)
@@ -972,7 +979,7 @@ func line_fitted(text: String, reserve: float, zone: String = "body", faint: boo
 		var cut := lastl.rfind(" ")
 		kept[fit - 1] = (lastl.substr(0, cut) if cut > 24 else lastl) + " …"
 		told = " ".join(kept)
-	line(told, faint, zone)
+	_shaped(told, 24, FAINT if faint else INK, zone, HORIZONTAL_ALIGNMENT_LEFT)
 
 ## Greedy wrap against the constant writable span — one shared implementation, so
 ## measuring for a budget and placing for real can never disagree.
