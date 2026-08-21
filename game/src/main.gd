@@ -921,6 +921,7 @@ func _prefetch_founding(gv: GarageViewScreen) -> void:
 		if _screen is BookIntroScreen:
 			(_screen as BookIntroScreen).feed_entry(String(res.get("narration", "")))
 			_book_showed_entry = true
+			print("FOUNDING landed (%d chars) — fed to the open book" % String(res.get("narration", "")).length())
 		elif _screen is GarageViewScreen:
 			# the player is already in the room waiting on the curtain: play it
 			_consume_founding(_screen as GarageViewScreen))
@@ -1402,15 +1403,20 @@ func _firstflow(dir: String) -> void:
 	await get_tree().create_timer(0.6).timeout
 	await _shot(dir, "f2_birth")
 	var cap := 90
-	while cap > 0 and not (_screen is WorldRevealScreen):
+	while cap > 0 and not (_screen is BookIntroScreen):
 		cap -= 1
 		await get_tree().create_timer(0.5).timeout
 	await get_tree().create_timer(0.4).timeout
-	await _shot(dir, "f3_reveal")
-	# read the map like a person while the founding prefetches behind it
-	await get_tree().create_timer(7.0).timeout
-	if _screen is WorldRevealScreen:
-		(_screen as WorldRevealScreen).done.emit()
+	await _shot(dir, "f3_book")
+	# hold the book like a reader until the entry lands, then a little longer
+	cap = 60
+	while cap > 0 and not _book_showed_entry:
+		cap -= 1
+		await get_tree().create_timer(0.5).timeout
+	await get_tree().create_timer(2.0).timeout
+	await _shot(dir, "f3b_book_entry")
+	if _screen is BookIntroScreen:
+		(_screen as BookIntroScreen).done.emit()
 	await get_tree().create_timer(1.0).timeout
 	await _shot(dir, "f4_after_settle")
 	cap = 240

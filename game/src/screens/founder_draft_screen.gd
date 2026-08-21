@@ -134,23 +134,41 @@ func _ready() -> void:
 			var spot := SpotlightFallback.new()
 			spot.set_anchors_preset(Control.PRESET_FULL_RECT)
 			add_child(spot)
-	# preload loop frames (any count — 4 or 48)
+	# THE FIRST FRAME LOADS NOW, THE REST LOAD WHILE YOU LOOK (owner: "weird
+	# latency between startup and character selection" — 144 synchronous frame
+	# loads was 1.4s of it). Each archetype gets frame 01 immediately; a
+	# background hydrator adds ~6 frames per idle frame until the loops are full.
+	var pending: Array = []   # [aid, path] in load order
 	for arch in _archs:
 		var aid := String(arch["id"])
 		var frames: Array = []
-		var i := 1
-		while true:
-			var p := "res://assets/sprites/chr_loop_%s_%02d.png" % [aid, i]
-			if not ResourceLoader.exists(p):
-				break
-			var tex: Texture2D = load(p)
-			frames.append(tex)   # the regenerated loops are clean-edged; no trims
-			i += 1
-		if frames.is_empty():
+		var first := "res://assets/sprites/chr_loop_%s_01.png" % aid
+		if ResourceLoader.exists(first):
+			frames.append(load(first))
+			var i := 2
+			while ResourceLoader.exists("res://assets/sprites/chr_loop_%s_%02d.png" % [aid, i]):
+				pending.append([aid, "res://assets/sprites/chr_loop_%s_%02d.png" % [aid, i]])
+				i += 1
+		else:
 			var still := "res://assets/sprites/%s.png" % String(arch.get("sprite", ""))
 			if ResourceLoader.exists(still):
 				frames.append(load(still))
 		_anim_frames[aid] = frames
+	if not pending.is_empty():
+		var hydrate := func() -> void:
+			var n := 0
+			while n < 6 and not pending.is_empty():
+				var job: Array = pending.pop_front()
+				(_anim_frames[String(job[0])] as Array).append(load(String(job[1])))
+				n += 1
+		var ht := Timer.new()
+		ht.wait_time = 0.05
+		ht.timeout.connect(func() -> void:
+			hydrate.call()
+			if pending.is_empty():
+				ht.queue_free())
+		add_child(ht)
+		ht.start()
 
 	_pages = [_build_sign_page(), _build_select(), _build_name(), _build_shape_page(), _build_crew_page(), _build_money_page(), _build_bag_page()]
 	# the shelf depends on the trade chosen on page 3: rebuild it on entry
