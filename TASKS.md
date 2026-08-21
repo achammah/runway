@@ -264,3 +264,22 @@ FINAL (v3, end of the 4-hour window). Everything below is committed, pushed, and
 - [ 92%] Keys desk — OpenAI-only + the generative pitch, mascot, honest bullets, no cleartext, keyless remembered
 - [100%] OpenAI-key-at-start — gates exactly when keyless
 Remaining to 100 across the board: live human play-feel confirmation (the one thing a harness cannot grade).
+
+## WINDOW 4 — the DMG playthrough batch (owner live, #144-#156)
+P0 BROKEN
+- [ ] X1 #151/#156 Scene generation BROKEN live (default room week 1+2; probes show "v2 generation failed") — root-cause + fix + trace
+- [ ] X2 #154/#155 Clarify page: Cyrillic junk line under the question + placeholder overlapping "...decide first" row — sanitize + compact layout
+- [ ] X3 #152/#153 Binder circle drawn on wrong tab / off the row (8-tab pitch vs old 7-tab drawing)
+- [ ] X4 App launch SUPER SLOW — profile + full optimization pass (lazy loads, defer heavy manifests)
+- [ ] X5 Birth screen "ages" — worldgen prefetch during draft + timeout fallback to skeleton
+P1 VISUAL
+- [ ] X6 #145 Title appears via curtain sway + part
+- [ ] X7 #146 Select: founder centered ON the spotlight
+- [ ] X8 #147 Idle loops normalized (same scale/baseline, zero cropping) across all four
+- [ ] X9 #144 Keys screen: small transparent idle loop instead of static mascot
+- [ ] X10 #148 Name screen: witness plays its idle loop
+- [ ] X11 General transitions/loops pass (screen-to-screen)
+- [ ] X12 Birth: intro chain (walk in → open box) then loop
+P2 DESIGN
+- [ ] X13 D&D character depth: hidden traits (charisma, luck, network, credibility…) with REAL engine impact (ex-FAANG raises easier), click-to-expand details
+- [ ] X14 Item overhaul: many more items, exact stat buffs/nerfs shown (D&D loadout decisions, non-obvious tradeoffs)
