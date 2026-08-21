@@ -49,8 +49,10 @@ func _ready() -> void:
 		var d: Dictionary = inv
 		_line("%s — %s" % [String(d.get("name", "?")), String(d.get("archetype", ""))],
 			Vector2(240, y), 29)
-		_line("\"%s\"" % String(d.get("thesis", "")), Vector2(268, y + 38), 25, Color(INK, 0.65))
-		y += 88.0
+		var thesis := String(d.get("thesis", ""))
+		_line("\"%s\"" % thesis, Vector2(268, y + 38), 25, Color(INK, 0.65))
+		# a two-line thesis pushes the list down instead of crowding the next name
+		y += 88.0 + (28.0 if thesis.length() > 92 else 0.0)
 
 	_title("already on the street", Vector2(220, y + 24), 34, BLUE)
 	y += 78.0
