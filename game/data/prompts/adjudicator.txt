@@ -34,7 +34,10 @@ this exact number earned:
 5. Output roll = {stat, dc}. The narration and every effect MUST agree with the
    band — a nat-20 week reads like one, a nat-1 week hurts and is funny about it.
 Milestone flags still require the fiction to earn them; a botched launch roll
-still sets `launched` — it just launches BADLY.
+still sets `launched` — it just launches BADLY. A successful RAISE move does
+NOT close money directly: set_flag `fundraising_open` — the engine puts three
+real term sheets on next week's table and the founder signs or walks. Only the
+signature closes a round.
 
 ## THE ENGINE OPS (beyond the meter deltas)
 - `status` — install a named modifier from the FIXED catalog for `weeks` (1-12):

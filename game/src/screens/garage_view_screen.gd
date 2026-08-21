@@ -1781,6 +1781,25 @@ func _spread_was() -> void:
 			_jp.line_fitted(narr, strips_h + short_h)
 			if vt in ["brilliant", "backfired"]:
 				_jp.margin_mark("star" if vt == "brilliant" else "cross")
+			# nat 20 / nat 1: the die itself gets its stamp, computed the same
+			# deterministic way the engine resolved it
+			var dmd: Dictionary = _last_outcome.get("dm", {})
+			var dice_d: Dictionary = dmd.get("dice", {})
+			var roll_d: Dictionary = dmd.get("roll", {})
+			if not dice_d.is_empty() and not roll_d.is_empty():
+				var stt := String(roll_d.get("stat", "grit"))
+				var mode := String((dice_d.get("adv_map", {}) as Dictionary).get(stt, ""))
+				var a := int(dice_d.get("a", 10))
+				var b := int(dice_d.get("b", 10))
+				var used := a
+				if mode.begins_with("ADV"):
+					used = maxi(a, b)
+				elif mode.begins_with("DIS"):
+					used = mini(a, b)
+				if used == 20:
+					_jp.line("NAT 20 — the universe co-signed.", false)
+				elif used == 1:
+					_jp.line("NAT 1 — the universe filed a complaint.", false)
 		# ONE annotation, full ink. Faint text under a printed rule read as
 		# struck-through; the margin mark already carries the judgement.
 		if not shorts.is_empty():
@@ -1888,6 +1907,30 @@ func _spread_ahead() -> void:
 		situation = "Nothing came for you this week. The week is yours."
 	else:
 		situation = String(_current_event.get("title", "")) + " — " + String(_current_event.get("body", ""))
+	# THE TERM SHEETS (plan A2/UI-13): when a raise move opened the round, the
+	# three offers sit on the decision page as drawn cards — sign one by tapping,
+	# or write anything else and let them expire.
+	if state.has_flag("fundraising_open"):
+		var offers := SimEngine.generate_offers(state, state.investors)
+		_jp.line("THE TERM SHEETS ARE ON THE TABLE:")
+		var cards: Array = []
+		for i in offers.size():
+			var o: Dictionary = offers[i]
+			cards.append({"id": "ts:%d" % i,
+				"text": "%s\n$%s for %.0f%%" % [String(o.investor).split(" ")[0],
+					_fmt(int(o.amount)), float(o.equity_pct)]})
+		_jp.icon_row(cards, Vector2(150, 70), "body")
+		_jp.choice_made.connect(func(id: String):
+			if not id.begins_with("ts:"):
+				return
+			var o2: Dictionary = offers[int(id.substr(3))]
+			SimEngine.apply_round(state, int(o2.amount), float(o2.equity_pct))
+			state.flags.erase("fundraising_open")
+			var ladder_flag := "seed_raised" if state.rounds_raised.size() <= 2 else "series_a"
+			state.set_flag(ladder_flag)
+			state.log_action("signed %s: $%d for %.1f%%" % [o2.investor, int(o2.amount), float(o2.equity_pct)])
+			_sfx["win"].play()
+			_lock_button())
 	# THE LEVEL-UP (plan B4): a banked milestone point is spent HERE, as a pen
 	# circle on the stat of your choice — the D&D moment, on paper.
 	if state.xp > state.xp_spent:
@@ -1917,6 +1960,60 @@ func _spread_ahead() -> void:
 	te.text = String(_free_text.get(_page_i, ""))
 	_wire_free(te)
 	_lock_button()
+
+## THE TELEGRAPH (research: decision-matrix pattern): as the founder writes,
+## a faint margin note says how the move READS — governing stat guess, the
+## modifier, and any advantage/disadvantage their loadout grants. Never the
+## odds, never the DC: proof the sheet matters, mystery intact.
+const STAT_SNIFF := {
+	"build": ["build", "ship", "code", "fix", "refactor", "feature", "prototype", "debug", "product"],
+	"sell": ["sell", "demo", "pitch to customer", "close", "customer", "pricing", "price", "door", "outreach", "market"],
+	"raise": ["raise", "investor", "term sheet", "fund", "vc", "angel", "round", "pitch deck"],
+	"recruit": ["hire", "recruit", "candidate", "interview", "offer letter", "poach", "team up"],
+	"grit": ["push through", "all night", "grind", "survive", "hold", "endure", "keep going", "morale"],
+}
+var _tele: Label
+
+func _telegraph_setup(te: TextEdit) -> void:
+	_tele = Label.new()
+	_tele.add_theme_font_override("font", _font)
+	_tele.add_theme_font_size_override("font_size", 22)
+	_tele.add_theme_color_override("font_color", Color(PALETTE["ink"], 0.45))
+	_tele.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tele.position = te.position + Vector2(4, te.size.y + 26.0)
+	_jp.space.add_child(_tele)
+	_jp.written.connect(func(t: String) -> void: _telegraph_update(t))
+	_telegraph_update(te.text)
+
+func _telegraph_update(t: String) -> void:
+	if _tele == null or not is_instance_valid(_tele):
+		return
+	var low := t.to_lower()
+	if low.strip_edges().length() < 8:
+		_tele.text = ""
+		return
+	var best := ""
+	var best_hits := 0
+	for st_n in STAT_SNIFF:
+		var hits := 0
+		for w in STAT_SNIFF[st_n]:
+			if low.contains(String(w)):
+				hits += 1
+		if hits > best_hits:
+			best_hits = hits
+			best = st_n
+	if best == "":
+		_tele.text = ""
+		return
+	var mod := int(state.competences.get(best, 3)) - 3
+	var cx := SimEngine.roll_context(state, best)
+	var badge := ""
+	if bool(cx.advantage):
+		badge = "  ·  advantage (%s)" % ", ".join(cx.adv_reasons)
+	elif bool(cx.disadvantage):
+		badge = "  ·  disadvantage (%s)" % ", ".join(cx.dis_reasons)
+	_tele.text = "reads as a %s move  ·  %s%d%s" % [best.to_upper(),
+		"+" if mod >= 0 else "−", absi(mod), badge]
 
 func _wire_free(te: TextEdit) -> void:
 	te.gui_input.connect(func(ev):
