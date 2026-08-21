@@ -8,6 +8,12 @@ config/description="You don't build a startup. You survive one."
 config/icon="res://icon.png"
 run/main_scene="res://Main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+; NOTHING IN THIS GAME IS DRAWN FASTER THAN 12fps. Every loop, every sway, every
+; die is a baked 12fps sheet, and the room is a still. Uncapped, a 120Hz panel
+; was asking for ten times the frames the art has, and 1536x1024 of hand-drawn
+; paper re-presented a hundred and twenty times a second is heat with nothing on
+; screen to show for it. 30 is two and a half frames per drawn one.
+run/max_fps=30
 
 boot_splash/show_image=false
 boot_splash/bg_color=Color(0.133, 0.149, 0.169, 1)

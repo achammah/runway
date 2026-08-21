@@ -228,8 +228,10 @@ func _process(delta: float) -> void:
 		(pl["node"] as TextureRect).texture = frames[idx % frames.size()]
 	for d in dead:
 		_players.erase(d)
-	# cinematic breathe
-	var breathe := 1.0 + 0.012 * sin(_t * 0.5)
+	# cinematic breathe — on the 12fps clock the painting itself runs at, so a
+	# 1.2% scale over eight seconds stops asking the whole layer stack to
+	# repaint on every displayed frame for a number nobody can see change
+	var breathe := 1.0 + 0.012 * sin(floorf(_t * 12.0) / 12.0 * 0.5)
 	_root.scale = Vector2(breathe, breathe)
 	# founder: the run frames carry the cycle; jumps on top (layered mode only)
 	if _founder and not _jumping:

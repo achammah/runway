@@ -33,22 +33,35 @@ func _finish() -> void:
 	done.emit()
 	queue_free()
 
+## the card is a fade up, a hold, and a fade down. Through the hold — a third of
+## its life — the alpha is 1.0 and the underline is finished, so every repaint
+## redrew the same picture. The fades still get every frame they ask for.
+var _key := -1
+
 func _process(delta: float) -> void:
 	_t += delta
 	if _t >= HOLD:
 		_finish()
 		return
+	var key := int(_alpha() * 255.0) * 32 + int(clampf((_t - 0.6) / 0.5, 0.0, 1.0) * 16.0)
+	if key == _key:
+		return
+	_key = key
 	queue_redraw()
+
+## fade in over 0.7, fade out over the last 0.6, full in between
+func _alpha() -> float:
+	if _t < 0.7:
+		return _t / 0.7
+	if _t > HOLD - 0.6:
+		return maxf((HOLD - _t) / 0.6, 0.0)
+	return 1.0
 
 func _draw() -> void:
 	var w := size.x
 	var h := size.y
 	draw_rect(Rect2(Vector2.ZERO, size), Color("22262B"))
-	var a := 1.0
-	if _t < 0.7:
-		a = _t / 0.7
-	elif _t > HOLD - 0.6:
-		a = maxf((HOLD - _t) / 0.6, 0.0)
+	var a := _alpha()
 	var name := "ASSEM STUDIO"
 	var sz := 76
 	var ts := _font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, sz)

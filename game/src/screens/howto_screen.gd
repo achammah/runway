@@ -98,8 +98,19 @@ func _ready() -> void:
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.3)
 
+## ONE REPAINT PER BAKED FRAME (the page is a 12fps loop inside furniture that
+## never moves — paper, film edge, sprockets, title, caption, dots are all the
+## same drawing every time). Repainting on every displayed frame re-wobbled
+## three ink borders and re-laid the caption for a picture nobody could tell
+## apart: four repaints in five drew the frame that was already on screen.
+var _fr := -1
+
 func _process(delta: float) -> void:
 	_art.t += delta
+	var fr := int(_art.t * L_FPS) % L_FRAMES
+	if fr == _fr:
+		return
+	_fr = fr
 	_art.queue_redraw()
 
 ## next page, or the door out on the last one

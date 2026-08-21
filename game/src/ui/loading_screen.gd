@@ -54,6 +54,7 @@ var _font: Font
 var _card: Control
 var _col: VBoxContainer
 var _bar: _PenLine
+var _bar_ink := -1     ## how far along its 61 points the pen line is drawn
 var _scroll: ScrollContainer
 var _sbar: _ScrollInk
 
@@ -227,7 +228,13 @@ func _process(delta: float) -> void:
 		_next_reveal_at = _t + clampf(String(beat["body"]).length() / READ_CPS, 1.2, 9.0)
 	var goal: float = _target if _target > 0.0 else minf(0.92, _t / 60.0)
 	_bar.amount = move_toward(_bar.amount, goal, delta * 0.5)
-	_bar.queue_redraw()
+	# the pen line is 61 wobbled points and it only becomes a different picture
+	# when the ink reaches the next one — sixty-one drawings in the whole beat,
+	# not one per displayed frame, each of them rebuilding the wobble from seed
+	var ink := int(_bar.amount * 60.0)
+	if ink != _bar_ink:
+		_bar_ink = ink
+		_bar.queue_redraw()
 	# MORE BELOW: a drawn ▼ pulses while unread lines wait under the fold
 	if _more != null and is_instance_valid(_more) and is_instance_valid(_scroll):
 		var maxs := maxf(_col.size.y - _scroll.size.y, 0.0)
@@ -239,9 +246,13 @@ func _process(delta: float) -> void:
 		if _sbar != null and is_instance_valid(_sbar):
 			_sbar.visible = maxs > 8.0
 			_sbar.track_h = _scroll.size.y
-			_sbar.frac = clampf(float(_scroll.scroll_vertical) / maxs, 0.0, 1.0) if maxs > 0.0 else 0.0
-			_sbar.thumb_frac = clampf(_scroll.size.y / maxf(_col.size.y, 1.0), 0.12, 1.0)
-			_sbar.queue_redraw()
+			var frac := clampf(float(_scroll.scroll_vertical) / maxs, 0.0, 1.0) if maxs > 0.0 else 0.0
+			var thumb := clampf(_scroll.size.y / maxf(_col.size.y, 1.0), 0.12, 1.0)
+			# the thumb only moves when the reader does
+			if not is_equal_approx(frac, _sbar.frac) or not is_equal_approx(thumb, _sbar.thumb_frac):
+				_sbar.frac = frac
+				_sbar.thumb_frac = thumb
+				_sbar.queue_redraw()
 
 func _reveal(beat: Dictionary) -> void:
 	var block := VBoxContainer.new()

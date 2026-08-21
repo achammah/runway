@@ -53,6 +53,13 @@ func _ready() -> void:
 	create_tween().tween_property(self, "self_modulate:a", 1.0, 0.35)
 	set_process(true)
 
+## ONE REPAINT PER BAKED FRAME. The screen is 12fps art with a bobbing logotype
+## and a breathing line over it; drawn on every displayed frame, four repaints
+## in five re-blitted the identical cell of a 5120x4608 sheet. The bob and the
+## breath ride the same clock as the art they sit on, which is what they look
+## like anyway. -1 so the very first frame always lands.
+var _fr := -1
+
 func _process(delta: float) -> void:
 	_t += delta
 	# the arrival runs once, then the loop takes the frame over from its own zero
@@ -60,6 +67,15 @@ func _process(delta: float) -> void:
 			and _t >= I_HOLD + float(I_FRAMES) / L_FPS:
 		_phase = PHASE_LOOP
 		_loop_t0 = _t
+		# THE ARRIVAL IS SPENT. Its sheet is 59MB that will never be drawn
+		# again, and this screen stays up until the whole world is written.
+		_intro_tex = null
+	# the sheet clocks are all this clock with a constant offset, so one tick is
+	# one new cell — and the line keeps breathing even where no sheet shipped
+	var fr := int(_t * L_FPS)
+	if fr == _fr:
+		return
+	_fr = fr
 	queue_redraw()
 
 ## one baked frame, cover-scaled and center-cropped — never stretched

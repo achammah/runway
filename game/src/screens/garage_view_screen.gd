@@ -346,8 +346,17 @@ func _ready() -> void:
 		adopt_composed(stub, false)
 	_start_week()
 
+## THE ROOM BREATHES ON THE ROOM'S OWN CLOCK. Both lines below hand Godot a
+## fresh float every displayed frame, and a fresh float means a repaint: the
+## button re-laid its card, border and word, the vignette re-filled the whole
+## 1536x1024. Two full repaints a frame, for a 3% pulse and an alarm alpha
+## nobody can see step. Quantising the clock to the 12fps everything else in
+## this game is drawn at leaves the same motion and lets Godot's own "same
+## value, nothing to do" check swallow the other four frames in five.
+const BREATH_FPS := 12.0
+
 func _process(_delta: float) -> void:
-	var t := Time.get_ticks_msec() / 1000.0
+	var t := floorf(Time.get_ticks_msec() / 1000.0 * BREATH_FPS) / BREATH_FPS
 	if _open_btn and _open_btn.visible:
 		var p := 1.0 + sin(t * 3.2) * 0.03
 		_open_btn.scale = Vector2(p, p)

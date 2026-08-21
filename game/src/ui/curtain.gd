@@ -35,28 +35,46 @@ var _shut_for := 0.0   ## seconds fully shut; after a beat, the curtain speaks
 var considering_line := "the world considers your week…"   ## day one reads differently
 ## The shut curtain's sway (seedance-baked sheet, 5x8 grid of 1024x576 frames).
 ## Missing sheet = the drawn drapes below carry the whole curtain, unchanged.
+##
+## THE SHEET IS BORROWED, NOT KEPT. MAIN builds one curtain and holds it for the
+## whole run, so a sheet loaded in _ready is 94MB of texture resident from the
+## first week to the last for three seconds of use a week. It is asked for when
+## the curtain drops — off-thread, 0.45s before the sway is due — and let go the
+## moment the curtain lifts. Until it lands the drawn drapes carry the frame,
+## which is exactly what they do when the sheet never shipped at all.
+const LOOP_PATH := "res://assets/title/curtain_loop.png"
 var _loop_tex: Texture2D
+var _loop_pending := false
 const L_COLS := 5
 const L_FRAMES := 40
 const L_FPS := 12.0
+var _fr := -1          ## the sway cell on screen; -1 = nothing drawn yet
 
 func _process(delta: float) -> void:
-	if _t > 0.98:
-		_shut_for += delta
-		# the sway needs every frame; without it only the considering line breathes
-		if _loop_tex != null or _shut_for > 0.9:
-			queue_redraw()
-	else:
+	_poll_loop()   # the sweep is where the fetch has time to land
+	if _t <= 0.98:
 		_shut_for = 0.0
+		_fr = -1
+		return
+	_shut_for += delta
+	if _loop_tex == null and _shut_for <= 0.9:
+		return   # bare drapes, nothing moving on them yet
+	# ONE REPAINT PER BAKED FRAME: the sway is a 12fps sheet and the considering
+	# line breathes on the same clock. Repainting at display rate re-blitted the
+	# identical cell four times out of five.
+	var fr := int(_shut_for * L_FPS)
+	if fr == _fr:
+		return
+	_fr = fr
+	queue_redraw()
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	visible = false
+	set_process(false)   # offstage: nothing to breathe until it drops
 
 func _ready() -> void:
-	if ResourceLoader.exists("res://assets/title/curtain_loop.png"):
-		_loop_tex = load("res://assets/title/curtain_loop.png")
 	if FileAccess.file_exists("res://assets/sfx/curtain.wav"):
 		_whoosh = AudioStreamPlayer.new()
 		_whoosh.stream = load("res://assets/sfx/curtain.wav")
@@ -65,6 +83,8 @@ func _ready() -> void:
 
 func close(secs: float = 0.45) -> void:
 	visible = true
+	set_process(true)
+	_request_loop()   # 0.45s of sweep to fetch it in; the drapes cover the gap
 	if _whoosh != null:
 		_whoosh.play()
 	# shut curtains swallow clicks so nothing behind them can be pressed mid-swap
@@ -86,8 +106,31 @@ func open(secs: float = 0.55) -> void:
 	_tw.tween_callback(func() -> void:
 		visible = false
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		set_process(false)
+		_loop_tex = null   # offstage again: give the 94MB sheet back
 		opened.emit())
 	await _tw.finished
+
+## ask for the sway off-thread. Already held, already asked, or no sheet on
+## disk: nothing to do, and the drapes keep the curtain either way.
+func _request_loop() -> void:
+	if _loop_tex != null or _loop_pending:
+		return
+	if not ResourceLoader.exists(LOOP_PATH):
+		return
+	ResourceLoader.load_threaded_request(LOOP_PATH)
+	_loop_pending = true
+
+func _poll_loop() -> void:
+	if not _loop_pending:
+		return
+	match ResourceLoader.load_threaded_get_status(LOOP_PATH):
+		ResourceLoader.THREAD_LOAD_LOADED:
+			_loop_tex = ResourceLoader.load_threaded_get(LOOP_PATH)
+			_loop_pending = false
+			_fr = -1        # the sway takes the frame over on the next tick
+		ResourceLoader.THREAD_LOAD_FAILED, ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
+			_loop_pending = false
 
 func _step(v: float) -> void:
 	_t = v
