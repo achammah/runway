@@ -375,6 +375,25 @@ func _build_menu_buttons() -> void:
 			if is_instance_valid(ht2):
 				ht2.queue_free()))
 	_menu.add_child(how)
+	# the key is never locked away: reopen the desk anytime, save reloads
+	var keyb := Button.new()
+	keyb.flat = true
+	keyb.text = "api key"
+	keyb.add_theme_font_override("font", hand)
+	keyb.add_theme_font_size_override("font_size", 24)
+	keyb.add_theme_color_override("font_color", Color(CREAM_M, 0.6))
+	keyb.add_theme_color_override("font_hover_color", PEN_M)
+	for stn in ["normal", "hover", "pressed", "focus"]:
+		keyb.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
+	keyb.position = Vector2(1140, 962)
+	keyb.set_deferred("size", Vector2(150, 44))
+	keyb.pressed.connect(func() -> void:
+		var kd := KeysScreen.new()
+		add_child(kd)
+		kd.size = get_viewport().get_visible_rect().size
+		kd.saved.connect(func() -> void:
+			get_tree().reload_current_scene()))
+	_menu.add_child(keyb)
 	var ng: Button = mk_btn.call("NEW GAME", 694.0, 0.05)
 	ng.pressed.connect(func() -> void: _pick_slot(true))
 	if any_save:
