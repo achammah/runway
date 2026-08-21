@@ -16,7 +16,9 @@ var _screen: Node
 var music: MusicManager
 
 func _ready() -> void:
+	var t0 := Time.get_ticks_msec()
 	content.load_all()
+	print("BOOT content %d ms" % (Time.get_ticks_msec() - t0))
 	llm = LlmClient.new()
 	llm.setup(DotEnv.load_env())
 	add_child(llm)
@@ -24,7 +26,9 @@ func _ready() -> void:
 	add_child(generator)
 	music = MusicManager.new()
 	add_child(music)
+	var t1 := Time.get_ticks_msec()
 	_setup_director()
+	print("BOOT director %d ms" % (Time.get_ticks_msec() - t1))
 	print("RUNWAY! content: %d items, %d events · LLM: %s" % [
 		content.items.size(), content.events.size(),
 		(llm.provider + "/" + llm.model) if llm.enabled() else "off (authored only)"])
@@ -723,6 +727,26 @@ func _to_title() -> void:
 	music.set_stem("")
 	var t := TitleScreen.new()
 	t.done.connect(_start_run)
+	# THE HOUSE OPENS (owner: the title should appear by the curtain parting):
+	# the swaying curtain stands shut over the title for a breath, then parts.
+	if not _harness():
+		var reveal := Curtain.new()
+		reveal.considering_line = ""
+		get_tree().process_frame.connect(func() -> void:
+			if not is_instance_valid(reveal):
+				return
+			add_child(reveal)
+			move_child(reveal, get_child_count() - 1)
+			reveal.size = get_viewport().get_visible_rect().size
+			reveal.set("_t", 1.0)
+			reveal.visible = true
+			reveal.queue_redraw()
+			get_tree().create_timer(1.1).timeout.connect(func() -> void:
+				if is_instance_valid(reveal):
+					reveal.open(0.8)
+					get_tree().create_timer(1.0).timeout.connect(func() -> void:
+						if is_instance_valid(reveal):
+							reveal.queue_free())), CONNECT_ONE_SHOT)
 	t.start_new.connect(func(slot: int) -> void:
 		SaveSystem.active_slot = slot
 		SaveSystem.clear_run()      # NEW GAME on an occupied slot overwrites it

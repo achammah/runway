@@ -176,6 +176,14 @@ func _open_binder() -> void:
 	add_child(_binder)
 	_binder.size = Vector2(1536, 1024)
 	_sfx["card_flip"].play()
+	# the clipboard comes UP off the desk, like everything else in this game
+	_binder.position.y = 70.0
+	_binder.modulate.a = 0.0
+	_binder.rotation = 0.01
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(_binder, "position:y", 0.0, 0.26).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_binder, "rotation", 0.0, 0.26)
+	tw.tween_property(_binder, "modulate:a", 1.0, 0.2)
 
 func _ready() -> void:
 	_font = load("res://assets/fonts/PatrickHand-Regular.ttf")
