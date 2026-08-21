@@ -3,7 +3,46 @@ extends RefCounted
 ## C7 — run save + profile save. Versioned JSON at user://; a run can resume
 ## mid-week; the profile accumulates run history + discovered endings across runs.
 
-const RUN_PATH := "user://run_save.json"
+const RUN_PATH := "user://run_save.json"   # legacy single slot — migrates to slot 1
+## THREE SLOTS (owner: saved games with last-played times on the title).
+## active_slot is set by the title screen before a run starts or resumes.
+const SLOTS := 3
+static var active_slot: int = 1
+
+static func slot_path(slot: int) -> String:
+	return "user://run_slot_%d.json" % clampi(slot, 1, SLOTS)
+
+## Legacy migration: an old run_save.json becomes slot 1 the first time
+## anyone asks about slots.
+static func _migrate_legacy() -> void:
+	if FileAccess.file_exists(RUN_PATH) and not FileAccess.file_exists(slot_path(1)):
+		var doc := FileAccess.get_file_as_string(RUN_PATH)
+		var f := FileAccess.open(slot_path(1), FileAccess.WRITE)
+		f.store_string(doc)
+		f.close()
+		DirAccess.remove_absolute(RUN_PATH)
+
+## One row per slot for the title screen: exists, company, week, last-played.
+static func list_slots() -> Array:
+	_migrate_legacy()
+	var out: Array = []
+	for i in range(1, SLOTS + 1):
+		var p := slot_path(i)
+		if not FileAccess.file_exists(p):
+			out.append({"slot": i, "exists": false})
+			continue
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(p))
+		if not (parsed is Dictionary):
+			out.append({"slot": i, "exists": false})
+			continue
+		var meta: Dictionary = (parsed as Dictionary).get("meta", {})
+		var sd: Dictionary = (parsed as Dictionary).get("state", {})
+		out.append({"slot": i, "exists": true,
+			"company": String(meta.get("company", sd.get("company_name", "a company"))),
+			"founder": String(meta.get("founder", sd.get("founder_name", ""))),
+			"week": int(meta.get("week", sd.get("week", 0))),
+			"ts": int(meta.get("ts", 0))})
+	return out
 const PROFILE_PATH := "user://profile.json"
 const VERSION := 2
 
@@ -12,6 +51,8 @@ const VERSION := 2
 static func save_run(state: GameState, record: RunRecord) -> void:
 	var doc := {
 		"version": VERSION,
+		"meta": {"company": state.company_name, "founder": state.founder_name,
+			"week": state.week, "ts": int(Time.get_unix_time_from_system())},
 		"state": {
 			"week": state.week, "era": state.era,
 			"archetype_id": state.archetype_id, "archetype_name": state.archetype_name,
@@ -49,18 +90,19 @@ static func save_run(state: GameState, record: RunRecord) -> void:
 		},
 		"record": {"seed_value": record.seed_value, "entries": record.entries},
 	}
-	var f := FileAccess.open(RUN_PATH, FileAccess.WRITE)
+	var f := FileAccess.open(slot_path(active_slot), FileAccess.WRITE)
 	f.store_string(JSON.stringify(doc))
 	f.close()
 
 static func has_run() -> bool:
-	return FileAccess.file_exists(RUN_PATH)
+	_migrate_legacy()
+	return FileAccess.file_exists(slot_path(active_slot))
 
 static func load_run() -> Dictionary:
 	## Returns {state: GameState, record: RunRecord} or {} on any mismatch.
 	if not has_run():
 		return {}
-	var parsed = JSON.parse_string(FileAccess.get_file_as_string(RUN_PATH))
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(slot_path(active_slot)))
 	if not (parsed is Dictionary) or int(parsed.get("version", 0)) != VERSION:
 		return {}
 	var sd: Dictionary = parsed.get("state", {})
@@ -86,7 +128,7 @@ static func load_run() -> Dictionary:
 
 static func clear_run() -> void:
 	if has_run():
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(RUN_PATH))
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(slot_path(active_slot)))
 
 # ---------- profile (meta across runs) ----------
 

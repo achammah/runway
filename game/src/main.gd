@@ -32,6 +32,13 @@ func _ready() -> void:
 	# title. Harnesses skip straight to work.
 	if _harness() or OS.get_environment("RUNWAY_FIRSTFLOW") != "":
 		_to_title()
+	elif not llm.enabled() and not FileAccess.file_exists("user://keys.env"):
+		var kd := KeysScreen.new()
+		kd.saved.connect(func() -> void:
+			get_tree().reload_current_scene())
+		_screen = kd
+		add_child(kd)
+		kd.size = get_viewport().get_visible_rect().size
 	else:
 		var card := StudioCard.new()
 		card.done.connect(_to_title)
@@ -715,6 +722,13 @@ func _to_title() -> void:
 	music.set_stem("")
 	var t := TitleScreen.new()
 	t.done.connect(_start_run)
+	t.start_new.connect(func(slot: int) -> void:
+		SaveSystem.active_slot = slot
+		SaveSystem.clear_run()      # NEW GAME on an occupied slot overwrites it
+		_start_run())
+	t.continue_slot.connect(func(slot: int) -> void:
+		SaveSystem.active_slot = slot
+		_start_run())               # has_run() finds the slot and resumes it
 	_swap(t)
 
 func _start_run() -> void:

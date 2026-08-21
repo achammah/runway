@@ -6,7 +6,9 @@ extends Control
 ## spawners: smoke puffs and dollar bills that peel off the runway and burn.
 ## Falls back per-component to the static layer when frames are missing.
 
-signal done
+signal done                       ## legacy any-key (harnesses): straight to a fresh run
+signal start_new(slot: int)      ## the NEW GAME choice, with its slot
+signal continue_slot(slot: int)  ## resume this saved slot
 
 const L := "res://assets/title/layers/"
 const A := "res://assets/title/anim/"
@@ -245,4 +247,117 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if (event is InputEventKey and event.pressed) or (event is InputEventMouseButton and event.pressed):
 		_armed = false
-		done.emit()
+		# harnesses keep the old any-key contract; a person gets the menu
+		if OS.get_environment("RUNWAY_SHOT") != "" or OS.get_environment("RUNWAY_FULLRUN") != "" \
+				or OS.get_environment("RUNWAY_FIRSTFLOW") != "" or OS.get_environment("RUNWAY_LANEWIRE") != "" \
+				or OS.get_environment("RUNWAY_READING") != "" or OS.get_environment("RUNWAY_TURN") != "":
+			done.emit()
+			return
+		_show_menu()
+
+# ── THE MENU (owner: two buttons that ease in after the key press) ───────────
+const CREAM_M := Color("F2EAD3")
+const INK_M := Color("1E1E1E")
+const PEN_M := Color("E86A5C")
+var _menu: Control
+
+func _show_menu() -> void:
+	if _press_node != null and is_instance_valid(_press_node):
+		var ptw := create_tween()
+		ptw.tween_property(_press_node, "modulate:a", 0.0, 0.25)
+	_menu = Control.new()
+	_menu.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(_menu)
+	var slots := SaveSystem.list_slots()
+	var any_save := false
+	for s in slots:
+		if bool((s as Dictionary).get("exists", false)):
+			any_save = true
+	var hand: Font = load("res://assets/fonts/PatrickHand-Regular.ttf")
+	var mk_btn := func(txt: String, y: float, delay: float) -> Button:
+		var b := Button.new()
+		b.flat = true
+		b.text = txt
+		b.add_theme_font_override("font", hand)
+		b.add_theme_font_size_override("font_size", 42)
+		b.add_theme_color_override("font_color", CREAM_M)
+		b.add_theme_color_override("font_hover_color", PEN_M)
+		for stn in ["normal", "hover", "pressed", "focus"]:
+			b.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
+		b.position = Vector2(614, y + 26.0)
+		b.set_deferred("size", Vector2(320, 64))
+		b.modulate.a = 0.0
+		_menu.add_child(b)
+		var tw := create_tween()
+		tw.tween_interval(delay)
+		tw.tween_property(b, "modulate:a", 1.0, 0.3)
+		tw.parallel().tween_property(b, "position:y", y, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		return b
+	var ng: Button = mk_btn.call("NEW GAME", 700.0, 0.05)
+	ng.pressed.connect(func() -> void: _pick_slot(true))
+	if any_save:
+		var ct: Button = mk_btn.call("CONTINUE", 780.0, 0.18)
+		ct.pressed.connect(func() -> void: _pick_slot(false))
+	else:
+		# no saves: NEW GAME is the only door; a second key press walks through it
+		pass
+
+## The slot panel: three drawn cards with company · week · last played.
+## new_mode: clicking an empty card starts there (occupied = overwrite it);
+## continue mode: only occupied cards respond.
+func _pick_slot(new_mode: bool) -> void:
+	for c in _menu.get_children():
+		c.queue_free()
+	var hand: Font = load("res://assets/fonts/PatrickHand-Regular.ttf")
+	var slots := SaveSystem.list_slots()
+	var title := Label.new()
+	title.add_theme_font_override("font", hand)
+	title.add_theme_font_size_override("font_size", 34)
+	title.add_theme_color_override("font_color", CREAM_M)
+	title.text = "choose a slot" + (" to start in" if new_mode else " to continue")
+	title.position = Vector2(596, 618)
+	_menu.add_child(title)
+	for i in slots.size():
+		var s: Dictionary = slots[i]
+		var card := Button.new()
+		card.flat = true
+		var exists := bool(s.get("exists", false))
+		var line := "slot %d — empty. start here." % int(s.get("slot", i + 1))
+		if exists:
+			line = "slot %d — %s · week %d · %s" % [int(s.get("slot", i + 1)),
+				String(s.get("company", "?")), int(s.get("week", 0)), _ago(int(s.get("ts", 0)))]
+			if new_mode:
+				line += "  (overwrites)"
+		card.text = line
+		card.add_theme_font_override("font", hand)
+		card.add_theme_font_size_override("font_size", 28)
+		card.add_theme_color_override("font_color",
+			CREAM_M if (exists or new_mode) else Color(CREAM_M, 0.35))
+		card.add_theme_color_override("font_hover_color", PEN_M)
+		for stn in ["normal", "hover", "pressed", "focus"]:
+			card.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
+		card.position = Vector2(360, 672.0 + float(i) * 66.0 + 20.0)
+		card.set_deferred("size", Vector2(820, 56))
+		card.modulate.a = 0.0
+		var slot_n := int(s.get("slot", i + 1))
+		card.pressed.connect(func() -> void:
+			if new_mode:
+				start_new.emit(slot_n)
+			elif exists:
+				continue_slot.emit(slot_n))
+		_menu.add_child(card)
+		var tw := create_tween()
+		tw.tween_interval(0.06 * float(i))
+		tw.tween_property(card, "modulate:a", 1.0, 0.28)
+		tw.parallel().tween_property(card, "position:y", 672.0 + float(i) * 66.0, 0.3) \
+				.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+static func _ago(ts: int) -> String:
+	if ts <= 0:
+		return "a while ago"
+	var d := int(Time.get_unix_time_from_system()) - ts
+	if d < 3600:
+		return "%d min ago" % maxi(d / 60, 1)
+	if d < 86400:
+		return "%d h ago" % (d / 3600)
+	return "%d days ago" % (d / 86400)
