@@ -874,6 +874,8 @@ func _cold_open(gv: GarageViewScreen) -> void:
 		_opening_scene()
 		return
 	_drop_curtain()
+	if _curtain != null and is_instance_valid(_curtain):
+		_curtain.considering_line = "day one is being written…"
 	if not _founding_res.is_empty():
 		_consume_founding(gv)
 		return
@@ -1083,6 +1085,8 @@ func _drop_curtain() -> void:
 		await _cup.settled
 		await get_tree().create_timer(0.15).timeout
 	move_child(_curtain, get_child_count() - 1)
+	if state != null and state.week >= 1 and not _turn_busy:
+		_curtain.considering_line = "the world considers your week…"
 	_curtain.close()
 	# The hang failsafe. 12s was WRONG: a live adjudication often takes 15-25s,
 	# and the curtain lifted onto the stale page mid-think (the owner's "goes

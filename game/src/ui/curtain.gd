@@ -30,6 +30,7 @@ var _t := 0.0          ## 0 = fully open (offstage), 1 = fully shut
 var _tw: Tween
 var _whoosh: AudioStreamPlayer
 var _shut_for := 0.0   ## seconds fully shut; after a beat, the curtain speaks
+var considering_line := "the world considers your week…"   ## day one reads differently
 
 func _process(delta: float) -> void:
 	if _t > 0.98:
@@ -112,7 +113,7 @@ func _draw() -> void:
 		draw_circle(Vector2(cx, 46), w / 24.0, va)
 	if _shut_for > 0.9:
 		var f: Font = load("res://assets/fonts/PatrickHand-Regular.ttf")
-		var msg := "the world considers your week…"
+		var msg := considering_line
 		var a := clampf((_shut_for - 0.9) * 2.0, 0.0, 1.0) * (0.75 + 0.25 * sin(_shut_for * 2.2))
 		var msz := f.get_string_size(msg, HORIZONTAL_ALIGNMENT_LEFT, -1, 40)
 		draw_string(f, Vector2((w - msz.x) * 0.5, h * 0.5 + sin(_shut_for * 1.3) * 4.0),
