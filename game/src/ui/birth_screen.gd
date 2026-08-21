@@ -16,6 +16,9 @@ var _loop_tex: Texture2D
 const L_COLS := 5
 const L_FRAMES := 40
 const L_FPS := 12.0
+## The real painted logotype. A font can only ever approximate it, so the screen
+## draws the art; the drawn title below is the fallback, not the intent.
+var _type_tex: Texture2D
 
 func _init() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -25,6 +28,8 @@ func _ready() -> void:
 	_font = load("res://assets/fonts/PatrickHand-Regular.ttf")
 	if ResourceLoader.exists("res://assets/title/birth_loop.png"):
 		_loop_tex = load("res://assets/title/birth_loop.png")
+	if ResourceLoader.exists("res://assets/title/layers/type_main.png"):
+		_type_tex = load("res://assets/title/layers/type_main.png")
 	set_process(true)
 
 func _process(delta: float) -> void:
@@ -34,37 +39,36 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	var w := size.x
 	var h := size.y
-	draw_rect(Rect2(Vector2.ZERO, size), Color("22262B"))
-	# the spotlight the run is born under
-	draw_circle(Vector2(w * 0.5, h * 0.55), minf(w, h) * 0.42, Color(1, 1, 1, 0.035))
+	draw_rect(Rect2(Vector2.ZERO, size), Color("F2EAD3") if _loop_tex != null else Color("22262B"))
+	if _loop_tex == null:
+		# the spotlight the run is born under (drawn fallback only)
+		draw_circle(Vector2(w * 0.5, h * 0.55), minf(w, h) * 0.42, Color(1, 1, 1, 0.035))
 	if _loop_tex != null:
-		# THE UNPACKING LOOP (owner: a nice loop animation instead): the little
-		# founder unpacks its boxes on cream, cut in like a film frame
+		# THE UNPACKING LOOP FILLS THE FRAME (owner: "should feel the whole
+		# frame like title") — cover-scaled, center-cropped, no card, no border
 		var fr := int(_t * L_FPS) % L_FRAMES
 		var src := Rect2(float(fr % L_COLS) * 1024.0, float(fr / L_COLS) * 576.0, 1024.0, 576.0)
-		var fw := 760.0
-		var fh := fw * 576.0 / 1024.0
-		var fpos := Vector2((w - fw) * 0.5, h * 0.30)
-		draw_texture_rect_region(_loop_tex, Rect2(fpos, Vector2(fw, fh)), src)
-		var rng2 := RandomNumberGenerator.new()
-		rng2.seed = 9
-		var pts := PackedVector2Array()
-		var cs := [fpos, fpos + Vector2(fw, 0), fpos + Vector2(fw, fh), fpos + Vector2(0, fh)]
-		for i in 4:
-			var a2: Vector2 = cs[i]
-			var b2: Vector2 = cs[(i + 1) % 4]
-			for k in 10:
-				pts.append(a2.lerp(b2, float(k) / 10.0) + Vector2(rng2.randf_range(-2, 2), rng2.randf_range(-2, 2)))
-		pts.append(pts[0])
-		draw_polyline(pts, Color("1E1E1E"), 4.0, true)
-	# RUNWAY! — the title in its own hand, the ! in pen
-	var title := "RUNWAY"
-	var tsz := 132
-	var ts := _font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, tsz)
-	var tx := (w - ts.x - 54.0) * 0.5
-	var ty := (h * 0.20 if _loop_tex != null else h * 0.42) + sin(_t * 1.4) * 4.0
-	draw_string(_font, Vector2(tx, ty), title, HORIZONTAL_ALIGNMENT_LEFT, -1, tsz, CREAM)
-	draw_string(_font, Vector2(tx + ts.x + 10.0, ty), "!", HORIZONTAL_ALIGNMENT_LEFT, -1, tsz, PEN)
+		var s := maxf(w / 1024.0, h / 576.0)
+		var dw := 1024.0 * s
+		var dh := 576.0 * s
+		draw_texture_rect_region(_loop_tex,
+			Rect2(Vector2((w - dw) * 0.5, (h - dh) * 0.5), Vector2(dw, dh)), src)
+	# RUNWAY! — the painted logotype itself, bobbing. it is ink art, so it only
+	# reads over the cream loop; the dark fallback card keeps the drawn title.
+	var bob := sin(_t * 1.4) * 4.0
+	if _type_tex != null and _loop_tex != null:
+		var lw := w * 0.62
+		var lh := lw * float(_type_tex.get_height()) / float(_type_tex.get_width())
+		draw_texture_rect(_type_tex, Rect2((w - lw) * 0.5, h * 0.12 + bob, lw, lh), false)
+	else:
+		var title := "RUNWAY"
+		var tsz := 132
+		var ts := _font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, tsz)
+		var tx := (w - ts.x - 54.0) * 0.5
+		var ty := (h * 0.17 if _loop_tex != null else h * 0.42) + bob
+		var main_col := INK if _loop_tex != null else CREAM
+		draw_string(_font, Vector2(tx, ty), title, HORIZONTAL_ALIGNMENT_LEFT, -1, tsz, main_col)
+		draw_string(_font, Vector2(tx + ts.x + 10.0, ty), "!", HORIZONTAL_ALIGNMENT_LEFT, -1, tsz, PEN)
 	# the runway strip, drawn in dashes that crawl forward
 	if _loop_tex == null:
 		var ry := h * 0.55
@@ -74,10 +78,14 @@ func _draw() -> void:
 			var x := w * 0.18 + float(i) * dash_w * 2.0 - off
 			if x > w * 0.2 and x + dash_w < w * 0.82:
 				draw_rect(Rect2(x, ry, dash_w, 6), Color(CREAM, 0.25))
-	# creating your world…
+	# creating your world… — cream behind, ink in front, so it survives the art
 	var msg := "creating your world"
 	var dots := ".".repeat(1 + int(fmod(_t * 1.6, 3.0)))
-	var msz := _font.get_string_size(msg + "...", HORIZONTAL_ALIGNMENT_LEFT, -1, 40)
+	var msz := _font.get_string_size(msg + "...", HORIZONTAL_ALIGNMENT_LEFT, -1, 34)
 	var a := 0.7 + 0.3 * sin(_t * 2.4)
-	draw_string(_font, Vector2((w - msz.x) * 0.5, h * 0.83 if _loop_tex != null else h * 0.66), msg + dots,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 40, Color(CREAM, a))
+	var at := Vector2((w - msz.x) * 0.5, h * 0.90 if _loop_tex != null else h * 0.66)
+	if _loop_tex != null:
+		draw_string(_font, at + Vector2(2, 2), msg + dots, HORIZONTAL_ALIGNMENT_LEFT, -1, 34,
+				Color(CREAM, a * 0.9))
+	draw_string(_font, at, msg + dots, HORIZONTAL_ALIGNMENT_LEFT, -1, 34,
+			Color(INK, a * 0.85) if _loop_tex != null else Color(CREAM, a))

@@ -1518,6 +1518,8 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 	# BOOK-READ TURNS (the founding, read on the book-intro screen) skip the
 	# beat entirely: the words were the screen; only the art still lands.
 	if bool(dm.get("book_read", false)):
+		if _screen is GarageViewScreen:
+			(_screen as GarageViewScreen).set_painting(true)
 		var bdeadline := Time.get_ticks_msec() + int(HOLD_CEILING * 1000.0)
 		if hosting:
 			while not _upload_done and Time.get_ticks_msec() < bdeadline and seq == _turn_seq:
@@ -1536,6 +1538,7 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 		_turn_busy = false
 		if _screen is GarageViewScreen:
 			(_screen as GarageViewScreen)._world_busy = false
+			(_screen as GarageViewScreen).set_painting(false)
 		if _scene_path != "":
 			_open_scene(_scene_path, String(dm.get("headline", "")))
 		_check_exit()

@@ -6,7 +6,8 @@ extends Control
 ## reading beat, the new room, the next act.
 ##
 ## Drawn, never chrome: two coral drapes with wobbly ink edges and a scalloped
-## valance, in the game's own felt-pen hand.
+## valance, in the game's own felt-pen hand. Once it holds shut, a baked sway
+## loop takes the frame over so the wait breathes instead of freezing.
 ##
 ## THE CURTAIN CARRIES NO DICE (owner: "there should only be the video dice
 ## roll"). The pre-rendered cup clip is the one and only die on screen; while
@@ -29,14 +30,22 @@ const INK := Color("1E1E1E")
 var _t := 0.0          ## 0 = fully open (offstage), 1 = fully shut
 var _tw: Tween
 var _whoosh: AudioStreamPlayer
+var _hand: Font = load("res://assets/fonts/PatrickHand-Regular.ttf")   # held, or the line dies between frames
 var _shut_for := 0.0   ## seconds fully shut; after a beat, the curtain speaks
 var considering_line := "the world considers your week…"   ## day one reads differently
+## The shut curtain's sway (seedance-baked sheet, 5x8 grid of 1024x576 frames).
+## Missing sheet = the drawn drapes below carry the whole curtain, unchanged.
+var _loop_tex: Texture2D
+const L_COLS := 5
+const L_FRAMES := 40
+const L_FPS := 12.0
 
 func _process(delta: float) -> void:
 	if _t > 0.98:
 		_shut_for += delta
-		if _shut_for > 0.9:
-			queue_redraw()   # the considering line breathes
+		# the sway needs every frame; without it only the considering line breathes
+		if _loop_tex != null or _shut_for > 0.9:
+			queue_redraw()
 	else:
 		_shut_for = 0.0
 
@@ -46,6 +55,8 @@ func _init() -> void:
 	visible = false
 
 func _ready() -> void:
+	if ResourceLoader.exists("res://assets/title/curtain_loop.png"):
+		_loop_tex = load("res://assets/title/curtain_loop.png")
 	if FileAccess.file_exists("res://assets/sfx/curtain.wav"):
 		_whoosh = AudioStreamPlayer.new()
 		_whoosh.stream = load("res://assets/sfx/curtain.wav")
@@ -87,38 +98,50 @@ func _draw() -> void:
 		return
 	var w := size.x
 	var h := size.y
+	# fully shut, sheet on disk: the baked sway IS the curtain — the drapes only
+	# ever have to be DRAWN while sweeping, or when the sheet never shipped
+	var loop_shut := _t > 0.98 and _loop_tex != null
 	var half: float = w * 0.5 * _t
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 41
-	for side in 2:
-		var panel_w: float = half + 14.0
-		var x0: float = -14.0 if side == 0 else w - panel_w + 14.0
-		# the drape body
-		draw_rect(Rect2(x0, 0, panel_w, h), COR)
-		# fold shading: four darker vertical swags per panel
-		for f in 4:
-			var fx: float = x0 + panel_w * (0.18 + 0.22 * float(f))
-			draw_rect(Rect2(fx, 0, panel_w * 0.055, h), Color(DARK, 0.55))
-		# the wobbly INK edge on the meeting side
-		var ex: float = x0 + panel_w if side == 0 else x0
-		var pts := PackedVector2Array()
-		for i in 33:
-			pts.append(Vector2(ex + rng.randf_range(-2.5, 2.5), h * float(i) / 32.0))
-		draw_polyline(pts, INK, 4.0, true)
-	# the valance: a scalloped strip across the top, always full width while shut
-	var va := Color(DARK, minf(_t * 2.0, 1.0))
-	draw_rect(Rect2(0, 0, w, 46), va)
-	for s in 12:
-		var cx: float = w * (float(s) + 0.5) / 12.0
-		draw_circle(Vector2(cx, 46), w / 24.0, va)
+	if loop_shut:
+		var fr := int(_shut_for * L_FPS) % L_FRAMES
+		var src := Rect2(float(fr % L_COLS) * 1024.0, float(fr / L_COLS) * 576.0, 1024.0, 576.0)
+		# cover-scaled: the sway fills the control, overflow cropped, never letterboxed
+		var sc := maxf(w / 1024.0, h / 576.0)
+		var dw := 1024.0 * sc
+		var dh := 576.0 * sc
+		draw_texture_rect_region(_loop_tex,
+				Rect2(Vector2((w - dw) * 0.5, (h - dh) * 0.5), Vector2(dw, dh)), src)
+	else:
+		for side in 2:
+			var panel_w: float = half + 14.0
+			var x0: float = -14.0 if side == 0 else w - panel_w + 14.0
+			# the drape body
+			draw_rect(Rect2(x0, 0, panel_w, h), COR)
+			# fold shading: four darker vertical swags per panel
+			for f in 4:
+				var fx: float = x0 + panel_w * (0.18 + 0.22 * float(f))
+				draw_rect(Rect2(fx, 0, panel_w * 0.055, h), Color(DARK, 0.55))
+			# the wobbly INK edge on the meeting side
+			var ex: float = x0 + panel_w if side == 0 else x0
+			var pts := PackedVector2Array()
+			for i in 33:
+				pts.append(Vector2(ex + rng.randf_range(-2.5, 2.5), h * float(i) / 32.0))
+			draw_polyline(pts, INK, 4.0, true)
+		# the valance: a scalloped strip across the top, always full width while shut
+		var va := Color(DARK, minf(_t * 2.0, 1.0))
+		draw_rect(Rect2(0, 0, w, 46), va)
+		for s in 12:
+			var cx: float = w * (float(s) + 0.5) / 12.0
+			draw_circle(Vector2(cx, 46), w / 24.0, va)
 	if _shut_for > 0.9:
-		var f: Font = load("res://assets/fonts/PatrickHand-Regular.ttf")
 		var msg := considering_line
 		var a := clampf((_shut_for - 0.9) * 2.0, 0.0, 1.0) * (0.75 + 0.25 * sin(_shut_for * 2.2))
-		var msz := f.get_string_size(msg, HORIZONTAL_ALIGNMENT_LEFT, -1, 40)
-		draw_string(f, Vector2((w - msz.x) * 0.5, h * 0.5 + sin(_shut_for * 1.3) * 4.0),
+		var msz := _hand.get_string_size(msg, HORIZONTAL_ALIGNMENT_LEFT, -1, 40)
+		draw_string(_hand, Vector2((w - msz.x) * 0.5, h * 0.5 + sin(_shut_for * 1.3) * 4.0),
 				msg, HORIZONTAL_ALIGNMENT_LEFT, -1, 40, Color(0.95, 0.92, 0.83, a))
-	if _t > 0.15:
+	if not loop_shut and _t > 0.15:
 		# true scallops: one hand-wobbled arc under each swag, not a zigzag
 		for sc in 12:
 			var cx2: float = w * (float(sc) + 0.5) / 12.0

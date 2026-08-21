@@ -83,6 +83,7 @@ var _surf_mode := false
 var _surf_aligned := false            # ...and whether the room under it is the stage they were measured on
 var _composed: TextureRect            # the model-composed room, when one has arrived
 var _composed_path := ""
+var _paint_ribbon: Label            # honest state while the week's art renders
 var _composed_for: Dictionary = {}    # scene_id -> a compose has already been asked for
 var _composing := false
 var _director: SceneDirector
@@ -1206,6 +1207,26 @@ func adopt_composed(path: String, aligned: bool = false) -> bool:
 	var tw := create_tween()
 	tw.tween_property(_composed, "modulate:a", 1.0, 0.4)
 	return true
+
+## THE HONEST ROOM (owner: the stock room read as a bug while day-one art
+## rendered): while a render is in flight the room says so, in pen, and the
+## line clears the moment the picture lands.
+func set_painting(on: bool) -> void:
+	if on and (_paint_ribbon == null or not is_instance_valid(_paint_ribbon)):
+		_paint_ribbon = Label.new()
+		_paint_ribbon.add_theme_font_override("font", _font)
+		_paint_ribbon.add_theme_font_size_override("font_size", 26)
+		_paint_ribbon.add_theme_color_override("font_color", Color("E86A5C"))
+		_paint_ribbon.text = "✎ your room is being painted…"
+		_paint_ribbon.position = Vector2(40, 986)
+		_paint_ribbon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_paint_ribbon)
+		var tw := create_tween().set_loops()
+		tw.tween_property(_paint_ribbon, "modulate:a", 0.45, 0.9)
+		tw.tween_property(_paint_ribbon, "modulate:a", 1.0, 0.9)
+	elif not on and _paint_ribbon != null and is_instance_valid(_paint_ribbon):
+		_paint_ribbon.queue_free()
+		_paint_ribbon = null
 
 ## The era turned, or the run moved on: the composed room belongs to the old
 ## stage, so it stands down and the new empty stage shows through.

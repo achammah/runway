@@ -268,6 +268,9 @@ func _show_menu() -> void:
 	_menu = Control.new()
 	_menu.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_menu)
+	_build_menu_buttons()
+
+func _build_menu_buttons() -> void:
 	var slots := SaveSystem.list_slots()
 	var any_save := false
 	for s in slots:
@@ -279,14 +282,41 @@ func _show_menu() -> void:
 		b.flat = true
 		b.text = txt
 		b.add_theme_font_override("font", hand)
-		b.add_theme_font_size_override("font_size", 42)
-		b.add_theme_color_override("font_color", CREAM_M)
+		b.add_theme_font_size_override("font_size", 40)
+		b.add_theme_color_override("font_color", INK_M)
 		b.add_theme_color_override("font_hover_color", PEN_M)
 		for stn in ["normal", "hover", "pressed", "focus"]:
 			b.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
-		b.position = Vector2(614, y + 26.0)
-		b.set_deferred("size", Vector2(320, 64))
+		b.position = Vector2(594, y + 26.0)
+		b.set_deferred("size", Vector2(360, 72))
+		# a REAL paper button (owner: "not buttons so unclear"): cream card,
+		# wobbled ink border, the word re-issued above the paper
+		var card := _PaperBtn.new()
+		card.name = "edge"
+		card.set_deferred("size", Vector2(360, 72))
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(card)
+		b.move_child(card, 0)
+		# the paper paints OVER the Button's own label: re-issue the word above it
+		var word := Label.new()
+		word.text = txt
+		b.text = ""
+		word.add_theme_font_override("font", hand)
+		word.add_theme_font_size_override("font_size", 40)
+		word.add_theme_color_override("font_color", INK_M)
+		word.set_anchors_preset(Control.PRESET_FULL_RECT)
+		word.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		word.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		word.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(word)
 		b.modulate.a = 0.0
+		b.pivot_offset = Vector2(180, 36)
+		b.mouse_entered.connect(func() -> void:
+			var ht := create_tween()
+			ht.tween_property(b, "scale", Vector2(1.045, 1.045), 0.08))
+		b.mouse_exited.connect(func() -> void:
+			var ht := create_tween()
+			ht.tween_property(b, "scale", Vector2.ONE, 0.1))
 		_menu.add_child(b)
 		var tw := create_tween()
 		tw.tween_interval(delay)
@@ -305,41 +335,86 @@ func _show_menu() -> void:
 ## The slot panel: three drawn cards with company · week · last played.
 ## new_mode: clicking an empty card starts there (occupied = overwrite it);
 ## continue mode: only occupied cards respond.
+## THE SLOT TABLE, its own full screen (owner): the title art dims away and
+## three big paper dossiers sit on the stage — company, founder, week, when.
 func _pick_slot(new_mode: bool) -> void:
 	for c in _menu.get_children():
 		c.queue_free()
 	var hand: Font = load("res://assets/fonts/PatrickHand-Regular.ttf")
+	var veil := ColorRect.new()
+	veil.color = Color("22262B", 0.0)
+	veil.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_menu.add_child(veil)
+	create_tween().tween_property(veil, "color:a", 0.94, 0.3)
+	if _press_node != null and is_instance_valid(_press_node):
+		_press_node.visible = false   # the boiling type ghosts through the veil
 	var slots := SaveSystem.list_slots()
 	var title := Label.new()
 	title.add_theme_font_override("font", hand)
-	title.add_theme_font_size_override("font_size", 34)
+	title.add_theme_font_size_override("font_size", 52)
 	title.add_theme_color_override("font_color", CREAM_M)
-	title.text = "choose a slot" + (" to start in" if new_mode else " to continue")
-	title.position = Vector2(596, 618)
+	title.text = "YOUR COMPANIES" if not new_mode else "WHERE DOES THIS ONE LIVE?"
+	title.position = Vector2(120, 96)
+	title.modulate.a = 0.0
 	_menu.add_child(title)
+	create_tween().tween_property(title, "modulate:a", 1.0, 0.35)
+	var sub := Label.new()
+	sub.add_theme_font_override("font", hand)
+	sub.add_theme_font_size_override("font_size", 27)
+	sub.add_theme_color_override("font_color", Color(CREAM_M, 0.65))
+	sub.text = "pick one to continue" if not new_mode else "a slot with a company in it gets overwritten"
+	sub.position = Vector2(124, 172)
+	_menu.add_child(sub)
 	for i in slots.size():
 		var s: Dictionary = slots[i]
+		var exists := bool(s.get("exists", false))
+		var slot_n := int(s.get("slot", i + 1))
 		var card := Button.new()
 		card.flat = true
-		var exists := bool(s.get("exists", false))
-		var line := "slot %d — empty. start here." % int(s.get("slot", i + 1))
-		if exists:
-			line = "slot %d — %s · week %d · %s" % [int(s.get("slot", i + 1)),
-				String(s.get("company", "?")), int(s.get("week", 0)), _ago(int(s.get("ts", 0)))]
-			if new_mode:
-				line += "  (overwrites)"
-		card.text = line
-		card.add_theme_font_override("font", hand)
-		card.add_theme_font_size_override("font_size", 28)
-		card.add_theme_color_override("font_color",
-			CREAM_M if (exists or new_mode) else Color(CREAM_M, 0.35))
-		card.add_theme_color_override("font_hover_color", PEN_M)
 		for stn in ["normal", "hover", "pressed", "focus"]:
 			card.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
-		card.position = Vector2(360, 672.0 + float(i) * 66.0 + 20.0)
-		card.set_deferred("size", Vector2(820, 56))
+		card.position = Vector2(190, 250.0 + float(i) * 226.0 + 26.0)
+		card.set_deferred("size", Vector2(1160, 196))
+		card.pivot_offset = Vector2(580, 98)
+		var paper := _PaperBtn.new()
+		paper.set_deferred("size", Vector2(1160, 196))
+		paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(paper)
+		var head := Label.new()
+		head.add_theme_font_override("font", hand)
+		head.add_theme_font_size_override("font_size", 44)
+		head.add_theme_color_override("font_color", INK_M if exists else Color(INK_M, 0.42))
+		head.text = String(s.get("company", "?")) if exists else "empty desk"
+		head.position = Vector2(44, 30)
+		head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(head)
+		var det := Label.new()
+		det.add_theme_font_override("font", hand)
+		det.add_theme_font_size_override("font_size", 28)
+		det.add_theme_color_override("font_color", Color(INK_M, 0.65))
+		det.text = ("%s · week %d · last played %s%s" % [String(s.get("founder", "")),
+			int(s.get("week", 0)), _ago(int(s.get("ts", 0))),
+			"   — overwrites" if (exists and new_mode) else ""]) if exists \
+			else ("start here" if new_mode else "nothing yet")
+		det.position = Vector2(46, 108)
+		det.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(det)
+		var tag := Label.new()
+		tag.add_theme_font_override("font", hand)
+		tag.add_theme_font_size_override("font_size", 30)
+		tag.add_theme_color_override("font_color", PEN_M)
+		tag.text = "slot %d" % slot_n
+		tag.position = Vector2(1020, 30)
+		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(tag)
+		if exists or new_mode:
+			card.mouse_entered.connect(func() -> void:
+				var ht := create_tween()
+				ht.tween_property(card, "scale", Vector2(1.02, 1.02), 0.08))
+			card.mouse_exited.connect(func() -> void:
+				var ht := create_tween()
+				ht.tween_property(card, "scale", Vector2.ONE, 0.1))
 		card.modulate.a = 0.0
-		var slot_n := int(s.get("slot", i + 1))
 		card.pressed.connect(func() -> void:
 			if new_mode:
 				start_new.emit(slot_n)
@@ -347,10 +422,48 @@ func _pick_slot(new_mode: bool) -> void:
 				continue_slot.emit(slot_n))
 		_menu.add_child(card)
 		var tw := create_tween()
-		tw.tween_interval(0.06 * float(i))
-		tw.tween_property(card, "modulate:a", 1.0, 0.28)
-		tw.parallel().tween_property(card, "position:y", 672.0 + float(i) * 66.0, 0.3) \
+		tw.tween_interval(0.07 * float(i))
+		tw.tween_property(card, "modulate:a", 1.0, 0.3)
+		tw.parallel().tween_property(card, "position:y", 250.0 + float(i) * 226.0, 0.32) \
 				.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	var back := Button.new()
+	back.flat = true
+	back.text = "←  back"
+	back.add_theme_font_override("font", hand)
+	back.add_theme_font_size_override("font_size", 30)
+	back.add_theme_color_override("font_color", Color(CREAM_M, 0.8))
+	back.add_theme_color_override("font_hover_color", PEN_M)
+	for stn in ["normal", "hover", "pressed", "focus"]:
+		back.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
+	back.position = Vector2(110, 930)
+	back.set_deferred("size", Vector2(200, 56))
+	back.pressed.connect(func() -> void:
+		for c in _menu.get_children():
+			c.queue_free()
+		_show_menu_buttons())
+	_menu.add_child(back)
+
+## the two entry buttons, reusable after "back"
+func _show_menu_buttons() -> void:
+	_build_menu_buttons()
+
+## Cream paper + wobbled ink border drawn behind a flat Button's word.
+class _PaperBtn:
+	extends Control
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2(4, 5), size), Color(0, 0, 0, 0.35))
+		draw_rect(Rect2(Vector2.ZERO, size), Color("F2EAD3"))
+		var rng := RandomNumberGenerator.new()
+		rng.seed = int(position.x) + int(size.x)
+		var pts := PackedVector2Array()
+		var cs := [Vector2(2, 2), Vector2(size.x - 2, 2), size - Vector2(2, 2), Vector2(2, size.y - 2)]
+		for i in 4:
+			var a: Vector2 = cs[i]
+			var b: Vector2 = cs[(i + 1) % 4]
+			for k in 10:
+				pts.append(a.lerp(b, float(k) / 10.0) + Vector2(rng.randf_range(-1.6, 1.6), rng.randf_range(-1.6, 1.6)))
+		pts.append(pts[0])
+		draw_polyline(pts, Color("1E1E1E"), 3.5, true)
 
 static func _ago(ts: int) -> String:
 	if ts <= 0:
