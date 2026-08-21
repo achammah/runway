@@ -440,12 +440,14 @@ func write_field(prompt: String = "...or write what you actually do", zone: Stri
 	# input is the one cut this page may never make; ask() budgets so it cannot come
 	# to that, and if a host composes past every budget the field crosses the fence
 	# and _overrun says so, which is the honest failure.
-	# TWO FULL SLOTS MINIMUM plus descender headroom, and this floor OUTRANKS the
-	# fence: the written move is the game, and a field that clips its own second
-	# line teaches the player not to write. ask() budgets so the floor is never
-	# actually exercised; when a host overfills, _overrun says so honestly.
+	# TWO FULL SLOTS MINIMUM plus descender headroom — but the PAPER EDGE is
+	# absolute: on the rare page whose upstream content lands deep, the floor
+	# bends to the sheet rather than inking the room. The field scrolls, so a
+	# squeezed field still takes any length of writing.
 	hgt = minf(hgt, _hard_floor() - y - 8.0)
 	hgt = maxf(hgt, rule_pitch() * 2.0) + 12.0
+	hgt = minf(hgt, writable_bottom() - y - 2.0)
+	hgt = maxf(hgt, rule_pitch() * 1.2)
 	_input.position = Vector2(sp.x, y)
 	_input.custom_minimum_size = Vector2(sp.y - sp.x, hgt)
 	_input.set_deferred("size", Vector2(sp.y - sp.x, hgt))
@@ -942,7 +944,8 @@ func line_fitted(text: String, reserve: float, zone: String = "body", faint: boo
 	_cascade(zone)
 	var start: float = _snap(float(_cursor.get(zone, 0.0)))
 	var avail: float = _hard_floor() - start - reserve
-	var fit: int = maxi(int(floor(avail / _line_advance(SIZE_BODY))), 2)
+	# a squeezed page keeps ONE line of story rather than stealing the answer's room
+	var fit: int = maxi(int(floor(avail / _line_advance(SIZE_BODY))), 1)
 	var lines := _wrap_lines(text, SIZE_BODY)
 	var told := text
 	if lines.size() > fit:
@@ -1046,6 +1049,14 @@ func _overrun(zone: String) -> void:
 	push_warning(("JournalPage[%s p%d]: %s ran %.0fpx off the bottom of the paper (%.0f > %.0f) — "
 			+ "cut %d line%s of copy from this page, shorten the captions, or move %s onto the next sheet.")
 			% [_tag, get_index(), zone, over, y, bot, lines, "" if lines == 1 else "s", zone])
+	if OS.get_environment("RUNWAY_PAGE_DEBUG") == "1":
+		for c in space.get_children():
+			if c is Label:
+				print("  PAGE[%s] y=%.0f  %s" % [_tag, (c as Control).position.y,
+					String((c as Label).text).left(48).replace("\n", "¶")])
+			elif c is Control and c.get_child_count() > 0:
+				print("  PAGE[%s] y=%.0f  <row %d items h=%.0f>" % [_tag,
+					(c as Control).position.y, c.get_child_count(), (c as Control).size.y])
 
 ## Chosen is circled in ink; the rest simply go quiet. Never a border, never a
 ## fill, never a highlight — those read as a form. And the circle is DRAWN, the

@@ -302,6 +302,15 @@ func _ready() -> void:
 	_style_button(_open_btn, PALETTE["yellow"], 30)
 	_open_btn.pressed.connect(_open_journal)
 	add_child(_open_btn)
+	# the binder's doorway: a smaller drawn tab beside the journal button
+	var bb := Button.new()
+	bb.text = "THE BINDER (TAB)"
+	bb.position = Vector2(1010, 942)
+	bb.size = Vector2(250, 56)
+	bb.pivot_offset = Vector2(125, 28)
+	_style_button(bb, PALETTE["sage"], 24)
+	bb.pressed.connect(_open_binder)
+	add_child(bb)
 
 	_red_vignette = ColorRect.new()
 	_red_vignette.color = Color(0.85, 0.3, 0.25, 0.0)
@@ -1757,7 +1766,7 @@ func _spread_was() -> void:
 	# The first cut of this page did none of that and the numbers fell off the
 	# paper curl — the exact class of defect this book exists to never show.
 	var has_crew := _crew_faces().size() > 1
-	var strips_h: float = 160.0 + (150.0 if has_crew else 0.0)
+	var strips_h: float = 210.0 + (180.0 if has_crew else 0.0)
 	var lines := _story_lines()
 	var vt := String(_last_outcome.get("verdict", ""))
 	if lines.is_empty():
@@ -1772,13 +1781,13 @@ func _spread_was() -> void:
 				narr = String((l as Array)[0])
 			else:
 				shorts.append(l)
-		var short_h: float = 51.0 * float(mini(shorts.size(), 1))
+		var short_h: float = 102.0 if shorts.size() > 0 else 0.0
 		# the DM titles every week; the log keeps the headline the beat announced
 		var hl := String((_last_outcome.get("dm", {}) as Dictionary).get("headline", ""))
 		if hl != "":
 			_jp.line(hl.to_upper())
 		if narr != "":
-			_jp.line_fitted(narr, strips_h + short_h)
+			_jp.line_fitted(narr, strips_h + short_h + 51.0)
 			if vt in ["brilliant", "backfired"]:
 				_jp.margin_mark("star" if vt == "brilliant" else "cross")
 			# nat 20 / nat 1: the die itself gets its stamp, computed the same
@@ -1803,15 +1812,16 @@ func _spread_was() -> void:
 		# ONE annotation, full ink. Faint text under a printed rule read as
 		# struck-through; the margin mark already carries the judgement.
 		if not shorts.is_empty():
-			_jp.line(String((shorts[0] as Array)[0]))
+			_jp.line_fitted(String((shorts[0] as Array)[0]), strips_h)
 	_delta_strip()
 	_crew_strip()
 
 ## The week's numbers as drawings, not sentences: the jar of runway, the build,
 ## the crowd. Values live in one-line captions; nothing is pressable.
 func _delta_strip() -> void:
-	if _jp.room_to_fence("ending") < 150.0:
-		_jp.line("$%s · v0.%d · %d customers" % [_fmt(state.cash), state.product, state.traction], false, "ending")
+	if _jp.room_to_fence("ending") < 210.0:
+		if _jp.room_to_fence("ending") >= 60.0:
+			_jp.line("$%s · v0.%d · %d customers" % [_fmt(state.cash), state.product, state.traction], false, "ending")
 		return
 	var net := state.burn_per_week()
 	var weeks := 999 if net <= 0 else maxi(0, int(floor(float(state.cash) / float(net))))
@@ -1856,7 +1866,7 @@ func _chg(key: String, now: int, money: bool = false) -> String:
 ## Who is still here, at a glance: small faces, moods drawn on them, no input.
 func _crew_strip() -> void:
 	var faces := _crew_faces()
-	if faces.size() <= 1 or _jp.room_to_fence("ending") < 150.0:
+	if faces.size() <= 1 or _jp.room_to_fence("ending") < 190.0:
 		return
 	var row := _jp.icon_row(faces.slice(0, 5), Vector2(110, 100), "ending")
 	for slot in row.get_children():
@@ -1898,9 +1908,10 @@ func _spread_ahead() -> void:
 	# WHERE YOU STAND, one faint line — the ask is meaningless without it
 	var net := state.burn_per_week()
 	var weeks := 999 if net <= 0 else maxi(0, int(floor(float(state.cash) / float(net))))
-	# full ink on purpose: faint text under a printed rule reads struck-through
-	_jp.line("$%s · %s · %d customers · v0.%d" % [
-			_fmt(state.cash), ("%d wks left" % weeks) if weeks < 999 else "making money",
+	# full ink on purpose — and COMPACT on purpose: this line must never wrap
+	var cash_s := ("$%.0fk" % (float(state.cash) / 1000.0)) if absi(state.cash) >= 10_000 else ("$" + _fmt(state.cash))
+	_jp.line("%s · %s · %d cust · v0.%d" % [cash_s,
+			("%d wks" % weeks) if weeks < 999 else "cash+",
 			state.traction, state.product])
 	var situation := ""
 	if _current_event.is_empty():
@@ -1910,16 +1921,23 @@ func _spread_ahead() -> void:
 	# THE TERM SHEETS (plan A2/UI-13): when a raise move opened the round, the
 	# three offers sit on the decision page as drawn cards — sign one by tapping,
 	# or write anything else and let them expire.
+	var special_used := false
+	var fr_age := state.week - int(state.get_meta("fundraising_week", state.week))
+	if state.has_flag("fundraising_open") and fr_age > 2:
+		state.flags.erase("fundraising_open")
+		_jp.line("the term sheets expired unsigned.", true)
 	if state.has_flag("fundraising_open"):
+		special_used = true
 		var offers := SimEngine.generate_offers(state, state.investors)
 		_jp.line("THE TERM SHEETS ARE ON THE TABLE:")
+		# one row of three, captions clipped to wrap-proof width: "Harda 15k/24%"
 		var cards: Array = []
 		for i in offers.size():
 			var o: Dictionary = offers[i]
-			cards.append({"id": "ts:%d" % i,
-				"text": "%s\n$%s for %.0f%%" % [String(o.investor).split(" ")[0],
-					_fmt(int(o.amount)), float(o.equity_pct)]})
-		_jp.icon_row(cards, Vector2(150, 70), "body")
+			var tag := String(o.investor).split(" ")[0].left(7)
+			cards.append({"id": "ts:%d" % i, "text": "%s %.0fk/%.0f%%" % [
+				tag, float(o.amount) / 1000.0, float(o.equity_pct)]})
+		_jp.icon_row(cards, Vector2(230, 40), "body")
 		_jp.choice_made.connect(func(id: String):
 			if not id.begins_with("ts:"):
 				return
@@ -1933,13 +1951,15 @@ func _spread_ahead() -> void:
 			_lock_button())
 	# THE LEVEL-UP (plan B4): a banked milestone point is spent HERE, as a pen
 	# circle on the stat of your choice — the D&D moment, on paper.
-	if state.xp > state.xp_spent:
-		_jp.line("★ You leveled. Circle the muscle that grew:")
+	if state.xp > state.xp_spent and not special_used:
+		special_used = true
+		_jp.line("★ You leveled — circle the muscle that grew:")
 		var stat_items: Array = []
 		for st_n in ["build", "sell", "raise", "recruit", "grit"]:
 			stat_items.append({"id": "lv:" + st_n,
 				"text": "%s %d" % [st_n, int(state.competences.get(st_n, 3))]})
-		_jp.icon_row(stat_items, Vector2(110, 60), "body")
+		# caption-only cells: the row is one ruled line tall, not a portrait band
+		_jp.icon_row(stat_items, Vector2(110, 42), "body")
 		_jp.choice_made.connect(func(id: String):
 			if id.begins_with("lv:") and state.xp > state.xp_spent:
 				var st2 := id.substr(3)
@@ -1947,10 +1967,15 @@ func _spread_ahead() -> void:
 				state.xp_spent += 1
 				state.log_action("leveled %s to %d" % [st2, int(state.competences[st2])])
 				_sfx["win"].play())
-	# the field gets FOUR rules of reserved paper plus the ASK LINE, which is
-	# never trimmed: a situation that cannot ask is not a situation
-	_jp.line_fitted(situation, _jp.rule_pitch() * 4.0 + 60.0)
-	_jp.line("So — what do you do?")
+	# the field gets FOUR rules of reserved paper plus the ASK LINE — except on
+	# a term-sheet week, where the cards ARE the question and the prose yields
+	if special_used:
+		# the cards/level row already ask the question; the prose stays lean and
+		# no extra instruction line is spent — the fence math is exact here
+		_jp.line_fitted(situation, _jp.rule_pitch() * 2.0 + 72.0)
+	else:
+		_jp.line_fitted(situation, _jp.rule_pitch() * 4.0 + 60.0)
+		_jp.line("So — what do you do?")
 	if _adjudicating:
 		_jp.line("the world considers your move...", true, "ending")
 		_lock_button()
@@ -2136,6 +2161,10 @@ func _commit_from_text() -> void:
 		verdict["player_text"] = t
 		verdict["dice"] = _pending_dice
 		_pending_free = verdict
+		for ef in verdict.get("effects", []):
+			if String((ef as Dictionary).get("op", "")) == "set_flag" \
+					and String((ef as Dictionary).get("v", "")) == "fundraising_open":
+				state.set_meta("fundraising_week", state.week)
 		_lock_week(), _pending_dice)
 
 ## One underline in the founder's pen, drawn left to right at commit.

@@ -775,8 +775,19 @@ func _after_draft(result: Dictionary) -> void:
 	g.done.connect(_after_grind)
 	g.week_committing.connect(_drop_curtain)
 	g.week_rolled.connect(_show_die)
-	_swap(g)
-	_cold_open(g)
+	# THE MARKET MAP first (harnesses skip it): one look at the world you chose,
+	# then the room and day one.
+	if OS.get_environment("RUNWAY_SHOT") == "" and OS.get_environment("RUNWAY_FULLRUN") == "":
+		var wr := WorldRevealScreen.new()
+		wr.setup(state)
+		wr.done.connect(func() -> void:
+			_swap(g)
+			_cold_open(g))
+		_swap(wr)
+		wr.size = get_viewport().get_visible_rect().size
+	else:
+		_swap(g)
+		_cold_open(g)
 
 ## WEEK ONE IS GENERATED TOO (owner: "it's just the bland standard situation").
 ## Day one gets its own DM story: a real roll, a real narration from the pitch,
