@@ -265,21 +265,17 @@ FINAL (v3, end of the 4-hour window). Everything below is committed, pushed, and
 - [100%] OpenAI-key-at-start — gates exactly when keyless
 Remaining to 100 across the board: live human play-feel confirmation (the one thing a harness cannot grade).
 
-## WINDOW 4 — the DMG playthrough batch (owner live, #144-#156)
-P0 BROKEN
-- [ ] X1 #151/#156 Scene generation BROKEN live (default room week 1+2; probes show "v2 generation failed") — root-cause + fix + trace
-- [ ] X2 #154/#155 Clarify page: Cyrillic junk line under the question + placeholder overlapping "...decide first" row — sanitize + compact layout
-- [ ] X3 #152/#153 Binder circle drawn on wrong tab / off the row (8-tab pitch vs old 7-tab drawing)
-- [ ] X4 App launch SUPER SLOW — profile + full optimization pass (lazy loads, defer heavy manifests)
-- [ ] X5 Birth screen "ages" — worldgen prefetch during draft + timeout fallback to skeleton
-P1 VISUAL
-- [ ] X6 #145 Title appears via curtain sway + part
-- [ ] X7 #146 Select: founder centered ON the spotlight
-- [ ] X8 #147 Idle loops normalized (same scale/baseline, zero cropping) across all four
-- [ ] X9 #144 Keys screen: small transparent idle loop instead of static mascot
-- [ ] X10 #148 Name screen: witness plays its idle loop
-- [ ] X11 General transitions/loops pass (screen-to-screen)
-- [ ] X12 Birth: intro chain (walk in → open box) then loop
-P2 DESIGN
-- [ ] X13 D&D character depth: hidden traits (charisma, luck, network, credibility…) with REAL engine impact (ex-FAANG raises easier), click-to-expand details
-- [ ] X14 Item overhaul: many more items, exact stat buffs/nerfs shown (D&D loadout decisions, non-obvious tradeoffs)
+## WINDOW 4 — the DMG playthrough batch (owner live, #144-#156) — CLOSED, all verified
+- [x] X1 Art dying live = ONE middleware 502, zero retries → 3 attempts w/ backoff; probe: day-one art landed on the real path
+- [x] X2 Clarify: Cyrillic leak sanitized to one Latin line; no lock row under the answer field
+- [x] X3 Binder ring on the true 8-tab pitch
+- [x] X4 Launch: 68MB title film pre-first-pixel → streamed; boot content 6ms/director 7ms/title→draft ~0.4-0.6s
+- [x] X5 Birth wait: bible prefetches during the bag page; 25s skeleton ceiling; +silent-path curtain fix (sat shut till failsafe — probe-caught)
+- [x] X6 Title revealed by the parting sway curtain
+- [x] X7 Founder ON the spotlight (+ the real bug: hero jumped 225px on every switch — the 'cropped characters')
+- [x] X8 All four idle sets normalized (baseline 345, height 0.86, premultiplied-alpha resample; strip + select verified); crew-line floor compensated
+- [x] X9/X10 Keys mascot + name witness play idle loops
+- [x] X11 Transitions: swap fades, journal both ways, binder rises, curtain title, birth fade-in
+- [x] X12 Birth intro chain: walk in → open the box → seamless loop (seam RMS 5.6)
+- [x] X13 SIX HIDDEN TRAITS w/ engine-real effects (doors-open raises, luck rerolls, warmth-discounted term sheets), click-for-rule card UI; DM sees TRAITS; 66 engine checks
+- [x] X14 42 items, 40 w/ exact trait_mods, loadout + in-play lines, 13 new sprites generated — bag verified as a true loadout screen
