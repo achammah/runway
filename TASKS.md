@@ -20,21 +20,21 @@ Last updated: 2026-08-20 (the journal wave)
 
 ## THE AAA NIGHT (2026-08-21) — D&D-of-startups, tracked live
 Status: ☐ todo · ◐ in progress · ✔ done+tested
-- ◐ N1 SimEngine core (`src/core/sim_engine.gd`): Theta, hostile tick, statuses, clocks, pipeline, funding, signals
-- ☐ N2 GameState fields + save/load for all engine state
-- ☐ N3 `tests/sim_engine_test.gd` hermetic unit suite
-- ☐ N4 `tests/balance_sim.gd` scripted-strategy N-week tables; calibrate constants
-- ☐ N5 World-gen: Theta-from-pitch LLM call + clamps; world bible (3 investors + 2 rivals: traits/thesis/bond/flaw/secret/alignment coords; Markov names); keyless fallback
-- ☐ N6 Engine⇄week loop: tick before DM; extended ops (status/clock/price/marketing/hire/loan) + executor + receipts on the page
-- ☐ N7 D&D resolution wired: DC floors + margin bands + advantage/disadvantage (2d20) + exhaustion; ceremony shows adv/dis
-- ☐ N8 DM prompt v2: context sandwich (bible + capped story_so_far + last-3-weeks + signals + directives); memory_update field + 500-word cap enforcement
-- ☐ N9 Sentinel linter + premise guard + one-retry hardening
-- ☐ N10 Typed milestones + XP/levels (+1 stat picks) + trait tally + archetype epilogue
-- ☐ N11 THE BINDER: 7-tab diegetic dashboard (vitals/customers/product/crew/cap table/street/threats) + fog of war by analytics level
-- ☐ N12 Decision surface: move telegraphing note, term-sheet cards, candidate slates, CRIT/BACKFIRE stamps
-- ☐ N13 Dice: 20 sheets landed + wired + ceremony filmed (batch in flight)
-- ☐ N14 Setup upgrades: stat allocation, cofounder chemistry, world-map reveal page
-- ☐ N15 Soaks: keyless 75-week + live multi-week + balance recheck; all films; STATUS/PROJECT_LOG current
+- ✔ N1 SimEngine core: Theta, hostile tick, status catalog, clocks, pipeline, funding, signals
+- ✔ N2 GameState fields + save/load for all engine state (incl. metric_history)
+- ✔ N3 sim_engine_test.gd — 38 hermetic checks PASS
+- ✔ N4 balance_sim.gd — 5 strategies × 50 wks; GTM capacity clamp + morale baseline landed from its tables
+- ✔ N5 WorldGen: Markov names (pronounceability-filtered), 3 investors (archetype/coords/trait/bond/flaw/secret), 2 rivals; deterministic per seed. (LLM Theta enrichment: deferred — defaults per WHAT×WHO are live; the DM already stages from the pitch)
+- ✔ N6 world ticks FIRST each lock; extended ops executed via typed catalog; receipts on the page — verified live (enterprise_pilot 4wk, +$700 with why)
+- ✔ N7 dice PAIR + per-stat adv/dis map sent; ENGINE selects the die post-verdict; margin bands stamp curtain + beat; nat-20/nat-1 lines on the week page
+- ✔ N8 context sandwich (signals + bible + capped memory + last-3-verbatim + directives); memory required + hard-capped — verified live (546-char memory, traits tagged)
+- ✔ N9 sentinel (premise/catalog/round-coherence) + one echo-retry + sanitize
+- ✔ N10 milestone XP + level-up pen-circle on the page + archetype epilogue on the last page
+- ✔ N11 THE BINDER: 7 tabs photographed (vitals/customers+fog/product/crew/cap/street/threats), TAB/B + drawn doorway button
+- ✔ N12 telegraph under the pen · term-sheet cards (fundraising_open flow) · nat stamps
+- ✔ N13 20×1080p ceremony sheets rendered + wired + filmed (cup → tumble → number)
+- ◐ N14 world-map reveal page SHOT-VERIFIED and wired; stat point-buy + cofounder chemistry needle deferred (level-up system covers stat agency; chemistry needs cofounder coords — next round)
+- ◐ N15 final 75-wk soak running; live paid week clean; docs current
 
 ## THE LIVE-PLAY + AUTONOMY ROUND (2026-08-20 night)
 - ✅ K1 Two-spread 60-second week (read the world's reply → one clean written move), no options before the pen

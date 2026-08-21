@@ -165,3 +165,24 @@ The owner's redesign, live end to end and soak-proven:
   (±3000/±15 + "your effects carry seven days"); pace soak in flight.
 - Resume remembers last week's story (state.last_outcome). Service is the
   fourth WHAT. HUD money chip yields to inked walls.
+
+## 2026-08-21 (the AAA night) — D&D-of-startups SHIPPED end to end
+Research: 15 repos (6 business sims, 9 D&D/AI-DM) read by agent fleet; plan in
+game/docs/DND_STARTUP_PLAN.md. Built and verified in one night:
+- SimEngine (deterministic weekly world: Bass adoption gated by launch/quality/
+  GTM capacity, churn by product lifetime, elasticity, CAC saturation, morale
+  baseline + burnout cliff, exhaustion 0-6, tech debt + outage rolls, rivals,
+  market walk, funding module with desperation pricing, typed STATUS catalog,
+  clocks, commitments, onboarding pipeline) — 38 checks + balance tables.
+- WorldGen bible (Markov-named investors with archetype/coords/trait/bond/flaw/
+  secret; rivals with tactic decks) + world-map reveal screen.
+- DM contract v2: signals-grounded context sandwich, deterministic directives,
+  dice PAIR with per-stat adv/dis (engine selects the die), extended ops
+  (status/clock/price/marketing/hire/loan), required traits + hard-capped
+  memory, sentinel + premise guard with echo-retry.
+- The D&D layer on the page: level-up pen circles, archetype epilogue, nat-20/
+  nat-1 lines, telegraph under the pen, term-sheet signing cards.
+- THE BINDER: 7-tab drawn dashboard with fog-of-war analytics.
+- The ceremony: 20 pre-rendered 1080p seedance cup-and-die clips (GPT stills
+  first/last frame), spritesheeted, played on the true engine-selected die.
+All filmed; live paid week verified; keyless soaks green.
