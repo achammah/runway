@@ -2288,6 +2288,9 @@ func _commit_from_text() -> void:
 		generator.clarify(state, _current_event, t, func(cq: Dictionary) -> void:
 			_adjudicating = false
 			_clarify_checked = true
+			print("CLARIFY %s%s" % ["asks: " + String(cq.get("question", ""))
+					if bool(cq.get("needs_clarification", false)) else "silent",
+					" [" + String(cq.get("kind", "")) + "]" if bool(cq.get("needs_clarification", false)) else ""])
 			if bool(cq.get("needs_clarification", false)) and String(cq.get("question", "")) != "":
 				var auto := OS.get_environment("RUNWAY_FULLRUN") != "" \
 						or OS.get_environment("RUNWAY_FIRSTFLOW") != ""

@@ -323,10 +323,10 @@ func _build_menu_buttons() -> void:
 		tw.tween_property(b, "modulate:a", 1.0, 0.3)
 		tw.parallel().tween_property(b, "position:y", y, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		return b
-	var ng: Button = mk_btn.call("NEW GAME", 700.0, 0.05)
+	var ng: Button = mk_btn.call("NEW GAME", 694.0, 0.05)
 	ng.pressed.connect(func() -> void: _pick_slot(true))
 	if any_save:
-		var ct: Button = mk_btn.call("CONTINUE", 780.0, 0.18)
+		var ct: Button = mk_btn.call("CONTINUE", 790.0, 0.18)
 		ct.pressed.connect(func() -> void: _pick_slot(false))
 	else:
 		# no saves: NEW GAME is the only door; a second key press walks through it
