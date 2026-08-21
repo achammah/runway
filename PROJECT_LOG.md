@@ -243,3 +243,23 @@ scene ink tilted to each surface's measured edge and capped at its bottom;
 day-one curtain line. Diagnosed a triple "hang" to a stale smoke assertion
 (15 items) idling the tree. 14 new item sprites generated in-style (white
 keyed to alpha). Suites green; probe 6 confirmed the founding voice.
+
+## 2026-08-21d — The 4-hour window: agents in parallel, everything graded
+Owner left for 4 hours ("until the whole list is 100%"). Four Opus agents
+ran in parallel with the main line: (1) curtain sway loop — generated,
+baked, integrated with drawn fallback, plus a real finding (per-frame font
+load starves a lone canvas item); (2) ship diet — 6.65GB→2.77GB .app by
+discovering Godot re-encodes at import (webp mirrors + VRAM-lossy .import
+sidecars, 4,945 files, PSNR-verified, all PNGs intact); (3) birth loop
+rebuild after owner rejection — square source was the squish, real
+logotype texture, on-model mascot via refs, seam RMS 30→1.3 (same fix
+then applied to the curtain bake); (4) tutorial video pages (in flight).
+Main line: full-screen slot TABLE, real paper menu buttons (word above
+paper), keys desk redesigned OpenAI-only with the generative pitch (label
+bug: Labels without .text render nothing; never prefill keys in
+cleartext), RW! icon in the title hand, 2.6GB styled DMG, dead eras
+purged (391MB + 60s refs out of the public repo), hero/witness
+entrances, journal close motion, dice whoosh, ledger live lever math from
+tick formulas, money law + clarify live-probed (spent $1500 exact,
+era-sane $300 for the amountless move, narration carried spend continuity
+across weeks), boot latency 1440→520ms (144 sync frame loads → streamed).
