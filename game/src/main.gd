@@ -831,17 +831,21 @@ func _after_draft(result: Dictionary) -> void:
 		birth.size = get_viewport().get_visible_rect().size
 		generator.generate_world(state, func(gen: Dictionary) -> void:
 			WorldGen.apply_llm_world(state, gen)
-			# THE FOUNDING LOADS WHILE YOU READ (owner): day one's chapter is
-			# already being written while the market map is on screen, so
-			# SETTLE IN opens on a beat, not on a curtain.
+			SimEngine.seed_beliefs(state)
+			# THE BOOK OPENS ON THE FOUNDER'S OWN ENTRY (owner, scrapping the
+			# old stats sheet): the founding is written while the reader holds
+			# the book; field notes (working assumptions) sit below the entry.
 			_prefetch_founding(g)
-			var wr := WorldRevealScreen.new()
-			wr.setup(state)
-			wr.done.connect(func() -> void:
+			var bk := BookIntroScreen.new()
+			bk.setup(state)
+			if not _founding_res.is_empty():
+				bk.feed_entry(String(_founding_res.get("narration", "")))
+				_book_showed_entry = true
+			bk.done.connect(func() -> void:
 				_swap(g)
 				_cold_open(g))
-			_swap(wr)
-			wr.size = get_viewport().get_visible_rect().size)
+			_swap(bk)
+			bk.size = get_viewport().get_visible_rect().size)
 	else:
 		_swap(g)
 		# the SHOT harness photographs screens, not story: a live-key founding
@@ -863,6 +867,7 @@ func _after_draft(result: Dictionary) -> void:
 ## _founding_res; _cold_open consumes it instantly if it landed in time.
 var _founding_res := {}
 var _founding_inflight := false
+var _book_showed_entry := false   # the reader actually saw the founding text
 
 func _founding_move() -> String:
 	var who_founds := (" The founder writing this is %s." % state.founder_name) \
@@ -886,7 +891,10 @@ func _prefetch_founding(gv: GarageViewScreen) -> void:
 	generator.adjudicate(state, {}, _founding_move(), func(res: Dictionary) -> void:
 		_founding_inflight = false
 		_founding_res = res
-		if _screen is GarageViewScreen:
+		if _screen is BookIntroScreen:
+			(_screen as BookIntroScreen).feed_entry(String(res.get("narration", "")))
+			_book_showed_entry = true
+		elif _screen is GarageViewScreen:
 			# the player is already in the room waiting on the curtain: play it
 			_consume_founding(_screen as GarageViewScreen))
 
@@ -921,6 +929,9 @@ func _consume_founding(gv: GarageViewScreen) -> void:
 	res.erase("dice")
 	res.erase("roll")
 	res["week_played"] = 0
+	# only skip the beat if the reader actually HELD the entry on the book
+	# screen — a fast SETTLE IN before it landed still earns the day-one beat
+	res["book_read"] = _book_showed_entry
 	state.last_outcome = {
 		"title": "day one", "verdict": "",
 		"said": "", "heard": "",
@@ -1470,6 +1481,32 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 			cast_pack["urls"], String(scene.get("beat", "")), out_name)
 		# it may have failed before it ever reached the network (no key, bad request).
 		# That is not a reason to skip the week: the beat carries on as reading.
+
+	# BOOK-READ TURNS (the founding, read on the book-intro screen) skip the
+	# beat entirely: the words were the screen; only the art still lands.
+	if bool(dm.get("book_read", false)):
+		var bdeadline := Time.get_ticks_msec() + int(HOLD_CEILING * 1000.0)
+		if hosting:
+			while not _upload_done and Time.get_ticks_msec() < bdeadline and seq == _turn_seq:
+				await get_tree().process_frame
+			if seq != _turn_seq:
+				return
+			if _collect_upload() != "":
+				director.make_scene(want, String(scene.get("novel_place", "")), cast_pack["cast"],
+					cast_pack["urls"], String(scene.get("beat", "")), out_name)
+			else:
+				_scene_done = true
+		while not _scene_done and Time.get_ticks_msec() < bdeadline and seq == _turn_seq:
+			await get_tree().process_frame
+		if seq != _turn_seq:
+			return
+		_turn_busy = false
+		if _screen is GarageViewScreen:
+			(_screen as GarageViewScreen)._world_busy = false
+		if _scene_path != "":
+			_open_scene(_scene_path, String(dm.get("headline", "")))
+		_check_exit()
+		return
 
 	var l := LoadingScreen.new()
 	var wkp := int(dm.get("week_played", state.week))

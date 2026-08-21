@@ -342,11 +342,7 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	# 9b ── the founder's working assumptions converge toward the truth.
 	# Rate: analytics tooling, real customers, and R&D all teach.
 	if state.beliefs.is_empty():
-		var br := _rng(state, 88)
-		state.beliefs = {
-			"tam": float(th.tam) * br.randf_range(0.35, 2.6),
-			"lifetime_wk": float(th.lifetime_wk) * br.randf_range(0.4, 2.2),
-		}
+		seed_beliefs(state)
 	else:
 		var k := clampf(0.02 + 0.05 * float(state.analytics_level)
 				+ 0.003 * float(state.traction) + b_rnd / 40000.0, 0.0, 0.30)
@@ -489,6 +485,15 @@ static func apply_round(state: GameState, amount: int, equity_pct: float) -> voi
 # ───────────────────────────── derived signals ───────────────────────────────
 ## What one week may plausibly spend at this stage — the DM's inputs are
 ## clamped here so no narration can invent hq money in a garage.
+## First guesses about the market — wrong on purpose, corrected by playing.
+static func seed_beliefs(state: GameState) -> void:
+	var th := state.theta
+	var br := _rng(state, 88)
+	state.beliefs = {
+		"tam": float(th.get("tam", 100000.0)) * br.randf_range(0.35, 2.6),
+		"lifetime_wk": float(th.get("lifetime_wk", 40.0)) * br.randf_range(0.4, 2.2),
+	}
+
 static func era_spend_cap(era: String) -> int:
 	return int({"garage": 6_000, "coworking": 25_000, "office": 80_000,
 		"floor": 300_000, "hq": 1_200_000}.get(era, 6_000))
