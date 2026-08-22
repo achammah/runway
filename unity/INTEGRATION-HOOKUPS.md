@@ -120,3 +120,10 @@ Applied all at once at integration; each lane proven OFF-able first (D8).
         → "Coroutine couldn't be started" → default founder idle never plays.
 - Fixture divergences (accepted): Godot binder prints raw cofounder role int (its own
   bug); metric_history product/week fields uncharted in both.
+
+## My perf fixes (post-lane)
+- Curtain 12fps line quantizer: DONE (committed).
+- ArtCache one-decode-per-frame pump: DONE (committed).
+- ArtCache.Sweep(280MB, 45s age guard): code in; HOOKUP → one line in Boot.Go
+  after the old screen is torn down: `Runway.Game.ArtCache.Sweep();`
+- SheetLoop OnEnable deferral + textured-only visibility, DraftLoop deferral: DONE.

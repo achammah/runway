@@ -125,7 +125,7 @@ namespace Runway.App
             text.fontSize = sizePx;
             text.color = DrawnUI.Ink;
             text.alignment = TextAlignmentOptions.Center;
-            text.enableWordWrapping = false;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
             text.richText = false;
 
             var phRt = DrawnUI.FullRect(viewport, "placeholder");
@@ -134,7 +134,7 @@ namespace Runway.App
             ph.fontSize = sizePx;
             ph.color = DrawnUI.WithAlpha(DrawnUI.Ink, 0.28f);
             ph.alignment = TextAlignmentOptions.Center;
-            ph.enableWordWrapping = false;
+            ph.textWrappingMode = TextWrappingModes.NoWrap;
             ph.richText = false;
             ph.text = placeholder ?? "";
 

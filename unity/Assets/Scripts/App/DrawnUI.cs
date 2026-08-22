@@ -176,7 +176,7 @@ namespace Runway.App
             t.color = color;
             t.alignment = align;
             t.raycastTarget = false;
-            t.enableWordWrapping = width > 0f;
+            t.textWrappingMode = width > 0f ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
             t.overflowMode = TextOverflowModes.Overflow;
             // the box grows down from its top-left, never re-centres the line
             t.rectTransform.sizeDelta = new Vector2(w, Mathf.Max(size * 1.6f, PreferredHeight(t, w)));
@@ -214,7 +214,7 @@ namespace Runway.App
                 var rt = Rect(host, "ruler", -5000f, -5000f, 4000f, size * 3f);
                 _ruler = rt.gameObject.AddComponent<TextMeshProUGUI>();
                 _ruler.raycastTarget = false;
-                _ruler.enableWordWrapping = false;
+                _ruler.textWrappingMode = TextWrappingModes.NoWrap;
             }
             if (Hand != null) _ruler.font = Hand;
             _ruler.fontSize = size;

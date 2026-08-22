@@ -23,6 +23,7 @@ namespace Runway.Game
     public static class ArtCache
     {
         static readonly Dictionary<string, Texture2D> _tex = new Dictionary<string, Texture2D>();
+        static readonly Dictionary<string, float> _lastUse = new Dictionary<string, float>();
         static readonly Dictionary<string, List<Action<Texture2D>>> _waiting =
             new Dictionary<string, List<Action<Texture2D>>>();
 
@@ -35,8 +36,50 @@ namespace Runway.Game
         public static Texture2D Peek(string relative)
         {
             Texture2D t;
-            if (relative != null && _tex.TryGetValue(relative, out t)) return t;
+            if (relative != null && _tex.TryGetValue(relative, out t))
+            {
+                _lastUse[relative] = Time.realtimeSinceStartup;
+                return t;
+            }
             return null;
+        }
+
+        /// THE FLOOR COMES BACK DOWN (perf soak: the hold-everything policy
+        /// reached a 704MB steady state against a 400MB bar). Called between
+        /// screens: while the cache is over budget, the textures nobody has
+        /// asked for in `minAge` seconds are destroyed, oldest first. The
+        /// age guard keeps everything the LIVE screen holds (it asked
+        /// recently); an evicted picture simply reloads on next request.
+        public static void Sweep(long maxBytes = 280L * 1024 * 1024, float minAge = 45f)
+        {
+            long held = 0;
+            var order = new List<KeyValuePair<float, string>>();
+            foreach (var kv in _tex)
+            {
+                if (kv.Value == null) continue;
+                held += (long)kv.Value.width * kv.Value.height * 4;
+                float used;
+                _lastUse.TryGetValue(kv.Key, out used);
+                order.Add(new KeyValuePair<float, string>(used, kv.Key));
+            }
+            if (held <= maxBytes) return;
+            order.Sort((a, b) => a.Key.CompareTo(b.Key));
+            float now = Time.realtimeSinceStartup;
+            int dropped = 0;
+            foreach (var pair in order)
+            {
+                if (held <= maxBytes) break;
+                if (now - pair.Key < minAge) break;   // everything younger stays
+                Texture2D t = _tex[pair.Value];
+                _tex.Remove(pair.Value);              // reloadable on next ask
+                _lastUse.Remove(pair.Value);
+                held -= (long)t.width * t.height * 4;
+                UnityEngine.Object.Destroy(t);
+                dropped++;
+            }
+            if (dropped > 0)
+                Debug.Log("RUNWAY! art sweep: " + dropped + " drawings released, "
+                          + (held / (1024 * 1024)) + "MB held");
         }
 
         /// Hand the texture to `cb` — this frame if it is cached, later if it is not.
@@ -47,7 +90,12 @@ namespace Runway.Game
             if (string.IsNullOrEmpty(relative)) { cb(null); return; }
 
             Texture2D have;
-            if (_tex.TryGetValue(relative, out have)) { cb(have); return; }
+            if (_tex.TryGetValue(relative, out have))
+            {
+                _lastUse[relative] = Time.realtimeSinceStartup;
+                cb(have);
+                return;
+            }
 
             List<Action<Texture2D>> queue;
             if (_waiting.TryGetValue(relative, out queue)) { queue.Add(cb); return; }
@@ -95,6 +143,7 @@ namespace Runway.Game
         static void Deliver(string relative, Texture2D tex)
         {
             _tex[relative] = tex;
+            _lastUse[relative] = Time.realtimeSinceStartup;
             List<Action<Texture2D>> queue;
             if (_waiting.TryGetValue(relative, out queue))
             {

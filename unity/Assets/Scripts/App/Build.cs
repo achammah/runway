@@ -45,6 +45,7 @@ namespace Runway
                 TryUniversalArchitecture();
 
                 string scene = EnsureScene();
+                EnsureSheets();
                 EnsureStreamingArt();
                 WriteBuildStamp();
                 AssetDatabase.Refresh();
@@ -129,6 +130,34 @@ namespace Runway
                 if (name.StartsWith(".")) continue;
                 CopyTree(dir, Path.Combine(dst, name));
             }
+        }
+
+        /// The six film sheets play as IMPORTED textures (GPU-ready — a 16MB
+        /// PNG cost seconds of runtime decode through UnityWebRequest). The
+        /// PNGs are local-only art, so the build stages them into
+        /// Resources/Sheets itself; SheetImport.cs sets the import flags.
+        static readonly string[] SheetNames =
+        {
+            "howto_1", "howto_2", "howto_3",
+            "birth_intro", "birth_loop", "curtain_loop",
+        };
+
+        static void EnsureSheets()
+        {
+            string srcDir = Path.Combine(ProjectRoot(), "Assets/Art/title");
+            string dstDir = Path.Combine(ProjectRoot(), "Assets/Resources/Sheets");
+            Directory.CreateDirectory(dstDir);
+            bool copied = false;
+            foreach (string n in SheetNames)
+            {
+                string src = Path.Combine(srcDir, n + ".png");
+                string dst = Path.Combine(dstDir, n + ".png");
+                if (!File.Exists(src)) { Debug.LogWarning("RUNWAY! no sheet source " + src); continue; }
+                if (File.Exists(dst) && new FileInfo(dst).Length == new FileInfo(src).Length) continue;
+                File.Copy(src, dst, true);
+                copied = true;
+            }
+            if (copied) AssetDatabase.Refresh();
         }
 
         static void WriteBuildStamp()

@@ -126,23 +126,61 @@ namespace Runway.App
             return StartCoroutine(LoadSheet(relativeArtPath));
         }
 
+        string _inflight;
+        float _inflightT0;
+        bool _sheetBaked;   // came from Resources: unload, never Destroy
+
         IEnumerator LoadSheet(string relativeArtPath)
         {
+            // THE FILMS ARE IMPORTED, NOT STREAMED. A 16MB sheet PNG cost
+            // 2.8-6.6s of runtime decode through UnityWebRequest, and the
+            // birth loop's load was KILLED by its own screen moving on.
+            // Imported (BC7, GPU-ready) the same sheet arrives in
+            // milliseconds and holds a quarter of the VRAM. Godot pays this
+            // exact cost at export; Resources/Sheets is the Unity spelling.
+            int slash = relativeArtPath.LastIndexOf('/');
+            string baseName = relativeArtPath.Substring(slash + 1);
+            if (baseName.EndsWith(".png")) baseName = baseName.Substring(0, baseName.Length - 4);
+            Texture2D baked = Resources.Load<Texture2D>("Sheets/" + baseName);
+            if (baked != null)
+            {
+                ReleaseSheet();
+                _sheet = baked;
+                _sheetBaked = true;
+                _target.texture = _sheet;
+                _target.enabled = true;
+                _shown = -1;
+                _playing = true;
+                Debug.Log("RUNWAY! sheet baked: " + relativeArtPath + " " + baked.width + "x" + baked.height);
+                yield break;
+            }
+
             string url = RunwayPaths.ArtUrl(relativeArtPath);
             if (url.Length == 0)
             {
                 Debug.Log("RUNWAY! no sheet at " + relativeArtPath + " — drawn fallback stands.");
                 yield break;
             }
+            _inflight = relativeArtPath;
+            _inflightT0 = Time.realtimeSinceStartup;
             Texture2D tex = null;
             yield return LoadTexture(url, t => tex = t);
-            if (tex == null) yield break;
+            _inflight = null;
+            if (tex == null)
+            {
+                Debug.Log("RUNWAY! sheet NULL: " + relativeArtPath + " after "
+                          + (Time.realtimeSinceStartup - _inflightT0).ToString("0.0") + "s");
+                yield break;
+            }
             ReleaseSheet();
             _sheet = tex;
+            _sheetBaked = false;
             _target.texture = _sheet;
             _target.enabled = true;
             _shown = -1;
             _playing = true;
+            Debug.Log("RUNWAY! sheet up: " + relativeArtPath + " " + tex.width + "x" + tex.height
+                      + " in " + (Time.realtimeSinceStartup - _inflightT0).ToString("0.0") + "s");
         }
 
         // ── sequences ──────────────────────────────────────────────────────────
@@ -275,6 +313,12 @@ namespace Runway.App
         /// moment it lifts; the birth screen drops the arrival once it is spent.
         public void Release()
         {
+            if (_inflight != null)
+            {
+                Debug.Log("RUNWAY! sheet load KILLED: " + _inflight + " after "
+                          + (Time.realtimeSinceStartup - _inflightT0).ToString("0.0") + "s");
+                _inflight = null;
+            }
             StopAllCoroutines();   // a load still in flight must not resurrect the sheet
             _playing = false;
             _shown = -1;
@@ -290,8 +334,13 @@ namespace Runway.App
 
         void ReleaseSheet()
         {
-            if (_sheet != null && _ownsTextures) Destroy(_sheet);
+            if (_sheet != null)
+            {
+                if (_sheetBaked) Resources.UnloadAsset(_sheet);   // give the VRAM back
+                else if (_ownsTextures) Destroy(_sheet);
+            }
             _sheet = null;
+            _sheetBaked = false;
         }
 
         void OnDestroy()
