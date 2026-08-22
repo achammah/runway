@@ -59,7 +59,11 @@ namespace Runway.App
             string live = null;
             try { live = Environment.GetEnvironmentVariable(key); }
             catch (Exception) { /* sandboxed hosts can refuse; the files still answer */ }
-            if (!string.IsNullOrEmpty(live)) return live.Trim();
+            if (live != null)
+            {
+                live = live.Trim();   // a whitespace-only export silently
+                if (live.Length > 0) return live;   // killed the LLM (A17)
+            }
             string v;
             if (Load().TryGetValue(key, out v) && !string.IsNullOrEmpty(v)) return v;
             return fallback;

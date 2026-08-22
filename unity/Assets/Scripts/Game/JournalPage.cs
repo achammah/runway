@@ -476,7 +476,11 @@ namespace Runway.Game
                 bool mine = i == chosen;
                 DrawnUI.Group(slot).alpha = mine ? 1f : 0.55f;
                 Transform ring = slot.Find("ring");
-                if (ring != null) ring.gameObject.SetActive(mine);
+                if (ring != null)
+                {
+                    if (mine && !ring.gameObject.activeSelf) Runway.Audio.Sfx.PenScribble();
+                    ring.gameObject.SetActive(mine);
+                }
             }
             var cm = ChoiceMade;
             if (cm != null) cm(id);

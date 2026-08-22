@@ -129,6 +129,8 @@ namespace Runway.Llm
             var boot = Boot.Instance;
             if (boot != null && !boot.ArtEnabled) return;
             if (Env.Get("RUNWAY_GPT_SCENES", "") == "0") return;
+            if (OpenAiKey().Trim().Length == 0) return;   // keyless: a warm
+            // render would fail 3 deterministic attempts + 11s of backoff
             Debug.Log("TURN art WARM start (" + outName + ")");
             WarmStatus = PaintStatus.Painting;
             WarmName = outName;

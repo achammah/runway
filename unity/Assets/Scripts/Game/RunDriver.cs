@@ -421,7 +421,13 @@ namespace Runway.Game
         /// out with nothing in hand — feeds the book exactly like a live one.
         public string AdoptAuthoredFounding()
         {
-            if (_foundingRes != null) return ContentDb.Str(_foundingRes, "narration");
+            if (_foundingRes != null)
+            {
+                string live = ContentDb.Str(_foundingRes, "narration");
+                if (live.Trim().Length > 0) return live;
+                // schema-valid but EMPTY narration: the book would hold its
+                // door forever on a blank entry — the authored one stands in
+            }
             _foundingRes = AuthoredFounding();
             string narration = ContentDb.Str(_foundingRes, "narration");
             var fl = FoundingLanded;
@@ -483,7 +489,7 @@ namespace Runway.Game
                 // the player is already in the room waiting on the curtain: play it
                 if (Boot.Instance != null && Boot.Instance.State == AppState.Garage)
                     ConsumeFounding();
-            });   // NO DICE ON DAY ONE (owner): the founding is an origin story, not a gamble
+            }, null, "founding");   // NO DICE ON DAY ONE; the founding tier gets the fast 50s watchdog
         }
 
         void WarmScene(JObject dm)

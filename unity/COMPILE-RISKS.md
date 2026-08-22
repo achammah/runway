@@ -985,3 +985,342 @@ is in the air live out its life, and disabling the GameObject freezes the effect
 `Embers.Apply(host, bandRect, seed)`, `Scraps.Burst(host, atRect)` and
 `Scraps.BurstAt(host, x, y)` — every rect and coordinate in the host's own Godot
 top-left space, like everything else in this port.
+
+---
+
+# D7c — THE CUE LANE — `Assets/Scripts/Audio/Sfx.cs` + `Audio/SfxHost.cs`
+
+Weight: the fourteen sound effects. `Sfx.cs` is one static door over a six-voice
+pool on a DontDestroyOnLoad host; `SfxHost.cs` is the MonoBehaviour that owns the
+AudioSources and pumps the one coroutine per cue that reads it off disk. No shared
+file is edited, no `partial` is claimed, and `RunwayMix` is reached only through its
+public `RegisterSource` / `Unregister`.
+`Assets/Scripts/Editor/SfxProbe.cs` is the evidence and runs as a gate
+(`-executeMethod Runway.EditorTools.SfxProbe.Run`, exits 1 on any failed check).
+
+**Compiled and run on this machine.** `tools/unity_compile.sh` → **0 unique errors**,
+first pass. `SfxProbe.Run` → **137 checks · 0 failed**, all fourteen cues opened
+through the shipped loader.
+
+## D7c-1. Blocking risks — these stop a compile if they are wrong
+
+| # | API | Where | Why uncertain | Fallback coded |
+|---|-----|-------|---------------|----------------|
+| D7c-A1 | `UnityWebRequestMultimedia.GetAudioClip(string, AudioType)` | `Sfx.LoadRoutine`, `Sfx.LoadBlocking` | The two-argument overload, and `UnityWebRequestMultimedia` lives in `com.unity.modules.unitywebrequestaudio` — a module that can be absent from a trimmed `manifest.json`. | `MusicManager` already names the same overload, so this lane cannot break a project the music lane compiles in. If the module ever goes, the long form is `new UnityWebRequest(url, "GET", new DownloadHandlerAudioClip(url, AudioType.WAV), null)`. **Verified live: 14/14 cues came back through this call.** |
+| D7c-A2 | `DownloadHandlerAudioClip.GetContent(UnityWebRequest)` | `Sfx.Finish` | The static form (there is also an instance `audioClip` property). | Same module as A1 and the same precedent in `MusicManager`. `((DownloadHandlerAudioClip)req.downloadHandler).audioClip` is the one-line swap. **Verified live.** |
+| D7c-A3 | `AudioType.WAV` | both loaders | An enum member, and an absent enum member is a hard error rather than a warning. | The 14 files are RIFF/PCM and nothing else in the build reads a different container. **Verified live.** |
+| D7c-A4 | `AudioSource.spatialBlend` | `Sfx.MakeVoice` | Long stable, named only because it is the one property that decides whether a cue is heard at all: at the default `0` a source is 2D and plays at full level with no listener geometry involved; at `1` it would be positioned at the host's origin and could be inaudible. | Written explicitly as `0f` rather than trusted to the default. |
+| D7c-A5 | `UnityEngine.Object.DontDestroyOnLoad` from a **static** class | `Sfx.Install` | `Sfx` does not derive from `Object`, so the unqualified call every MonoBehaviour uses does not resolve here. | Fully qualified, and gated on `Application.isPlaying` — it throws in edit mode (the shell's `RunwayMix.Install` pattern, D4-2f). |
+| D7c-A6 | `AudioSettings.driverCapabilities` / `AudioSettings.speakerMode` | `SfxProbe` only | Editor/report surface; both have moved between `AudioSpeakerMode` shapes across versions. | Printed, never asserted, and the whole file is under `Assets/Scripts/Editor/` (the `Build.cs` pattern, A5). |
+
+## D7c-2. Runtime risks — they compile, but may not do what the Godot original does
+
+| # | Thing | Where | Risk | Fallback coded |
+|---|-------|-------|------|----------------|
+| D7c-B1 | **`AudioSource.isPlaying` reads `true` in batch mode with no output device.** | measured, not theorised | The probe's own table shows `isPlaying yes` on all fourteen voices under `-batchmode -nographics` with `graphicsDeviceType Null` and `driverCapabilities Stereo`. That is FMOD's transport state, not sound: nothing was ever presented. Reading it as proof of audio is exactly N11's trap in a different bed. | The probe raises a **BLIND RUN** banner and asserts only what survives — clip data, levels, pitch, pool rotation, mix registration, filter absence, loop counting and allocation. `isPlaying` is a REPORTED column. The ear test belongs to a run with a window and speakers. |
+| D7c-B2 | **A cold cue's first hit can be silent.** | `Sfx.Play` | Cues are lazy per cue, so the very first `card_flip` of a run starts the load rather than the sound. It plays on arrival only if the clip lands inside `LateWindow` (0.25s); past that the ask is dropped and only the cache is warmed, because a whoosh answering a click 400ms late reads as a fault. Local WAVs of 3KB–1.2MB land well inside the window, but a cold page cache on a spinning disk might not. | `Sfx.Warm(...)` at a screen's build is the Godot `_ready()` behaviour and removes the risk entirely for that screen; `Sfx.WarmAll()` takes all fourteen. The whole set is **25.7s of audio · 2,074,586 sample-frames**, i.e. 4.2MB at 16-bit and 8.3MB at 32-bit float — under 10MB held for the life of the process either way. |
+| D7c-B3 | **Six voices, and the seventh cue steals.** | `Sfx.Take` | The ring prefers a free voice and steals the one at the head when all six are sounding. `death` (6.5s), `win` (6.0s), `pivot` (4.5s) and `lock_week` (3.2s) are long enough to still be alive when the next four cues fire, so a stacked ending CAN cut a tail short. | Six is already 1.5× the busiest instant `main.gd` ever asks for (a week turning: `lock_week` + `cash` + `win` + `tick`). Raising `Sfx.Voices` is one constant; nothing else changes. The probe proves the ring visits all six. |
+| D7c-B4 | **`pivot.wav` is never played by the Godot build.** | the whole game | 864KB on disk in both projects, and `grep -rn "pivot" game/src --include='*.gd'` returns 107 hits of which **not one** is an audio play — `_open_pivot`'s sheets play `cash` on each choice and `deposit` on the commit (`garage_view_screen.gd:2508/2518/2530/2883`). The cue is orphan art. | Shipped as a cue with a name and a level so a hookup is one word if the pivot sheet is ever given its sound, but it appears in the hookup table with **no site**. It is not a port gap; it is a gap in the original. |
+| D7c-B5 | **`step` and `pickup` have no Unity home.** | — | Both belong to `scramble3d_screen.gd` (footfalls while running, grabbing an item), and the 3D scramble minigame is not in this port at all. | Both ship as cues with their Godot pitch jitter documented, and both are marked "no Unity site" in the hookup table. If the scramble is ever ported the two lines are `Sfx.Step(0f, 0.9f + Random.value * 0.25f)` and `Sfx.Pickup(0f, 0.95f + 0.1f * Random.value)`. |
+| D7c-B6 | **The mix re-reads a voice's base level after every shot.** | `RunwayMix.ApplyVoice` ← `Sfx.Play` | Writing `src.volume` per shot is precisely the "somebody else moved it" case the mix handles: on its next tick it recomputes `Base = volume / gain`. That is harmless ONLY because the sfx bed's gain is 0dB in all four states, so `gain == 1` and `Base == volume` exactly. | If the mix table ever gives sfx a non-zero gain, the per-shot level and the bed will still resolve correctly (the mix multiplies), but the recorded `Base` would drift by one tick's worth of rounding per shot. Registering a dedicated child source per shot is the fix if that day comes. The probe asserts the bed is 0dB and un-lidded under `curtained`, under `binder`, and under `binder+red`. |
+| D7c-B7 | **`MusicManager` builds its URL as `"file://" + path`.** | `Audio/MusicManager.cs:86` — NOT this lane's file | This project's own path contains a space (`.../Claude Code/runway/...`), which is exactly what B6 says must go through `new Uri(path).AbsoluteUri`. A raw-concatenated `file://` URL is not a valid URI and the music may simply never load on this machine. | This lane resolves every cue through `RunwayPaths.ArtUrl("sfx/<name>.wav")` instead, and the probe's `routes: 14 loaded through UnityWebRequestMultimedia` is the proof that route works with the space in it. **Flagged, not fixed — `MusicManager` is a shared file.** One line: `RunwayPaths.FileUrl(path)`. |
+| D7c-B8 | **`LoadBlocking` spins the main thread.** | `Sfx.LoadBlocking` | Nothing pumps a coroutine outside play mode, so a harness's ask and any pre-play-mode call resolve inline with a `Thread.Sleep(1)` spin on `isDone`. A remote URL here would hang the editor for `LoadTimeout`. | The URL is always a local `file://` built by `RunwayPaths`, the spin carries a 10s timeout, and an abort waits 16ms before `Dispose` (the shell's B8). In play mode this branch is unreachable: `Play`/`LoopOn` take it only when `!Application.isPlaying`. |
+| D7c-B9 | **The harness silence list is read from the process environment only.** | `Sfx.ReadSwitch` | `RUNWAY_USHOTS` / `RUNWAY_UPERF` / `RUNWAY_LANEWIRE` / `RUNWAY_SHOT` are read with `Environment.GetEnvironmentVariable`, not through `Env.Get`, so a harness switch set in `.env` would not silence the cues. | Deliberate, and identical to `MusicManager.Install`: a harness variable is set BY the harness, in the process. The kill-switch proper (`RUNWAY_FX_SFX`) does go through `Env.Get`, so it layers over `.env` and `keys.env` like every other switch (D4-2g). |
+| D7c-B10 | **`pitch` changes duration, as it does in Godot.** | `Sfx.Play` | `AudioSource.pitch` is a rate multiplier, exactly like `AudioStreamPlayer.pitch_scale`, so the archetype chip at 1.14 is also 12% shorter. | Intended: it is the original's own behaviour, and the three sites that use it (`founder_draft_screen.gd:774/847/875`, `dice_roll.gd:43`) all use it on cues of 50ms–550ms where the shortening is the point. |
+
+## D7c-3. Verified, not guessed
+
+Measured by running the shipped `Sfx.cs` under `-batchmode -nographics`.
+`SfxProbe.Run` passes **137/137**. Full log:
+`scratchpad/sfx/cues.txt`.
+
+- **All fourteen cues opened through the SHIPPED loader.** `routes: 14 loaded
+  through UnityWebRequestMultimedia, 0 through AssetDatabase, 0 missing` — the
+  `AssetDatabase` fallback the probe carries was never needed, so the evidence is
+  about the code that ships and not about the editor's importer.
+- **Every clip carries real audio**: length > 0, samples > 0, a real sample rate and
+  1–2 channels, all fourteen. The table, as measured:
+  `card_flip 0.120s`, `cash 0.050s`, `curtain 0.549s`, `death 6.500s`,
+  `deposit 0.300s`, `dice_rattle 1.600s`, `lock_week 3.200s`, `pen_scratch 2.400s`,
+  `pen_scribble 0.300s`, `pickup 0.090s`, `pivot 4.500s`, `step 0.050s`,
+  `tick 0.034s`, `win 6.000s` — **25.7s in total**, three of them stereo at 48kHz
+  and the rest mono at 22.05/44.1kHz.
+- **Every level is the Godot number.** A bare call reproduces the original's own
+  `volume_db` with no arithmetic at the call site: `curtain` 0.3981 (-8dB,
+  `curtain.gd:81`), `dice_rattle` 0.5012 (-6dB, `dice_roll.gd:49`), `pen_scratch`
+  0.1995 (-14dB, `journal_page.gd:625`), `pen_scribble` 0.3162 (-10dB,
+  `journal_page.gd:626`), and 1.0000 for the other ten, which is Godot's own
+  default. The two sites that disagree with the table are reproduced as trims:
+  the dice cup's thin whoosh at **-14dB / pitch 1.25** and the 4th archetype chip
+  at **pitch 1.14**.
+- **The pool is a ring and it visits all six voices**: fourteen cues landed on
+  voices `0 1 2 3 4 5 0 1 2 3 4 5 0 1`, each carrying its own clip and its own level.
+- **Seven voices in the mix, no filter on any of them.** `RunwayMix.Count(Sfx) == 7`
+  (six one-shot + one loop), and the sfx bed measures **0.0dB / 22000Hz** under
+  `curtained`, under `binder` and under `binder+red` — the bed that is never ducked
+  and never filtered, asserted rather than assumed.
+- **The loop is held by a COUNT**, which is `loading_screen.gd`'s `_writing` counter:
+  a second writer starting takes a second hold, one lifting does not stop the paper,
+  the last one does. The reading beat's quieter hand measures -16dB against the
+  journal's -14dB, from the same cue.
+- **Zero per-play allocation**: **20,000 `Play()` calls moved the managed heap by
+  0 bytes with 0 gen-0 collections.**
+- **Kill-switch, both halves.** The ENVIRONMENT half: a second run with
+  `RUNWAY_FX_SFX=0` set in the process reports `switch RUNWAY_FX_SFX=0 → sfx OFF`,
+  so `Env.Get` reaches the switch (`scratchpad/sfx/cues_switch_off.txt`). The
+  BEHAVIOUR half: `Sfx.SetEnabled(false)` tears the host down, `Install()` raises
+  nothing, `Play` / `LoopOn` / `WarmAll` are no-ops, the sfx bed empties to 0 and no
+  `runway_sfx` GameObject survives. One call brings the whole lane back and
+  re-registers its voices. Both runs are 137/137.
+
+## D7c-4. The seam
+
+`Sfx` reaches into exactly one thing it does not own — `RunwayMix.RegisterSource` /
+`Unregister`, through the public API, once per voice. `Boot` is not touched and does
+not know the cue player exists. `RunwayPaths.ArtUrl` and `Env.Get` are read-only.
+
+`Sfx.Install()` is the optional one-line entry point; without it the lane installs
+itself on the first `Play`, `LoopOn` or `Warm`.
+
+**The restraint law lives in this file, not at the call sites.** A cue that is not in
+the table plays nothing and says so once; a cue whose file is missing marks itself
+absent and never re-opens the file; the switch is checked before anything at all is
+built, so a hookup cannot get it wrong.
+
+**The fourteen doors**, so a hookup is a word rather than a string literal and a typo
+is a compile error rather than a silent screen:
+
+```csharp
+Sfx.CardFlip();  Sfx.Cash();      Sfx.Curtain();   Sfx.Death();
+Sfx.Deposit();   Sfx.DiceRattle(); Sfx.LockWeek(); Sfx.PenScribble();
+Sfx.Pickup();    Sfx.Pivot();     Sfx.Step();      Sfx.Tick();     Sfx.Win();
+Sfx.PenScratch(true);   // the one LOOPING cue: down…
+Sfx.PenScratch(false);  // …and up. Held by a count, not a flag.
+```
+
+Every one takes `(float volumeDb = 0f, float pitch = 1f)`, where `volumeDb` is a
+**trim on top of the cue's own Godot level** — so a bare call is the original's
+loudness and the two sites that differ are expressed as the trim they are:
+
+```csharp
+Sfx.Curtain(-6f, 1.25f);          // dice_roll.gd:42-43 → -14dB, pitch 1.25
+Sfx.PenScratch(true, -2f);        // loading_screen.gd:313 → -16dB
+Sfx.Cash(0f, 0.9f + 0.08f * i);   // founder_draft_screen.gd:774, per chip
+```
+
+`using Runway.Audio;` is needed at each site, or write `Runway.Audio.Sfx.CardFlip()`.
+
+---
+
+# A-TAIL — THE SAVE / SLOT / KEY LANE — `Runway.ATail.Tests/` + `Assets/Scripts/Editor/ATailProbe.cs`
+
+Checklist A15 (save round-trip), A16 (slots), A17 (key desk), A18 (authored error
+states). New files only; nothing shipped was edited.
+
+## A-TAIL-1. Blocking risks — these stop a compile if they are wrong
+
+- **`SaveSlots`, `Env`, `RunwayPaths`, `RunSave`, `RunRecord` and `ContentDb` are NOT
+  Unity-free.** They compile against exactly four UnityEngine symbols and no more:
+  `Debug` (Log/LogWarning/LogError), `Mathf.Clamp(int,int,int)`, `Application`
+  (`platform`/`dataPath`/`streamingAssetsPath`/`persistentDataPath`) and
+  `UnityEngine.Random.value` (ContentDb's weighted draw only). `Runway.ATail.Tests/
+  UnityShim.cs` supplies those four, so the SHIPPED sources — not copies — run under
+  `dotnet run`. Anything else pulled into that csproj (a screen, `Boot`, `LlmClient`)
+  drags in MonoBehaviour and will not compile there.
+- **`RunRecord.LogEvent` needs `ContentDb`**, which needs `RunwayPaths` + `Directory`.
+  `Game/ContentDb.cs` is therefore in the test csproj even though only its three
+  static JSON readers are used.
+- **`SaveSlotInfo` lives in `App/IRunDriver.cs`**, not in `SaveSlots.cs`. A suite that
+  reads a slot table has to compile IRunDriver.cs too (it brings `NullRunDriver`,
+  which needs nothing else).
+- **Unity never compiles anything under `unity/Runway.ATail.Tests/`** — it is outside
+  `Assets/`, exactly like `Runway.Core.Tests`. The `namespace UnityEngine` shim in
+  there can therefore never collide with the real one.
+
+## A-TAIL-2. Runtime risks — they compile, but will write into the player's folder
+
+- **`RunwayPaths.UserDir` has no injection seam.** It reads `$HOME` and memoises into
+  a private static `_userDir`. Two ways to redirect it, both verified:
+  - **console host**: `Environment.SetEnvironmentVariable("HOME", tempDir)` BEFORE the
+    first `UserDir` read, with `Application.platform = RuntimePlatform.OSXEditor`. The
+    real macOS branch then resolves to `<temp>/Library/Application Support/Runway`.
+  - **editor probe**: reflection on the private static —
+    `typeof(RunwayPaths).GetField("_userDir", BindingFlags.NonPublic | BindingFlags.Static)`.
+  Either way the redirect MUST be asserted before a single write: `ATailProbe.Redirect()`
+  returns false and the probe aborts if `UserDir`, `Env.KeysPath` and `SaveSlots.Path(1)`
+  are not all inside the temp tree. A renamed field must abort the run, never fall back
+  to `~/Library/Application Support/Runway`.
+- **`Env.Load()` is cached in a private static.** After any file write the value is
+  stale until `Env.Reload()`. `SaveOpenAiKey`/`SaveKeyless` call `Reload` themselves;
+  a raw `File.WriteAllText` to `Env.KeysPath` does not.
+- **The editor probe must not write inside `Assets/`.** Anything dropped there is
+  imported and can be committed by accident, so the probe tests the USER layer and the
+  PROCESS layer only; the project `.env` layer is covered by the console suite, whose
+  `Application.dataPath` points at a sandbox.
+- **`-executeMethod` needs the same mutex as `tools/unity_compile.sh`.** Two editors on
+  one Library corrupt or false-clean it. The probe runner takes
+  `${TMPDIR}/runway_unity_compile.lock` with the identical mkdir/steal-a-dead-holder
+  dance before launching Unity.
+- **`EditorApplication.Exit(code)` is what makes the probe's result readable** — with
+  `-quit` alone the editor exits 0 whatever the assertions did.
+
+## A-TAIL-3. Verified, not guessed
+
+Two runs, same assertions, two hosts.
+
+- **`dotnet run --project unity/Runway.ATail.Tests`** — 104 checks, 95 held, 0 harness
+  failures, 9 shipped-code defects (two root causes).
+- **Unity 6000.0.82f1 `-batchmode -nographics -executeMethod
+  Runway.EditorTests.ATailProbe.Run`** — 43 checks, 3 failed, the same root cause. The
+  editor reproduces the console suite's A15 defect line for line, which is what proves
+  the shim is not the reason anything passed.
+- `bash tools/unity_compile.sh` → **0 errors** with `ATailProbe.cs` in the tree.
+
+**A15 — Newtonsoft appends into pre-populated collections.** `ObjectCreationHandling`
+defaults to `Auto`: for a field that is already a non-empty collection, the
+deserializer reuses the instance and ADDS to it. `Investor.Coords`
+(`GameState.cs:92`) is initialised `{ 0.0, 0.0 }`, so every load produces
+`[0,0, 0.9,0.4]`, then `[0,0, 0,0, 0.9,0.4]` — measured 2 → 4 → 6 over three passes.
+`WorldGen.InvestorDcMod` reads `Coords[0]`/`Coords[1]`, which are `0,0` after one
+CONTINUE. The same rule resurrects the five default `Competences` and six default
+`Traits` keys into any state that carries fewer. **Control run in the suite**: the
+same shipped `GameState` round-tripped through
+`JsonSerializer.Create(new JsonSerializerSettings { ObjectCreationHandling =
+ObjectCreationHandling.Replace })` is byte-identical across three passes and all 67
+public fields survive — the one-line fix is proven, not assumed.
+
+**A15 — everything else round-trips.** 67 public `GameState` fields swept by
+reflection, all 67 carrying a non-default value (a default proves nothing), across a
+live 3-week fixture and a dead-run fixture. Only `Investors` moves.
+`meta.ts` is re-stamped on every `Save`, so the whole FILE is never byte-identical
+across two writes; the `state` and `record` blocks are.
+
+**A15 — `GameState.GetMetaF` tests `v is double`.** Every `int` written through
+`SetMeta` therefore reads back as the CALLER'S FALLBACK, before and after a save:
+`RunDriver.Loyalty` (`cf_loyalty_N`) is permanently 70 and `JournalSpreads:383`
+(`fundraising_week`) is permanently this week. `prev_revenue` and `unit_econ` are
+doubles and survive; `unit_econ` returns as a `JObject` after a load, which
+`BinderScreen.UnitEcon` already reads both ways.
+
+**A16 — the slot layer holds.** 3 writes, a 3-row table with the exact
+`{company} / {founder} · week {n} · last played {ago}` the title draws, the `Ago`
+ladder word for word from `title_screen.gd`, an overwrite that truncates (no tail of
+the old run survives), a delete that leaves the neighbours alone, and a CONTINUE whose
+restored state matches field for field apart from the A15 defect. Unparseable, empty
+and record-less saves all behave. **The one disagreement**: a `state`-less file parses,
+so `SaveSlots.Read` marks it `Exists` and the title draws a dossier that `RunSave.Load`
+then refuses — `Boot.StartRun` falls through to `BeginFreshRun`, so the click starts a
+new run in that slot with nothing on screen saying the old company is gone.
+
+**A17 — the layering is project `.env` → user `keys.env` → live process variable**, in
+that order, and `Env.Load()` reports the FILE layering underneath the process one.
+Quotes stripped, comments/blank/keyless/valueless lines skipped, pasted key trimmed,
+`Reload()` required after a raw file edit. Keyless writes a marker with no key in it
+and still inherits a dev `.env` key when one exists — by design (`KeysScreen.cs:93`).
+The editor probe runs the MonoBehaviour half the console host cannot: `keys.env` →
+`Env.Reload()` → `LlmClient.Setup` brings the client UP with `openai` /
+`gpt-5.6-terra` assess / `gpt-5.6-luna` clarify, and "play without" brings it back
+down to authored-only — that is `Boot.NotifyKeysChanged` verbatim.
+
+**A17 — the key never reaches a log line.** Zero canaries across the console suite's
+lines and the editor probe's 53 console lines, with the failure paths driven on
+purpose (unwritable keys path, unparseable slot whose CONTENTS contain the canary).
+Static half: no `Debug.Log*` argument in any of the 98 shipped files names `ApiKey`,
+`OpenAiKey`, `okey`, `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`. The key rides request
+HEADERS only.
+
+## A-TAIL-4. The seam
+
+Nothing is hooked up. Both artefacts are run-on-demand:
+
+```bash
+$HOME/.dotnet/dotnet run --project unity/Runway.ATail.Tests     # 0 = clean
+Unity -batchmode -quit -nographics -projectPath unity \
+      -executeMethod Runway.EditorTests.ATailProbe.Run -logFile - # 0 = clean
+```
+
+`ATailProbe` is under `Assets/Scripts/Editor/`, so it is editor-only by folder and
+never ships in a player build. It has no `Apply()` entry point and no kill-switch
+define because it installs nothing: it only runs when `-executeMethod` names it.
+
+---
+
+# C-DRIVER — THE BEHAVIOUR HARNESS — `App/UnityFlow.cs` + `App/UnityFlow.Probe.cs`
+
+Checklist section C: the live first-flow probe (C1), the week loop (C2), the clarify
+ask-paths (C3), the money law (C4), the die at the table (C6) and no-repeat (C7).
+New files only; nothing shipped was edited. Armed by `RUNWAY_UFLOW=<dir>`, inert
+without it. Kill-switch define: `RUNWAY_FX_UFLOW_OFF`.
+
+## C-DRIVER-1. Blocking risks — these stop a compile if they are wrong
+
+| # | Thing | Why it matters | What was done |
+|---|-------|----------------|---------------|
+| CD-A1 | **The file is guarded by TWO defines**: `#if !RUNWAY_FX_UFLOW_OFF && !RUNWAY_FX_USHOTS_OFF`. | It reuses `UnityShotsCamera` (the shutter + the flat-frame check) and `UnityShotsPoke` (the one-shot reflection), both of which live inside `#if !RUNWAY_FX_USHOTS_OFF`. Guarding on only its own define would break the compile in the USHOTS-off variant of the kill-switch matrix. | Both defines guard both files. With USHOTS off, this lane simply does not exist — which is correct: without a shutter there is no evidence to take. |
+| CD-A2 | `WeekCommit`, `JournalSpreads`, `JournalPage`, `ReadingBeat`, `DiceRoll`, `GarageScreen`, `BinderScreen`, `BookIntroScreen`, `BirthScreen`, `FounderDraftScreen`, `DraftBagPage`, `DraftCofounder` are all **public types**. | Every reach-in is ONE reflected field followed by ordinary typed calls. If any of these were made `internal`, the casts break at compile time rather than silently at runtime. | Deliberate: only the *members* are reflected, never the types. `Runway.Screens.TitleScreen` and `HowToScreen` are never named at all — they are poked through `AppScreen`, so a namespace move cannot break this file. |
+| CD-A3 | `SaveSlots.SlotCount` is a `const int`. | `UnityFlowGuard` sizes its backup array from it at field-initialiser time. | If it ever becomes a property, the array initialiser must move into `BackUp`. |
+
+## C-DRIVER-2. Runtime risks — they compile, but the walk can still be wrong
+
+| # | Thing | Risk | What was done |
+|---|-------|------|---------------|
+| CD-B1 | **`RUNWAY_UFLOW` is deliberately NOT in `Boot.HarnessVars`.** | With `Boot.Harness` true the run skips the studio card, answers the title with the any-key contract (so NEW GAME never appears), jumps `AfterDraftRoutine` past BIRTH and BOOK straight into the garage, and turns art off — i.e. it skips four of the six stages C1 exists to prove. | No process variable is set at all. The consequence is that the run behaves like a player's in one more way: `SaveIfWeekTurned()` writes, and NEW GAME calls `ClearRun()`. See CD-B2. **If a future integrator adds `RUNWAY_UFLOW` to `HarnessVars`, this harness stops testing C1.** |
+| CD-B2 | **The walk writes saves.** `Driver.ClearRun()` on the NEW GAME card, `RunSave.Save` once a week. | BUG-15 in Unity: a test run eating the owner's company. | `UnityFlowGuard` copies ALL THREE slots plus `SaveSlots.ActiveSlot` and the `seen_howto_v2.unity` mark before the first frame (BeforeSceneLoad, ahead of `Boot.Awake`), parks a copy of every occupied slot in the shot directory as `_slotN.backup.json`, and puts everything back at the end AND from `OnApplicationQuit`. A slot that was empty is DELETED on restore, never left holding the harness's company. Restore is idempotent. |
+| CD-B3 | **A frame-polled reflection miss would be a 7,000-line failure storm.** `WeekCommit._pendingDice` is read every frame while the die is cast; the cup's sheet every frame while it loads; `GarageScreen._paintRibbon` 4×/s for up to 4 minutes; `ReadingBeat._proceed` 2×/s for up to 4 minutes. | `UnityShotsPoke` records a miss per call, and this lane counts every miss as a failure. One renamed field would bury the log and blow the exit code. | The polled members go through `UnityFlowReach` (same file): the `FieldInfo`/`MethodInfo` is resolved once per type+member, the miss is shouted once, and `Report` counts it once. Everything one-shot still goes through `UnityShotsPoke`, whose miss list the report also carries. |
+| CD-B4 | **The dice sheets are not baked.** `Resources/Sheets/` holds birth/curtain/howto only, so `DiceRoll` streams `dice/roll_NN.png` through `UnityWebRequestTexture` and the resulting `Texture2D.name` is empty. | The obvious "which number did the cup show" reading returns nothing, and C6 would have no independent shown-number source. | `CupNumber()` reads `SheetLoop._inflight` FIRST — it holds `"dice/roll_07.png"` for the whole load — and falls back to `_sheet.name` for the baked path. It is frame-polled from the moment `_pendingDice` appears, which is the same frame `ShowDie` starts the load. If both come back empty, the beat's own judgement sentence ("The die came up 14.") carries C6, and if that is absent too the check FAILS rather than passing quietly. |
+| CD-B5 | **The beat's judgement sentence is revealed on a reading clock.** It is the fourth queued paragraph and lands 10–25s in. | Reading `_bodies` at +2.2s would find nothing and C6 would report the shown number as unreadable every week. | The beat is photographed first, then `SkipReading()` catches the page up, and only then is `_bodies` scanned. |
+| CD-B6 | **`Boot.OnTitleChoice` → `ColdOpen` drops the curtain and `RaiseCurtain` can no-op.** `DropCurtain` starts `Curtain.Close()` as a coroutine, so `IsShut` is still false when the book-read turn calls `RaiseCurtain()` on the same frame; the curtain then shuts and its 40s failsafe is what re-opens it. | The `c1_*_garage_settled` shot can be a photograph of a shut curtain. | Left as it is and photographed honestly — it is a shipped-behaviour finding, not a harness artefact. The room assert waits it out (`PaintCap` 260s), so it does not become a false C1 failure. |
+| CD-B7 | **`HowToScreen` is 3 pages when the loops ship and 1 when they do not.** | Poking `Advance` a fixed 3 times would land on the DRAFT screen and log two misses, which this lane counts as failures. | The paging loop is bounded by `app.State == AppState.HowTo` and re-checks between every press. |
+| CD-B8 | `Dictionary<K,V>` reached through `IDictionary` yields **boxed `KeyValuePair`**, not `DictionaryEntry`, from `IEnumerable.GetEnumerator()`. | `foreach (DictionaryEntry e in map)` over `JournalPage._rowIds` throws `InvalidCastException` at runtime — a bug that compiles. | `map.Keys` is walked and `map[key]` indexed instead. |
+| CD-B9 | **`RUNWAY_NO_ART` makes C1's room claim unprovable.** With art off nothing is composed and no ribbon is raised, by design. | The room assert would burn 260s and then fail for the wrong reason. | The room check is skipped with a loud `UFLOW skip c1_room` line when `Boot.ArtEnabled` is false. Everything else still runs, so a no-art rehearsal is the cheap way to check the walk before paying for it. |
+| CD-B10 | **`TMP_InputField.text` fires `onValueChanged`.** | The whole written-move path depends on it: `JournalPage.SetWritten` → `RaiseWritten` → `JournalSpreads` → `WeekCommit.Written` + `RefreshLock()`. | Belt and braces: `commit.Written` is also assigned directly, and `WeekCommit.CommitFromText` reads `_jp.WrittenText()` first regardless. |
+
+## C-DRIVER-3. What this harness CANNOT see (stated, not hidden)
+
+- **C4 exactness is measured on the receipt, not on `State.Cash` alone.** Cash moves
+  three times inside one lock — `SimEngine.WeeklyTick` (rent, payroll, revenue), the
+  DM's own ops, and the next week's `StartWeek` burn — and only the middle one is
+  what C4 is about. So the exactness claim is asserted against the engine's own
+  receipt line (`"spent $1500 on …"` / `"the bank stopped it at $X (wanted $Y)"`),
+  the era clamp is asserted against `SimEngine.EraSpendCap`, and `State.Cash`
+  before/after is asserted only to have MOVED. Every number (written, DM ask, other
+  cash ops, receipt, era cap, cash in/out) plus the full tick log and decision log is
+  printed, so the arithmetic can be settled by hand from the run's own output.
+- **C5 (pricing economics) is not attempted.** It needs several weeks of tick logs at
+  two prices; this lane proves only that a price ANSWER reaches `GameState.Offers`.
+- **C8 (paint resilience) is not attempted** — it needs a black-hole render URL.
+- **The clarify branches depend on a live model.** `EventGenerator.Clarify` only runs
+  when a key is live, and whether it asks is the model's call. A silent pre-pass on a
+  priceless sell move with unpriced offers is reported as a C3 FAILURE, because that
+  is exactly the finding C3 exists to catch — not as a harness limitation.
+- **`GarageScreen` is the only room.** An era transition that swapped the screen would
+  be picked up by `RoomAlive()`, but the Unity port handles era moves inside
+  `StartWeek`, so no era-transition screen is driven or photographed here.
+
+## C-DRIVER-4. The seam
+
+Nothing is hooked up and nothing needs to be. Both files install themselves from
+`[RuntimeInitializeOnLoadMethod]` and are inert unless `RUNWAY_UFLOW` is set:
+
+```bash
+RUNWAY_UFLOW=/path/to/shots RUNWAY_UFLOW_WEEKS=3 \
+  "build/mac/RUNWAY!.app/Contents/MacOS/RUNWAY!" \
+  -screen-width 1536 -screen-height 1024 -screen-fullscreen 0
+echo $?          # 0 = every check passed; N = N failed checks
+```
+
+`RUNWAY_UFLOW_WEEKS` (default 0) is the number of weeks played AFTER the first
+flow's own week 1. `RUNWAY_UFLOW_SLOT` (default 3) is the slot the run is played in;
+all three are backed up and restored regardless. `RUNWAY_NO_ART=1` still wins and
+turns the run into a text-only rehearsal (see CD-B9). Windowed only — `-batchmode`
+is detected and refused with exit 4, because `WaitForEndOfFrame` never returns
+without a drawn frame.
+
+Shots land in the directory as `c1_NN_<stage>.png` (the first flow, including its
+week 1) and `c2_NN_wWW_<stage>.png` (the extra weeks). The last two lines of the log
+are the verdict:
+
+```
+UFLOW failed checks: c3_price_ask · c6_die_cup
+UFLOW DONE pass=41 fail=2
+```

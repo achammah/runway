@@ -84,6 +84,7 @@ namespace Runway.Game
                     Object.Destroy(_pageHost.GetChild(i).gameObject);
             }
 
+            Runway.Audio.Sfx.CardFlip();
             var pg = JournalPage.Create(_pageHost);
             _jp = pg;
             _commit.Attach(pg);
@@ -415,6 +416,7 @@ namespace Runway.Game
                 St.SetFlag(St.RoundsRaised.Count <= 2 ? "seed_raised" : "series_a");
                 St.LogAction(string.Format("signed {0}: ${1} for {2:0.0}%",
                     o.Investor, o.Amount, o.EquityPct));
+                Runway.Audio.Sfx.Win();
                 _commit.RefreshLock();
             };
             return true;
@@ -443,6 +445,7 @@ namespace Runway.Game
                 St.Competences[s2] = Gd.Mini(St.Competence(s2) + 1, 5);
                 St.XpSpent += 1;
                 St.LogAction(string.Format("leveled {0} to {1}", s2, St.Competence(s2)));
+                Runway.Audio.Sfx.Win();
             };
             return true;
         }

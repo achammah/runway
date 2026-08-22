@@ -127,3 +127,20 @@ Applied all at once at integration; each lane proven OFF-able first (D8).
 - ArtCache.Sweep(280MB, 45s age guard): code in; HOOKUP → one line in Boot.Go
   after the old screen is torn down: `Runway.Game.ArtCache.Sweep();`
 - SheetLoop OnEnable deferral + textured-only visibility, DraftLoop deferral: DONE.
+
+## A-TAIL fixes applied (all in unowned files) + deferrals
+- APPLIED: RunSave ObjectCreationHandling.Replace (saves no longer corrupt on
+  CONTINUE), GetMetaF int fix, SaveSlots state-less guard, Env whitespace trim,
+  empty-founding fallthrough, empty-verdict stand-in, paid-transport retry with
+  its own line, founding tier=founding (50s watchdog), keyless warm skip,
+  LLM parse witnesses x2, MusicManager FileUrl (space-in-path).
+- DEFERRED (owned files): BookIntroScreen #11 — Update() must POLL WarmPaint
+  when _holdingPaint (first-run PaintSettled has no subscriber; door can hold
+  forever) → apply when FIX-CHARTS lands. KeysScreen privacy copy vs middleware
+  ("never sent anywhere but OpenAI" is false while the render middleware takes
+  the key header) → reword when FIX-TYPE lands.
+- SFX: 21 free-file sites WIRED (garage/journal/curtain/commit/reveal/beat/
+  autopsy). Draft sites (7-14, 19) + DiceRoll 17 wait for FIX-SELECT/FLOW.
+  Nav-factory click decision: ADOPT (house doctrine: every input answers).
+- Cleanup owed: a fixture save (Driftdeck, slot 2) may sit in the real user
+  folder from a lane's live run — verify + remove.

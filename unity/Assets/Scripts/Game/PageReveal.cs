@@ -89,6 +89,7 @@ namespace Runway.Game
                 {
                     case "line":
                     {
+                        Runway.Audio.Sfx.PenScratch(true);
                         var l = it[1] as TextMeshProUGUI;
                         if (l == null) break;
                         int n = l.text.Length;
@@ -105,6 +106,7 @@ namespace Runway.Game
                     }
                     case "icons":
                     {
+                        Runway.Audio.Sfx.LoopStop();   // the pen lifts for drawings
                         var slots = it[1] as List<RectTransform>;
                         if (slots == null) break;
                         float t = 0f;
@@ -151,6 +153,7 @@ namespace Runway.Game
         /// exit — the sequence funnels here whether it played out or was skipped.
         public void Finish()
         {
+            Runway.Audio.Sfx.LoopStop();
             for (int i = 0; i < _seq.Count; i++)
             {
                 object[] it = _seq[i];

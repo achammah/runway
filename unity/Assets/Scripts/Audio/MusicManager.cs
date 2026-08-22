@@ -83,7 +83,10 @@ namespace Runway.Audio
         {
             string path = Path.Combine(Runway.App.RunwayPaths.ArtRoot, "music", cfg.File);
             if (!File.Exists(path)) { Debug.Log("RUNWAY! music missing " + path); yield break; }
-            using (var req = UnityWebRequestMultimedia.GetAudioClip("file://" + path, AudioType.WAV))
+            // the project path contains a space — bare "file://" concatenation
+            // breaks exactly there (the SFX lane caught this); Uri does it right
+            using (var req = UnityWebRequestMultimedia.GetAudioClip(
+                       Runway.App.RunwayPaths.FileUrl(path), AudioType.WAV))
             {
                 yield return req.SendWebRequest();
                 if (req.result != UnityWebRequest.Result.Success)

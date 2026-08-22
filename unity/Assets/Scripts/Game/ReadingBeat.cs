@@ -260,6 +260,7 @@ namespace Runway.Game
         IEnumerator WriteIn(TextMeshProUGUI t, float secs)
         {
             _draining = true;
+            Runway.Audio.Sfx.PenScratch(true, -2f);
             int total = t.text.Length;
             t.maxVisibleCharacters = 0;
             float k = 0f;
@@ -271,6 +272,7 @@ namespace Runway.Game
             }
             if (t != null) t.maxVisibleCharacters = total;
             _draining = false;
+            Runway.Audio.Sfx.PenScratch(false);
         }
 
         IEnumerator ScrollTo(float to, float secs)
@@ -300,6 +302,7 @@ namespace Runway.Game
                 Reveal(beat[0], beat[1]);
             }
             _draining = false;
+            Runway.Audio.Sfx.PenScratch(false);
             for (int i = 0; i < _bodies.Count; i++)
                 if (_bodies[i] != null) _bodies[i].maxVisibleCharacters = _bodies[i].text.Length;
             _t = Mathf.Max(_t, MinLife);

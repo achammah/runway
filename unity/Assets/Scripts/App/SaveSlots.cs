@@ -45,6 +45,9 @@ namespace Runway.App
                 JObject doc = JObject.Parse(txt);
                 JObject meta = doc["meta"] as JObject;
                 JObject state = doc["state"] as JObject;
+                // a state-less file parses but cannot LOAD: claiming Exists
+                // made CONTINUE silently start a fresh run over that slot
+                if (state == null) return row;
                 row.Exists = true;
                 row.Company = Str(meta, "company", Str(state, "company_name", "a company"));
                 row.Founder = Str(meta, "founder", Str(state, "founder_name", ""));

@@ -141,6 +141,7 @@ namespace Runway.Game
         void CommitPressed()
         {
             if (Adjudicating) return;
+            Runway.Audio.Sfx.LockWeek();
             var boot = Boot.Instance;
             if (boot == null || _jp == null) { CommitFromText(); return; }
             boot.StartCoroutine(StrikeThen());
@@ -279,6 +280,9 @@ namespace Runway.Game
             gen.Adjudicate(CoreSnapshot.From(St), _g.CurrentEvent, t, res =>
             {
                 Adjudicating = false;
+                if (res != null && Runway.Game.ContentDb.Str(res, "narration").Trim().Length == 0)
+                    res["narration"] = Runway.Game.ContentDb.Str(
+                        EventGenerator.KeylessAdjudication(), "narration");
                 Accept(res ?? EventGenerator.KeylessAdjudication(), t);
             }, _pendingDice);
         }
@@ -583,6 +587,7 @@ namespace Runway.Game
                 Driver.Record.LogEvent(St.Week,
                     new JObject { ["id"] = "milestone", ["title"] = "MVP + first users" },
                     "era gate reached", null);
+                    Runway.Audio.Sfx.Win();
             }
             _g.NextWeek();
         }

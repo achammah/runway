@@ -490,6 +490,7 @@ namespace Runway.Llm
             JObject parsed = TryParse(text);
             if (parsed == null)
             {
+                Debug.Log("LLM reply envelope would not parse (" + Left(text, 120) + ")");
                 if (cb != null) cb(null);
                 yield break;
             }
@@ -519,6 +520,8 @@ namespace Runway.Llm
             }
 
             JObject data = TryParse(content);
+            if (data == null)
+                Debug.Log("LLM content was not the schema'd JSON (" + Left(content, 120) + ")");
             if (cb != null) cb(data);
         }
 

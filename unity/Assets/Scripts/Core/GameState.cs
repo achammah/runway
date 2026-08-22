@@ -596,9 +596,12 @@ namespace Runway.Core
         public double GetMetaF(string key, double dflt = 0.0)
         {
             object v;
-            if (Meta.TryGetValue(key, out v) && v is double)
+            if (Meta.TryGetValue(key, out v) && v != null)
             {
-                return (double)v;
+                // ints written through SetMeta must read back (loyalty was
+                // permanently 70 because `is double` dropped every int)
+                try { return Convert.ToDouble(v, System.Globalization.CultureInfo.InvariantCulture); }
+                catch (Exception) { return dflt; }
             }
             return dflt;
         }

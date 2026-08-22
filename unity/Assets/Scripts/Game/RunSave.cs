@@ -61,10 +61,17 @@ namespace Runway.Game
                 JObject doc = JObject.Parse(txt);
                 var sd = doc["state"] as JObject;
                 if (sd == null) return false;
-                state = sd.ToObject<GameState>();
+                // ObjectCreationHandling.Replace: the default (Auto) APPENDS
+                // into pre-populated collections — Investor.Coords measured
+                // growing 2→4→6 across CONTINUEs, and default dictionaries
+                // resurrected deleted keys (A15).
+                var ser = Newtonsoft.Json.JsonSerializer.Create(
+                    new Newtonsoft.Json.JsonSerializerSettings
+                    { ObjectCreationHandling = Newtonsoft.Json.ObjectCreationHandling.Replace });
+                state = sd.ToObject<GameState>(ser);
                 if (state == null) return false;
                 var rd = doc["record"] as JObject;
-                record = rd != null ? rd.ToObject<RunRecord>() : null;
+                record = rd != null ? rd.ToObject<RunRecord>(ser) : null;
                 if (record == null) record = new RunRecord();
                 return true;
             }

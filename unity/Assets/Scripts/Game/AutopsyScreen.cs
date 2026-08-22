@@ -43,6 +43,8 @@ namespace Runway.Game
             var runner = TurnRunner.Get();
             if (runner != null && runner.ScenePath.Length > 0) pg.BackdropPath = runner.ScenePath;
             pg.Build("THE LAST PAGE");
+            if (Boot.Instance != null && Boot.Instance.State == AppState.Finale)
+                Runway.Audio.Sfx.Win();
 
             string headline = Payload as string ?? "";
             string[] parts = headline.Split('\n');

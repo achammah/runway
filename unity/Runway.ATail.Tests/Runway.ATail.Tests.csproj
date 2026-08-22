@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>Runway.ATailTests</RootNamespace>
+    <AssemblyName>Runway.ATail.Tests</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Only the files listed below compile: the SAME sources Unity builds. -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>$(NoWarn);CS0649;CS0414;CS0162</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="UnityShim.cs" />
+    <Compile Include="ATail.cs" />
+    <!-- the shipped engine -->
+    <Compile Include="../Assets/Scripts/Core/*.cs" />
+    <!-- the shipped save/slot/env layer, verbatim -->
+    <Compile Include="../Assets/Scripts/App/RunwayPaths.cs" />
+    <Compile Include="../Assets/Scripts/App/SaveSlots.cs" />
+    <Compile Include="../Assets/Scripts/App/Env.cs" />
+    <Compile Include="../Assets/Scripts/App/IRunDriver.cs" />
+    <Compile Include="../Assets/Scripts/Game/RunSave.cs" />
+    <Compile Include="../Assets/Scripts/Game/RunRecord.cs" />
+    <Compile Include="../Assets/Scripts/Game/ContentDb.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+</Project>

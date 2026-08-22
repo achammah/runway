@@ -368,20 +368,34 @@ namespace Runway.Llm
         /// keyless stub when there is no key at all, or null when a live call came back
         /// empty or failed its validator.
         public void Adjudicate(RunSnapshot s, JObject ev, string playerText,
-                               Action<JObject> cb, JObject dice = null)
+                               Action<JObject> cb, JObject dice = null, string tier = "assess")
         {
             if (!Live)
             {
                 if (cb != null) cb(KeylessAdjudication());
                 return;
             }
+            var opts = new LlmOptions { Tier = tier };
             string user = ComposeAdjudicateUser(s, ev ?? new JObject(), playerText, dice);
             Llm.RequestJson(_adjudicatePrompt, user, LlmClient.AdjudicateSchema, result =>
             {
                 if (result == null || result.Count == 0
                     || !ValidateEffects(result["effects"], true))
                 {
-                    if (cb != null) cb(null);
+                    // a PAYING player's transport failure deserves one more
+                    // try before the caller falls back (A18 #16)
+                    Llm.RequestJson(_adjudicatePrompt, user, LlmClient.AdjudicateSchema, again =>
+                    {
+                        if (again == null || again.Count == 0
+                            || !ValidateEffects(again["effects"], true))
+                        {
+                            Debug.Log("DM adjudication failed twice (transport) — authored fallback");
+                            if (cb != null) cb(null);
+                            return;
+                        }
+                        Sanitize(s, again);
+                        if (cb != null) cb(again);
+                    }, opts);
                     return;
                 }
                 // THE SENTINEL (plan C3): deterministic post-checks. One retry with the
@@ -403,8 +417,8 @@ namespace Runway.Llm
                         final = result;            // the first reply, sanitized below
                     Sanitize(s, final);
                     if (cb != null) cb(final);
-                }, LlmOptions.Assess);
-            }, LlmOptions.Assess);
+                }, opts);
+            }, opts);
         }
 
         /// THE CLARIFY PRE-PASS (owner: terra assesses, luna clarifies): one cheap call

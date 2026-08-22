@@ -165,6 +165,7 @@ namespace Runway.App
             if (_swallow != null) _swallow.raycastTarget = true;
             RequestLoop();
             Runway.Audio.RunwayMix.SetState("curtained");
+            Runway.Audio.Sfx.Curtain();
             if (_tween != null) StopCoroutine(_tween);
             _tween = StartCoroutine(Sweep(_t, 1f, secs, DrawnUI.EaseOutCubic));
             yield return _tween;
@@ -174,6 +175,7 @@ namespace Runway.App
         {
             if (!gameObject.activeSelf) yield break;   // never opened; nothing to part
             Runway.Audio.RunwayMix.SetState("normal");
+            Runway.Audio.Sfx.Curtain();
             if (_tween != null) StopCoroutine(_tween);
             _tween = StartCoroutine(Sweep(_t, 0f, secs, DrawnUI.EaseInOutCubic));
             yield return _tween;

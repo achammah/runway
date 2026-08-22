@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using Runway.Audio;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -230,6 +231,7 @@ namespace Runway.Game
                               14f, 6f, 24f, DrawnUI.Ink, 272f);
             DrawnUI.HandLabel(note, blurb, 14f, 40f, 24f,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.8f), 272f, TextAlignmentOptions.Top);
+            Sfx.Tick();
             StartCoroutine(FadeNoteAway(note));
         }
 
@@ -438,7 +440,10 @@ namespace Runway.Game
             if (_capLabel != null)
                 _capLabel.text = string.Format("{0:0}%\nyours", State.FounderPct);
             if (!instant && State.Cash != _lastCash)
+            {
+                Sfx.Cash();
                 _moneyLabel.color = State.Cash > _lastCash ? DrawnUI.Sage : DrawnUI.Coral;
+            }
             _lastCash = State.Cash;
             BuildCrew();
             if (_painted) HideDrawnRoom(true);   // the crew was just rebuilt under it
@@ -491,7 +496,7 @@ namespace Runway.Game
 
         void OpenBinder()
         {
-            BinderScreen.Open(State);
+            Sfx.CardFlip(); BinderScreen.Open(State);
         }
 
         // ══ the journal ════════════════════════════════════════════════════════
@@ -499,7 +504,7 @@ namespace Runway.Game
         public void OpenJournal()
         {
             if (_openBtn != null) _openBtn.gameObject.SetActive(false);
-            _journal.gameObject.SetActive(true);
+            _journal.gameObject.SetActive(true); Sfx.CardFlip();
             _spreads.Open();
             // THE PAD COMES UP OFF THE DESK (owner: "a nice normal animation to open"):
             // it rises from below with a slight straightening, the dim fades with it.
@@ -527,6 +532,7 @@ namespace Runway.Game
 
         public void CloseJournal()
         {
+            Sfx.CardFlip();
             StartCoroutine(DropPad());
         }
 
@@ -658,6 +664,8 @@ namespace Runway.Game
             }
             GameState.EraMove up = st.AdvanceEraIfReady();
             if (up.Changed)
+                Sfx.Win();
+            if (up.Changed)
                 Departures.Add(string.Format("MOVED UP — {0} → {1}. Bigger room, bigger rent.",
                     up.From, up.To));
 
@@ -719,6 +727,7 @@ namespace Runway.Game
             _journal.gameObject.SetActive(false);
             if (_openBtn != null) _openBtn.gameObject.SetActive(false);
             var dark = DrawnUI.FullFill(Rect, "dark", new Color(0.05f, 0.05f, 0.06f, 0f), true);
+            Sfx.Tick();
             string fact = FunFacts[Driver.Rng.RandiRange(0, FunFacts.Length - 1)];
             var line = DrawnUI.HandLabel(Rect, fact, 240f, 490f, 22f,
                 DrawnUI.WithAlpha(DrawnUI.Cream, 0f), 1060f, TextAlignmentOptions.Top);
@@ -750,6 +759,7 @@ namespace Runway.Game
             if (State == null) return;
             State.Dead = true;
             State.DeathCause = cause;
+            Sfx.Death();
             if (Driver != null && Driver.Record != null) Driver.Record.LogDeath(State.Week, cause);
             _over = true;
             StartCoroutine(EndAfter(new JObject { ["death"] = cause }, 1f));
