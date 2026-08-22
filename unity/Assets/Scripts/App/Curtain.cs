@@ -43,6 +43,8 @@ namespace Runway.App
         SheetLoop _sway;
         RawImage _swayImage;
         TextMeshProUGUI _line;
+        RectTransform _plaque;
+        CanvasGroup _plaqueGroup;
         CanvasGroup _group;
         Image _swallow;
 
@@ -102,9 +104,14 @@ namespace Runway.App
             _swayImage = _sway.GetComponent<RawImage>();
             _swayImage.enabled = false;
 
-            _line = DrawnUI.HandLabel(_rt, "", 0f, h * 0.5f - 40f * 0.78f, 40f,
-                                      new Color(0.95f, 0.92f, 0.83f, 0f), w,
+            // the considering line sits on a drawn plaque (VD3): the same
+            // cream paper + wobbled ink edge as every other label in the house
+            _plaque = DrawnUI.PaperCard(_rt, new Vector2(680f, 76f),
+                                        w * 0.5f - 340f, h * 0.5f - 52f, null, "plaque");
+            _line = DrawnUI.HandLabel(_plaque, "", 0f, 16f, 40f, DrawnUI.Ink, 680f,
                                       TextAlignmentOptions.Top);
+            _plaqueGroup = DrawnUI.Group(_plaque);
+            _plaqueGroup.alpha = 0f;
 
             gameObject.SetActive(false);   // offstage: nothing to breathe until it drops
             Apply();
@@ -214,7 +221,7 @@ namespace Runway.App
                 _shutFor = 0f;
                 _lineFrame = -1;
                 if (_swayImage != null && _swayImage.enabled) _swayImage.enabled = false;
-                if (_line != null) _line.color = DrawnUI.WithAlpha(_line.color, 0f);
+                if (_plaqueGroup != null) _plaqueGroup.alpha = 0f;
                 return;
             }
             _shutFor += Time.unscaledDeltaTime;
@@ -234,10 +241,11 @@ namespace Runway.App
                 if (_line.text != ConsideringLine) _line.text = ConsideringLine;
                 float a = Mathf.Clamp01((qt - 0.9f) * 2f)
                           * (0.75f + 0.25f * Mathf.Sin(qt * 2.2f));
-                _line.color = new Color(0.95f, 0.92f, 0.83f, a);
+                if (_plaqueGroup != null) _plaqueGroup.alpha = a;
                 float bob = Mathf.Sin(qt * 1.3f) * 4f;
-                DrawnUI.SetTopLeft(_line.rectTransform,
-                                   0f, RunwayPaths.StageHeight * 0.5f - 40f * 0.78f + bob);
+                if (_plaque != null)
+                    DrawnUI.SetTopLeft(_plaque, RunwayPaths.StageWidth * 0.5f - 340f,
+                                       RunwayPaths.StageHeight * 0.5f - 52f + bob);
             }
         }
 

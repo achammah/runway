@@ -324,14 +324,16 @@ namespace Runway.Effects
         /// does not care whether the company can make payroll.
         void BuildGarage()
         {
-            MakeGlow(_layer, new Vector2(760f, 190f), 320f, GlowTint.Warm, 0.36f, true);
-            MakeGlow(_layer, new Vector2(760f, 500f), new Vector2(1240f, 1120f),
-                     GlowTint.Warm, 0.13f, true);
+            // VD5 (live play): the drawn room has NO pendant lamp — a bulb
+            // core and wall pools with no source read as smears on the cream,
+            // not light. Only lit things may glow: a whisper of warmth on the
+            // floor under the crew, the laptop's cold panel, and the red law.
+            // A composed painting carries its own light inside the picture.
             MakeGlow(_layer, new Vector2(742f, 815f), new Vector2(1100f, 300f),
-                     GlowTint.Warm, 0.13f, true);
+                     GlowTint.Warm, 0.05f, true);
 
             var laptop = MakeGlow(_layer, new Vector2(478f, 586f), new Vector2(300f, 230f),
-                                  GlowTint.Cool, 0.32f);
+                                  GlowTint.Cool, 0.22f);
             // the room names its own object spots; the light asks the room where the
             // laptop is rather than keeping a second copy of the table
             Transform t = _host != null ? _host.Find("item_itm_laptop") : null;

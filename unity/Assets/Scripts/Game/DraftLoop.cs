@@ -69,10 +69,12 @@ namespace Runway.Game
         {
             if (!isActiveAndEnabled)
             {
+                Debug.Log("DRAFTLOOP parked " + archetypeId + " (inactive)");
                 _pendingId = archetypeId;
                 _pendingStill = stillSprite;
                 return;
             }
+            Debug.Log("DRAFTLOOP play " + archetypeId);
             if (_id == archetypeId && _frames.Count > 0) return;
             _id = archetypeId ?? "";
             _frames.Clear();
@@ -84,7 +86,8 @@ namespace Runway.Game
             string first = string.Format("sprites/chr_loop_{0}_01.png", _id);
             ArtCache.Load(first, tex =>
             {
-                if (this == null || _target == null) return;
+                if (this == null || _target == null) { Debug.Log("DRAFTLOOP cb dead target"); return; }
+                Debug.Log("DRAFTLOOP first frame " + (tex != null ? tex.width + "x" + tex.height : "NULL") + " for " + _id);
                 if (tex == null)
                 {
                     // no loop on disk: the still carries the page
