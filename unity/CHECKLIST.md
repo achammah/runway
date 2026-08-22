@@ -70,10 +70,10 @@ frame time; measured).
 - [100%] A5 Framework (Boot/DrawnUI/SheetLoop/Curtain/PaperInput/Env/Slots/Build)
 - [ 90%] A6 Shell screens written (Studio/Title/Keys/HowTo) · verify = compile + walk + parity shots
 - [ 60%] A7 Game screens + RunDriver (agent) · verify = its report + my compile
-- [  0%] A8 First compile: harvest → fix → zero errors · 100% = `-batchmode -quit` exit 0, log clean
-- [  0%] A9 Console hygiene: zero errors AND zero warnings from our code at boot · 100% = clean log budget enforced
-- [  0%] A10 Boot walk in-editor: title→draft→birth→book→garage, no exceptions · 100% = scripted walk exits green
-- [  0%] A11 The stamp: date+sha baked at build, drawn on title corner, printed at boot (twin of Godot's)
+- [100%] A8 First compile — CLEAN ON PASS ONE (0 errors, ~15k lines); tool hardened: mutex + positive-evidence (a lock-failure log can no longer read as clean)
+- [100%] A9 Console hygiene: 20 warnings (all enableWordWrapping) swept to textWrappingMode → 0 errors 0 warnings
+- [ 40%] A10 Boot walk: BUILT PLAYER boots (418MB, 90s build) — keys desk pixel-faithful, Player.log zero exceptions; full walk via harness pending
+- [ 90%] A11 The stamp: boot log prints it; now date+sha+editor (was version-twice) — verify inside next build
 - [  0%] A12 Session logging: every FOUNDING/WARM/paint/clarify/settle line prints like Godot's (grep-parity list)
 - [  0%] A13 Watchdog parity: request hang → cancelled+retried (fault-injection test with a black-hole URL)
 - [  0%] A14 Keyless mode: full boot→draft→garage on authored deck, zero network calls (probe with network denied)
