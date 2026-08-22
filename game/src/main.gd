@@ -1642,33 +1642,31 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 	# BOOK-READ TURNS (the founding, read on the book-intro screen) skip the
 	# beat entirely: the words were the screen; only the art still lands.
 	if bool(dm.get("book_read", false)):
-		# nothing to hide: the words were the book. The curtain _cold_open just
-		# dropped rises immediately — without this it sat shut until the 40s
-		# failsafe (probe f5: 'day one is being written…' over a closed curtain)
+		# nothing to hide: the words were the book. The curtain rises now.
 		_raise_curtain()
-		if _screen is GarageViewScreen:
+		# THE SILENT PATH NEVER BLOCKS (owner: settle-in froze the game for
+		# minutes): if the warm paint already finished, open it THIS frame; if
+		# it is still painting, the coalescer hands it over the moment it
+		# lands; if it FAILED, do NOT re-pay the ladder while holding the
+		# world — proceed instantly with the ribbon and let the turn's own
+		# call retry in the background, adopting late.
+		if _warm_status == "painting" and _screen is GarageViewScreen:
 			(_screen as GarageViewScreen).set_painting(true)
-		var bdeadline := Time.get_ticks_msec() + int(HOLD_CEILING * 1000.0)
-		if hosting:
-			while not _upload_done and Time.get_ticks_msec() < bdeadline and seq == _turn_seq:
+		var bwait := func() -> void:
+			var bdeadline := Time.get_ticks_msec() + int(HOLD_CEILING * 1000.0)
+			while not _scene_done and Time.get_ticks_msec() < bdeadline and seq == _turn_seq:
 				await get_tree().process_frame
 			if seq != _turn_seq:
 				return
-			if _collect_upload() != "":
-				director.make_scene(want, String(scene.get("novel_place", "")), cast_pack["cast"],
-					cast_pack["urls"], String(scene.get("beat", "")), out_name)
-			else:
-				_scene_done = true
-		while not _scene_done and Time.get_ticks_msec() < bdeadline and seq == _turn_seq:
-			await get_tree().process_frame
-		if seq != _turn_seq:
-			return
+			if _screen is GarageViewScreen:
+				(_screen as GarageViewScreen).set_painting(false)
+			if _scene_path != "":
+				_open_scene(_scene_path, String(dm.get("headline", "")))
+		# release the world IMMEDIATELY — the wait watches from the side
 		_turn_busy = false
 		if _screen is GarageViewScreen:
 			(_screen as GarageViewScreen)._world_busy = false
-			(_screen as GarageViewScreen).set_painting(false)
-		if _scene_path != "":
-			_open_scene(_scene_path, String(dm.get("headline", "")))
+		bwait.call()
 		_check_exit()
 		return
 
