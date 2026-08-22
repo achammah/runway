@@ -134,8 +134,29 @@ namespace Runway
         static void WriteBuildStamp()
         {
             Directory.CreateDirectory(Path.Combine(ProjectRoot(), "Assets/StreamingAssets"));
-            string stamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm") + " · unity " + Application.unityVersion;
+            // date + sha, the same contract as the Godot DMG stamp: the owner
+            // reads it off the title corner to know THIS build has the fixes
+            string stamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm") + " · " + GitSha()
+                           + " · unity " + Application.unityVersion;
             File.WriteAllText(Path.Combine(ProjectRoot(), StampPath), stamp);
+        }
+
+        static string GitSha()
+        {
+            try
+            {
+                var p = new System.Diagnostics.Process();
+                p.StartInfo.FileName = "git";
+                p.StartInfo.Arguments = "rev-parse --short HEAD";
+                p.StartInfo.WorkingDirectory = ProjectRoot();
+                p.StartInfo.UseShellExecute = false;
+                p.StartInfo.RedirectStandardOutput = true;
+                p.Start();
+                string sha = p.StandardOutput.ReadToEnd().Trim();
+                p.WaitForExit(3000);
+                return sha == "" ? "nogit" : sha;
+            }
+            catch { return "nogit"; }
         }
 
         /// x64 + Apple silicon. The property moved between Unity versions, so it is set
