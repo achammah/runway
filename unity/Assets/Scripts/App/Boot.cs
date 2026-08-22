@@ -147,7 +147,7 @@ namespace Runway.App
             svc.transform.SetParent(transform, false);
 
             Llm = svc.AddComponent<LlmClient>();
-            Llm.Setup(Env.Load());
+            Llm.Setup(Env.LoadEffective());
 
             Generator = svc.AddComponent<EventGenerator>();
             Generator.Setup(Llm);
@@ -193,7 +193,8 @@ namespace Runway.App
         /// the keys screen was opened from. Godot reloads the whole scene for this.
         public void NotifyKeysChanged()
         {
-            Llm.Setup(Env.Reload());
+            Env.Reload();
+            Llm.Setup(Env.LoadEffective());
             Debug.Log("RUNWAY! keys saved · LLM: "
                       + (Llm.Enabled ? (Llm.Provider + "/" + Llm.Model) : "off (authored only)"));
         }

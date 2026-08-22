@@ -70,6 +70,34 @@ namespace Runway.App
         }
 
         /// A harness/opt-out switch: set and non-empty, exactly like OS.get_environment.
+        /// The layered files PLUS the live process environment for the keys the
+        /// game is driven by — Godot's setup reads OS.get_environment first and
+        /// this is the same contract. Setup callers use this, never bare Load():
+        /// an exported OPENAI_API_KEY was invisible to a player build otherwise.
+        static readonly string[] ProcessKeys =
+        {
+            "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "LLM_PROVIDER",
+            "OPENAI_MODEL", "OPENAI_ASSESS_MODEL", "OPENAI_CLARIFY_MODEL",
+            "OPENAI_DIRECTOR_MODEL", "ANTHROPIC_MODEL", "ANTHROPIC_DIRECTOR_MODEL",
+        };
+
+        public static Dictionary<string, string> LoadEffective()
+        {
+            var d = new Dictionary<string, string>(Load());
+            foreach (string k in ProcessKeys)
+            {
+                string live = null;
+                try { live = Environment.GetEnvironmentVariable(k); }
+                catch (Exception) { }
+                if (live != null)
+                {
+                    live = live.Trim();
+                    if (live.Length > 0) d[k] = live;
+                }
+            }
+            return d;
+        }
+
         public static bool Flag(string key)
         {
             return Get(key, "").Length > 0;
