@@ -289,3 +289,15 @@ Remaining to 100 across the board: live human play-feel confirmation (the one th
 - [x] W5-6 Ship diet II: patch_scenes src/assembly/_refs (~570MB never-loaded) out of the export
 - [x] W5-7 DMG 2.2GB shipped; stamp '2026-08-21 23:23 · 27d3b25' verified inside the pck
 - [x] W5-8 Gatekeeper documented: one-time per copy, shortened by the 2.2GB diet; xattr bypass given; notarization offered (needs owner's Apple ID)
+
+
+## WINDOW 6 — imagery, key, loops, heat (all verified)
+- [x] K1 Export render bug FOUND+FIXED from the owner's own log: renderer never read user://keys.env → 0 requests, default rooms forever. Reads the DotEnv stack now
+- [x] K2 Paint starts at the signature (warm render + in-flight coalescing)
+- [x] K3 Key re-ask: saved key cleared + permanent "api key" title link
+- [x] K4 Select stage REGENERATED (beam on the founder, 48 new dust frames) — screenshot-verified, no out-of-bounds
+- [x] K5 Idle loops v2: calibrated perceptual gate (eyes scored separately); hacker/exfaang/consultant regenerated (eye error ÷15-35, seams ~1); hustler root-caused (mid-stride), planted-feet reshoot, best clip shipped on eyeball override
+- [x] K6 Perf pass: repaints 145-289/s → 12-25/s, curtain-open VRAM 110→20MB, 30fps cap, CPU −45% comparable screen; perf_probe.gd permanent
+- [x] K7 Clickable stat rows + perk-adjacent rules (five muscles join the six traits)
+- [x] K8 Book top-down (field notes after the entry)
+- [x] K9 FINAL DMG: 2.2GB, stamp 2026-08-22 01:49 · 6bea0cd verified inside the pck
