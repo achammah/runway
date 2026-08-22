@@ -30,6 +30,10 @@ func setup(p_state: GameState) -> void:
 ## The founding entry arrives whenever the prefetch lands — before or after
 ## this screen opened. Until then the page says it is being written.
 func feed_entry(text: String) -> void:
+	# an empty entry never opens the notes: the placeholder keeps breathing
+	# and the retry upstream gets its chance
+	if text.strip_edges() == "":
+		return
 	_waiting = false
 	if _entry_lbl != null and is_instance_valid(_entry_lbl):
 		_entry_lbl.text = text

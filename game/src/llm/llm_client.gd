@@ -312,7 +312,10 @@ func request_json(system_prompt: String, user_prompt: String, schema: Dictionary
 		return
 	var http := HTTPRequest.new()
 	add_child(http)
-	http.timeout = 35.0
+	# 35s cut off real terra founding calls in the shipped app (the book showed
+	# an empty entry and settle-in paid the whole call again). 90s is the cap;
+	# the beat/curtain narrate the wait.
+	http.timeout = 90.0
 	http.request_completed.connect(_on_completed.bind(http, cb))
 	var headers: PackedStringArray
 	var body: Dictionary
@@ -365,7 +368,9 @@ func request_json(system_prompt: String, user_prompt: String, schema: Dictionary
 func _on_completed(result: int, code: int, _h: PackedStringArray, body: PackedByteArray, http: HTTPRequest, cb: Callable) -> void:
 	http.queue_free()
 	if result != HTTPRequest.RESULT_SUCCESS or code < 200 or code >= 300:
-		push_warning("LLM request failed (result=%d http=%d): %s" % [result, code,
+		# print, not push_warning: release builds swallow warnings, and this
+		# line is the only witness a shipped session gets
+		print("LLM request FAILED (result=%d http=%d): %s" % [result, code,
 			body.get_string_from_utf8().left(300)])
 		if cb.is_valid():
 			cb.call({})

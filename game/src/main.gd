@@ -993,14 +993,21 @@ func _founding_move() -> String:
 			+ "night on day one.") % [state.company_name,
 			state.company_idea if state.company_idea != "" else "a company that refuses to explain itself"]
 
-func _prefetch_founding(gv: GarageViewScreen) -> void:
+func _prefetch_founding(gv: GarageViewScreen, attempt: int = 1) -> void:
 	if generator == null or not generator.llm.enabled() or _founding_inflight:
 		return
 	_founding_inflight = true
+	print("FOUNDING request (attempt %d)" % attempt)
 	if is_instance_valid(gv):
 		gv.set("_adjudicating", true)   # the lock holds until day one lands
 	generator.adjudicate(state, {}, _founding_move(), func(res: Dictionary) -> void:
 		_founding_inflight = false
+		if res.is_empty() and attempt < 2:
+			# one silent transport failure must not cost the whole day one:
+			# retry once before anyone notices (the book keeps its placeholder)
+			print("FOUNDING empty — retrying once")
+			_prefetch_founding(gv, attempt + 1)
+			return
 		_founding_res = res
 		# THE PAINT STARTS AT THE SIGNATURE (owner): the moment day one is
 		# written, its room starts rendering — while the book is still being

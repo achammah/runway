@@ -193,9 +193,14 @@ static func apply_llm_world(state: GameState, gen: Dictionary) -> bool:
 	var rivals: Array = []
 	for rv in gen.get("rivals", []):
 		var r: Dictionary = rv
+		var what_txt := String(r.get("what_they_do", ""))
+		if what_txt.length() >= 135 and not what_txt.ends_with("."):
+			var wcut := what_txt.rfind(" ")
+			if wcut > 40:
+				what_txt = what_txt.substr(0, wcut) + "…"
 		rivals.append({
 			"name": String(r.get("name", "a rival")).left(30),
-			"what": String(r.get("what_they_do", "")),
+			"what": what_txt,
 			"strength": float(str_map.get(String(r.get("strength", "scrappy")), 25.0)),
 			"tactics": r.get("tactics", ["shipped something loud"]),
 			"weeks_since_move": 0,
