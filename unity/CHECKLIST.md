@@ -154,6 +154,14 @@ frame time; measured).
 - [  0%] E7 Every row equal-or-better or fixed; misses explained in writing
 - [  0%] E8 App size ≤ Godot 2.77GB (same staged art)
 
+## ART-CHAR — the characters, reborn (owner directive)
+- [  0%] AC1 Character bible: one master sheet per archetype (hacker/consultant/exfaang/skater + crew cast) — same body language family, the game's ink-and-paper hand · Verify: my eyeball on consistency · 100% = every character unmistakably the same person across every frame they appear in
+- [  0%] AC2 Pipeline: tools/char_pipeline.py — master → per-frame edits (idle keyframes), TRANSPARENT background from the generator, alpha-bbox check (no pixel touches an edge = no cutoffs), auto-retry on violation · 100% = one command per character, deterministic outputs
+- [  0%] AC3 Pilot: ONE archetype end-to-end (master + 12-frame idle loop + still) · Verify: frames eyeballed for consistency/loop-smoothness/no-cutoff BEFORE the fleet runs
+- [  0%] AC4 Fleet: all archetypes + crew variants regenerated; same filenames so both engines adopt (game/assets/sprites/chr_* + unity Art staging)
+- [  0%] AC5 Integration: select stage presence (scale/baseline vs the cone), crew cards, keys mascot, garage crew line — no cutoffs anywhere · Verify: twin shots re-eyeballed
+- [  0%] AC6 The loops breathe: 12fps idle reads alive (with the boil) — film check
+
 ## F — SHIP
 - [  0%] F1 Build.BuildMac batch build succeeds headless
 - [  0%] F2 Stamp verified INSIDE the app bundle (twin of the pck check)
