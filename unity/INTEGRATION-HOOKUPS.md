@@ -36,3 +36,16 @@ Applied all at once at integration; each lane proven OFF-able first (D8).
 - Kill-switch RUNWAY_FX_IMPULSE (+ SetEnabled for the D8 matrix). Return-to-rest EXACT.
 - Constraints ledgered: never Punch below 1.0 (letterbox reveal); Impulse owns the
   Stage transform (rest pose captured at idle→active edge).
+
+## PERF harness — ACCEPTED (real findings, my fix list below)
+- Hookup: add "RUNWAY_UPERF" to Boot.HarnessVars (Boot.cs:430), one line.
+- FIX-1 (E2 headline): Curtain.Update rewrites TMP text/colour/position every tick
+  → 2118 rebuilds/s while shut (target ≈12). Move writes onto the 12fps baked clock.
+- FIX-2 (E4): ArtCache holds every sprite forever → steady 704MB vs the 400MB bar.
+  Needs LRU/scene-exit eviction while keeping sheets' Release() semantics.
+- FIX-3 (E5): draft chr_loop hydrator stalls main thread up to 889ms → async/sliced.
+- INVESTIGATE-4 (B7/B9/B15): blame sees NO repaint from any sheet-mode SheetLoop
+  (birth loop, howto film, curtain sway, dice cup) — loops may be FROZEN on frame 1
+  in some modes. Verify visually in the built player; ledger N16 has the repro.
+- Batchmode numbers: fps/frame-ms/draws are BLIND (no present) — re-run against the
+  built .app for E6; rebuild/s, tex MB, alloc, gc/s, soak pacing are valid now.

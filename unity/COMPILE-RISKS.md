@@ -322,6 +322,9 @@ files cost one string read at boot and nothing else.
 | N14 | **The keyless clamp mutates the layered env dictionary.** | `UnityPerf.GoKeyless` | `LlmClient.Setup` is fed `Env.Load()`, which reads FILES and never the process environment — so the only way to make the client keyless without editing a shared file is to lift `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` out of the cached dictionary before Boot reads it, and pin `LLM_PROVIDER` to a name no branch matches. | Belt and braces: `Generator.Disabled = true` is also set (the line `perf_probe.gd` writes for the same reason), and the report says loudly if `Llm.Enabled` came up true anyway. `Env.Reload()` would undo it, and nothing the probe walks calls it. |
 | N15 | **The garage row deals a run, and a run mutates.** | `UnityPerf.StandUpRun` | `GarageScreen.OnBuild` calls `StartWeek()`, which burns cash, drains loyalty and advances the week — so the room measured is week 10 of the fixture, not week 9. That is also true of the Godot twin. | Deliberate and identical on both sides; the fixture is `perf_probe.gd`'s `_build_garage` transcribed. No save is written, because the harness switch is on. |
 
+| N16 | **`rebuild/s` reads 0.0 for every baked SHEET loop, and the blame names nobody.** | measured, not theorised | On the first full run the only repainters found were: the title's frame SEQUENCE (`Title/painting/film [RawImage]`, 12.3/s), the birth STATUS LABEL (`Birth/label [TextMeshProUGUI]`, 12/s), the curtain's considering line (2118/s — see below), the dice shade/felt fade, and the garage's red vignette (12/s). **No `SheetLoop` in sheet mode appears at all** — not the birth loop, not the how-to film, not the curtain sway, not the dice cup. `07 howto` has no repainter whatsoever. | The instrument is not the suspect: `RawImage.uvRect`'s setter calls `SetVerticesDirty()` when the value changes (read directly from `com.unity.ugui@…/Runtime/UGUI/UI/Core/RawImage.cs:106-119`), and the title's sequence-mode loop IS caught, so the queue read demonstrably sees RawImage repaints. Either the sheet-mode loops are sitting on one frame, or something upstream of `SheetLoop.Apply` is. Reproduce with `RUNWAY_UPERF_BLAME=1` and read the "who is repainting" block. |
+| N17 | **The curtain's considering line rebuilds EVERY frame.** | `Curtain.Update` | Blame: `top/curtain/label [TextMeshProUGUI]` at one rebuild per frame — 2118/s uncapped, which is ~30/s at the shipped cap, against Godot's measured 12-25 redraws/s for the whole screen. `Update` writes `_line.text`, `_line.color` and a new `SetTopLeft` on every tick instead of on the 12fps clock every other loop in this build rides. A TMP text rebuild is the most expensive rebuild there is. | Not this lane's to fix; it is E2's whole point, and now it has an address. |
+
 ## N6-3. What the Godot probe measures that this one does not
 
 | Godot column / mode | Status | Why |
@@ -603,3 +606,242 @@ That is the whole hookup. `AdoptComposed` is the only door a painted room comes
 through: the first room of a run, every weekly repaint, and the late render that
 lands after the beat has closed all reach it (`TurnRunner.cs:320` and `:352`), so
 D2b is covered by this one line and no other.
+
+---
+
+# P0 — THE PARITY HARNESS — `App/UnityShots.cs` + `.Camera` + `.Fixtures` + `.Poke`
+
+The twin of `game/tests/{new_screens,select,howto,birth,traits,binder}_shot.gd`:
+`RUNWAY_USHOTS=<dir>` turns the player into a photographer, writes the 23 PNGs
+under the identical filenames and quits. Unset, none of it exists at runtime.
+Every API below was verified by a live run (23/23, none flat) — the notes say
+which ones were guessed wrong first and what the symptom was.
+
+## P0-1. Blocking risks — these stop a compile if they are wrong
+
+| # | API | Where | Why uncertain | Fallback coded |
+|---|-----|-------|---------------|----------------|
+| P0-1 | **`UnityEngine.ScreenCapture` does not compile in this project.** | `UnityShotsCamera.Grab` | `com.unity.modules.screencapture` is NOT in `Packages/manifest.json`, so the type is unreferenced by the compiler. Verified with a one-line probe file: `error CS0103: The name 'ScreenCapture' does not exist in the current context`. | It is reached through `Type.GetType("UnityEngine.ScreenCapture, UnityEngine.ScreenCaptureModule")` + `MethodInfo.Invoke`, so the file compiles today **and** uses the native capture — the module IS shipped inside the player even though the compiler cannot see it, and the live run logs `USHOTS shutter: ScreenCapture.CaptureScreenshotAsTexture()`. If the type ever resolves to null, `Texture2D.ReadPixels` off the back buffer takes the same picture. Adding the module to the manifest changes nothing here; it only lets a future file name the type directly. |
+| P0-2 | `Texture2D.EncodeToPNG()` | `UnityShotsCamera.Shoot` | An extension method from `UnityEngine.ImageConversion`, i.e. a module — the same trap as P0-1. | `com.unity.modules.imageconversion` **is** in the manifest, so it resolves. If it is ever removed, this is the second thing that breaks. |
+| P0-3 | `Application.Quit(int exitCode)` | `UnityShots.Leave` | The int overload is 2019.3+; the no-arg one is ancient. | Only the player takes this branch; the editor branch sets `EditorApplication.isPlaying = false` inside `#if UNITY_EDITOR`, which is legal in a runtime file. |
+| P0-4 | `BindingFlags.DeclaredOnly` + a manual walk up `Type.BaseType` | `UnityShotsPoke` | `GetMethods` with `NonPublic` does not return private members of base types, so the walk is required, not decorative. | A member that cannot be found logs `USHOTS POKE MISS` with the type and the name, and the run's summary lists every one — a harness that silently photographs the wrong state is the failure this guards. |
+
+## P0-2. Runtime risks — they compile, but the picture can still be wrong
+
+| # | Thing | Where | Risk | Fallback coded |
+|---|-------|-------|------|----------------|
+| P0-5 | **`Application.runInBackground` must be true or the harness hangs forever.** | `UnityShots.Awake` | Observed on the first live run: launched from a terminal the window never gains focus, the player stops drawing, and `WaitForEndOfFrame` never returns — no error, no timeout, no shots. | The one line in `Awake`. It is the reason the harness completes at all; do not remove it. |
+| P0-6 | `WaitForEndOfFrame` in `-batchmode` | `UnityShotsCamera.Shoot` | Batch mode draws nothing, so the same hang. | `Application.isBatchMode` is checked before the first shot and refused with a message and exit code 4. `howto_shot.gd` carries the same warning for Godot. |
+| P0-7 | `Environment.SetEnvironmentVariable("RUNWAY_SHOT", …)` reaching `Boot` | `UnityShots.Install` | This is what puts Boot on its harness path with **no edit to Boot** — no studio card, no keys gate, no curtain over the title, no paid render. It only works because `Install` is `BeforeSceneLoad` and `Boot.Launch` is `AfterSceneLoad`, which Unity orders strictly, and because `Env.Get` reads the process environment before its files. | The set is in `try/catch`, and the harness raises every screen through `Boot.Go` itself, so a failed set costs the curtain (which `HideCurtain` then deactivates) and nothing else. |
+| P0-8 | `Screen.SetResolution(1536, 1024, false)` | `UnityShots.SizeTheStage` | The Godot reference PNGs are 1536×1024. A player launched without `-screen-width/-screen-height` may open at another size, and the editor's Game view ignores the call outright. | Every shot logs its real size and a mismatch prints `SHOT SIZE <name> …` naming the launch flags. The live run produced 23 × 1536×1024. |
+| P0-9 | `RenderTexture.active = null` before `ReadPixels` | `UnityShotsCamera.ReadBackBuffer` | Without it a bound render texture would be read instead of the finished frame. | Only reached when the ScreenCapture path is unavailable. |
+| P0-10 | `Texture2D.GetPixels32()` per shot | `UnityShotsCamera.Spread` | ~6MB per 1536×1024 capture, 23 times, to measure the luminance spread for the flat check. | Strided (prime stride, ≈200k samples), the texture is destroyed immediately after, and a throw is caught — the PNG is already on disk before the check runs, so the evidence is never lost to the checker. |
+| P0-11 | `RunDriver.State` has a **private setter** | `UnityShotsFixtures.FreshRunState` | The Godot screens are handed a state (`bk.setup(st2)`, `b.setup(s)`); the Unity twins read `RunDriver.Current.State`, which cannot be assigned from outside. | A fixture calls the driver's own public `BeginFreshRun(false)` and writes its fields onto the state that comes back. No private seam, and every screen that reaches for the run finds the same object. |
+| P0-12 | One frame of screen overlap in `Boot.Go` | every shot | `Go` adds the new screen and destroys the previous one a frame later, so a capture in that frame would photograph two screens. | Every shot is at least 0.3s after its `Go`, and the waits are transcribed from the `.gd` harnesses, so the overlap frame is never the photographed one. |
+
+## P0-3. Fixture divergences — the same company, said in Core's words
+
+Three fields cannot be transcribed literally because Core is typed where Godot's
+`GameState` is a bag of dictionaries. All three are in `binder_shot.gd`:
+
+| The `.gd` writes | The fixture writes | Why |
+|---|---|---|
+| `{"role": 0, "commitment": 0}` | `Role = "Sales"`, `Commitment = "Full-time"` | They are indices into `founder_draft_screen.gd`'s `ROLES` / `COMMITMENTS`; `Core.Cofounder` holds the words. Note that `binder.gd` prints the raw value (`str(cf.get("role"))`), so the Godot crew tab reads **"Nico Ferreira — 0 cofounder"** where the Unity twin reads **"— Sales cofounder"**. The port is right and the original is not; the shots will differ on that one line. |
+| `metric_history[i]["product"]` | dropped | `MetricSnapshot` has no `product`, and nothing reads it — `binder.gd`'s `_series` only ever asks for cash, customers, morale, debt and hype. |
+| `metric_history[i]["week"]` | `Wk` | The harness writes `week`; the engine itself writes `wk` (`sim_engine.gd:380`). Neither is read by a chart. |
+
+## P0-4. The seam — what this lane needs from anybody else
+
+**Nothing.** No hookup line, no shared-file change, no manifest entry. `Install`
+is the single entry point, the env var is the switch, and
+`RUNWAY_FX_USHOTS_OFF` in Scripting Define Symbols compiles all four files out.
+
+One thing the shots FOUND, for whoever owns B3/B4/B6/B7/B15: **a `SheetLoop`
+paints an opaque white rectangle until its first frame lands.** `SheetLoop.Awake`
+sets `_target.color = Color.white` on a `RawImage` whose `texture` is still null,
+and an untextured white `RawImage` is a white quad — where Godot's empty
+`TextureRect` draws nothing. It shows in `n1_title_menu` (the whole title film),
+`n4_keys` (a white square where the mascot idles), `n3_howto` / `howto_p1..p3`
+(the film frame) and `n5_birth_fullframe` / `birth_intro_check` /
+`birth_loop_check` (the whole room). `BirthScreen` already does the right thing
+for its logotype — `_logo.enabled = false` until `ArtCache.Load` returns — so the
+fix is the same move inside `SheetLoop`, which is not this lane's file to edit.
+
+---
+
+# D6 — THE SOFT-LIGHT LANE — `Effects/GlowSprites.cs` + `Resources/Shaders/RunwayGlow.shader`
+
+NOT URP. The checklist settles it (`DEFERRED: URP migration — soft-light sprites
+chosen instead`), so light here is what an illustrator does: additive radial washes
+laid over the picture, and one multiply layer over the room when the money runs out.
+Two new files, no existing file touched.
+
+Kill-switch is the **environment**, not a scripting define: `RUNWAY_FX_GLOWS` absent
+or `1` is on, `0` (also `off`/`false`) is off, read once and cached. Off means
+`Apply` returns null, `MakeGlow` returns `Glow.Inert`, and **no GameObject and no
+texture are created at all** — nothing to compile out, and D8 can toggle the lane
+without a recompile. `GlowSprites.ForgetSwitch()` exists for a harness that changes
+the environment after the first read.
+
+## D6-1. Blocking risks — these stop a compile if they are wrong
+
+| # | API | Where | Why uncertain | Fallback coded |
+|---|-----|-------|---------------|----------------|
+| D6-A1 | **`UI/Default` cannot be made additive.** Unity's UI shader hard-codes `Blend SrcAlpha OneMinusSrcAlpha` and exposes no `_SrcBlend`/`_DstBlend`, so `new Material(Shader.Find("UI/Default"))` + `SetFloat("_SrcBlend", …)` silently does nothing. `Sprites/Default` cannot do it either — it premultiplies (`c.rgb *= c.a`) before blending, so alpha 0 kills the colour instead of making it add. | `AdditiveMaterial`, `MultiplyMaterial` | This is the one real API question in the lane, and the answer is that there is no runtime-only way to get an additive UI Image. Runtime shader **compilation** does not exist in Unity either. | A 60-line `Runway/Glow` shader ships: UI/Default with `Blend [_SrcBlend] [_DstBlend]` as float properties, so ONE shader serves both the additive glow (`SrcAlpha One`) and the red multiply (`DstColor Zero`). Both materials are built at runtime from it. |
+| D6-A2 | The shader could be stripped out of a player build | `GlowShader` | A shader referenced by nothing but a `Shader.Find` string is a stripping candidate, and a stripped shader is a magenta room. | It lives in **`Assets/Resources/Shaders/`** — everything under a Resources folder is always included — and is loaded with `Resources.Load<Shader>("Shaders/RunwayGlow")` first, `Shader.Find("Runway/Glow")` second. If both miss, the material is null, `Image.material` stays default, and the glows draw with **straight alpha blending**: they wash toward their own colour instead of adding. Degraded, logged once, never broken. The red overlay's fallback is nearly exact — an alpha veil at 0.19 of a dark cold colour is within a few percent of multiplying toward 0.85. |
+| D6-A3 | `Component.GetComponentInParent<T>(bool includeInactive)` | `MakeGlow` | The `includeInactive` overload is 2020.1+; the project is Unity 6, so it exists. It matters because a draft page builds itself while inactive and the default overload would silently skip the rig. | Compiled and exercised; a null rig only costs the light its tick (no breathing, no red drain), never an exception. |
+| D6-A4 | `ZTest Always` instead of `ZTest [unity_GUIZTestMode]` | the shader | The built-in resolves to `Always` for a ScreenSpaceOverlay canvas (which is what `Boot` builds) and to `LEqual` for the ScreenSpaceCamera canvas the evidence harness renders through. Pinning it makes both paths identical rather than depending on a global somebody else sets. | If a world-space canvas is ever put behind 3D geometry, this shader would draw through it. There is no 3D geometry in this game. |
+
+## D6-2. Runtime risks — they compile, but may not do what the look wants
+
+| # | Thing | Where | Risk | Fallback coded |
+|---|-------|-------|------|----------------|
+| D6-B1 | **Additive light over a CREAM wall clips.** | the drawn garage | `DrawnUI.Cream` is 0.949 — anything added to it goes to paper-white and takes the drawing with it. | The gradients are **saturated rather than bright**: warm runs (1.00, 0.90, 0.71) at the filament to (1.00, 0.50, 0.14) at the rim, so the room gains temperature long before it gains luminance, and the pool alphas are 0.13. Measured on the shipped cream room: only the bulb's own core clips, which is what a bulb does. The evidence set carries that shot (`d6-garage-drawn-cream.png`) next to the dark-room one so the difference is on the record rather than in someone's head. |
+| D6-B2 | **The light must sit over a COMPOSED painting too.** | `_room` child order | A painting arrives with its own lighting baked in, so a second pool could double-light it. | Kept on, deliberately: `scene_room.gd`'s `ambient()` does exactly this in the Godot build — an additive delta laid over a composed still, "and where the bulb brightens it also brightens a character standing under it, which is correct rather than a bug". The glow layer is a child of `_room`, and `AdoptComposed` puts the painting at sibling index 1, so the light stays above it without any hookup. |
+| D6-B3 | **The room appends children after we install.** | `Pin()` | `SyncRoom` → `BuildCrew` destroys and rebuilds the crew every week, and rebuilt crew rects are appended to `_room` — above the light and above the red multiply. | The rig compares two sibling indices per frame (two int reads, no allocation) and calls `SetAsLastSibling` only on the frame it is actually wrong, i.e. once a week. Pinning is **off** for the select stage, where the beam is deliberately installed *under* the pages. |
+| D6-B4 | Writing `Graphic.color` dirties the canvas mesh | `Alphas()` | A glow that re-tinted every frame would be a rebuild storm on a full-screen quad (E2 wants zero rebuilds outside animation frames). | Breathing rides `localScale` — a transform write, no mesh rebuild — quantised to the room's own 12fps clock, so the swell costs nothing a canvas notices. Colour is written **only while the red state is easing** (0.9s), and then only when the value moves by more than 0.002. |
+| D6-B5 | The laptop glow could burn over an empty spot | `Glow.FollowObject` | `item_itm_laptop` is only visible when the founder owns a laptop, it moves when its drawing lands and re-fits, and it is hidden under a painting. A glow at fixed coordinates would be wrong in all three cases. | The light asks the room where its object is: `_host.Find("item_itm_laptop")`, then tracks that rect's centre and `activeInHierarchy` on every beat. If the name is ever changed the glow falls back to the transcribed centre (478, 586) and simply stops following. |
+| D6-B6 | `Graphic.material` never reads back null | `Install` | The getter answers with the default UI material when nothing was assigned, so `_red.material != null` is not a test of anything. | The question is asked of `MultiplyMaterial()` itself, and the answer is cached in `_redIsMultiply`. |
+| D6-B7 | `Object.Destroy` is a no-op in edit mode | `Glow.Kill` | The evidence harness runs in the editor, where a deferred destroy never happens. | `GlowSprites.Gone` picks `DestroyImmediate` when `!Application.isPlaying`. In a player build the branch is dead. |
+| D6-B8 | The static red flag outlives a screen | `SetRed` | `_redWanted` is static, so a rig installed later inherits whatever the last screen said. | Correct on purpose — a room rebuilt while cash is still negative comes up already cold — and the room re-asserts it every frame anyway. `RedAmount` starts at 1 rather than easing in that case, which is the right answer: the week did not just turn red. |
+| D6-B9 | Two red layers on one screen | the garage | `GarageScreen` already owns `_redVignette`, a **warm** red pulse on `Rect` driven by `WeeksInRed`. This lane's overlay is a **cold** multiply inside `_room`. | They stack rather than fight — the vignette pulses at the edges over everything, the multiply drains the room under it — but if the two ever read muddy together, the vignette's alpha is the knob (`GarageScreen.cs:477-484`). Flagged for the integrator; not touched by this lane. |
+
+## D6-3. Verified, not guessed
+
+Rendered headless with a real graphics device (`-batchmode -quit`, **no**
+`-nographics`) through `Assets/Scripts/Editor/GlowShots.cs`, five frames at
+1536×1024 into the scratchpad, over a stand-in room carrying the garage's real
+geometry and the real object drawings off disk:
+
+- **The additive material rasterises.** The bulb reads as a hot amber core with a
+  pool under it; the laptop reads cold against it. Not asserted — photographed.
+- **Warmth is a number, and it inverts.** Mean red-minus-blue on the wall under the
+  bulb: **+0.068 normal → −0.010 in the red** (115% of the warmth gone), and the
+  unlit corner goes **+0.012 → −0.020**, i.e. across zero into cold. The lit wall is
+  36% dimmer. `SetRed(true)` settles to 1.00 over 0.9s.
+- **The breath is ±3% over 4s, measured.** A still cannot show a swell, so the bulb's
+  own scale was sampled every 0.5s across one full cycle:
+  `1.000 0.982 0.970 0.976 0.996 1.018 1.030 1.021 1.000` — swing 0.970 → 1.030,
+  i.e. ±3.0%, one period per 4.0s, quantised to the room's 12fps beat.
+- **The kill-switch is inert, not hidden.** With `RUNWAY_FX_GLOWS=0`, `Apply`
+  returns null, `MakeGlow(...).Live` is false, and the shot is the bare room.
+- **The bake is deterministic.** Two runs produced byte-identical numbers; the
+  wobble harmonics and the grain are seeded (`System.Random(47)` / `(91)`).
+- **Cost.** Two 256² RGBA textures (512KB, baked once), four extra transparent quads
+  in the room and three on the select stage, one `Update` doing two int compares and
+  a `sin` at 12fps.
+
+## D6-4. The seam — the three one-line hookups this lane needs
+
+```csharp
+// 1. GarageScreen.OnBuild, after `_room = DrawnUI.FullRect(Rect, "room");` and
+//    BuildRoom()/BuildHud() — the bulb pool, the laptop glow and the cold overlay:
+Runway.Effects.GlowSprites.Apply(_room, Runway.Effects.GlowScene.Garage);
+
+// 2. GarageScreen.Update, beside the existing `_redVignette` block — the red state:
+Runway.Effects.GlowSprites.SetRed(State.Cash < 0);
+
+// 3. FounderDraftScreen.OnBuild, immediately after the `env/stage.png` block and
+//    BEFORE the pages are built, so the beam sits over the stage and under the UI:
+Runway.Effects.GlowSprites.Apply(Rect, Runway.Effects.GlowScene.SelectStage);
+```
+
+No `using` is needed at any of the three sites. `Apply` is idempotent per host and
+returns null when the switch is off; `SetRed` is safe to call every frame and safe
+to call when nothing is installed.
+
+---
+
+# D3 — THE BEAT-TEXT LANE — `Game/ReadingBeat.TextFx.cs` + `Game/BeatInkSettle.cs`
+
+The reading beat already writes its paragraphs in rather than printing them
+(`ReadingBeat.WriteIn` walks `maxVisibleCharacters`, which is Godot's
+`visible_ratio` tween ported). But a character that simply becomes visible POPS.
+This lane puts the reveal on a pen instead: 40 characters a second, each one
+falling the last 2px onto its line and inking up as it lands, the verdict word
+punching once when it arrives, and the die that turned the week stamped into the
+sentence beside its number. Two new files, no existing file touched.
+
+Kill-switch is the **environment**, not a scripting define: `RUNWAY_FX_TEXT`
+absent or `1` is on, `0` is off, read once and cached. Off means `Apply` hands
+the caller its own timing back and touches nothing at all — no component, no
+rewritten sentence, no chit — so the beat reads exactly as it ships today and D8
+can toggle the lane without a recompile. `ReadingBeatText.Reread()` exists for a
+harness (or the keys screen) that changes the environment after the first read.
+
+## D3-1. Blocking risks — these stop a compile if they are wrong
+
+| # | API | Where | Why uncertain | Fallback coded / what was verified |
+|---|-----|-------|---------------|------------------------------------|
+| D3-A1 | **`ReadingBeat` is not `partial`, so this lane could not extend it.** | the whole lane | The brief asked for `ReadingBeat.TextFx.cs` as a `partial class`. `ReadingBeat.cs:31` declares `public sealed class ReadingBeat : MonoBehaviour` with no `partial`, and a second declaration adding the keyword is **CS0260**, not a warning. Adding the keyword would have been an edit to a shared file, which the parallelism contract forbids. | Shipped as a static class (`ReadingBeatText`) plus its own MonoBehaviour (`BeatInkSettle`) in the same file name the brief asked for. Nothing about the seam changes: one static `Apply(TMP_Text, float)`. **The next lane that wants a `partial` on a screen must ask the integrator for the keyword first.** |
+| D3-A2 | `TMP_TextInfo.CopyMeshInfoVertexData()`, `TMP_Text.UpdateVertexData(TMP_VertexDataUpdateFlags)`, `TMP_Text.havePropertiesChanged`, `TMP_MeshInfo.vertices/colors32`, `TMP_CharacterInfo.origin/xAdvance/baseLine/lineNumber` | `BeatInkSettle` | The whole lane is TMP mesh surgery, and these are the members that make it possible. | **Read out of the resolved package before a line was written** (`Library/PackageCache/com.unity.ugui@…/Runtime/TMP/`), not remembered: all present and public. |
+| D3-A3 | **The manifest's TMP version is not the one that compiles.** | ledger baseline | `Packages/manifest.json` still says `com.unity.textmeshpro 3.0.9` + `com.unity.ugui 1.0.0`. `packages-lock.json` resolves **`com.unity.ugui 2.0.0` and `com.unity.textmeshpro 5.0.0`, both `builtin`** — Unity 6 folded TMP into UGUI exactly as risk A1 predicted, and `DrawnUI` is already using the merged-only `textWrappingMode`. | Nothing to do; recorded so the next lane reads the LOCK file rather than the manifest when it wants to know what TMP it is writing against. |
+| D3-A4 | One MonoBehaviour per file, named after the file (convention F1) | `BeatInkSettle.cs` | A component defined in `ReadingBeat.TextFx.cs` would have a file name no class can match, and `AddComponent` of a class Unity never made a `MonoScript` for is a runtime failure, not a compile one. | The driver lives in `BeatInkSettle.cs`; `ReadingBeat.TextFx.cs` holds only static API and tuning. |
+
+## D3-2. Runtime risks — they compile, but may not do what the reading wants
+
+| # | Thing | Where | Risk | Fallback coded |
+|---|-------|-------|------|----------------|
+| D3-B1 | **`LateUpdate`, not a coroutine.** | `BeatInkSettle.Step` | `ReadingBeat.WriteIn` moves `maxVisibleCharacters` from the update phase, and TMP regenerates the whole mesh whenever it changes. A coroutine (which also resumes in the update phase) can be scheduled either side of it, so half the frames would have their vertex writes thrown away by TMP's regeneration and the newest letters would flicker. LateUpdate is guaranteed after every coroutine and before the canvas draws. | `Step(float dt)` takes its delta rather than reading the clock, so the identical code runs frame by frame in an editor harness with no play mode. Inside it: `if (havePropertiesChanged) ForceMeshUpdate()` **first**, which is what clears TMP's own dirty flags, then the vertices, then `UpdateVertexData`. Nothing can regenerate after us. |
+| D3-B2 | **Two clocks drifting reads as a click.** | `_cps` / `Pace` | The lane owns the frontier and `WriteIn` still writes it too. An external jump of more than `LeapChars` (8) is deliberately read as the beat's own skip. A flat 40cps would have drifted away from `WriteIn`'s pace on any paragraph over 260 characters (where the beat's 6.5s ceiling bites) and tripped that detector within half a second. | The pace is read back OUT of the beat's own envelope: `cps = count / Clamp(count/40, 0.3, 6.5)`. Nominally 40; a very short line is still savoured over 0.3s and a very long one still never exceeds 6.5s, because the next beat is already on its way. Both clocks are then the same clock by construction. |
+| D3-B3 | **The vertex cache assumes layout does not move.** | `Recache` | Every frame writes absolute positions from one copy taken at install. If TMP re-laid the text out, the copy would draw the OLD layout. | `maxVisibleCharacters` culls geometry but line-breaking runs over the whole string, and the body labels are `TopLeft`, so nothing re-centres: positions are stable by construction. It is still checked every frame (character count, and the rect size to ±0.5px) and re-copied if either moves, at most 4 times before the lane gives up. Giving up **lands the paragraph** rather than leaving it half-written. |
+| D3-B4 | Per-frame allocation | `Paint` | "No GC per frame" is the bar, and TMP vertex work is the classic way to miss it. | The vertex copy, the verdict runs and the chit are built once in `Install`; character timings are arithmetic, not a table (`Born(i) = (i+1)/cps`). The per-frame loop writes into arrays that already exist and calls one `UpdateVertexData`. The one text regeneration a frame is the cost the beat **already pays** — `WriteIn` changes `maxVisibleCharacters` on two frames in three at 60fps — it is only moved earlier in the frame. |
+| D3-B5 | **Runtime `TMP_SpriteAsset` was rejected, not forgotten.** | the die chit | The brief allowed it if it were provably safe. It is not: a runtime sprite asset needs a populated `TMP_SpriteCharacter`/`TMP_SpriteGlyph` table AND a material on the `TMP_Sprite` shader, which lives in the TMP **essential resources** — the same import risk B2 already flags as an owner action. A missing sprite shader is an invisible or magenta glyph inside a sentence. | Shipped as the brief's fallback: a positioned `RawImage` child of the label, placed from the laid-out geometry, `raycastTarget = false`, clipped by the beat's existing `RectMask2D` like any other graphic, fading and settling on the same curve as the character it rides on. |
+| D3-B6 | **Opening a gap in the sentence can reflow it.** | `OpenDieGap` | The chit needs room, so the text is rewritten with a run of spaces after "The die came up 14." — and `ReadingBeat.Reveal` has ALREADY measured that block's height from `preferredHeight` and already advanced `_columnH`. A paragraph that grew a line would print into the beat below it. | The gap is sized from the width one space actually buys in this font (read off the space the sentence already has), inserted once, and then **verified**: same `lineCount`, and the character before the gap on the same line as the one after it. Either check failing puts the original string back and ships no chit. The wrap POINT may move (it does in the evidence frame); the line count may not. |
+| D3-B7 | The die sheet is 4096×2560 and the beat must not hitch | `ReadingBeatText.DieTexture` | A synchronous decode of a 10MB PNG on the main thread is a >50ms spike, which E5 forbids. | Asked of `ArtCache` first, which in the game is always a hit: the cup played `dice/roll_NN.png` seconds earlier in the same turn. Then `ArtCache.Load` (async) when a `Boot` exists. The straight `File.ReadAllBytes` + `LoadImage` rung only runs when there is **no `Boot` at all** — an editor harness, which has no coroutine pump and no frames to cost. In a player that branch is dead. |
+| D3-B8 | The settled die's crop is hard-coded | `DieCropX/Y/W/H` | Cropping the die out of the last cell of the roll sheet needs to know where inside that 512px cell the drawing sits, and reading pixels at runtime is not possible (the sheets load `nonReadable`). | **Measured, not guessed**: the alpha bounding box of frame 39 was taken on all twenty sheets. Nineteen of them read x 121..388, y 99..410 and the other three are within 2px. The constant is that box plus a pixel. If the dice art is ever re-rendered, this is the one number to re-measure. |
+| D3-B9 | **The capitalised verdicts are dead words in BOTH builds.** | `Verdicts` | The checklist asks for BRILLIANT/BACKFIRED to punch. `main.gd:1756` builds that band table into a local `band` and then never prints it — the sentence carries the plain-words version instead (`It lands beautifully.` / `It goes wrong.`), and `TurnRunner.cs:232-240` ports exactly that. Emphasising only the capitals would have been an effect no player could ever see. | Both sets are in the table, matched longest-first and boundary-anchored so `It lands.` can never match inside `It lands beautifully.` and `BRILLIANT` can never match inside a longer word. If the integrator ever wants the capitals on screen, `beat.Say("", band)` in `TurnRunner` is the whole change and this lane already answers to it. |
+| D3-B10 | A verdict that wraps across two lines | `FindVerdicts` | Scaling a run about the midpoint of its bounding box would shear it if half the word is on the next line. | Runs are cut at line ends and each segment scales about its own line's centre, sharing one fire time. Measured on the evidence frames: the phrase grows 234px → 246px (1.051x against 1.052x reported) and the `·` beside it does not move at all, so the punch is bounded to the verdict. |
+| D3-B11 | `ReadingBeat._draining` would go stale if the lane replaced `WriteIn` | the seam | `_draining` is private and it is what makes a click during a write-in SKIP rather than CLOSE the beat (`OnClick`). A hookup that swapped `WriteIn` out for this lane would leave it permanently false, and a click on the last paragraph would close the beat mid-sentence. | The hookup deliberately keeps `WriteIn` running and only changes the number it is given. `WriteIn` keeps the bookkeeping and the skip latch; this lane owns the vertices and quietly rewrites the same frontier a moment later in LateUpdate. Nothing about the beat's click semantics moves. |
+
+## D3-3. Verified, not guessed
+
+Rendered headless with a real graphics device (`-batchmode -quit`, **no**
+`-nographics`) through `Assets/Scripts/Editor/BeatTextFxShots.cs`: seven frames at
+1536×1024 on the beat's own paper, carrying the judgement sentence in the exact
+shape `TurnRunner` composes it. Every frame is filmed with a trace beside it, so
+the film is checkable with a number as well as with an eye.
+
+- **Characters land, they do not appear.** At any mid-write frame five characters
+  are in the air on a gradient — `ink=255 · 253 · 244 · 218 · 166 · 80 /255` with
+  `above = 0.00 · 0.01 · 0.08 · 0.29 · 0.69 · 1.37px`. A settled character reads
+  exactly `0.00px`, which is the proof the mesh ends where TMP would have put it.
+- **The verdict punches once.** `1.052x` reported at the fire frame; measured off
+  the PNG, `It lands beautifully.` is **246px wide punching against 234px settled
+  (1.051x)** while the `·` after it sits at the same pixel in both frames.
+- **The die is stamped in the sentence**, cropped from the last frame of
+  `dice/roll_14.png`, fading and settling with the character it rides on.
+- **A click lands everything.** Frontier shoved 16 → 120 the way
+  `ReadingBeat.SkipReading` does it: one frame later every character reads
+  `ink=255/255 above=0.00px`. Nothing animates in, nothing is left behind.
+- **The kill-switch is inert, not hidden.** With `RUNWAY_FX_TEXT=0`: no component
+  on the label, `text` byte-identical to what the caller passed, and `Apply`
+  returns the caller's own number. `07_killswitch_off.png` carries the switched-on
+  and switched-off sentence on one sheet.
+- **Cost.** One `TMP_MeshInfo[]` copy per body block (four `Vector3`/`Color32` per
+  character, freed with the beat), one 4096×2560 texture already resident from the
+  cup, and one `RawImage`. Zero allocation per frame.
+
+## D3-4. The seam — the one-line hookup this lane needs
+
+`ReadingBeat.Reveal`, the line that computes the write-in duration
+(`ReadingBeat.cs:243`). Replace:
+
+```csharp
+            float secs = Mathf.Clamp(body.Length / 95f, 0.3f, 6.5f);
+```
+
+with:
+
+```csharp
+            float secs = ReadingBeatText.Apply(b, Mathf.Clamp(body.Length / 95f, 0.3f, 6.5f));
+```
+
+The `StartCoroutine(WriteIn(b, secs))` on the next line stays exactly as it is —
+it keeps `_draining`, the skip latch and the click semantics (D3-B11). `Apply`
+must run BEFORE `WriteIn` starts, which this ordering gives, because it may
+lengthen `b.text` by a few spaces and `WriteIn` reads that length once.
+
+No `using` is needed: `ReadingBeatText` is in `Runway.Game`, the same namespace as
+`ReadingBeat`. With the switch off, `Apply` returns its second argument unchanged
+and the line is what it was.
