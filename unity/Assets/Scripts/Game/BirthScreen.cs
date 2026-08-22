@@ -63,7 +63,7 @@ namespace Runway.Game
                 if (RunwayPaths.ArtExists(IntroArt))
                 {
                     _loop.Finished += OnIntroDone;
-                    _loop.PlaySheet(IntroArt, IntroCols, IntroFrames, Fps, true);
+                    StartCoroutine(HoldThenIntro());   // I_HOLD 0.3s, ported
                 }
                 else
                 {
@@ -121,16 +121,19 @@ namespace Runway.Game
             // halo copies were static while the line animated its dots, so
             // the two drifted into a double-struck smear over the film).
             float ly = _hasArt ? RunwayPaths.StageHeight * 0.90f : RunwayPaths.StageHeight * 0.66f;
+            _line = DrawnUI.HandLabel(Rect, StatusLine, 0f, ly, 34f,
+                _hasArt ? DrawnUI.Ink : DrawnUI.Cream, RunwayPaths.StageWidth,
+                TextAlignmentOptions.Top);
             if (_hasArt)
             {
-                var pill = DrawnUI.Fill(Rect, "line_pill",
-                    new Color(0.13f, 0.15f, 0.17f, 0.55f),
-                    RunwayPaths.StageWidth * 0.5f - 250f, ly - 9f, 500f, 52f);
-                pill.raycastTarget = false;
+                // Godot rings the ink line with a cream halo; TMP spells the
+                // same halo as an outline on the label's own material — one
+                // label, no drift, no pill darkening half the runway (P5/VD2)
+                var m = _line.fontMaterial;
+                m.SetColor(TMPro.ShaderUtilities.ID_OutlineColor,
+                           DrawnUI.WithAlpha(DrawnUI.Cream, 0.82f));
+                m.SetFloat(TMPro.ShaderUtilities.ID_OutlineWidth, 0.24f);
             }
-            _line = DrawnUI.HandLabel(Rect, StatusLine, 0f, ly, 34f,
-                DrawnUI.Cream, RunwayPaths.StageWidth,
-                TextAlignmentOptions.Top);
         }
 
         /// THE TYPE HANGS FROM ITS TOP — it is not centred in a box. Godot draws it
@@ -149,6 +152,12 @@ namespace Runway.Game
             if (rt == null || tex == null) return;
             GameUi.Fit(rt, tex, boxX, boxY, boxW, boxH);
             DrawnUI.SetTopLeft(rt, boxX + (boxW - rt.sizeDelta.x) * 0.5f, boxY);
+        }
+
+        System.Collections.IEnumerator HoldThenIntro()
+        {
+            yield return new WaitForSecondsRealtime(0.3f);
+            if (_loop != null) _loop.PlaySheet(IntroArt, IntroCols, IntroFrames, Fps, true);
         }
 
         void OnIntroDone()

@@ -121,7 +121,11 @@ namespace Runway.App
             _cellH = cellH;
             _fps = fps;
             _once = once;
-            _t = 0f;
+            // a ONCE ceremony starts at its first frame; a LOOP joins the
+            // house clock already in motion — Godot never resets a loop's t,
+            // and resetting here put two builds on different frames of the
+            // same baked film (the compare pass caught howto at 21 vs 9)
+            if (once) _t = 0f;
             _shown = -1;
             return StartCoroutine(LoadSheet(relativeArtPath));
         }

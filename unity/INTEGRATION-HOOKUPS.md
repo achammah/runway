@@ -144,3 +144,12 @@ Applied all at once at integration; each lane proven OFF-able first (D8).
   Nav-factory click decision: ADOPT (house doctrine: every input answers).
 - Cleanup owed: a fixture save (Driftdeck, slot 2) may sit in the real user
   folder from a lane's live run — verify + remove.
+
+## B-VERDICT wave applied (P1-P7, P9)
+P1 painted theater mounted (scene.png staged local; SelectStage glows deleted —
+no Godot counterpart), P2 loop clock continuous (once-mode still starts at 0),
+P3 bag box uv-trimmed to Godot's 325x460, P4 bag labels TopLeft, P5 birth halo
+as TMP outline (pill dead), P6 I_HOLD 0.3s, P7 keys copy one-line, P9 book col
+1080. DEFERRED: P8 binder block-height formula (±2-4px at breaks), P10 title
+film phase (load-rate nondeterminism, cosmetic), P11 tab tilt, mote count tune
+toward Godot's 14.

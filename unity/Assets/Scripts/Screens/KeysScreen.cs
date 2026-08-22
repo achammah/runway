@@ -73,7 +73,7 @@ namespace Runway.Screens
             // an `x-openai-api-key` header (SceneDirector.MiddlewareCall) so the pictures
             // can be painted. Same voice, same length, no promise the build cannot keep.
             DrawnUI.HandLabel(Rect,
-                "· stored only on this machine, in your user folder — never in the game, sent only to OpenAI and the game's own art painter",
+                "· kept on this machine only — sent to OpenAI and the game's art painter, nowhere else",
                 256f, 668f, 24f, DrawnUI.WithAlpha(Ink, 0.55f), 1000f);
             DrawnUI.HandLabel(Rect,
                 "· a typical evening of play costs about a coffee in API credit",

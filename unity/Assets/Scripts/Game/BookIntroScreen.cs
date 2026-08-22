@@ -31,7 +31,7 @@ namespace Runway.Game
             ScreenRegistry.Register(AppState.Book, typeof(BookIntroScreen));
         }
 
-        const float ColW = 1060f;
+        const float ColW = 1080f;
 
         RectTransform _viewport;
         RectTransform _column;

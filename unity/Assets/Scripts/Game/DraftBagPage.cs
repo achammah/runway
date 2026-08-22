@@ -163,7 +163,7 @@ namespace Runway.Game
                 var card = GameUi.PaperSheet(tile, 8f, 6f, 96f, 84f, gi, 2.5f,
                     DrawnUI.WithAlpha(DrawnUI.Ink, 0.42f), "card");
                 DrawnUI.HandLabel(card, ContentDb.Str(def, "name", "?"), 6f, 10f, 19f,
-                    DrawnUI.WithAlpha(DrawnUI.Ink, 0.85f), 84f, TextAlignmentOptions.Top);
+                    DrawnUI.WithAlpha(DrawnUI.Ink, 0.85f), 84f, TextAlignmentOptions.TopLeft);
             });
             var ring = GameUi.PenRing(tile, -10f, -8f, 132f, 128f, DrawnUI.Coral, gi, 5f);
             ring.gameObject.SetActive(false);
@@ -190,13 +190,13 @@ namespace Runway.Game
             // the thing's NAME is `_dlabel`; the arithmetic strip, the joke and the slot
             // cost under it are all `_label` — one printed line on a written card
             _detailName = DrawnUI.DisplayLabel(_detailPanel, "", 10f, 176f, 30f, DrawnUI.Ink,
-                                               320f, TextAlignmentOptions.Top);
+                                               320f, TextAlignmentOptions.TopLeft);
             GameUi.HandRule(_detailPanel, 115f, 226f, 110f, DrawnUI.Coral, 10);
             _detailMods = DrawnUI.Rect(_detailPanel, "mods", 14f, 240f, 312f, 34f);
             _detailBlurb = DrawnUI.HandLabel(_detailPanel, "", 30f, 280f, 26f, DrawnUI.Ink, 280f,
-                                             TextAlignmentOptions.Top);
+                                             TextAlignmentOptions.TopLeft);
             _detailCost = DrawnUI.HandLabel(_detailPanel, "", 16f, 408f, 24f,
-                DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 308f, TextAlignmentOptions.Top);
+                DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 308f, TextAlignmentOptions.TopLeft);
             if (_s.Deck.ItemList.Count > 0) ShowDetail(_s.Deck.ItemList[0]);
         }
 
@@ -247,7 +247,23 @@ namespace Runway.Game
 
         void BuildBox()
         {
-            GameUi.Picture(_page, "box", ArtCache.SpritePath("env_boxes"), 1140f, 126f, 340f, 460f);
+            // Godot alpha-trims env_boxes (408x408 → 280x396 of real ink)
+            // before fitting; untrimmed, the square aspect shrank the stack to
+            // 340x340 and drowned the bottom box under the label (P3). The
+            // same trim here is a uvRect window + the trimmed aspect.
+            {
+                var boxRt = DrawnUI.Rect(_page, "box", 1147f, 126f, 325f, 460f);
+                var boxImg = boxRt.gameObject.AddComponent<UnityEngine.UI.RawImage>();
+                boxImg.raycastTarget = false;
+                boxImg.enabled = false;
+                boxImg.uvRect = new Rect(63f / 408f, 7f / 408f, 280f / 408f, 396f / 408f);
+                ArtCache.Load(ArtCache.SpritePath("env_boxes"), tex =>
+                {
+                    if (boxImg == null || tex == null) return;
+                    boxImg.texture = tex;
+                    boxImg.enabled = true;
+                });
+            }
             var tag = GameUi.PaperSheet(_page, 1178f, 352f, 288f, 238f, 3, 4f, null, "label");
             GameUi.TiltCentre(tag, -0.018f);
             _boxAnchor = new Vector2(1178f + 144f, 352f + 119f);
@@ -298,7 +314,7 @@ namespace Runway.Game
             _summary.textWrappingMode = TextWrappingModes.NoWrap;
             _loadoutHost = DrawnUI.Rect(_page, "loadout", 70f, 834f, 896f, 32f);
             _loadoutNote = DrawnUI.HandLabel(_page, "", 70f, 862f, 20f,
-                DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 890f, TextAlignmentOptions.Top);
+                DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 890f, TextAlignmentOptions.TopLeft);
         }
 
         // ── packing ────────────────────────────────────────────────────────────

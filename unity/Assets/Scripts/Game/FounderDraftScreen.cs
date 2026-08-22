@@ -123,24 +123,35 @@ namespace Runway.Game
             // THE STAGE, on every page. It can never fall back to a blank screen: a
             // night field always, the painted stage over it when it is on disk.
             DrawnUI.FullFill(Rect, "night", GameUi.Night, true);
-            if (RunwayPaths.ArtExists("env/stage.png"))
+            // THE PAINTED THEATER (P1): Godot mounts select_stage_empty_v2 —
+            // deep blue wall, black side drapes, the beam and its pool painted
+            // INTO the picture. The drawn cone is only the no-art fallback,
+            // and the additive stage glows are gone: they had no Godot
+            // counterpart and blew the back wall out to cream.
+            string sceneArt = RunwayPaths.ArtExists("env/select_stage_scene.png")
+                ? "env/select_stage_scene.png"
+                : (RunwayPaths.ArtExists("env/stage.png") ? "env/stage.png" : "");
+            if (sceneArt.Length > 0)
             {
                 var stageRt = DrawnUI.FullRect(Rect, "stage");
                 var stage = stageRt.gameObject.AddComponent<RawImage>();
                 stage.raycastTarget = false;
                 stage.enabled = false;
-                ArtCache.Load("env/stage.png", tex =>
+                string chosen = sceneArt;
+                ArtCache.Load(chosen, tex =>
                 {
                     if (stage == null || tex == null) return;
                     stage.texture = tex;
+                    // cover-crop into the 1.5 stage exactly as the sheets do
+                    stage.uvRect = Runway.App.SheetLoop.CoverRect(0f, 0f,
+                        tex.width, tex.height, tex.width, tex.height, 1.5f);
                     stage.enabled = true;
-                });
+                }, true);
             }
             else
             {
                 Spotlight(Rect);
             }
-            Runway.Effects.GlowSprites.Apply(Rect, Runway.Effects.GlowScene.SelectStage);
 
             Runway.Audio.Sfx.Warm(Runway.Audio.Sfx.Cue.CardFlip, Runway.Audio.Sfx.Cue.Cash);
             if (Archetypes.Count > 0) SelArch = Archetypes[0] as JObject;
