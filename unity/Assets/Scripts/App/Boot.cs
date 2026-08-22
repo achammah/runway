@@ -303,9 +303,33 @@ namespace Runway.App
                 waited += 0.25f;
             }
 
-            // The bible lands (or the ceiling fired): apply it, then the book opens on
-            // the founder's own entry — fed now if day one already landed.
+            // The bible lands (or the ceiling fired): apply it, then THE LOOP
+            // HOLDS UNTIL THE BOOK IS TRULY READY (#175, ported from Godot):
+            // first the words — three watchdogged attempts get ~160s; then the
+            // paint — the reader never meets an empty page or an unpainted room.
             string entry = Driver.FinishWorldgen();
+            var birthScreen = CurrentScreen as Runway.Game.BirthScreen;
+            if (entry.Length == 0)
+            {
+                if (birthScreen != null) birthScreen.StatusLine = "writing day one";
+                float fwait = 0f;
+                while (Driver.FoundingInFlight && !Driver.FoundingReady && fwait < 160f)
+                {
+                    yield return new WaitForSecondsRealtime(0.25f);
+                    fwait += 0.25f;
+                }
+                // live if it landed during the wait; the engine's own plain
+                // true entry if every attempt died (or there is no key)
+                entry = Driver.AdoptAuthoredFounding();
+            }
+            if (birthScreen != null) birthScreen.StatusLine = "painting the room";
+            float pwait = 0f;
+            while (Director != null && Director.WarmStatus == Runway.Llm.PaintStatus.Painting
+                   && pwait < 240f)
+            {
+                yield return new WaitForSecondsRealtime(0.25f);
+                pwait += 0.25f;
+            }
             Go(AppState.Book, entry, s =>
             {
                 s.Done += _ =>

@@ -435,9 +435,39 @@ namespace Runway.Llm
             req.downloadHandler = new DownloadHandlerBuffer();
             for (int i = 0; i < headers.Count; i++)
                 req.SetRequestHeader(headers[i].Key, headers[i].Value);
-            req.timeout = TimeoutSeconds;
+            // TWO CLOCKS (the Godot build's #175 lesson, ported): the soft
+            // timeout below is the engine's own; the hard watchdog races it
+            // because a wedged socket was caught sleeping straight through a
+            // soft clock — the book waited forever on a founding that was
+            // never coming. founding/clarify are prose on the fast lane and
+            // must die fast enough for the caller's retry to land in-wait.
+            string tier = opts.Tier ?? "";
+            float wd = (tier == "founding" || tier == "clarify") ? 50f : 100f;
+            req.timeout = Mathf.Max(5, (int)wd - 5);
 
-            yield return req.SendWebRequest();
+            var op = req.SendWebRequest();
+            float t0 = Time.realtimeSinceStartup;
+            bool wedged = false;
+            while (!op.isDone)
+            {
+                if (Time.realtimeSinceStartup - t0 > wd)
+                {
+                    wedged = true;
+                    Debug.Log(string.Format(
+                        "LLM WATCHDOG fired after {0:0}s — aborting the wedged request", wd));
+                    req.Abort();
+                    break;
+                }
+                yield return null;
+            }
+            if (wedged)
+            {
+                // one more frame so the abort settles before Dispose
+                yield return null;
+                req.Dispose();
+                if (cb != null) cb(null);
+                yield break;
+            }
 
             long code = req.responseCode;
             bool ok = req.result == UnityWebRequest.Result.Success;

@@ -13,10 +13,15 @@ LOG="${TMPDIR:-/tmp}/runway_unity_compile_$$.log"
 
 waited=0
 until mkdir "$LOCK" 2>/dev/null; do
+  # a killed run skips its trap and leaves the lock: steal it if the holder is dead
+  HOLDER=$(cat "$LOCK/pid" 2>/dev/null)
+  if [ -n "$HOLDER" ] && ! kill -0 "$HOLDER" 2>/dev/null; then rm -rf "$LOCK"; continue; fi
+  [ -z "$HOLDER" ] && [ -n "$(find "$LOCK" -maxdepth 0 -mmin +20 2>/dev/null)" ] && { rm -rf "$LOCK"; continue; }
   sleep 5; waited=$((waited+5))
   if [ "$waited" -ge 900 ]; then echo "── COMPILE MUTEX TIMEOUT (15m) — a stuck run holds $LOCK"; exit 2; fi
 done
-trap 'rmdir "$LOCK" 2>/dev/null' EXIT
+echo $$ > "$LOCK/pid"
+trap 'rm -rf "$LOCK" 2>/dev/null' EXIT
 
 "$U" -batchmode -quit -nographics -projectPath "$ROOT/unity" -logFile "$LOG" >/dev/null 2>&1
 if grep -q "It looks like another Unity instance is running" "$LOG"; then

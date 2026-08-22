@@ -67,6 +67,10 @@ namespace Runway.App
         /// opens on the founder's own entry when it can, and on its placeholder when
         /// it cannot.
         string FinishWorldgen();
+        bool FoundingInFlight { get; }
+        bool FoundingReady { get; }
+        /// live narration if it landed; the engine's authored day one if not
+        string AdoptAuthoredFounding();
 
         /// _cold_open: the curtain drops, day one is written, the beat reads it while
         /// the first image of THIS company renders behind it.
@@ -138,6 +142,9 @@ namespace Runway.App
         public bool WorldgenLanded { get { return false; } }
 
         public string FinishWorldgen() { return ""; }
+        public bool FoundingInFlight { get { return false; } }
+        public bool FoundingReady { get { return false; } }
+        public string AdoptAuthoredFounding() { return ""; }
 
         public void ColdOpen() { }
 
