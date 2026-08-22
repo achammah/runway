@@ -1830,3 +1830,191 @@ caption, subtitle, hint, blurb, mood and joke around them is `_label`.
   render middleware as an `x-openai-api-key` header so the rooms can be painted. It
   now reads "sent only to OpenAI and the game's own art painter" — same voice, same
   band, one line, and nothing the build cannot keep.
+
+---
+
+# CONFIG: the settings, the packages, the build and the launch
+
+`ProjectSettings/*.asset` + `Packages/manifest.json` + `App/Build.cs` + the shipped
+`.app`. This lane changed nothing. It read the files, parsed the shipped build, and
+timed a real launch; the ranked lever table, the streamed-art migration plan and the
+verbatim settings diff live in `docs/config-plan.md`.
+
+Baseline it was written against: Unity 6000.0.82f1, Apple M4 Pro, Metal, build stamp
+`2026-08-22 20:24 · e8ab078`, `RUNWAY!.app` at 682 MB, energy probe at 280 to 405 fps
+and 2.43 to 3.57 ms per frame with `gc/s` flat at 0.00 on all fourteen rows.
+
+## CONFIG-1. Blocking risks: these break a build or a harness if a lever is applied wrong
+
+| # | Setting | Where | Why it bites | What to do instead |
+|---|---------|-------|--------------|--------------------|
+| CFG-B1 | **Managed stripping blinds the perf probe.** | `UnityPerf.BindUi`, `UnityPerf.StatInt` | Both resolve by **string name**: `CanvasUpdateRegistry`'s private `m_LayoutRebuildQueue` / `m_GraphicRebuildQueue`, and `UnityEditor.UnityStats` via `Type.GetType`. Managed stripping (IL2CPP only, but that is exactly what a backend switch turns on) is designed to remove precisely this. The failure is **silent**: `rebuild/s` degrades to `n/a`, which the file itself documents as a legitimate outcome, so nobody would notice the harness had stopped measuring. | Stay on Mono. `managedStrippingLevel` and `stripEngineCode: 1` are already inert under Mono, so today there is no exposure. If IL2CPP is ever taken, a `link.xml` preserving `UnityEngine.UI` is mandatory **and** the probe needs an assertion that `rebuild/s` is not `n/a`. |
+| CFG-B2 | **`Resources.UnloadAsset` vs `Destroy`.** | `ArtCache.Sweep` line 90 | `Sweep` calls `UnityEngine.Object.Destroy(t)` on every eviction. The moment `ArtCache` gains a Resources-first path, that destroys the **shared imported instance**: the next `Resources.Load` of the same path can hand back a destroyed object, and in the editor it can damage the asset itself. | Record provenance per cache entry and branch, exactly as `SheetLoop._sheetBaked` already does at line 339: `Resources.UnloadAsset` for baked, `Destroy` for streamed. This is the highest-consequence item in the whole migration. |
+| CFG-B3 | **Deleting quality levels renumbers them.** | `QualitySettings.asset` | `m_CurrentQuality: 5` and every entry in `m_PerPlatformDefaultQuality` name **index 5**. Collapsing six levels to one without rewriting those nineteen keys leaves the project pointing at an index that no longer exists. | The diff in `docs/config-plan.md` 5.1 replaces the whole block, including all nineteen platform keys, with 0. Do not hand-edit the array alone. |
+| CFG-B4 | **`Assets/Art` cannot be hidden by CONFIG alone.** | `Build.cs` `SourceArt`, `EnsureSheets`; `RunwayPaths.ArtRoot` | Renaming the folder to `Art~` (the only way to stop Unity importing 505 unused PNGs in place) breaks four hard-coded paths across two files plus a `.gitignore` line. Applying the rename without them makes `EnsureSheets` log `no sheet source` twenty-six times and ship a build with no films. | Treat it as a coordinated art-lane edit, not a settings change. `docs/config-plan.md` 5.5 lists all six touch points. The CONFIG-only alternative is to accept the editor cost: the build output is byte-identical either way. |
+
+## CONFIG-2. Runtime risks: they build, but they change what the player gets
+
+| # | Thing | Risk | What it costs, measured |
+|---|-------|------|--------------------------|
+| CFG-R1 | **`npotScale` silently resamples.** | `TextureImporterNPOTScale.ToNearest` rescales any non-power-of-two texture to the nearest POT. This is not a hypothetical: it is what `Assets/Art` does **today**, and it is measured out of `Library/Artifacts`. | `env_bed.png` 391x391 imports as **512x512**. `chr_loop_dropout_03.png` 378x378 imports as **256x256**, a 32% linear downscale of a founder animation frame. `chr_founder_grab_01.png` 347x347 likewise 256x256. Any Resources migration must set `npotScale = None`. |
+| CFG-R2 | **Mipmaps cost 33% and buy nothing.** | `Assets/Art`'s importer has `enableMipMap: 1`. UI quads on a fixed 1536x1024 stage are never minified. | Measured 10.67 bits per pixel where the format is 8 bpp: `chr_loop_dropout_03` imports at 256x256 DXT5 with **9 mip levels**, 87,408 bytes instead of 65,536. `SheetImport` already sets `mipmapEnabled = false` for `Resources/Sheets`; the migration branch must too. |
+| CFG-R3 | **BC7 is a size regression on this content.** | The brief, and `SheetImport.cs`'s own comment, both say the sheets ship as BC7. They do not, and what they actually ship as is **better**. | Parsed from `resources.assets`: `birth_loop`, `curtain_loop` and the three `howto_*` sheets are all 5120x4608, `m_CompleteImageSize` 11,796,480, `m_TextureFormat` **10 = DXT1** at 4.00 bpp, because the source PNGs are RGB with no alpha. `roll_01` is 4096x2560, 10,485,760, format **12 = DXT5** at 8.00 bpp. Forcing BC7 (8 bpp) on the six title sheets would **add 59 MB**. The rule is: `Compressed` for RGB source (yields DXT1, 4 bpp), `CompressedHQ` for RGBA source (yields BC7, 8 bpp, same size as the DXT5 it replaces and better quality). |
+| CFG-R4 | **`GameUi.Fit` has no `uvRect`.** | `Fit` sizes the RectTransform from `tex.width / tex.height` and stretches the whole texture across it. Padding a texture to a multiple of 4 at import time would therefore draw the padding and shift the aspect. | 198 of the 478 migration candidates have a dimension not divisible by 4 (`sprites` 99, `sprites/gv` 20, `title/anim` 73, `title/layers` 6). Fix the **source** dimensions, or accept the RGBA32 fallback. Do not pad. |
+| CFG-R5 | **`vSyncCount` and the 30 fps cap disagree.** | `QualitySettings.asset` ships `vSyncCount: 1` on the level Standalone selects. Unity's rule is that a non-zero `vSyncCount` makes `Application.targetFrameRate` ineffective. The shipped cap therefore depends entirely on `Boot.Awake` line 92 running before anything cares. | Not currently a bug (`Boot.Awake` and `UnityPerf.Prep` both force 0), but it is a window in which the project file and the code disagree. Setting the asset to 0 closes it. |
+| CFG-R6 | **`macRetinaSupport: 1` is a look decision wearing a perf costume.** | With `defaultIsNativeResolution: 1`, a fixed 1536x1024 stage rasterises at 2x linear, four times the pixels, on any Retina display. Turning it off quarters fill cost and makes the hand-drawn art visibly softer. | Needs the owner's eyes, not a benchmark. Listed as EXPERIMENT in `docs/config-plan.md`, never as DO NOW. |
+| CFG-R7 | **LZ4 pays a decompress on the load-critical assets.** | `BuildOptions.CompressWithLz4` reaches `resources.assets` and its `.resS`. It does **not** reach StreamingAssets (317 MB, copied raw), the Managed DLLs (25 MB) or the dylibs (67 MB), so 409 MB of the 682 MB app is outside the flag entirely. | The 269 MB it does reach is already block-compressed texture data, which is high entropy. Expect single digits, in exchange for a decompression step on exactly the sheets that were imported to make loading fast. Measure both sides before taking it. |
+| CFG-R8 | **`Resources` cannot be stripped.** | Anything staged into `Assets/Resources` ships whether or not it is ever loaded, and Unity builds a lookup for the whole tree at boot. | Acceptable for the 478 migration files, which are game art that ships anyway. Do not extend the pattern to optional or generated content. |
+| CFG-R9 | **`gen_scenes` must stay streamed, permanently.** | `RunwayPaths.GenScenesDir` is written at runtime by `SceneDirector` from LLM image generation. It does not exist at build time and can never be imported. | The `UnityWebRequestTexture` path, `ArtCache.Pump`, the urgent-promotion queue and the absent-path memoisation all have to keep working after the migration. That is why the design is Resources-**first**, stream-second, mirroring `SheetLoop.LoadSheet` rather than replacing it. |
+| CFG-R10 | **Basenames collide across art folders.** | `Build.EnsureSheets` keys `Resources/Sheets` by basename alone, and `SheetLoop.LoadSheet` looks up `"Sheets/" + baseName`. That is safe for 26 hand-picked files. It is not safe for 478. | `sprites/chart_1.png` and `sprites/gv/chart_1.png` both reduce to `chart_1`. The migration must keep the folder structure: `Resources/Art/<relative path minus .png>`. |
+
+## CONFIG-3. Verified, not guessed
+
+Everything in this section was read off the shipped build, the repo, or a timed launch.
+None of it is inferred from Unity's documentation.
+
+**Scripting backend is Mono.** `Contents/MonoBleedingEdge/` (700 K) and
+`Frameworks/libmonobdwgc-2.0.dylib` (6.7 MB) are present; there is no `GameAssembly.dylib`.
+Consequence: `stripEngineCode: 1` and `managedStrippingLevel: {}` are both **inert**.
+Proof in the build itself: **100 managed DLLs ship, 76 of them `UnityEngine.*Module.dll`**,
+including `UnityEngine.PhysicsModule.dll` (172 K) and `UnityEngine.Physics2DModule.dll`
+(188 K) for modules that are **not in the manifest**, plus the full BCL
+(`mscorlib` 4.4 MB, `System.Xml` 3.0 MB, `System` 2.6 MB, `System.Data` 2.0 MB,
+`UnityEngine.UIElementsModule` 2.0 MB).
+
+**Nothing in this project pulls physics.** `manifest.json` and `packages-lock.json` both
+resolve to exactly: `newtonsoft-json 3.2.1`, `textmeshpro 5.0.0`, `ugui 2.0.0`, and the
+modules `audio`, `imageconversion`, `imgui` (pulled by ugui at depth 1), `ui`,
+`unitywebrequest`, `unitywebrequestaudio`, `unitywebrequesttexture`. No script names a
+`Collider`, `Rigidbody`, `PhysicsRaycaster` or `Physics2DRaycaster`; the only
+`RequireComponent` attributes in the project are `SheetLoop -> RawImage` and
+`DrawnParticleView -> CanvasRenderer`, and `Boot`'s `GraphicRaycaster` is UGUI.
+`DynamicsManager.asset` and `Physics2DSettings.asset` are inert template leftovers.
+PhysX still boots (`SDK Version: 4.1.2`, `Threading Mode: Multi-Threaded`) because on
+Standalone with Mono the native backend is compiled into the monolithic `UnityPlayer.dylib`
+and registers at engine init regardless of the manifest. **There is no lever here: it is
+already removed as far as it can be removed.**
+
+**Shipped texture formats, parsed from `resources.assets`.** Reading
+`m_Width, m_Height, m_CompleteImageSize, m_MipsStripped, m_TextureFormat, m_MipCount`
+as six little-endian int32 after each name string:
+
+| sheet | dims | bytes | format | bpp |
+|---|---|--:|---|--:|
+| `birth_loop`, `curtain_loop`, `howto_1..3` | 5120x4608 | 11,796,480 | 10 = DXT1 | 4.00 |
+| `birth_intro` | 5120x2880 | 7,372,800 | 10 = DXT1 | 4.00 |
+| `roll_01..20` | 4096x2560 | 10,485,760 | 12 = DXT5 | 8.00 |
+
+The arithmetic closes: 5 x 11,796,480 + 7,372,800 + 20 x 10,485,760 = 276,070,400 B =
+263.3 MB, against `resources.assets.resS` at 265 MB by `du`. `m_MipCount` is 1 throughout,
+confirming `SheetImport`'s `mipmapEnabled = false` is landing.
+
+**App size, `du` by folder.** 682 MB total: StreamingAssets 317 MB,
+`resources.assets.resS` 265 MB, Frameworks 67 MB, Managed 25 MB, splash logo 2.7 MB
+(`globalgamemanagers.assets.resS`, byte-identical in size to `Library/SplashScreenCache`),
+everything else ~5 MB.
+
+**Universal build, slice by slice** (`lipo -detailed_info`):
+
+| binary | x86_64 | arm64 |
+|---|--:|--:|
+| `UnityPlayer.dylib` | 32,472,848 | 28,714,448 |
+| `libmonobdwgc-2.0.dylib` | 3,545,328 | 3,447,120 |
+| `libmono-native.dylib` | 830,064 | 813,824 |
+| `libMonoPosixHelper.dylib` | 255,808 | 288,448 |
+| `MacOS/RUNWAY!` | 50,105 | 50,105 |
+| **total** | **37,154,153 B = 35.43 MB** | 33,313,945 B |
+
+An arm64-only build removes exactly **35.43 MB**. `Build.TryUniversalArchitecture` pins
+`x64ARM64` today; the enum member for the alternative is `ARM64`.
+
+**Startup, timed line by line** (player launched with `-logFile` on a FIFO, every line
+stamped with elapsed wall clock):
+
+| elapsed | line | window |
+|--:|---|--:|
+| 0.165 | `[UnityMemory] Configuration Parameters` | process alive |
+| 0.821 | `Mono path[0] = ...` | **0.66 s** exec, dyld, signature validation |
+| 0.875 | `Initializing Metal device caps: Apple M4 Pro` | 0.05 s module registration |
+| 1.239 | `Begin MonoManager ReloadAssembly` | **0.36 s** GfxDevice and Metal caps |
+| 1.393 | `Loaded All Assemblies, in 0.150 seconds` | **0.15 s** assembly load |
+| 3.667 | `UnloadTime: 0.601625 ms` | **2.27 s** splash |
+| 3.929 | `RUNWAY! LLM: off ... stage 1536x1024` | **0.26 s** Boot furniture and services |
+| 6.849 | `USHOTS shutter` | 2.92 s of `UnityShots`'s own waits |
+
+**The "7 s first paint" is 3.93 s of engine and game plus 2.92 s of harness.** The tail
+matches `UnityShots.NewScreensSet`'s three literal
+`WaitForSecondsRealtime(0.6 + 1.2 + 0.9)` calls exactly.
+
+**The 2.27 s block is the Unity splash, not a first-scene Awake storm.**
+`Assets/Scenes/Main.unity` is 125 lines with **zero GameObjects** and `level0` in the build
+is **764 bytes**, so scene load is effectively free; assembly load is separately reported
+at 0.150 s. It **cannot be turned off**:
+`~/Library/Logs/Unity/Unity.Licensing.Client.log` reports
+`"EntitlementGroupId":"6872877128979-UnityPersonal"` and `"ProductName":"Unity Personal"`.
+
+**The art tree is duplicated on disk, not hardlinked.** `Assets/Art` (319 MB) and
+`Assets/StreamingAssets/Art` (320 MB) each hold 505 PNGs and 540 `.meta` files, on distinct
+inodes, regenerated by `Build.EnsureStreamingArt` on every build. Both are `.gitignore`d
+(lines 65 and 66), so this costs editor import time and 491 MB of `Library/Artifacts`, not
+repo size. `Assets/Art` is referenced by nothing and does **not** ship.
+
+**Full PNG inventory** (dimensions and colour type read from each IHDR):
+
+| folder | files | on disk | pixels | RGBA32 | dims not /4 | colour |
+|---|--:|--:|--:|--:|--:|---|
+| `sprites` | 299 | 30.3 MB | 44.7 Mpx | 170.4 MB | 99 | all RGBA |
+| `sprites/gv` | 21 | 6.6 MB | 5.7 Mpx | 21.8 MB | 20 | all RGBA |
+| `title/anim` | 79 | 13.1 MB | 12.2 Mpx | 46.6 MB | 73 | all RGBA |
+| `journal_icons` | 20 | 1.1 MB | 1.3 Mpx | 5.0 MB | 0 | all RGBA |
+| `title/layers` | 7 | 2.6 MB | 2.5 Mpx | 9.6 MB | 6 | 6 RGBA, 1 RGB |
+| `env` | 4 | 5.7 MB | 5.8 Mpx | 22.0 MB | 0 | all RGB |
+| `title/video` | 48 | 68.1 MB | 75.5 Mpx | 288.0 MB | 0 | all RGB |
+| `title` (staged) | 7 | 73.8 MB | 134.3 Mpx | 512.2 MB | 0 | all RGB |
+| `dice` (staged) | 20 | 58.5 MB | 209.7 Mpx | 800.0 MB | 0 | all RGBA |
+| **total** | **505** | **259.7 MB** | **491.7 Mpx** | **1,875.5 MB** | **198** | |
+
+Migration candidates are the 478 rows above the two staged folders: **127.4 MB of PNG,
+147.7 Mpx, 563.3 MB as RGBA32**. Compressed by the CFG-R3 rule they land at **104.8 MB**,
+which is **-458.5 MB of VRAM (-81%)** and **-22.6 MB of app size**.
+
+**Audio, against what the game opens.** `AudioManager.asset` has
+`m_VirtualVoiceCount: 512`, `m_RealVoiceCount: 32`, `m_DSPBufferSize: 1024` (Default,
+21.3 ms at 48 kHz), `Default Speaker Mode: 2` (Stereo), `m_SampleRate: 0`. The game opens
+`Sfx.Voices = 6` plus `MusicManager`'s tracks and stems, and `RunwayMix` sizes its three
+group lists at 8 + 16 + 8, so **32 registered sources is the ceiling by construction**.
+
+**Incremental GC is already on and already working.** `gcIncremental: 1` in
+`ProjectSettings.asset`, `gc-max-time-slice=3` in the shipped `boot.config`, and `gc/s`
+reads **0.00 on every one of the fourteen probe rows**.
+
+**`metalAPIValidation: 1` is inert in this build.** It applies to development builds and
+the editor; `Build.cs` builds with `BuildOptions.None`.
+
+## CONFIG-4. The seam: what this lane needs from the others
+
+- **The art lane owns the source-dimension question.** 198 of 478 files have a dimension
+  not divisible by 4. Trimming them by 1 to 3 pixels is the difference between the
+  migration set landing at 68.8 MB and at 157.6 MB, and between compressing everything and
+  compressing 232 of 430 files. CONFIG cannot decide this: it changes pixels.
+- **`ArtCache` needs two one-line-shaped changes before any staging happens.** A
+  provenance flag per entry so `Sweep` can branch `Resources.UnloadAsset` against `Destroy`
+  (CFG-B2), and a size estimate that stops assuming `width * height * 4` (it would
+  over-count compressed entries by 4x to 8x and evict for no reason).
+- **`Build.cs` grows one more `Ensure` step**, shaped exactly like `EnsureSheets`: copy the
+  migration folders into `Assets/Resources/Art/<folder>/`, keep the same
+  same-length-means-same-file guard so 127 MB is not re-copied per build.
+- **`SheetImport` grows one branch** for the `Assets/Resources/Art/` prefix, with
+  `npotScale = None`, `mipmapEnabled = false`, `alphaIsTransparency = true` (which the
+  `Sheets` branch does not set and this content needs), and the RGB/RGBA compression split
+  from CFG-R3.
+- **The owner owns two calls that CONFIG cannot make**: whether Intel Mac support is in
+  scope (worth exactly 35.43 MB), and whether `macRetinaSupport` stays on (the largest
+  fill-rate multiplier in the build, and a visible change to how the art reads).
+- **One diagnostic run is requested**: `m_LogWhenShaderIsCompiled: 1` for a single energy
+  probe pass, to settle whether the 52.29 / 90.37 / 91.40 ms first-visit peaks on rows
+  `01 title`, `05 birth (intro)` and `11 garage` are shader variant creation. If they are,
+  a `ShaderVariantCollection` warmed inside the 2.27 s splash window is the fix. Revert
+  the flag either way.
+- **Nothing was applied.** No setting was edited, no build was run, no git command was
+  issued. The two writes this lane made are `docs/config-plan.md` and this section.
