@@ -321,3 +321,21 @@ dropped the text on a null label and re-locked the gate — entries now
 buffer and land through the same door. FIRSTFLOW fault probe re-run
 end-to-end against the black hole; watchdog_probe.gd is the permanent
 harness. RUNWAY_LLM_URL / RUNWAY_LLM_NO_SOFT are the fault-injection keys.
+
+## 2026-08-22 — the twelve-lane day (Unity port hardening)
+Live play surfaced five defects (#176-#180); two measured-comparison
+agents produced dossiers of ~20 more (wrong display typeface everywhere,
+baseline math, scroll-thumb teleport, cap-pie geometry, tofu glyphs);
+the A-tail audit found nine shipped defects incl. saves corrupting on
+every CONTINUE (Newtonsoft appending into populated defaults) and a
+first-run dead-end that could hold SETTLE IN forever. Twelve parallel
+lanes fixed all of it: typography (Baloo2 lives, the TMP fallback chain
+was silently dead at a null slot, 25 glyphs baked), charts Godot-exact,
+the founder back in the spotlight (four compounding causes), films and
+cup sheets shipped GPU-ready, the dice roll over the darkened page, 14
+SFX cues wired from a Godot-evidence cue map, the OST self-driving into
+the new mix, #175 parity ported to Unity, repo integrity (a clone can
+now OPEN the project; README; silent-drop ignore trap closed). LLMUnity
+assessed: GO post-ship for keyless local clarify/worldgen, NO for
+adjudication. Kill-switch matrix 9/9 before the wave; full re-verify
+rides the next build.

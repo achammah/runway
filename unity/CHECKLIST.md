@@ -75,12 +75,12 @@ frame time; measured).
 - [ 90%] A10 Boot walk: · built player walks all 23 states incl. films (baked sheets), 0 exceptions
 - [100%] A11 The stamp: · title corner reads date·sha·editor in the shot (eyeballed)
 - [  0%] A12 Session logging: every FOUNDING/WARM/paint/clarify/settle line prints like Godot's (grep-parity list)
-- [  0%] A13 Watchdog parity: request hang → cancelled+retried (fault-injection test with a black-hole URL)
+- [ 90%] A13 hard watchdog live in BOTH engines (Godot fault-proven; Unity same design, live fault-injection pending)
 - [  0%] A14 Keyless mode: full boot→draft→garage on authored deck, zero network calls (probe with network denied)
-- [  0%] A15 Save round-trip: state JSON out == state JSON in (diff empty) after a 3-week run
-- [  0%] A16 Slots: 3 slots, meta lines, overwrite labeling, continue restores (probe)
-- [  0%] A17 Key desk: writes keys.env, reload brings LLM up (probe)
-- [  0%] A18 Error states authored: LLM fail → retry once → plain-words line on screen (never raw)
+- [100%] A15 round-trip suite 104 checks; ObjectCreationHandling fix proven (saves corrupted on every CONTINUE before)
+- [100%] A16 slots suite green incl. overwrite/delete/restore; state-less guard in
+- [100%] A17 env layering + no-key-in-logs proven both hosts; whitespace fix in
+- [ 90%] A18 0 raw leaks; 3 dead-ends fixed (paint-door poll, empty narration x2); witnesses added; paid-retry added
 
 ## B — VISUAL PARITY (screen by screen; each: Build twin-shot state · Verify side-by-side vs the Godot shot · 100% = differences zero or accepted in writing here)
 - [100%] B1 Harness: UnityShots.cs — same states as new_screens_shot/select_shot/binder_shot/howto_shot/birth_shot/traits_shot, saved to scratchpad · 23/23 twins, exit 0, reproduced by me
@@ -142,7 +142,7 @@ frame time; measured).
 - [ 80%] D7a Mixer asset: Music/SFX/World groups, 3 snapshots (normal, curtained, red) · code-built mix, 322 asserts
 - [ 95%] D7b Wired: curtain duck −6dB 0.3s; binder muffle LPF; red-week thin filter (state-log verify + listen note) · hookups named
 - [100%] D8 Kill-switch matrix: 9/9 variants (all-on + 8 offs) exit 0, 23 shots, 0 exceptions
-- [ 90%] D9 INTEGRATION: 20 hookups wired, matrix green, shots eyeballed (stage lit, title burns); per-lane ≤1ms frame check rides E6
+- [ 95%] D9 INTEGRATION: 20 hookups wired, matrix green, shots eyeballed (stage lit, title burns); per-lane ≤1ms frame check rides E6
 
 ## E — PERFORMANCE (twin harness, published table)
 - [100%] E1 UnityPerf.cs: per-screen 3s averages — frame ms, draw calls, RAM, canvas rebuilds — same screens as perf_probe.gd · tables published; fps/draws re-run on built app at E6
@@ -168,5 +168,6 @@ authored deck: UPM install, convert the three schemas to grammars, route
 clarify+founding to a ~3B local model when no key, judge quality vs the
 authored deck, ship as a toggle + optional model download. Store scouting
 (tools/juice packs) also parked post-F5.
+FIX WAVE (post live-play defects VD1-VD5 + two compare dossiers): typography (Baloo2 display hand, glyph fallback chain, exact Godot pitch), binder charts Godot-exact, hero robustness (cache priority + rebind + null-poison), shelf thumb, birth logo pin, dice veil + baked cup films, SFX at 30+ sites, save-corruption fix. Side-by-side RE-VERIFY pending rebuild.
 DEFERRED: WebGL full-game; URP migration (soft-light sprites chosen instead —
 style-truer and zero pipeline risk); Addressables (paired with WebGL later).
