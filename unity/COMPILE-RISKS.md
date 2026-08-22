@@ -372,7 +372,7 @@ came back exit 0 with zero errors from these three files, and wrote its frames.
 | # | Thing | Where | Risk | Fallback coded |
 |---|-------|-------|------|----------------|
 | D1-B1 | **Re-seeding the rasteriser would have broken the amplitude ceiling.** | `InkBoilBake` | Baking variants by calling `WobbleRectSprite(..., seed + 1)` gives an INDEPENDENT wobble: two draws from ±jitter can differ by 2×jitter, i.e. up to 4px on the sheet style — a crawl, well past D1c's 1.5px. | The variants are the SAME bake displaced through a smooth field: direction from `System.Random(seed + 1)`, radius from `System.Random(seed + 2)`, and the second field held 60° from the first at equal radius. Three states at `0`, `v`, `w` with `\|v\| = \|w\| = \|v − w\| = r ≤ Amplitude` — so **every** frame-to-frame move is bounded by `Amplitude` (default 1.1px, hard-clamped at 1.5px) in any play order. Measured on the six-piece kit: worst move **0.919px**. |
-| D1-B2 | **Three copies of every ink texture.** | `InkBoilBake` | Ink bakes are full-card-size even when only the border is inked (a 1140×880 keys sheet is a 4.1MB RGBA32 edge), so boil triples it. | `DrawnBoil.MaxPixels` (default 2,097,152 — a 1448² bake) refuses anything larger outright, and the cache is keyed by SOURCE TEXTURE, so the forty cards wearing one 420×76 edge pay once. Only one screen is resident at a time; the measured worst case is the two big sheets, ≈ +16MB. |
+| D1-B2 | **Three copies of every ink texture, and a bake to make them.** | `InkBoilBake` | Ink bakes are full-card-size even when only the border is inked, so boil triples both the memory and the build cost. MEASURED on the biggest bake the game makes, the 1140×880 keys/how-to sheet (a 1156×896 edge): `DrawnUI` rasterises it in **41.0ms**, and the boil redraws it twice in **42.3ms** more, for **7MB** of texture. That is a screen-build frame already over E5's 50ms hitch bar before this lane touched it, and this lane doubles it. Every other bake is small: the whole six-piece kit swept in **28.4ms**, JIT warm-up included. | Three mitigations, all in this lane's own files. The redraws start as a memcpy of the bake and re-sample only the blocks that can see ink — a tenth of a card edge. The CPU copy is dropped on upload (`KeepReadable = false`), halving what three copies would cost. And `DrawnBoil.MaxPixels` is the knob: at its default 2,097,152 the big sheets boil; drop it to `1 << 19` and exactly those two stop, capping the added build cost at ≈25ms while every card the player actually stares at keeps living. **N15's call, with the numbers above.** With the switch off the same probe adds 0.2ms and 0MB. |
 | D1-B3 | **Eligibility is a signature test, not a name list.** | `DrawnBoil.InkTexture` | `Sweep` must never catch a photograph, a film sheet or a glyph. | Four gates, all positive: not a `TMP_Text`/`Text` (nor sharing an object with one); a `Texture2D` mapped WHOLE (`sprite.textureRect` = the texture, or `RawImage.uvRect` = 0,0,1,1); `isReadable` — which alone rejects every sheet loaded with `nonReadable: true`; and pure-white RGB wherever alpha ≠ 0, which is what `DrawnUI`'s rasteriser writes and no photograph does. The last gate is EXACT, not sampled: it rides the pass the bake already makes over every pixel, so a sparse card edge cannot be mistaken for an empty one. Refusals are cached per texture. |
 | D1-B4 | **A graphic that rebuilds drops the boil for up to 125ms.** | `InkBoil.Put` | `Graphic.UpdateMaterial` re-sets the canvas renderer's texture to the sprite's own, so a colour/sprite/enable change reverts a boiling line to its bake. | The clock re-applies on every tick, so it self-heals within one held frame, and what shows in the meantime is the canonical bake — correct, never wrong. `OnDisable` puts the bake back deliberately, so a still screenshot is always the signed-off art. |
 | D1-B5 | **Lockstep swapping reads as a blink.** | `InkBoil.Bind` | Forty elements turning over on the same tick is a strobe, not a boil. | Each instance takes a phase of 0/1/2 from its instance id, so the page holds a mix at every instant while the clock stays a single list walked once per tick. |
@@ -396,8 +396,12 @@ standing rule, hollow ring, filled ring) rendered through a real `Canvas` +
   cream sheet interior and the filled ring's solid interior are **0 differing
   pixels** across all three.
 - **Worst edge move between any two drawings: 0.919px** against a 1.5px ceiling.
+- **Cost**: the whole kit swept in 28.4ms (JIT warm-up included), 0.5ms with the
+  switch off. Steady-state is one texture pointer per boiling line, eight times a
+  second, from one Update — no allocation, no canvas rebuild.
 - **Kill-switch**: with `RUNWAY_FX_BOIL=0` the same run attaches 0 components,
-  the clock never wakes (`Ticking False`), and the three frames are byte-identical.
+  the clock never wakes (`Ticking False`), the three frames are byte-identical,
+  and the biggest bake gains 0.2ms and 0MB.
 
 ## D1-4. The seam
 
@@ -845,3 +849,114 @@ lengthen `b.text` by a few spaces and `WriteIn` reads that length once.
 No `using` is needed: `ReadingBeatText` is in `Runway.Game`, the same namespace as
 `ReadingBeat`. With the switch off, `Apply` returns its second argument unchanged
 and the line is what it was.
+
+---
+
+# D5 — THE PARTICLES LANE — `Effects/ParticleInk.cs` + `.Sim` + `.View` + `Motes/Scraps/Embers`
+
+Five new files, no existing file touched. Three effects — dust in the select and
+garage bulbs, a burst of paper off the LOCK-IN strike, embers off the title's
+burning runway — all built from code, all wearing one 4-cell sprite sheet
+rasterised at runtime by the same alpha-max/over compositor `DrawnUI` bakes its
+wobbled card edges with.
+
+Kill-switch is the **environment**, not a scripting define: `RUNWAY_FX_PARTICLES`
+absent or `1` is on, `0` is off. Off means every entry point returns null having
+created **no GameObject, no texture and no pool** — nothing to compile out, and D8
+can toggle the lane without a recompile. It is read live on each entry point (a
+handful of calls per screen, never per frame), so there is no cached switch for a
+harness to reset.
+
+## D5-1. Blocking risks — these stop a compile if they are wrong
+
+| # | API | Where | Why uncertain | Fallback coded |
+|---|-----|-------|---------------|----------------|
+| D5-A1 | **`UnityEngine.ParticleSystem` DOES NOT EXIST IN THIS PROJECT.** `Packages/manifest.json` is a hand-trimmed list of built-in modules (audio, imageconversion, ui, unitywebrequest ×2) and `com.unity.modules.particlesystem` is not on it. Every mention of the type fails with `CS1069: … forwarded to assembly 'UnityEngine.ParticleSystemModule'`. Measured, not guessed: a first pass written against `ParticleSystem` produced 24 unique errors and nothing else. | would have been every file in the lane | Adding the module is one line in a SHARED file, which is not this lane's to write. | **The simulation is hand-rolled** — `Effects/DrawnParticleSim.cs`, one array of particle structs, emission / lifetime / gravity / Perlin wander / a fade at both ends. It is the whole of what these three effects needed, so the dependency buys nothing; what dropping it buys is no local-vs-world gravity ambiguity, no degrees-vs-radians trap, a `Step(dt)` the editor can drive by hand instead of `Simulate`, and a smaller player. **If the owner would rather have Unity's:** add `"com.unity.modules.particlesystem": "1.0.0"` to the manifest — nothing in this lane needs it. |
+| D5-A2 | **A `Graphic` added from code can come up with a NULL `canvasRenderer`, and it fails SILENTLY.** `Graphic` carries `[RequireComponent(typeof(CanvasRenderer))]`, but `AddComponent<T>()` onto a bare code-built GameObject did not always honour it here. `Graphic.Rebuild()` opens with `if (canvasRenderer == null …) return;` — so `OnPopulateMesh` is never called, no error is logged, and the effect simulates perfectly and draws nothing. | `ParticleInk.Mount` | Found by instrumenting, not by reading: `ParticleShots.Probe` reported `live=6 drawn=0 … matCount=-1` (the `-1` being the null renderer) with a plain `Image` beside it rendering fine. | `Mount` adds the `CanvasRenderer` **by hand** before the graphic, and `DrawnParticleView` declares `[RequireComponent(typeof(CanvasRenderer))]` of its own. `DrawnParticleView.PopulateCalls` / `PopulateLastLive` are kept as two static counters (two int writes per rebuild) so the next lane whose graphic goes dark can ask the same question in one line. **Any lane building a Graphic from code should assume this.** |
+| D5-A3 | **`Boot`'s canvas is ScreenSpaceOverlay, which paints after every camera.** | the whole lane | Anything drawn by a `Renderer` — including a `ParticleSystemRenderer`, had the module been there — is behind the entire game and invisible. | The particles are **UI geometry**: `DrawnParticleView : MaskableGraphic` builds one quad per particle straight into the canvas mesh. The effect then obeys sibling order, `CanvasGroup` screen fades, masks and the letterboxed stage rect for free, at one draw call. |
+| D5-A4 | `VertexHelper.AddVert(Vector3, Color32, Vector2)` + `AddTriangle(int,int,int)` | `OnPopulateMesh` | The three-argument `AddVert` overload and the winding `Image` itself uses (BL, TL, TR, BR with `(0,1,2)`/`(2,3,0)`). | Compiled and photographed. Copied from `Image.GenerateSimpleSprite` rather than invented, so a change in UGUI's winding would change `Image` too. |
+| D5-A5 | `public override Texture mainTexture` on a `MaskableGraphic` | `DrawnParticleView` | The property is `virtual` on `Graphic`, and the null case has to answer with something the default UI material can sample. | Returns `Texture2D.whiteTexture` (public, always present) when the sheet is missing, so a failed bake is a screen of white specks, never an exception. `SetMaterialDirty()` in `Bind` is what pushes it to the CanvasRenderer. |
+
+## D5-2. Runtime risks — they compile, but may not do what the look wants
+
+| # | Thing | Where | Risk | Fallback coded |
+|---|-------|-------|------|----------------|
+| D5-B1 | **Each effect gets its OWN nested `Canvas`.** | `ParticleInk.Mount` | Without it, marking the mote graphic dirty every frame re-batches the whole screen's canvas — a rebuild storm over a screen full of paper, which is exactly what E2 forbids. With it, the per-frame rebuild is 40 quads in their own batch. | Costs one extra draw call per effect. `ParticleInk.NestedCanvas = false` before an entry point puts the effect back inside the host's batch if a mask ever needs it (nested canvases and `RectMask2D` do not always agree). Measured either way in the probe: both render. |
+| D5-B2 | `Object.Destroy` is a no-op in edit mode | `Scraps.Fire` | The burst self-destructs 1.4s after the press; in the editor that deferred destroy never happens and Unity logs an error. | Guarded by `Application.isPlaying`. The evidence harness destroys its own root with `DestroyImmediate`. |
+| D5-B3 | **The scrap burst allocates on the press.** | `Scraps.Burst` | "Zero allocation after warmup" is a per-FRAME claim; a burst news a GameObject, a Canvas, a CanvasRenderer, a graphic and a 10-particle pool (~1KB) each time. | Deliberate and in the house style — every screen in this game is built from code on every transition, and a lock happens once a week. Between bursts nothing exists, so the steady-state cost is zero rather than a pooled object ticking. The two LOOPING effects (motes, embers) allocate once at screen build and never again: measured **0 B/frame**. |
+| D5-B4 | The host rect may not be resolved when `Mount` runs | `ParticleInk.ToLocal` | Beam and band geometry is written in Godot top-left coordinates and converted against `rectTransform.rect`, which is zero until the anchors resolve. | `ToLocal` falls back to `RunwayPaths.StageWidth/Height` when the rect reads under 2px, which is right for every full-stage host in this game. Nothing in this project uses a LayoutGroup, so the rects resolve on assignment. |
+| D5-B5 | **The embers are alpha-blended, not additive.** | `Embers` | A real ember adds light. `UI/Default` cannot be made additive (see D6-A1, which owns that problem and ships a shader for it). | Deliberate: the ember cell is a hot core at full alpha with a glow that gives up slowly, and it sits on a near-black painting, where alpha at 0.5–0.9 of coral reads as heat. If the integrator wants them to genuinely add, the one change is `view.material = GlowSprites.AdditiveMaterial()` after `Embers.TitleFire` — the two lanes' materials are compatible because both graphics are plain UI quads. |
+| D5-B6 | The garage motes must sit over a COMPOSED painting as well as the drawn room | `Motes.GarageBulb` on `_room` | A painting arrives with its own light baked in. | The motes are the LAST child of `_room` and `AdoptComposed` inserts the painting at sibling index 1, so the dust stays in front of both rooms with no hookup — the same seam D6-B2 relies on. They are INK at 0.09–0.26 alpha rather than cream, because the drawn garage's wall is cream and cream dust on cream is nothing. |
+| D5-B7 | `Time.unscaledDeltaTime`, and a hitch | `DrawnParticleView.LateUpdate` | Deliberate (B13): the air must not stop for `timeScale`. But one 400ms hitch with `dt` unclamped teleports every mote across the beam. | `DrawnParticleSim.Step` clamps `dt` to 0.1s. A hitch costs the air a moment, never a jump. |
+| D5-B8 | Screen fades must take the air with them | all three | A curtain or a screen `Close()` that left dust hanging would be a pop. | The graphics are ordinary UGUI graphics under the screen's `CanvasGroup`, so `AppScreen.Close`'s fade carries them. Nothing extra is wired. |
+| D5-B9 | `Mathf.PerlinNoise` frequency is per PIXEL, not per particle | `DrawnParticleSim.Step` | At 0.12 (a plausible-looking number) a mote crosses a noise cell every 8px and the wander reads as jitter. | Frequency is documented and set in cycles per pixel: 0.005 for motes (a cell about 200px across) and 0.010 for embers. Two `PerlinNoise` calls per particle per frame, 40 particles: inside the measured 0.03ms. |
+| D5-B10 | A fixed seed would throw the same burst every week | `Scraps.Build` | The lock is pressed ~50 times a run; six identical scraps on six identical paths is the sort of thing a player notices by week four without knowing why. | A static counter walks the seed forward per press (`17 + _bursts++ * 7919`). Measured over eight locks: **7 8 9 9 9 10 8 7**, every one inside the 6–10 window. Reproducible inside a session, different every week. |
+
+## D5-3. Verified, not guessed
+
+Rendered headless with a real graphics device (`-batchmode -quit`, **no**
+`-nographics`) through `Assets/Scripts/Editor/ParticleShots.cs`, four frames at
+1536×1024 plus the sprite sheet itself, each effect built against a stand-in of the
+surface it will really live on. `Shoot()` fails the run (exit 1) on any budget miss,
+so these numbers are assertions, not observations:
+
+- **Counts, inside the checklist's windows.** Motes 32 alive on the select cone and
+  28 on the garage beam against a ceiling of 40; embers **min 8, max 12** sampled
+  every frame across four seconds; the burst throws 6–10 and is at **exactly 0** by
+  1.3s, so the page is clean before the curtain lifts.
+- **Frame cost, an order of magnitude under budget.** Motes **0.0295 ms/frame**
+  (simulation 0.0044, mesh rebuild 0.0251), embers **0.0147 ms** — against a 0.2ms
+  budget and a 1ms-per-lane integration limit.
+- **Zero allocation after warmup: 0 B/frame**, both looping systems, measured over
+  600 frames of step + `Canvas.ForceUpdateCanvases()` after a forced collection.
+  The particle pool is sized once, particles are read through the array slot rather
+  than copied out of it, and the mesh is built from structs into the VertexHelper
+  the rebuild already owns.
+- **The kill-switch is inert, not hidden.** At `RUNWAY_FX_PARTICLES=0` all four
+  entry points return null and the host rect's `childCount` is still 0 — nothing was
+  built and then disabled. Clearing the variable brings the lane back on in the same
+  process.
+- **The drawn look is photographed, not asserted.** `00-sheet.png` is the 4-cell
+  sheet at 4× over mid-grey: a speck with a firm middle and a halo, a hand-cut cream
+  quad whose every side is walked with jitter and which has two lines of writing on
+  it, a hot core with a glow, and the out-of-focus smear that one mote in eight and
+  one ember in four wear instead.
+- **The beam mask works.** `01-motes-draft.png` shows dust filling the trapezoid
+  `FounderDraftScreen.Spotlight` draws and nothing outside it, thinning toward the
+  edges rather than stopping at them.
+
+## D5-4. The seam — the four one-line hookups this lane needs
+
+```csharp
+// 1. DraftSelectPage.Build, between `_page = DrawnUI.FullRect(...)` and the
+//    heading — first child of the page, so the dust is over the stage art and
+//    under the founder, the sheet and the roster:
+Runway.Effects.Motes.DraftSpotlight(_page);
+
+// 2. GarageScreen.OnBuild, immediately after `BuildRoom();` and before
+//    `BuildHud();` — last child of _room, so it stays over the drawn room AND
+//    over a composed painting:
+Runway.Effects.Motes.GarageBulb(_room);
+
+// 3. WeekCommit.StrikeThen, on the line after `if (img != null) img.fillAmount = 1f;`
+//    — the paper flies as the strike completes, inside the 0.10s hold before the
+//    week turns. Hosted on _lockRow's own parent (the leaning page), so the burst
+//    leans with the book:
+Runway.Effects.Scraps.Burst(_lockRow);
+
+// 4. TitleScreen.OnBuild, after the film/still block and before the build stamp —
+//    on _root, so the embers breathe with the painting they came off:
+Runway.Effects.Embers.TitleFire(_root);
+```
+
+No `using` is needed at any of the four sites. Every entry point returns null when
+the switch is off, tolerates a null host, and can be called again without stacking
+(each call builds its own child; call once per screen build). The returned
+component is the handle: `Motes.Fade()` / `Embers.Fade()` stop the feed and let what
+is in the air live out its life, and disabling the GameObject freezes the effect.
+
+**General forms**, if the integrator wants different geometry:
+`Motes.Apply(host, beamRect, topWidth, tint, alphaLow, alphaHigh, seed)`,
+`Embers.Apply(host, bandRect, seed)`, `Scraps.Burst(host, atRect)` and
+`Scraps.BurstAt(host, x, y)` — every rect and coordinate in the host's own Godot
+top-left space, like everything else in this port.

@@ -81,3 +81,16 @@ Applied all at once at integration; each lane proven OFF-able first (D8).
   stack — vignette alpha at GarageScreen.cs:477-484 is the knob if muddy);
   D6-B3 sibling pinning means D5 motes added later draw UNDER the glow — reorder
   at integration if motes should live in the light.
+
+## D1 line-boil — ACCEPTED (edges-diff eyeballed: outlines only, interiors+text black)
+- Required hookups (4 lines): DrawnUI.cs AddInkEdge before :310 + Rule before :328 →
+  `DrawnBoil.Apply(img, st.Seed);` / `DrawnBoil.Apply(img, seed);`
+  Boot.cs Go after :350 + OpenOverlay after :387 → `DrawnBoil.Sweep(rt);`
+- Optional sweeps (post-Build ink): Curtain.Panel :113, DiceRoll.BuildParts :49,
+  ReadingBeat.Begin :70, BinderScreen.BuildParts :66, JournalPage.MarginMark :528.
+- Motion bounded ≤1.5px BY CONSTRUCTION (same bake through a smooth 3-state field,
+  |v|=|w|=|v−w|); fills structurally identical; worst measured edge move 0.919px.
+- Kill RUNWAY_FX_BOIL=0 → byte-identical renders (md5-proven).
+- N15 DECISION FOR ME: giant sheets (1140x880 keys/howto) — bake 41ms + boil 42ms
+  doubles an already-over-bar build frame; DrawnBoil.MaxPixels at 1<<19 exempts
+  exactly those two. Decide with E-numbers at integration.
