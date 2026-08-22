@@ -82,8 +82,11 @@ namespace Runway.Game
             BuildSheet();
             BuildRoster();
 
+            // the same paper as the sheet it sits beside — a card with the title
+            // screen's harder shadow on it reads as a different piece of paper
             _lockBtn = DrawnUI.PaperButton(_page, "LOCK IN  →", 1230f, 880f, 260f, 84f, 36f,
-                DrawnUI.Ink, DrawnUI.CoralDark, LockIn).GetComponent<RectTransform>();
+                DrawnUI.Ink, DrawnUI.CoralDark, LockIn, 1.045f,
+                GameUi.DraftPaper(1230 % 5)).GetComponent<RectTransform>();
 
             _breath = _page.gameObject.AddComponent<DraftBreath>();
             _breath.Bind(_heroHolder, _heroShadow, _title, _lockBtn, _heroBaseY);
@@ -251,6 +254,11 @@ namespace Runway.Game
             var traitsJ = arch != null ? arch["traits"] as JObject : null;
             if (traitsJ != null)
                 foreach (var kv in traitsJ) traits[kv.Key] = ContentDb.Int(traitsJ, kv.Key, 3);
+            // THE SIX AS THEY WERE DEALT, with no bag arithmetic on them — the founder
+            // is picked five pages before anything is packed, and the original leaves
+            // this card showing the person rather than the person plus their luggage.
+            // TraitPips can write the swing beside each row; nothing on this flow has
+            // a reason to ask it to.
             GameUi.TraitPips(_traitHost, 44f, 462f, traits, GameState.TRAIT_NAMES);
         }
 

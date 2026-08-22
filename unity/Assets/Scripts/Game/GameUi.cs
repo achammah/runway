@@ -55,28 +55,44 @@ namespace Runway.Game
 
         // ── paper ──────────────────────────────────────────────────────────────
 
-        /// founder_draft_screen.gd's PaperEdge: a real shadow, a cream body and an
-        /// inked border a hand drew. `lean` picks the wobble, exactly as it does there.
-        public static RectTransform PaperSheet(RectTransform parent, float x, float y,
-                                               float w, float h, int lean = 0,
-                                               float thickness = 4f, Color? edge = null,
-                                               string name = "sheet")
+        /// founder_draft_screen.gd's PaperEdge, as ONE set of numbers: the shadow at
+        /// (7, 9) at 0.18, and an ink border walked in 13 steps to the edge, 2.1px of
+        /// wobble, sitting `thickness/2 + 3` inside the paper. Every card AND every
+        /// paper button on this flow is cut with these — the draft's hand is heavier
+        /// and its shadow softer than the title screen's, and a button carrying the
+        /// title's (4, 5) at 0.35 reads as a different piece of paper on the same page.
+        /// `lean` picks the wobble, exactly as `e.lean = int(b.position.x) % 5` does.
+        public static DrawnUI.PaperStyle DraftPaper(int lean = 0, float thickness = 4f)
         {
-            var root = DrawnUI.Rect(parent, name, x, y, w, h);
-            var shadow = DrawnUI.Fill(root, "shadow", new Color(0f, 0f, 0f, 0.18f), 7f, 9f, w, h);
-            shadow.raycastTarget = false;
-            var body = DrawnUI.Fill(root, "paper", DrawnUI.Cream, 0f, 0f, w, h);
-            body.raycastTarget = false;
-            var img = DrawnUI.AddInkEdge(root, new Vector2(w, h), new DrawnUI.PaperStyle
+            return new DrawnUI.PaperStyle
             {
-                ShadowOffset = Vector2.zero,
-                ShadowAlpha = 0f,
+                ShadowOffset = new Vector2(7f, 9f),
+                ShadowAlpha = 0.18f,
                 Inset = thickness * 0.5f + 3f,
                 StepsPerEdge = 13,
                 Jitter = 2.1f,
                 Thickness = thickness,
                 Seed = 17 + lean,
-            });
+            };
+        }
+
+        /// The same paper as a plain sheet: a real shadow, a cream body and the inked
+        /// border. No button, no word.
+        public static RectTransform PaperSheet(RectTransform parent, float x, float y,
+                                               float w, float h, int lean = 0,
+                                               float thickness = 4f, Color? edge = null,
+                                               string name = "sheet")
+        {
+            DrawnUI.PaperStyle st = DraftPaper(lean, thickness);
+            var root = DrawnUI.Rect(parent, name, x, y, w, h);
+            var shadow = DrawnUI.Fill(root, "shadow", new Color(0f, 0f, 0f, st.ShadowAlpha),
+                                      st.ShadowOffset.x, st.ShadowOffset.y, w, h);
+            shadow.raycastTarget = false;
+            var body = DrawnUI.Fill(root, "paper", DrawnUI.Cream, 0f, 0f, w, h);
+            body.raycastTarget = false;
+            st.ShadowOffset = Vector2.zero;      // the sheet drew its own, above
+            st.ShadowAlpha = 0f;
+            var img = DrawnUI.AddInkEdge(root, new Vector2(w, h), st);
             img.color = edge ?? DrawnUI.Ink;
             return root;
         }
@@ -126,20 +142,35 @@ namespace Runway.Game
         }
 
         /// The same drawing, but bound to a RawImage that already exists.
+        ///
+        /// NOTHING GOES DARK ON A MAYBE. The picture that is up stays up until the
+        /// replacement is actually in hand: blanking the image first and never putting
+        /// it back on a miss is how a page ends up with a permanent hole in it, and
+        /// this flow can NEVER fall back to a blank screen. The one thing taken down
+        /// is a drawing of something ELSE that cannot be replaced — a wrong picture
+        /// under a right name is worse than an honest gap — which is why the image
+        /// remembers which path it is showing.
         public static void Rebind(RawImage img, string artPath,
                                   float boxX, float boxY, float boxW, float boxH)
         {
             if (img == null) return;
             var rt = img.rectTransform;
-            img.enabled = false;
+            var mark = img.GetComponent<ShownArt>();
+            if (mark == null) mark = img.gameObject.AddComponent<ShownArt>();
+            bool alreadyUp = img.enabled && img.texture != null && mark.Path == artPath;
             ArtCache.Load(artPath, tex =>
             {
                 if (img == null || rt == null) return;
-                if (tex == null) return;
+                if (tex == null)
+                {
+                    if (!alreadyUp && img.enabled) { img.enabled = false; mark.Path = null; }
+                    return;
+                }
                 img.texture = tex;
                 img.enabled = true;
+                mark.Path = artPath;
                 Fit(rt, tex, boxX, boxY, boxW, boxH);
-            });
+            }, true);   // a swap on a live screen is never background work
         }
 
         // ── pen marks ──────────────────────────────────────────────────────────
@@ -238,9 +269,16 @@ namespace Runway.Game
         public const float TraitColW = 235f;
         public const float TraitRowH = 44f;
 
-        /// TraitPips: the six, in the size of a footnote — two columns of three.
+        /// TraitPips: the six, in the size of a footnote — two columns of three, the
+        /// name in ink over a rule, five small pips each, and the swing the packed bag
+        /// put on them written beside in the founder's own pen.
+        ///
+        /// EVERY PIP IS INKED, on and off alike — the same hand that draws the stat
+        /// pips, a third of the size. A bare coral square with no border is a UI
+        /// element; a bordered one is a box somebody filled in.
         public static void TraitPips(RectTransform parent, float x, float y,
-                                     IDictionary<string, int> traits, IList<string> names)
+                                     IDictionary<string, int> traits, IList<string> names,
+                                     IDictionary<string, int> deltas = null)
         {
             for (int i = 0; i < names.Count; i++)
             {
@@ -249,10 +287,17 @@ namespace Runway.Game
                 string t = names[i];
                 int v;
                 if (traits == null || !traits.TryGetValue(t, out v)) v = 3;
-                v = Mathf.Clamp(v, 1, 5);
-                DrawnUI.HandLabel(parent, t.ToUpper(), cx, cy, 19f, DrawnUI.Ink, 124f);
+                int d;
+                if (deltas == null || !deltas.TryGetValue(t, out d)) d = 0;
+                v = Mathf.Clamp(v + d, 1, 5);
+                string word = t.ToUpper();
+                DrawnUI.HandLabel(parent, word, cx, cy, 19f, DrawnUI.Ink, 124f);
+                // THE RULE IS MEASURED, NOT COUNTED. Eleven pixels a letter makes
+                // "PARANOIA" and "LUCK" the wrong lengths in this hand; the original
+                // asks the font how wide the word actually is and stops at 124.
                 DrawnUI.Fill(parent, "dot", DrawnUI.WithAlpha(DrawnUI.Ink, 0.22f),
-                             cx, cy + 26f, Mathf.Min(t.Length * 11f, 124f), 1.5f);
+                             cx, cy + 26f,
+                             Mathf.Min(DrawnUI.MeasureWidth(word, 19f), 124f), 1.5f);
                 for (int p = 0; p < 5; p++)
                 {
                     bool on = p < v;
@@ -260,7 +305,23 @@ namespace Runway.Game
                         on ? DrawnUI.Coral : DrawnUI.WithAlpha(DrawnUI.Ink, 0.07f),
                         cx + 128f + p * 17f, cy + 5f, 13f, 13f);
                     fill.raycastTarget = false;
+                    var edge = DrawnUI.AddInkEdge(fill.rectTransform, new Vector2(13f, 13f),
+                        new DrawnUI.PaperStyle
+                        {
+                            ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 0.8f,
+                            StepsPerEdge = 4, Jitter = 0.35f,
+                            Thickness = on ? 1.6f : 1.4f, Seed = 7,
+                        });
+                    edge.color = on ? DrawnUI.Ink : DrawnUI.WithAlpha(DrawnUI.Ink, 0.30f);
                 }
+                // What the bag did to this trait, in sage for a gain and coral for a
+                // cost. It lives in the 26px gutter between the last pip and the next
+                // column, so it is set a size down from the original's 20 and pushed
+                // right against the column edge — at 20 it touches the next word.
+                if (d != 0)
+                    DrawnUI.HandLabel(parent, (d > 0 ? "+" : "") + d, cx + 206f, cy + 1f,
+                                      17f, d > 0 ? DrawnUI.Sage : DrawnUI.Coral, 27f,
+                                      TextAlignmentOptions.TopRight);
             }
         }
 
@@ -358,5 +419,14 @@ namespace Runway.Game
             }
             return img;
         }
+    }
+
+    /// WHICH DRAWING A PICTURE IS CURRENTLY SHOWING. Rebind needs to tell "the same
+    /// picture is already up" from "that is a drawing of something else" when a swap
+    /// comes back empty, and the answer has to die with the object rather than sit in
+    /// a static table keyed by an image that was destroyed six screens ago.
+    public sealed class ShownArt : MonoBehaviour
+    {
+        public string Path;
     }
 }

@@ -202,14 +202,15 @@ namespace Runway.Game
             return t;
         }
 
-        /// The paper card every "next"/"back" door on this flow is cut from.
+        /// The paper card every "next"/"back" door on this flow is cut from — the SAME
+        /// paper as every sheet on it (`_paper_card` builds a PaperEdge, not the title
+        /// screen's card), leaning by its own x exactly as `int(b.position.x) % 5` does.
         public Button Nav(RectTransform page, string text, float x, float y, float w, float h,
                           float size, Action onClick)
         {
-            var style = DrawnUI.PaperStyle.Button;
-            style.Seed = 12 + (int)(x + y) % 5;
             return DrawnUI.PaperButton(page, text, x, y, w, h, size, DrawnUI.Ink,
-                                       DrawnUI.CoralDark, onClick, 1.045f, style);
+                                       DrawnUI.CoralDark, onClick, 1.045f,
+                                       GameUi.DraftPaper((int)x % 5));
         }
 
         // ══ page switching ═════════════════════════════════════════════════════

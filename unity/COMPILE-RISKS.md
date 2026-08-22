@@ -1325,6 +1325,96 @@ UFLOW failed checks: c3_price_ask · c6_die_cup
 UFLOW DONE pass=41 fail=2
 ```
 
+## D-SELECT-1. Blocking risks — these stop a compile if they are wrong
+
+| # | API | Where | Why uncertain | Fallback coded |
+|---|-----|-------|---------------|----------------|
+| DS-A1 | `LinkedList<KeyValuePair<string,string>>` with `AddFirst` / `RemoveFirst` / node `Remove` | `ArtCache._fetchQueue` | The queue used to be a `Queue<T>`, which cannot push to the front — and an urgent lane is the whole point. `LinkedList` node surgery (`Remove(node)` then `AddFirst(node)`) is the one form that reuses the node rather than allocating. | `System.Collections.Generic`, already imported. If node reuse ever bites, `AddFirst(n.Value)` after `Remove(n)` is the same behaviour with one allocation. **Verified: 0 compile errors, and the probe asserts two asks for one path stay one queued job.** |
+| DS-A2 | `Texture2D.LoadImage(byte[])` | `ArtCache.ReadFromDisk` | An extension method on `UnityEngine.ImageConversion`, in `com.unity.modules.imageconversion` — a module a trimmed `manifest.json` can drop. | `InkRevealFilm.cs:251` already calls it in this project, and `Texture2D.EncodeToPNG` (same module) is what every shot probe writes with. **Verified live: 3/3 pictures decoded through it.** |
+| DS-A3 | `AsyncOperation` recognised inside a hand-driven `IEnumerator` | `ArtCache.Step` | `UnityWebRequestAsyncOperation` reaches the driver as `object`; the cast has to hit the base type, not the derived one. | Cast to the base `AsyncOperation`, which every yieldable operation derives from; a `yield return null` (a frame wait there is no frame for) falls through the same `if` untouched. |
+| DS-A4 | `ShownArt : MonoBehaviour` beside a **static** class in one file | `GameUi.cs` | Two top-level types in a file whose name matches the static one — legal C#, but Unity refuses to serialise a `MonoBehaviour` whose class name does not match its file when it is added from the INSPECTOR. | Nothing ever adds it in the inspector: it is created by `AddComponent<ShownArt>()` at runtime only, which has no filename rule. `GameUi.cs` is not a component file and never appears in a scene. |
+| DS-A5 | `EditorApplication.Exit(code)` | `DraftSelectProbe.Run` | Editor-only surface. | The whole file is under `Assets/Scripts/Editor/`, the A-TAIL-2 pattern. With `-quit` alone the editor exits 0 whatever the assertions did, so this is what makes the probe a gate. |
+
+## D-SELECT-2. Runtime risks — they compile, but may not do what the stage needs
+
+| # | Thing | Where | Risk | Fallback coded |
+|---|-------|-------|------|----------------|
+| DS-B1 | **The decode pacing is what made the founder late in the first place.** | `ArtCache.Pump` | One decode per frame is deliberate (an 889ms frame on the draft, D-perf) and it STAYS. Its cost is that a first-frame callback can arrive many frames after the ask — long enough for a re-select to have rebuilt the loop that asked. | Not removed, routed round: `urgent` puts the face at the FRONT of the same one-per-frame queue and promotes an ask that was already waiting. The pacing is untouched; only the order is. |
+| DS-B2 | **A callback that outlives its loop must not take the picture with it.** | `DraftLoop.Reask` | `DRAFTLOOP cb dead target` in the live log was a dropped texture AND a wasted decode. | The picture is in `ArtCache` before any callback runs (`Deliver` fills `_tex` first), so the loop that replaced the dead one takes it off the cache synchronously, and `OnEnable` re-asks for any loop holding an id with no frames. The dead-target log line now prints whether the cache holds it. **Probe phase 3 proves it: the replacement loop is standing.** |
+| DS-B3 | **A callback that outlives its ARCHETYPE used to be applied anyway.** | `DraftLoop.Reask` | The old callback checked only that the target was alive. Selecting B while A was in flight put A's frame into B's `_frames` and showed it — a founder wearing another founder's first frame, then breathing in two people. Found reading the path, not from the log. | The wanted id is captured at ask time and a stale answer is dropped with a `DRAFTLOOP cb stale` line. |
+| DS-B4 | **Two asks for the same first frame answer on the same frame.** | `DraftLoop` | `Play` then `OnEnable`'s re-ask both land in one `Deliver`, and two hydrators would append the same 36 frames twice into one loop. | The second answer adds no frame (`_frames.Count == 0` guard) and starts no hydrator (`_hydrate == null` guard). |
+| DS-B5 | **A founder who is up but not breathing.** | `DraftLoop.OnEnable` | If the first frame lands while the page is off screen, `StartCoroutine` is a silent no-show (P0-F4) and the loop is a still for the rest of the run. | Coming back on screen restarts the hydrator when there is exactly one frame and no hydrator. A loop that genuinely ships one frame pays one `File.Exists` per page entry and stops. |
+| DS-B6 | **Poisoning a path is permanent, so only a missing FILE may do it.** | `ArtCache.Load` / `ArtCache.Deliver` | The old code cached null for `boot == null || url.Length == 0` and for every failed fetch. One early race — a screen built before Boot, a request that errored — blanked that drawing for the whole session, and `Known` then answered "absent" forever. | `Load` poisons only when `ArtUrl` comes back empty, which is `File.Exists` saying no. `Deliver` poisons only when `RunwayPaths.ArtExists` agrees the file is not there, and shouts a warning otherwise. With no runner the ask WAITS in the queue instead of being answered absent; the next `Load` that finds a runner drains it. **Probe phases 4 and 5 assert both halves.** |
+| DS-B7 | **`Rebind` blanked the image before its load and never put it back.** | `GameUi.Rebind` | `img.enabled = false` up front plus an early `return` on a miss is a permanent hole in the page — the shape of the empty cone, and this flow can never fall back to a blank screen. | Nothing is switched off until the replacement is in hand. The one thing still taken down is a drawing of something ELSE that cannot be replaced (the bag detail panel swaps between items), because a wrong picture under a right name is worse than an honest gap — which is why the image carries a `ShownArt` mark naming what it is showing. |
+| DS-B8 | **A pump whose runner dies stays "pumping" forever.** | `ArtCache._pumping` | If Boot is destroyed mid-drain, `_pumping` stays true, `Start` never restarts and every later ask waits in a queue nobody empties. Pre-existing; the `Runner` seam does not change it. | **Not fixed, stated.** Boot is a process-lifetime singleton, so the only way in is a scene teardown that also takes the screens. A repair, if it is ever needed, is to remember the runner the pump was started on and clear `_pumping` when it goes. |
+| DS-B9 | **The trait pips cost 30 more baked sprites per re-select.** | `GameUi.TraitPips` | Every pip now carries its own `AddInkEdge` (a 21x21 bake plus a boil), on top of `StatPips`'s 25 — 55 bakes per arrow key. | Each trait bake is 441px against the stat pips' 1,344, so the row is roughly a third of what the sheet already pays on every pick. `RedrawPips` was already rebuilding the whole ledger per selection. |
+| DS-B10 | **The `%+d` bag delta has 26px of gutter to live in.** | `GameUi.TraitPips` | The original draws it at x+216 at size 20 inside a 235-wide column whose pips end at 209 — i.e. 1px INTO the next column's word. It never shows there because `founder_draft_screen.gd:806` passes no deltas. | Ported at size 17, right-aligned to the column edge, so it clears the next word by 2px instead of colliding with it. The draft passes no deltas either, exactly as the original does not; `DraftSelectProbe`'s sheet shot is the only place it is drawn, so the drawing is proven rather than assumed. |
+| DS-B11 | **Both ledgers are lettered in the wrong hand.** | `GameUi.StatPips`, `GameUi.TraitPips` — pre-existing | Godot draws the stat labels and the trait names with `_font_d` (Baloo2-Bold); the port draws them with `DrawnUI.HandLabel` (PatrickHand). The `%+d` delta is the one string the original sets in the writing hand, and it is the one this port now matches. | **Flagged, not fixed.** It is the same choice everywhere in the port (every paper button's word is a `HandLabel` where `_paper_card` uses `_font_d`), so it is a port-wide convention and not a select-stage defect. Changing it is a restyling of every screen, not a fix. |
+
+## D-SELECT-3. Verified, not guessed
+
+`Runway.EditorTools.DraftSelectProbe.Run` — **19 checks, 19 held, exit 0** — with
+`bash tools/unity_compile.sh` → **0 errors** on the same tree.
+
+The probe builds the select stage's hero with DraftSelectPage's own geometry (the
+shadow at 465/742, the 560x560 holder pivoted on the feet, `DraftLoop.Attach`) and
+photographs it. Each count is pixels inside the 560x560 hero box that differ from a
+BASELINE frame of the same stage with the hero's image switched off — the floor shadow
+is in both frames, so it cancels and what is counted is ink that is there because the
+founder is there.
+
+| shot | what it drives | ink in the hero box |
+|------|----------------|---------------------|
+| `0-baseline-empty-cone.png` | the hero's image off | — (the reference; this IS the defect) |
+| `1-first-play.png` | cold cache, NO runner: the ask waits, the queue is pumped by hand | **97,142** of 313,600 (31.0%) |
+| `2-after-reselect.png` | the loop destroyed and rebuilt, same founder, NOTHING pumped | **97,142** (31.0%) — the cache answered inside `Play` |
+| `3-dead-target.png` | play, destroy the loop mid-queue, a new loop asks, then pump | **83,877** (26.7%) — the dead callback did not take the picture |
+| `4-sheet-and-paper.png` | the two ledgers, and the draft card beside the title card | — (a look, not a count) |
+
+Floor for the three hero shots is 20,000. Also asserted: a path with nothing on disk
+answers at once and IS remembered as absent; a path whose file is on disk is never
+answered "absent" merely because there was nothing to fetch on yet, and lands the
+moment the queue is pumped; two asks for one path stay one queued job.
+
+- **A file:// `UnityWebRequest` cannot complete under `-executeMethod`.** Measured, not
+  assumed: `RUNWAY! texture load failed ()` with an EMPTY error is `result` still
+  reading `InProgress` — nothing pumps the update loop while the method holds it, so
+  `isDone` never flips. `ArtCache.PumpBlocking` therefore carries two routes and
+  REPORTS which one each picture took (`route: 0 web, 3 disk` in batch); the queue, the
+  ordering, the delivery and every waiting callback are the shipped ones either way.
+  The 3s spin per job is why the run takes ~33s.
+- **Nothing is playing, so the hydrator never runs in the probe** — `StartCoroutine` is
+  inert outside play mode and only frame 01 is ever on screen, which is the frame the
+  defect was about. The sway, the walk-on and the 36-frame breath belong to a run with
+  a window.
+
+## D-SELECT-4. The seam
+
+Nothing to hook up: every change is inside the five files the stage already builds
+from. The probe is run the way GlowShots is — headless WITH a graphics device, no
+`-nographics`, under the same mutex `tools/unity_compile.sh` takes:
+
+```bash
+RUNWAY_SELECT_OUT=/tmp/d-select \
+  /Applications/Unity/Hub/Editor/6000.0.82f1/Unity.app/Contents/MacOS/Unity \
+  -batchmode -quit -projectPath unity \
+  -executeMethod Runway.EditorTools.DraftSelectProbe.Run -logFile -
+echo $?          # 0 = all 19 checks held
+```
+
+**Every editor launch re-bakes the font atlas.** `FontBaker` is `[InitializeOnLoad]`
+with a static constructor, so a compile pass or a probe run — anything that starts the
+editor — rewrites `Assets/Resources/Fonts/PatrickHand SDF.asset`, and the rewrite is
+not byte-stable (two consecutive runs produced 101,163 and 98,296 changed lines). It is
+not this lane's write and nothing here asks for it, but it means a batch run leaves a
+large shared asset dirty in the working tree. Check `git status` after running the
+probe and do not fold that file into an unrelated commit.
+
+`ArtCache` grows three public members and no behaviour a run can reach differently:
+`Load(path, cb, urgent)` (the third argument defaults to the old behaviour),
+`Pending`, and `PumpBlocking()` with its two route counters — the last three exist for
+a harness that has no frames, and the game never calls them.
+
 ---
 
 # D-CHARTS — THE BINDER'S DRAWN CHARTS — `Game/DrawnChart.cs` + `Game/BinderScreen.cs` + `Game/BookIntroScreen.cs`
@@ -1496,3 +1586,106 @@ Nothing. Every change is inside a file this lane owns, and no call site moved:
   today.
 - `FlowShots.cs` is editor-only by folder, installs nothing, and runs only when
   `-executeMethod` names it.
+
+---
+
+# D-TYPE — the two hands, the borrowed glyphs, and Godot's line box
+
+The port drew every word in Patrick Hand at TMP's own metrics. Godot draws headings
+in a second face, lays lines out on FreeType's rounded box plus a theme constant,
+and quietly borrows an OS face for every character its own fonts lack. This section
+is the three of those, plus the four geometry fixes that fell out of the same read.
+
+Measured against Godot 4.7.1 itself, headless (`FontFile.load_dynamic_font` on the
+same two `.ttf` files the game ships, `Label`/`TextParagraph` laid out and read
+back), not against a screenshot.
+
+## D-TYPE-1. Blocking risks — these stop a compile if they are wrong
+
+| # | API | Where | Why it was a guess | Fallback |
+|---|---|---|---|---|
+| D-TYPE-A1 | `TMP_FontAsset.CreateFontAsset(string fontFilePath, int faceIndex, int samplingPointSize, int atlasPadding, GlyphRenderMode, int atlasWidth, int atlasHeight)` | `FontBaker.BakeGlyphs` | The path overload is newer than the `Font` overload the hand bake uses, and TMP has shipped four different `CreateFontAsset` shapes. | Verified present in `com.unity.ugui@8bb446d869cd/Runtime/TMP/TMP_FontAsset.cs:511`. If it ever goes, the family-name overload on the next line (`CreateFontAsset(familyName, styleName, pointSize)`, `:490`) does the same job through `FontEngine.TryGetSystemFontReference`, and the bake already falls through to it when the file path does not exist. |
+| D-TYPE-A2 | `TMP_FontAsset.TryAddCharacters(string, out string missing)` | `FontBaker.BakeGlyphs` | Four overloads exist; only two report what was NOT added, and the bake's whole point is knowing which glyphs a face could not supply. | `:2011`. The whole bake is inside `try/catch` and the runtime ladder in `DrawnUI.Glyphs` builds the same chain from the OS by family name. |
+| D-TYPE-A3 | `TMP_FontAsset.atlasPopulationMode` has a **setter** | `FontBaker.BakeGlyphs` | Freezing a dynamic asset to `Static` is what lets the borrowed glyphs ship without their font program. | `:90`, and the setter also nulls `m_SourceFontFile` for `Static`, which is exactly the wanted behaviour. |
+| D-TYPE-A4 | `TMP_TextInfo.characterInfo[i].xAdvance` | `DrawnUI.MeasureWidth` | The pen position after a character, which is what Godot's `get_string_size()` returns. TMP also carries `lineInfo[].maxAdvance`, which drops trailing whitespace. | `GetPreferredValues(text).x` is kept as the catch, and a crude `length * size * 0.5f` under that. |
+| D-TYPE-A5 | `FaceInfo.ascentLine` / `.descentLine` / `.lineHeight` / `.pointSize` | `DrawnUI.AscentRatio` etc. | Field names, not properties, on a TextCore struct that has been renamed once already (`Ascender` → `ascentLine`). | Every reader guards `pointSize > 0f` and falls back to Patrick Hand's literal hhea numbers (1.042 / 0.312). A renamed field is a compile error, not a silent zero. |
+| D-TYPE-A6 | `TMP_Text.lineSpacing` is in **hundredths of the font size** | `DrawnUI.Written` | The property is documented as "font units" and the unit is not obvious. | Read off `TMP_Text.cs:3919`: `currentEmScale = fontSize * 0.01f * orthographicMultiplier`, and `m_lineOffset += … + m_lineSpacing * currentEmScale` (`:4698`). **Measured**: the probe's pitch table is exact to 0.00px at nine sizes, which only holds if the unit is right. |
+
+## D-TYPE-2. Runtime risks — they compile, but may not do what Godot does
+
+| # | Risk | Where | Detail | What was done |
+|---|---|---|---|---|
+| D-TYPE-B1 | **TMP's fallback walk stops dead at the first null entry.** | `DrawnUI.Chain` | `HasCharacter` and the shaping path both loop `for (i = 0; i < table.Count && table[i] != null; i++)` (`TMP_FontAsset.cs:1298`). The shipped `PatrickHand SDF.asset` carried **three empty slots** followed by a real entry, so a perfectly good face sat in the list and was never once asked for a character. | `Chain` strips every null before it inserts, and inserts at index 0. This was found by the probe, not by reading: the borrowed glyphs resolved on the display hand and not on the writing hand, and the only difference between them was three holes. |
+| D-TYPE-B2 | **The borrowed glyphs come from an OS face at BAKE time.** | `FontBaker.GlyphFaces` | `/System/Library/Fonts/Supplemental/STIXTwoMath.otf` (22 of 25) and `Arial Unicode.ttf` (the pencil and the cross). Only the rasterised glyphs and their metrics land in the asset — no font program travels — but the bake itself only works on a machine that has those files. | Three rungs: the baked asset out of `Resources` first (which is what ships), the same face asked for by family name at runtime second, nothing third. A machine with neither gets the boxes it had before, and the game still runs. Godot does the identical borrowing at runtime — its importer ships `allow_system_fallback=true` — so this is the same behaviour moved earlier. |
+| D-TYPE-B3 | **The borrowed face is not the face Godot borrows.** | the glyph chain | Godot on macOS resolves ★ ✓ ⏰ ⚠ through the system list, which for the emoji-range characters means Apple Color Emoji — a **colour bitmap** face TMP cannot use in an SDF atlas at all. STIX Two Math draws the same characters as black vector outlines. | Chosen deliberately: a monochrome outline sits in a hand-drawn game better than a colour emoji, and it is the only option TMP has. The one place it is loud is ⚠ (U+26A0), which STIX draws as a large open triangle. Two callers use it (`BinderScreen.cs:265`, `DraftCrewPage.cs:175/195`) — **not files this lane owns**. |
+| D-TYPE-B4 | **A fallback glyph can change a line's height.** | any line containing a borrowed character | TMP takes the line's ascender from the tallest element on it, so a fallback with a taller face would push a body line down. | STIX's ascent is 0.762 of its em against Patrick Hand's 1.042 and Baloo2's 1.078, so it can never be the tallest thing on a line. Both faces are baked at `pointSize` 90, so no em rescaling is involved either. |
+| D-TYPE-B5 | **The first baseline is 0.5–1px above Godot's.** | `DrawnUI.Written`, every label | Godot's ascent is FreeType's, rounded UP to a whole pixel (`FT_PIX_CEIL`): 32px at size 30 against TMP's continuous 31.26. TMP places its first line by its own ascent and there is no way to ask it for the rounded one without fighting `TextAlignmentOptions.Top`. | Left alone. It is under a pixel, it is uniform rather than cumulative, and the LINE PITCH — which does accumulate — is exact. `InkString` is exact on its own terms: the probe asked for baseline 90.00 and got 90.00. |
+| D-TYPE-B6 | **`DrawnUI.Rule` puts its stroke half a pixel below the y it is given.** | `DrawnUI.Rule` | The host sits at `y - pad` and `WobbleLineSprite` centres the polyline at `th * 0.5` where `th = pad * 2 + 1`, so the stroke lands at `y + 0.5`. | **Not fixed.** Correcting it moves every rule in the game up half a pixel and the blast radius is every screen, not this lane's three files. Noted so the next reader does not re-derive it. |
+| D-TYPE-B7 | **The dynamic hand and display assets grow on disk when an editor session renders text.** | `Assets/Resources/Fonts/*.asset` | `PatrickHand SDF.asset` is 10KB empty and 2.7MB after an editor pass has rendered a few hundred characters into its atlas; `AssetDatabase.SaveAssets()` from an unrelated bake persists it. | `RUNWAY!/Rebuild the fonts` deletes and re-bakes all four, and the tree is left in that clean state. Nothing depends on the atlas being pre-populated: the fallback wiring lives in `DrawnUI.LendGlyphs`, which runs on first use in the editor and in a player alike. |
+
+## D-TYPE-3. Verified, not guessed — `Editor/TypeShot.cs`
+
+`Unity -batchmode -quit -projectPath unity -executeMethod Runway.EditorTools.TypeShot.Shoot`
+(**no `-nographics`** — the shots need a device to rasterise type with; the numbers
+below come out either way). Four PNGs and a `measurements.txt`.
+
+- **Line pitch is exact at every size tested.** Godot lays a `Label` out as
+  `ceil(ascent) + ceil(descent) + 3`, the 3 being the default theme's
+  `line_spacing` constant. At 19/21/24/26/28/30/34/48/58 the ported label now
+  measures 29/32/37/40/42/45/50/69/83px baseline to baseline — **0.00px error at
+  all nine**. TMP's own metric would have given 25.73/28.43/32.50/35.20/37.91/
+  40.62/46.04/64.99/78.53, i.e. **12.2% tight at 24 and 9.7% tight at 30**.
+- **The two line boxes are different and both are now right.** A Godot `Label`
+  gets the theme's 3px; `draw_string`/`draw_multiline_string` go through no theme
+  and get none. At size 30 that is 45px against 42px, measured on both sides.
+  `HandLabel`'s `leading` parameter is which one, and it defaults to the `Label`
+  case because that is what most call sites transcribe.
+- **`draw_string` baselines land where they are asked.** The probe asked for
+  baseline 90.00 at size 56 and measured 90.00. The `size * 0.78` guess it
+  replaces put it at 104.67 — **14.67px low**, which is the how-to title sitting
+  into its own film frame.
+- **Widths match Godot to a pixel.** `'NEXT  '` @34 → 85.11 against 85.00;
+  `"GOT IT — LET'S FOUND SOMETHING  "` @32 → 419.01 against 418.00;
+  `'CHOOSE YOUR FOUNDER'` @58 → 514.77 against 515.00 in the hand and 638.75
+  against 639.00 in the display hand.
+- **The display hand is 24% wider than the writing hand at the same size**, which
+  is the whole reason it has to be the right one: 639 against 515 at 58.
+- **All 25 borrowed characters resolve**, on both hands, including the five that
+  prompted this (U+2605 U+2713 U+23F0 U+26A0 U+2610). `glyphs.png` is the proof —
+  every cell drawn, no boxes.
+
+## D-TYPE-4. What the probe did NOT confirm
+
+- **`GetPreferredValues` was not the cause of a wide how-to button.** Measured on
+  this machine, the shipped path (`GetPreferredValues` on a hand with no borrowed
+  face) returns 187.11 for the `NEXT  →` card against Godot's 187.00. The arrow
+  was already being drawn — by `LiberationSans SDF - Fallback`, TMP's own default,
+  at an advance of exactly 34.00px, which happens to be exactly what Godot's system
+  fallback gives it. There is no 23–25px of padding to subtract.
+- **What `GetPreferredValues` DOES get wrong is trailing whitespace**, which it
+  drops and Godot counts: `'NEXT  '` @34 measured **69.47 against 85.00** (−15.53px)
+  and the GOT IT stem @32 **404.29 against 418.00** (−13.71px). Every card sized
+  from a word ending in a space was that much narrow. The pen-position read fixes
+  it and is Godot's own definition of the call.
+- **Net effect on the how-to button is −1.66px**, not −23: 187.11 → 185.34 against
+  Godot's 187.00. The 1.66 is the arrow moving from TMP's implicit LiberationSans
+  fallback (34.00px) to the game's own shipped glyph face (32.23px). Accepted:
+  a face that ships and is named beats a face that happens to be in TMP's settings.
+
+## D-TYPE-5. The seam
+
+`DrawnUI` gained API; **no call site outside this lane's three files moved**.
+
+- `HandLabel` keeps its signature and gains one optional trailing `leading`
+  parameter, defaulted to the Godot `Label` value. Every existing caller compiles
+  unchanged and gets the right box.
+- `MeasureWidth(text, size)` keeps its signature; the new
+  `MeasureWidth(text, size, font)` overload is what a display-font caller needs.
+- `DisplayLabel`, `Display`, `Glyphs`, `Ascent`, `GodotLineSpacing`, `DiscSprite`
+  and `RingSide` are new and unused outside this lane and the probe.
+- `DrawnUI.PaperButton` was deliberately **not** re-routed to the display hand:
+  `title_screen.gd` loads Patrick Hand only, so a wholesale swap would put the
+  title screen in the wrong face.
+- `FontBaker`'s menu item is now `RUNWAY!/Rebuild the fonts` (it bakes four assets,
+  not one). `Editor/Bootstrap.cs:44` calls `FontBaker.Rebuild()`, which still
+  exists with the same signature.

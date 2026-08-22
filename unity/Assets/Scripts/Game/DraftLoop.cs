@@ -54,14 +54,30 @@ namespace Runway.Game
                                             // inactive (P0-F4: the default founder's
                                             // idle never started — StartCoroutine on
                                             // an inactive object is a silent no-show)
+        string _still = "";                 // what the current id falls back to
 
         void OnEnable()
         {
-            if (_pendingId == null) return;
-            string id = _pendingId, still = _pendingStill;
-            _pendingId = null;
-            _pendingStill = null;
-            Play(id, still);
+            if (_pendingId != null)
+            {
+                string id = _pendingId, still = _pendingStill;
+                _pendingId = null;
+                _pendingStill = null;
+                Play(id, still);
+                return;
+            }
+            if (_id.Length == 0) return;
+            // AN EMPTY CONE IS ALWAYS WORTH ONE MORE ASK. A loop that holds an id and
+            // no frames lost its answer somewhere (its first-frame callback landed on
+            // a target that had already been rebuilt, or the fetch failed). Coming
+            // back on screen re-asks; the picture is cached by now, so it costs a
+            // dictionary lookup and it is the difference between a founder and a hole.
+            if (_frames.Count == 0) { Reask(); return; }
+            // AND A FOUNDER WHO IS NOT BREATHING is the same bug one step in: the first
+            // frame landed while this page was off screen, so the hydrator could not be
+            // started from the callback (StartCoroutine on an inactive object is a
+            // silent no-show) and the loop has been a still ever since.
+            if (_frames.Count == 1 && _hydrate == null) _hydrate = StartCoroutine(Hydrate(_id));
         }
 
         /// Point the loop at an archetype. Instant when its frames are already cached.
@@ -77,29 +93,57 @@ namespace Runway.Game
             Debug.Log("DRAFTLOOP play " + archetypeId);
             if (_id == archetypeId && _frames.Count > 0) return;
             _id = archetypeId ?? "";
+            _still = stillSprite ?? "";
             _frames.Clear();
             _shown = -1;
             _t = 0f;
             if (_hydrate != null) { StopCoroutine(_hydrate); _hydrate = null; }
             if (_id.Length == 0) return;
+            Reask();
+        }
 
-            string first = string.Format("sprites/chr_loop_{0}_01.png", _id);
+        /// Ask for frame 01 of whatever this loop is currently pointed at. URGENT: the
+        /// decode queue is paced one per frame and can be 144 loop frames long, so the
+        /// face the player is looking at cuts in front of the card sprites.
+        void Reask()
+        {
+            string want = _id;
+            string first = string.Format("sprites/chr_loop_{0}_01.png", want);
             ArtCache.Load(first, tex =>
             {
-                if (this == null || _target == null) { Debug.Log("DRAFTLOOP cb dead target"); return; }
+                if (this == null || _target == null)
+                {
+                    // THE LOOP THAT ASKED IS GONE — a re-select rebuilt the page while
+                    // the decode queue was draining. The picture is NOT lost with it:
+                    // ArtCache holds it under the same path, so the loop that replaced
+                    // this one takes it straight off the cache the moment it plays the
+                    // same founder (and OnEnable re-asks if it already tried and missed).
+                    Debug.Log("DRAFTLOOP cb dead target for " + want + " (cached="
+                              + ArtCache.Known(first) + ", the next loop takes it)");
+                    return;
+                }
+                if (_id != want)
+                {
+                    // the player moved on mid-flight; this frame belongs to nobody now
+                    Debug.Log("DRAFTLOOP cb stale " + want + " (showing " + _id + ")");
+                    return;
+                }
                 Debug.Log("DRAFTLOOP first frame " + (tex != null ? tex.width + "x" + tex.height : "NULL") + " for " + _id);
                 if (tex == null)
                 {
                     // no loop on disk: the still carries the page
-                    if (!string.IsNullOrEmpty(stillSprite))
-                        GameUi.Rebind(_target, ArtCache.SpritePath(stillSprite),
+                    if (_still.Length > 0)
+                        GameUi.Rebind(_target, ArtCache.SpritePath(_still),
                                       _box_x, _box_y, _box_w, _box_h);
                     return;
                 }
-                _frames.Add(tex);
+                if (_frames.Count == 0) _frames.Add(tex);
                 Show(0);
-                _hydrate = StartCoroutine(Hydrate(_id));
-            });
+                // ONE HYDRATOR. Two asks for the same first frame answer on the same
+                // frame (Play, then OnEnable re-asking), and two hydrators would append
+                // the same 36 frames twice into one loop.
+                if (_hydrate == null) _hydrate = StartCoroutine(Hydrate(_id));
+            }, true);
         }
 
         IEnumerator Hydrate(string id)
