@@ -81,7 +81,7 @@ namespace Runway.Audio
 
         IEnumerator LoadVoice(string name, Track cfg, string bed)
         {
-            string path = Path.Combine(RunwayPaths.ArtRoot, "music", cfg.File);
+            string path = Path.Combine(Runway.App.RunwayPaths.ArtRoot, "music", cfg.File);
             if (!File.Exists(path)) { Debug.Log("RUNWAY! music missing " + path); yield break; }
             using (var req = UnityWebRequestMultimedia.GetAudioClip("file://" + path, AudioType.WAV))
             {
