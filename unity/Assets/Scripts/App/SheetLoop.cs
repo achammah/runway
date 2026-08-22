@@ -70,9 +70,36 @@ namespace Runway.App
             _rt = GetComponent<RectTransform>();
             _target.color = Color.white;
             _target.raycastTarget = false;
+            // an untextured RawImage paints an opaque WHITE rectangle (P0-F2:
+            // six harness shots showed a bright hole where a film should be) —
+            // the image stays off until a frame actually lands
+            _target.enabled = false;
         }
 
         // ── sheets ─────────────────────────────────────────────────────────────
+
+        // Args parked while the object was inactive. StartCoroutine on an
+        // inactive object is a SILENT no-show, and screens build their pages
+        // inactive — that is how every build-time film vanished from player
+        // builds while later-started sequences lived (P0-F1). The player is
+        // the wrong place to trust callers about activation order; it defers.
+        object[] _pendingSheet;
+        object[] _pendingSeq;
+
+        void OnEnable()
+        {
+            if (_pendingSheet != null)
+            {
+                var a = _pendingSheet; _pendingSheet = null;
+                PlaySheet((string)a[0], (int)a[1], (int)a[2], (float)a[3],
+                          (bool)a[4], (float)a[5], (float)a[6]);
+            }
+            else if (_pendingSeq != null)
+            {
+                var a = _pendingSeq; _pendingSeq = null;
+                PlaySequence((string)a[0], (int)a[1], (float)a[2], (bool)a[3]);
+            }
+        }
 
         /// Play a grid sheet. `relativeArtPath` is "title/birth_loop.png" and friends.
         /// Missing file: nothing happens and HasArt stays false, so the caller's drawn
@@ -81,6 +108,12 @@ namespace Runway.App
                                    float fps = DefaultFps, bool once = false,
                                    float cellW = CellW, float cellH = CellH)
         {
+            if (!isActiveAndEnabled)
+            {
+                _pendingSheet = new object[] { relativeArtPath, cols, frames, fps, once, cellW, cellH };
+                _pendingSeq = null;
+                return null;
+            }
             _sequenceMode = false;
             _cols = Mathf.Max(cols, 1);
             _frames = Mathf.Max(frames, 1);
@@ -107,6 +140,7 @@ namespace Runway.App
             ReleaseSheet();
             _sheet = tex;
             _target.texture = _sheet;
+            _target.enabled = true;
             _shown = -1;
             _playing = true;
         }
@@ -118,6 +152,12 @@ namespace Runway.App
         public Coroutine PlaySequence(string relativeFormat, int maxFrames,
                                       float fps = DefaultFps, bool once = false)
         {
+            if (!isActiveAndEnabled)
+            {
+                _pendingSeq = new object[] { relativeFormat, maxFrames, fps, once };
+                _pendingSheet = null;
+                return null;
+            }
             _sequenceMode = true;
             _fps = fps;
             _once = once;
@@ -136,6 +176,7 @@ namespace Runway.App
             if (t0 == null) yield break;
             _sequence.Add(t0);
             _target.texture = t0;
+            _target.enabled = true;
             _shown = -1;
             _playing = true;
 
@@ -237,7 +278,7 @@ namespace Runway.App
             StopAllCoroutines();   // a load still in flight must not resurrect the sheet
             _playing = false;
             _shown = -1;
-            if (_target != null) _target.texture = null;
+            if (_target != null) { _target.texture = null; _target.enabled = false; }
             ReleaseSheet();
             if (_ownsTextures)
             {
