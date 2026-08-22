@@ -16,11 +16,15 @@ drawn look. The Godot build remains the primary until the owner decides.
   Verified by the console test runner in Runway.Core.Tests (dotnet) replicating
   all 73 GDScript engine checks plus the 5-strategy balance run.
   Run: export PATH="$HOME/.dotnet:$PATH"; dotnet run --project unity/Runway.Core.Tests
-- App (Assets/Scripts/App): bootstrap (Main.cs builds everything from code —
+- App (Assets/Scripts/App): bootstrap (Boot.cs builds everything from code —
   the Godot game already constructs all UI programmatically, so the port
   keeps that: ONE scene, code-built screens), DrawnUI framework (cream
-  paper cards, wobbled ink borders as runtime meshes/textures, Patrick Hand
+  paper cards, wobbled ink borders baked to runtime textures, Patrick Hand
   via TMP), Env (user keys file), BuildStamp.
+  Boot owns the FLOW and none of the run: the seed, the state, the record,
+  WorldGen, SimEngine and the saves sit behind IRunDriver, and each screen
+  registers its own class with ScreenRegistry. An unregistered state shows a
+  drawn placeholder rather than an empty stage.
 - Screens (Assets/Scripts/Screens): StudioCard, Title (film frames), Keys,
   HowTo (sheet loops), Draft (7 pages), BookIntro, Birth, Garage, Journal,
   DiceRoll, Curtain, Binder (9 tabs incl. pricing/ledger).

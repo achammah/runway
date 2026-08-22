@@ -1,0 +1,624 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Text.RegularExpressions;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using UnityEngine;
+using Runway.App;
+
+namespace Runway.Llm
+{
+    /// <summary>
+    /// Tier-2 generation + free-move adjudication — event_generator.gd, ported.
+    /// Prefetches event cards in the background; adjudicates the player's own written
+    /// moves. Both flow through the same op whitelist and clamps — the LLM writes
+    /// flavour, never rules.
+    ///
+    /// Every composer below is the original's, string for string: THE CONTEXT SANDWICH
+    /// (world bible -> compacted memory -> recent weeks verbatim -> numeric state +
+    /// engine signals -> the dice -> directives) is what makes a week read as a
+    /// continuation instead of a fresh prompt, and re-wording any of it is a change to
+    /// the game.
+    /// </summary>
+    public sealed class EventGenerator : MonoBehaviour
+    {
+        public LlmClient Llm;
+
+        /// The generated cards waiting to be dealt.
+        public readonly List<JObject> Pool = new List<JObject>();
+
+        /// daily seeded runs: authored-only determinism
+        public bool Disabled;
+
+        bool _pending;
+        string _adjudicatePrompt = "";
+        string _clarifyPrompt = "";
+
+        public const string SYSTEM_PROMPT = @"You write event cards for RUNWAY!, a satirical startup survival game. Voice: dry, specific, wince-funny. Body 60 words max. Choice labels 8 words max. Never real companies or people. Never break the fourth wall. The title is a PLAIN statement of the situation in at most 7 words — 'The pilot customer wants a discount', never a mood-phrase riddle like 'Inner Calm, Concrete Floor'. If the user message lists PEOPLE ALREADY ON STAGE RECENTLY, none of them may appear in this card. You receive the run state as JSON, including the player's company_name and what it does (company_does) — write events that are SPECIFIC to that business (its customers, its industry's absurdities, its failure modes), and refer to the company by name when natural. Output ONLY a card matching the schema. Effects use ONLY the allowed ops within sane ranges (meter deltas within ±15; cash_delta proportionate to the era in the state — ±2000 garage, ±10k coworking, ±60k office, ±250k floor, ±1M hq). Match the event to the era and its cast: the state carries era_name, staff (named employees with burnout levels), rounds_raised and board — a garage event smells of ramen, an HQ event of lawyers; a Service business bills hours and juggles clients, a Marketplace juggles two sides, Hardware waits on parts; name a staff member when one fits, and never invent people who are not in the state. Choices must be genuine dilemmas — no strictly-correct option. Reference at least one specific item, cofounder, or flag from the state. The state includes recent_actions — the log of what the player actually did each week. USE IT: create continuity and follow-ups. Some weeks, instead of a problem, write an OPPORTUNITY that grows directly out of a recent action (a prospect who saw the marketing post and liked it, a demo attendee who wants an intro, a customer who mentioned them somewhere) — opportunities still carry tradeoffs, never free wins.";
+
+        public const string ADJUDICATE_PROMPT = @"You are the world of RUNWAY!, a satirical startup survival game, adjudicating a founder's free-form action during an event. You receive the full run state — company, business_model (what × who), funding_path, employees, customers, product_version, items owned, cofounders with roles and commitment, archetype competences, meters — then the event and the player's written move. Judge it fairly but the world is harsh, and CONTEXT-AWARE: concrete plans that use things the founder ACTUALLY HAS work better; a bootstrapped company can be scrappy but can't outspend problems; a VC-backed one has money but answers for it; enterprise sales are slow and relationship-driven, consumer needs volume and virality, hardware makes everything slower and costlier; part-time cofounders are less available; more customers means more to lose. Vague, magical, or entitled answers backfire with comedy. narration: 210-290 words in 4-6 short second-person paragraphs — read while the art renders (~70s). PLAIN FIRST: simple declaratives a tired reader follows first pass; at most one wry line per two paragraphs; no riddle headlines. verdict: brilliant / fine / risky / backfired. effects: 1-3 ops from the whitelist, magnitudes proportionate to the era in the state (cash within ±3000 in the garage, scaling up by era; meters within ±15 always). The player makes ONE move per week — your effects carry seven days of work, so a sound grounded plan earns the generous end of the range. MILESTONES: when the written week genuinely constitutes it, set the gating flag via set_flag — first_revenue, launched, pmf, seed_raised, series_a (max one per week; pair a closed round with its cash). THE ROLL: the user message carries d20=N and competences; pick the governing stat, mod=stat-3, judge DC 6-16 by boldness, and narrate what total EARNED (beat by 5+ brilliant / 0+ fine / -1..-2 risky-mixed / -3- backfired); output roll={stat,dc}. Every effect includes ""why"": its concrete in-world cause (<=10 words). Staff named in the state are real: leaning on a cooked employee is risky, and plans ignoring an investor board draw friction. Never more than one strongly positive effect unless the plan is genuinely brilliant AND grounded in what the founder actually has.";
+
+        /// Run-start world generation: everything is ABOUT this company. Deterministic
+        /// WorldGen remains the keyless fallback and the shape both paths share.
+        public const string WORLDGEN_PROMPT = @"You are the world-builder for RUNWAY!, a satirical startup survival game. Given the company (its pitch, what it sells, to whom), invent THE WORLD IT WAS BORN INTO — specific to this exact business, never generic. market: honest intuitive numbers (how many real buyers exist for THIS product; how many weeks such a customer stays before churning) and a dry one-liner about this market's mood. investors: three funds/angels that would plausibly circle THIS space, each mapped to one archetype from the enum; thesis in their own voice ABOUT THIS MARKET (never the words 'growth is the only truth' or any stock phrase); a concrete trait, a bond connecting them to this founder's world, a flaw, and a SECRET the founder must never be told directly. rivals: two companies already competing for these exact customers — name (pronounceable, no real companies), what they do in one line, how strong they look, and three tactics they actually use in this market. Every thesis, one-liner and what-they-do is a COMPLETE sentence that ends before the limit — never a thought cut mid-word. Dry, wince-funny, PG-13, no real companies or people.";
+
+        /// Tier-3: the RUN DIRECTOR (PRD §7).
+        public const string DIRECTOR_PROMPT = @"You are the RUN DIRECTOR for RUNWAY!, a satirical startup survival game. Once per era, you design the run's narrative arcs — the recurring storylines that make this run feel authored instead of drawn from a deck: a named rival company with a strategy, a recurring journalist with an angle, a slow-burn cofounder or investor storyline. Rules: arcs grow out of THIS company (its name, what it does, its business model, its recent actions); invent names — never real companies or people; write 2-3 arcs, each with beats for the CURRENT era and eras after it (never past eras); every beat directive is one concrete, self-standing instruction to a downstream event writer who sees ONLY the directive — name the actors and what happens next; escalation_rule says when the arc intensifies or pays off. If arcs already exist, evolve them: carry actors forward, never drop a thread without a payoff beat. Dry, wince-funny, PG-13.";
+
+        public static readonly string[] ARC_KINDS =
+        {
+            "rival", "press", "cofounder", "investor", "customer",
+        };
+
+        /// GameState.ERAS — the only eras an arc beat may name.
+        public static readonly string[] ERAS =
+        {
+            "garage", "coworking", "office", "floor", "hq",
+        };
+
+        public static readonly string[] ALLOWED_OPS =
+        {
+            "cash_delta", "product_delta", "traction_delta", "morale_delta", "hype_delta",
+            "set_flag", "status", "clock", "set_price", "set_marketing", "hire",
+            "take_loan", "spend", "set_budget",
+        };
+
+        public void Setup(LlmClient llm)
+        {
+            Llm = llm;
+            // the production adjudicator prompt ships as data; the const is the fallback
+            _adjudicatePrompt = RunwayPaths.ReadAllTextOrEmpty(
+                RunwayPaths.Streaming("prompts/adjudicator.txt"));
+            if (_adjudicatePrompt.Trim().Length == 0) _adjudicatePrompt = ADJUDICATE_PROMPT;
+            _clarifyPrompt = RunwayPaths.ReadAllTextOrEmpty(
+                RunwayPaths.Streaming("prompts/clarify.txt"));
+        }
+
+        bool Live { get { return Llm != null && Llm.Enabled; } }
+
+        // ══ world ══════════════════════════════════════════════════════════════
+
+        public void GenerateWorld(RunSnapshot s, Action<JObject> cb)
+        {
+            if (!Live)
+            {
+                if (cb != null) cb(null);
+                return;
+            }
+            string user = string.Format(
+                "The company:\n{0}\nPitch: {1}\nSells {2} to {3}.\nInvent its world.",
+                s.CompanyName, s.CompanyIdea, s.BizWhat, s.BizWho);
+            Llm.RequestJson(WORLDGEN_PROMPT, user, LlmClient.WorldSchema,
+                result => { if (cb != null) cb(result); },
+                new LlmOptions { MaxTokens = 1400 });
+        }
+
+        // ══ Tier-3: the run director ═══════════════════════════════════════════
+
+        /// One higher-quality call at run start + each era transition. Hands VALIDATED
+        /// arcs to cb (an empty array on reject); the run lane stores them on state.
+        public void GenerateArcs(RunSnapshot s, Action<JArray> cb)
+        {
+            if (Disabled || !Live)
+            {
+                if (cb != null) cb(new JArray());
+                return;
+            }
+            var sb = new StringBuilder();
+            sb.Append("Run state:\n").Append(Json(s.Digest));
+            if (s.Arcs != null && s.Arcs.Count > 0)
+                sb.Append("\n\nExisting arcs (evolve these, keep continuity):\n").Append(Json(s.Arcs));
+            sb.Append("\n\nCurrent era: ").Append(s.Era).Append(". Write this run's arcs.");
+            Llm.RequestJson(DIRECTOR_PROMPT, sb.ToString(), LlmClient.ArcSchema,
+                result =>
+                {
+                    JArray clean = ValidateArcs(result);
+                    if (cb != null) cb(clean);
+                },
+                new LlmOptions { Director = true, MaxTokens = 1600 });
+        }
+
+        /// Validates director output. Returns [] on any reject — one bad beat drops the
+        /// whole reply, because a half-applied arc is a thread with no payoff.
+        public static JArray ValidateArcs(JObject data)
+        {
+            var empty = new JArray();
+            if (data == null) return empty;
+            var arcs = data["arcs"] as JArray;
+            if (arcs == null || arcs.Count == 0) return empty;
+            var outArcs = new JArray();
+            foreach (JToken t in arcs)
+            {
+                var a = t as JObject;
+                if (a == null) return empty;
+                if (Array.IndexOf(ARC_KINDS, Str(a, "kind")) < 0) return empty;
+                if (Str(a, "arc_id").Trim().Length == 0) return empty;
+                if (Str(a, "premise").Trim().Length == 0) return empty;
+                var beats = a["beats"] as JArray;
+                if (beats == null || beats.Count == 0) return empty;
+                foreach (JToken bt in beats)
+                {
+                    var b = bt as JObject;
+                    if (b == null) return empty;
+                    if (Array.IndexOf(ERAS, Str(b, "era")) < 0) return empty;
+                    string d = Str(b, "directive");
+                    if (d.Trim().Length == 0 || d.Length > 220) return empty;
+                }
+                if (outArcs.Count < 3) outArcs.Add(a);
+            }
+            return outArcs;
+        }
+
+        /// Injection block for Tier-2 + adjudicator user messages. Empty without arcs.
+        static string ArcBlock(RunSnapshot s)
+        {
+            if (s.ArcDirectives == null || s.ArcDirectives.Length == 0) return "";
+            return "\n\nACTIVE NARRATIVE DIRECTIVES (this run's authored storylines — weave ONE in when it fits, never force all):\n- "
+                   + string.Join("\n- ", s.ArcDirectives);
+        }
+
+        // ══ composers ══════════════════════════════════════════════════════════
+
+        /// Proper names seen in the recent past — "Nico Sorel" looping week after week
+        /// is the exact failure this hunts. Crude on purpose: a filter, not a parser.
+        public static string[] RecentNames(string[] playedEvents, int back = 4)
+        {
+            var outNames = new List<string>();
+            if (playedEvents == null) return outNames.ToArray();
+            int from = Mathf.Max(playedEvents.Length - back, 0);
+            var rex = new Regex("[A-Z][a-z]+ [A-Z][a-z]+");
+            for (int i = from; i < playedEvents.Length; i++)
+            {
+                foreach (Match hit in rex.Matches(playedEvents[i] ?? ""))
+                {
+                    if (!outNames.Contains(hit.Value)) outNames.Add(hit.Value);
+                }
+            }
+            return outNames.ToArray();
+        }
+
+        public string ComposeEventUser(RunSnapshot s)
+        {
+            string noRepeat = "";
+            if (s.PlayedEvents != null && s.PlayedEvents.Length > 0)
+                noRepeat = "\nALREADY PLAYED (never repeat these situations, characters, or their obvious sequels back-to-back): "
+                           + Json(new JArray(s.PlayedEvents));
+            string[] names = RecentNames(s.PlayedEvents);
+            if (names.Length > 0)
+                noRepeat += string.Format(
+                    "\nPEOPLE ALREADY ON STAGE RECENTLY: {0}. Do NOT lead with any of them again this week — bring in someone NEW (a different customer, a stranger, a rival's person), or let the world itself be the event.",
+                    string.Join(", ", names));
+            return "Run state:\n" + Json(s.Digest) + ArcBlock(s) + noRepeat
+                   + "\nWrite one new event card for this exact moment.";
+        }
+
+        /// THE CONTEXT SANDWICH (plan C1): world bible -> compacted memory -> recent
+        /// weeks verbatim -> numeric state + engine signals -> the dice -> directives.
+        public string ComposeAdjudicateUser(RunSnapshot s, JObject ev, string playerText,
+                                            JObject dice)
+        {
+            var parts = new List<string>();
+            parts.Add("Run state:\n" + Json(s.Digest));
+            parts.Add("\nENGINE SIGNALS (ground truth this week — narrate FROM these):\n"
+                      + Json(s.Signals));
+            if (s.HasBible)
+                parts.Add("\nTHE WORLD (fixed cast — keep names and voices consistent):\n"
+                          + s.BibleDigest);
+            if (!string.IsNullOrEmpty(s.StorySoFar))
+                parts.Add("\nTHE STORY SO FAR (your own compacted memory):\n" + s.StorySoFar);
+            if (s.RunHistory != null && s.RunHistory.Count > 0)
+            {
+                var recent = new JArray();
+                for (int i = Mathf.Max(s.RunHistory.Count - 3, 0); i < s.RunHistory.Count; i++)
+                    recent.Add(s.RunHistory[i]);
+                parts.Add("\nRECENT WEEKS VERBATIM:\n" + Json(recent));
+            }
+            parts.Add(ArcBlock(s));
+            if (dice != null && dice.Count > 0)
+            {
+                string modeLine = Str(dice, "mode");
+                int mod = Int(dice, "mod", 0);
+                int used = Int(dice, "used", 10);
+                parts.Add(string.Format(
+                    "\nTHE DIE IS ALREADY ON THE TABLE: the founder pressed, the cup poured. "
+                    + "Rolled {0} and {1}{2}; the kept die is {3}. The governing stat is {4} (mod {5}) — "
+                    + "fixed by the table, NOT yours to change; output roll.stat exactly as given. "
+                    + "Set the DC from the PLAN'S difficulty alone, as if you had not seen the die "
+                    + "(floors: routine 6-8, solid 9-11, bold 12-14, wild 15-16), then narrate what "
+                    + "total {6} earned against it.",
+                    Int(dice, "a", 10), Int(dice, "b", 10),
+                    modeLine.Length > 0 ? " — " + modeLine : "",
+                    used, Str(dice, "stat", "grit"),
+                    (mod >= 0 ? "+" : "-") + Mathf.Abs(mod),
+                    used + mod));
+            }
+            // WHO THE FOUNDER IS, 1-5, never rolled: the room already reacted to these
+            // before anyone picked up a die. Narrate as if they were simply true.
+            parts.Add("\nTRAITS (fixed): " + Json(s.TraitSheet));
+            string directives = Directives(s);
+            if (directives != "")
+                parts.Add("\nDIRECTIVES (non-negotiable this week):\n" + directives);
+            parts.Add(string.Format("\nEvent: {0} — {1}", Str(ev, "title"), Str(ev, "body")));
+            parts.Add(string.Format("\nThe player writes their own move:\n\"{0}\"\n\nAdjudicate it.",
+                Left(playerText, 300)));
+            return string.Join("\n", parts.ToArray());
+        }
+
+        /// Deterministic, prescriptive, computed from state — the register LLM GMs obey.
+        public static string Directives(RunSnapshot s)
+        {
+            var outLines = new List<string>();
+            if (s.RunwayWeeks <= 3)
+                outLines.Add(string.Format(
+                    "- Runway is {0} weeks. The world MUST escalate; nothing is routine.", s.RunwayWeeks));
+            if (s.Exhaustion >= 4)
+                outLines.Add(string.Format(
+                    "- The founder is exhausted ({0}/6). It shows in everything.", s.Exhaustion));
+            if (s.Clocks != null)
+            {
+                foreach (RunSnapshot.ClockRow c in s.Clocks)
+                {
+                    if (c.WeeksLeft <= 2)
+                        outLines.Add(string.Format("- A deadline looms ({0} wks): {1}. Reference it.",
+                            c.WeeksLeft, c.Consequence));
+                }
+            }
+            if (s.TechDebt >= 70f)
+                outLines.Add(string.Format("- Tech debt is {0}. The cracks are visible to customers.",
+                    (int)s.TechDebt));
+            if (s.Launched && s.Offers != null)
+            {
+                foreach (RunSnapshot.OfferRow o in s.Offers)
+                {
+                    if (o.Price <= 0f)
+                    {
+                        outLines.Add(string.Format(
+                            "- '{0}' has NO PRICE: it is not on sale and earns $0 however many sign up. If the plan sells, the week must confront this.",
+                            string.IsNullOrEmpty(o.Name) ? "an offer" : o.Name));
+                        break;
+                    }
+                }
+            }
+            return string.Join("\n", outLines.ToArray());
+        }
+
+        // ══ prefetch ═══════════════════════════════════════════════════════════
+
+        public void Prefetch(RunSnapshot s)
+        {
+            if (Disabled || !Live || _pending || Pool.Count >= 3) return;
+            _pending = true;
+            Llm.RequestJson(SYSTEM_PROMPT, ComposeEventUser(s), LlmClient.EventSchema, OnCard);
+        }
+
+        void OnCard(JObject card)
+        {
+            _pending = false;
+            if (card == null || card.Count == 0) return;
+            if (ValidateCard(card))
+            {
+                card["tier"] = "generated";
+                card["id"] = "gen_" + (long)(Time.realtimeSinceStartup * 1000f);
+                Pool.Add(card);
+            }
+            else
+            {
+                Debug.LogWarning("generated card rejected by validator");
+            }
+        }
+
+        /// THE INVISIBLE SEAM, pool half: a generated card if one is pooled and it is
+        /// not a near-duplicate of a recent week. Null means "deal an authored card" —
+        /// the content deck is the run lane's, so the fall-through lives there.
+        public JObject TakeGeneratedCard(RunSnapshot s)
+        {
+            if (Disabled) Pool.Clear();
+            string[] recent = RecentNames(s.PlayedEvents);
+            while (Pool.Count > 0)
+            {
+                JObject cand = Pool[0];
+                Pool.RemoveAt(0);
+                string ct = Str(cand, "title");
+                bool dup = false;
+                if (s.PlayedEvents != null)
+                {
+                    int from = Mathf.Max(s.PlayedEvents.Length - 4, 0);
+                    for (int i = from; i < s.PlayedEvents.Length; i++)
+                    {
+                        if (Similarity(s.PlayedEvents[i] ?? "", ct) > 0.6f) { dup = true; break; }
+                    }
+                }
+                if (!dup)
+                {
+                    // a returning lead character IS a repeat, whatever the title says
+                    string blob = ct + " " + Str(cand, "body");
+                    for (int i = 0; i < recent.Length; i++)
+                    {
+                        if (blob.Contains(recent[i])) { dup = true; break; }
+                    }
+                }
+                if (!dup) return cand;
+                Debug.LogWarning("event pool: dropped near-duplicate '" + ct + "'");
+            }
+            return null;
+        }
+
+        // ══ adjudication ═══════════════════════════════════════════════════════
+
+        /// WHAT THE WORLD SAYS WHEN THERE IS NO WORLD TO ASK. With no key the written
+        /// move used to hand back nothing and the page did not so much as blink, which
+        /// reads as broken rather than as unconfigured. So the world answers in its own
+        /// voice instead — it hears the move, writes it down, and changes NOTHING.
+        ///
+        /// `effects` is empty ON PURPOSE and must stay empty. A stub that paid out would
+        /// be the game inventing a judgement it never made.
+        public static JObject KeylessAdjudication()
+        {
+            return new JObject
+            {
+                ["interpreted_as"] = "you write it down",
+                ["narration"] = "The world takes note. Nothing changes yet — the phone stays quiet.",
+                ["verdict"] = "fine",
+                ["effects"] = new JArray(),
+            };
+        }
+
+        /// Adjudicate the player's own written move. cb gets the validated verdict, the
+        /// keyless stub when there is no key at all, or null when a live call came back
+        /// empty or failed its validator.
+        public void Adjudicate(RunSnapshot s, JObject ev, string playerText,
+                               Action<JObject> cb, JObject dice = null)
+        {
+            if (!Live)
+            {
+                if (cb != null) cb(KeylessAdjudication());
+                return;
+            }
+            string user = ComposeAdjudicateUser(s, ev ?? new JObject(), playerText, dice);
+            Llm.RequestJson(_adjudicatePrompt, user, LlmClient.AdjudicateSchema, result =>
+            {
+                if (result == null || result.Count == 0
+                    || !ValidateEffects(result["effects"], true))
+                {
+                    if (cb != null) cb(null);
+                    return;
+                }
+                // THE SENTINEL (plan C3): deterministic post-checks. One retry with the
+                // errors echoed, then proceed with the sanitized reply — never deadlock.
+                List<string> faults = Sentinel(s, result);
+                if (faults.Count == 0)
+                {
+                    if (cb != null) cb(result);
+                    return;
+                }
+                Debug.LogWarning("DM sentinel: " + string.Join("; ", faults.ToArray()));
+                string retryUser = user + "\n\nYOUR PREVIOUS REPLY WAS REJECTED FOR: "
+                                   + string.Join("; ", faults.ToArray())
+                                   + "\nFix ONLY these and answer again.";
+                Llm.RequestJson(_adjudicatePrompt, retryUser, LlmClient.AdjudicateSchema, second =>
+                {
+                    JObject final = second;
+                    if (final == null || final.Count == 0 || !ValidateEffects(final["effects"], true))
+                        final = result;            // the first reply, sanitized below
+                    Sanitize(s, final);
+                    if (cb != null) cb(final);
+                }, LlmOptions.Assess);
+            }, LlmOptions.Assess);
+        }
+
+        /// THE CLARIFY PRE-PASS (owner: terra assesses, luna clarifies): one cheap call
+        /// before the dice — does this move need ONE follow-up question?
+        public void Clarify(RunSnapshot s, JObject ev, string move, Action<JObject> cb)
+        {
+            if (!Live)
+            {
+                if (cb != null) cb(null);
+                return;
+            }
+            if (_clarifyPrompt.Length == 0)
+                _clarifyPrompt = RunwayPaths.ReadAllTextOrEmpty(
+                    RunwayPaths.Streaming("prompts/clarify.txt"));
+
+            var offers = new JArray();
+            if (s.Offers != null)
+            {
+                foreach (RunSnapshot.OfferRow o in s.Offers)
+                    offers.Add(new JObject { ["name"] = o.Name ?? "", ["priced"] = o.Price > 0f });
+            }
+            var user = new JObject
+            {
+                ["run_state"] = new JObject
+                {
+                    ["cash"] = s.Cash,
+                    ["week"] = s.Week,
+                    ["era"] = s.Era,
+                    ["customers"] = s.Traction,
+                    ["crew"] = new JArray(s.Crew ?? new string[0]),
+                    ["items"] = new JArray(s.Items ?? new string[0]),
+                    ["budgets"] = s.Budgets ?? new JObject(),
+                    ["offers"] = offers,
+                },
+                ["event_card"] = new JObject
+                {
+                    ["title"] = Str(ev, "title"),
+                    ["body"] = Left(Str(ev, "body"), 160),
+                },
+                ["move"] = Left(move, 300),
+            };
+            Llm.RequestJson(_clarifyPrompt, Json(user), LlmClient.ClarifySchema,
+                res => { if (cb != null) cb(res); }, LlmOptions.Clarify);
+        }
+
+        // ══ the deterministic checks ═══════════════════════════════════════════
+
+        /// Deterministic continuity checks: hallucinated cast, premise drift, empty
+        /// milestones.
+        public List<string> Sentinel(RunSnapshot s, JObject res)
+        {
+            var faults = new List<string>();
+            // 1 — the known-NPC roster the narration is checked against
+            var known = new List<string>();
+            if (s.InvestorNames != null) known.AddRange(s.InvestorNames);
+            if (s.RivalNames != null) known.AddRange(s.RivalNames);
+            string narration = Str(res, "narration");
+
+            // premise guard: money the narration spends must exist (order-of-magnitude)
+            int spendGuess = 0;
+            var effects = res["effects"] as JArray;
+            if (effects != null)
+            {
+                foreach (JToken eff in effects)
+                {
+                    var d = eff as JObject;
+                    if (d == null) continue;
+                    if (Str(d, "op") == "cash_delta") spendGuess = Int(d, "v", 0);
+                }
+            }
+            if (spendGuess < 0 && s.Cash + spendGuess < -8000)
+                faults.Add(string.Format("the move spends ${0} the company does not have (cash ${1})",
+                    -spendGuess, s.Cash));
+
+            // unknown status names die silently in the executor; flag them for a fix
+            if (effects != null)
+            {
+                foreach (JToken eff2 in effects)
+                {
+                    var d = eff2 as JObject;
+                    if (d == null) continue;
+                    if (Str(d, "op") == "status" && !KnownStatus(s, Str(d, "v")))
+                        faults.Add(string.Format("unknown status '{0}' — pick from the fixed catalog",
+                            Str(d, "v")));
+                }
+            }
+
+            // a raise-verdict week that grants seed money must set the flag (and vice versa)
+            string lower = narration.ToLowerInvariant();
+            bool saysRound = lower.Contains("term sheet signed") || lower.Contains("round closes")
+                             || lower.Contains("wire hits");
+            bool setsRound = false;
+            if (effects != null)
+            {
+                foreach (JToken eff3 in effects)
+                {
+                    var d = eff3 as JObject;
+                    if (d == null) continue;
+                    if (Str(d, "op") == "set_flag" && Str(d, "v").Contains("raised")) setsRound = true;
+                }
+            }
+            if (saysRound && !setsRound)
+                faults.Add("the narration closes a round but no *_raised flag is set");
+            return faults;
+        }
+
+        /// What survives even a failed retry: strip ops the engine would refuse anyway.
+        public void Sanitize(RunSnapshot s, JObject res)
+        {
+            if (res == null) return;
+            var ok = new JArray();
+            var effects = res["effects"] as JArray;
+            if (effects != null)
+            {
+                foreach (JToken eff in effects)
+                {
+                    var d = eff as JObject;
+                    if (d == null) continue;
+                    if (Str(d, "op") == "status" && !KnownStatus(s, Str(d, "v"))) continue;
+                    ok.Add(d);
+                }
+            }
+            res["effects"] = ok;
+        }
+
+        /// An empty catalogue means the run lane has not handed one over: trust the DM
+        /// rather than reject every status it names.
+        static bool KnownStatus(RunSnapshot s, string status)
+        {
+            if (s.StatusCatalog == null || s.StatusCatalog.Length == 0) return true;
+            return Array.IndexOf(s.StatusCatalog, status) >= 0;
+        }
+
+        public bool ValidateEffects(JToken effects, bool allowEmpty = false)
+        {
+            var arr = effects as JArray;
+            if (arr == null) return false;
+            if (arr.Count == 0) return allowEmpty;
+            foreach (JToken eff in arr)
+            {
+                var d = eff as JObject;
+                if (d == null) return false;
+                if (Array.IndexOf(ALLOWED_OPS, Str(d, "op")) < 0) return false;
+            }
+            return true;
+        }
+
+        public bool ValidateCard(JObject card)
+        {
+            if (card == null) return false;
+            if (card["title"] == null || card["body"] == null || card["choices"] == null) return false;
+            if (Str(card, "title").Length > 60 || Str(card, "body").Length > 500) return false;
+            var choices = card["choices"] as JArray;
+            if (choices == null || choices.Count < 2 || choices.Count > 4) return false;
+            foreach (JToken ch in choices)
+            {
+                var c = ch as JObject;
+                if (c == null || c["label"] == null || c["effects"] == null) return false;
+                if (Str(c, "label").Length > 60) return false;
+                if (!ValidateEffects(c["effects"])) return false;
+            }
+            return true;
+        }
+
+        // ══ helpers ════════════════════════════════════════════════════════════
+
+        /// JSON.stringify() — compact, the shape every prompt in this game was tuned on.
+        public static string Json(JToken t)
+        {
+            if (t == null) return "{}";
+            return t.ToString(Formatting.None);
+        }
+
+        public static string Str(JObject o, string key, string fallback = "")
+        {
+            if (o == null) return fallback;
+            JToken t = o[key];
+            return t == null || t.Type == JTokenType.Null ? fallback : t.ToString();
+        }
+
+        public static int Int(JObject o, string key, int fallback)
+        {
+            if (o == null) return fallback;
+            JToken t = o[key];
+            if (t == null || t.Type == JTokenType.Null) return fallback;
+            double d;
+            if (double.TryParse(t.ToString(), System.Globalization.NumberStyles.Any,
+                                System.Globalization.CultureInfo.InvariantCulture, out d))
+                return (int)d;
+            return fallback;
+        }
+
+        public static string Left(string s, int n)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            return s.Length <= n ? s : s.Substring(0, n);
+        }
+
+        /// Godot's String.similarity(): the share of shared character bigrams.
+        public static float Similarity(string a, string b)
+        {
+            if (a == b) return 1f;
+            if (a.Length < 2 || b.Length < 2) return 0f;
+            var bigramsA = new List<string>();
+            for (int i = 0; i < a.Length - 1; i++) bigramsA.Add(a.Substring(i, 2));
+            var bigramsB = new List<string>();
+            for (int i = 0; i < b.Length - 1; i++) bigramsB.Add(b.Substring(i, 2));
+            int hits = 0;
+            foreach (string g in bigramsA)
+            {
+                int at = bigramsB.IndexOf(g);
+                if (at >= 0) { bigramsB.RemoveAt(at); hits++; }
+            }
+            return (float)(hits * 2) / (bigramsA.Count + bigramsB.Count + hits);
+        }
+    }
+}
