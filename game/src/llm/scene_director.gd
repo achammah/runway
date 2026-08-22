@@ -479,7 +479,22 @@ func _middleware_call(endpoint: String, body: Dictionary, out_name: String) -> S
 		http.queue_free()
 		return ""
 	progress.emit(0.2)
-	var res: Array = await http.request_completed
+	# THE WATCHDOG (owner live: a request hung PAST its own 180s timeout with
+	# no completion and no error — the ladder never advanced). The await is
+	# raced against a hard 200s wall; a silent hang becomes a failed attempt.
+	var res_box: Array = []
+	http.request_completed.connect(func(a: int, b: int, c: PackedStringArray, d: PackedByteArray) -> void:
+		res_box.append([a, b, c, d]))
+	var waited := 0.0
+	while res_box.is_empty() and waited < 200.0:
+		await _tree.create_timer(0.5).timeout
+		waited += 0.5
+	if res_box.is_empty():
+		print("SceneDirector v2: request HUNG %ds — cancelled" % int(waited))
+		http.cancel_request()
+		http.queue_free()
+		return ""
+	var res: Array = res_box[0]
 	http.queue_free()
 	var body_txt := (res[3] as PackedByteArray).get_string_from_utf8()
 	if int(res[1]) < 200 or int(res[1]) >= 300:
@@ -501,7 +516,19 @@ func _middleware_call(endpoint: String, body: Dictionary, out_name: String) -> S
 	if dl.request(url) != OK:
 		dl.queue_free()
 		return ""
-	var dres: Array = await dl.request_completed
+	var dl_box: Array = []
+	dl.request_completed.connect(func(a: int, b: int, c: PackedStringArray, d: PackedByteArray) -> void:
+		dl_box.append([a, b, c, d]))
+	var dl_waited := 0.0
+	while dl_box.is_empty() and dl_waited < 150.0:
+		await _tree.create_timer(0.5).timeout
+		dl_waited += 0.5
+	if dl_box.is_empty():
+		print("SceneDirector v2: download HUNG — cancelled")
+		dl.cancel_request()
+		dl.queue_free()
+		return ""
+	var dres: Array = dl_box[0]
 	dl.queue_free()
 	if int(dres[1]) < 200 or int(dres[1]) >= 300 or not FileAccess.file_exists(out_path):
 		return ""
