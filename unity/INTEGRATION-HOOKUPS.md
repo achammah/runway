@@ -94,3 +94,29 @@ Applied all at once at integration; each lane proven OFF-able first (D8).
 - N15 DECISION FOR ME: giant sheets (1140x880 keys/howto) — bake 41ms + boil 42ms
   doubles an already-over-bar build frame; DrawnBoil.MaxPixels at 1<<19 exempts
   exactly those two. Decide with E-numbers at integration.
+
+## D5 particles — ACCEPTED (scraps + motes frames eyeballed: in the hand, restrained)
+- Hookups (4 lines): DraftSelectPage.cs:63 after page rect → Motes.DraftSpotlight(_page);
+  GarageScreen.cs:145 after BuildRoom() → Motes.GarageBulb(_room);
+  WeekCommit.cs:171 after fillAmount=1 → Scraps.Burst(_lockRow);
+  TitleScreen.cs:65 before stamp label → Embers.TitleFire(_root);
+- Hand-rolled sim (no ParticleSystem): UI-geometry rendering — REQUIRED under
+  ScreenSpaceOverlay (a Renderer would draw invisibly behind the canvas).
+  Manifest module reverted; nothing references it.
+- Budgets measured: motes 0.031ms, embers 0.015ms, 0 B/frame GC; burst counts vary 6-10.
+- CROSS-LANE LESSON (ledgered): a code-added Graphic can come up with NULL
+  canvasRenderer and silently never draw — Mount adds it by hand.
+
+## P0 parity harness — ACCEPTED (23/23 twins, exit 0, reproduced twice)
+- Zero hookups (BeforeSceneLoad env injection). Invoke:
+  RUNWAY_USHOTS=<dir> RUNWAY!.app/Contents/MacOS/RUNWAY! -screen-width 1536 -screen-height 1024 -screen-fullscreen 0
+- FOUR SHIPPED-FILE BUGS FOUND (mine to fix):
+  P0-F1 SheetLoop.PlaySheet delivers NO frame in a player build (howto/birth/curtain
+        films EMPTY after 10s; PlaySequence path fine) — explains the perf lane's
+        "no sheet repaint" too. FIX FIRST.
+  P0-F2 untextured SheetLoop draws an opaque WHITE rect (Awake sets color=white).
+  P0-F3 title film first frame > 2.1s (blank in strict twin, ok at +2.5s).
+  P0-F4 FounderDraftScreen.OnBuild calls _select.Select(0,false) on an INACTIVE page
+        → "Coroutine couldn't be started" → default founder idle never plays.
+- Fixture divergences (accepted): Godot binder prints raw cofounder role int (its own
+  bug); metric_history product/week fields uncharted in both.

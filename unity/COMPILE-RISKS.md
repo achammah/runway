@@ -660,16 +660,41 @@ Three fields cannot be transcribed literally because Core is typed where Godot's
 is the single entry point, the env var is the switch, and
 `RUNWAY_FX_USHOTS_OFF` in Scripting Define Symbols compiles all four files out.
 
-One thing the shots FOUND, for whoever owns B3/B4/B6/B7/B15: **a `SheetLoop`
-paints an opaque white rectangle until its first frame lands.** `SheetLoop.Awake`
-sets `_target.color = Color.white` on a `RawImage` whose `texture` is still null,
-and an untextured white `RawImage` is a white quad — where Godot's empty
-`TextureRect` draws nothing. It shows in `n1_title_menu` (the whole title film),
-`n4_keys` (a white square where the mascot idles), `n3_howto` / `howto_p1..p3`
-(the film frame) and `n5_birth_fullframe` / `birth_intro_check` /
-`birth_loop_check` (the whole room). `BirthScreen` already does the right thing
-for its logotype — `_logo.enabled = false` until `ArtCache.Load` returns — so the
-fix is the same move inside `SheetLoop`, which is not this lane's file to edit.
+## P0-5. What the first live set FOUND — for the B lanes, not for this one
+
+All three are in shipped files this lane may not edit, and all three are why the
+harness exists. Evidence: the strict set, plus the same set re-shot with
+`RUNWAY_USHOTS_WARM=2.5` and `=10`, which is what separates "slow" from "broken".
+
+1. **`SheetLoop.PlaySheet` delivers no frame at all in a player build; only
+   `PlaySequence` works.** The per-frame path (title film `frame_NN.png`, keys
+   mascot `chr_loop_hacker_NN.png`) paints correctly once it lands. The grid-sheet
+   path — `title/howto_{1,2,3}.png`, `title/birth_intro.png`,
+   `title/birth_loop.png`, and by inspection `title/curtain_loop.png` — is still an
+   empty frame after **ten seconds** of settle. The files are present in the built
+   `StreamingAssets/Art/title/` (12–16MB each) and nothing is logged. So six of the
+   23 shots (`n3_howto`, `howto_p1..p3`, `n5_birth_fullframe`,
+   `birth_intro_check`, `birth_loop_check`) currently photograph an empty film
+   frame, and the how-to and the birth screen ship with no picture in them.
+2. **An untextured `SheetLoop` is an opaque WHITE rectangle, not nothing.**
+   `SheetLoop.Awake` sets `_target.color = Color.white` on a `RawImage` whose
+   `texture` is still null, and UGUI draws that as a white quad — where Godot's
+   empty `TextureRect` draws nothing. That is why finding 1 reads as a bright hole
+   rather than as cream paper. `BirthScreen` already does the right thing for its
+   logotype (`_logo.enabled = false` until `ArtCache.Load` returns); the same move
+   inside `SheetLoop` would make every slow load invisible instead of loud.
+3. **The title film's first frame takes longer than the 2.1s the .gd harness
+   allows.** `n1_title_menu` is blank in the strict set and fully painted with
+   +2.5s, and `n2_slot_panel` 0.8s later shows the painting through its veil. This
+   one really is latency, not finding 1.
+4. **The founder's idle loop never starts for the DEFAULT founder.**
+   `FounderDraftScreen.OnBuild` ends with `ShowPage(0)` and then
+   `_select.Select(0, false)`, which calls `_hero.Play(...)` while page 1 is still
+   inactive — Unity logs *"Coroutine couldn't be started because the the game
+   object 'hero' is inactive!"* twice per run. Arriving at CHOOSE YOUR FOUNDER
+   without pressing left/right therefore shows a founder who is not breathing.
+   `select_norm_check` and `traits_card` both look right only because the harness
+   re-selects while the page is up, exactly as the two `.gd` harnesses do.
 
 ---
 
