@@ -51,7 +51,8 @@ Only reached if Step 2 did not resolve the move. Apply in order — first match 
 1. **Spend with no amount** — "run Google ads", "throw money at influencers" → ask the amount, `kind="amount"`.
 2. **Delegation or outreach where the target changes everything, and no target is given** — "send someone to close them" → ask who, `kind="target"`.
    - Edge case: if `run_state` crew has only ONE plausible person, the target is unambiguous — no question. If two or more candidates exist, ask.
-3. **A plan that hinges on something `run_state` does not have** — "demo it on the booth screen" with no booth in items → ask about the resource, `kind="resource"`.
+3. **A selling or launch move while an offer has no price** — `run_state.offers` lists what the company sells and whether each has a price; selling with an unpriced offer means revenue cannot exist → ask what they charge for the FIRST unpriced offer, `kind="price"` (e.g. "What do you charge for the standard session?").
+4. **A plan that hinges on something `run_state` does not have** — "demo it on the booth screen" with no booth in items → ask about the resource, `kind="resource"`.
    - Only ask when the state CONFIRMS the thing is absent. If items already lists it, no question.
 
 If none of these match, output no question.

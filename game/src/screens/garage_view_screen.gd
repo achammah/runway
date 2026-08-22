@@ -2123,6 +2123,31 @@ func _spread_ahead() -> void:
 			_jp.choice_made.connect(func(id: String) -> void:
 				if id.begins_with("clr:"):
 					_answer_clarify("budget: $" + _fmt(int(id.substr(4)))))
+		elif String(_clarify["kind"]) == "price":
+			# chips ladder around the FIRST unpriced offer's street price; the
+			# tap writes the price into the ENGINE, then the move re-commits.
+			var target := {}
+			var target_i := -1
+			for oi in state.offers.size():
+				if float((state.offers[oi] as Dictionary).get("price", 0.0)) <= 0.0:
+					target = state.offers[oi]
+					target_i = oi
+					break
+			if target_i >= 0:
+				var fair := float(target.get("fair_price", 20.0))
+				var popts: Array = []
+				for mmul in [0.7, 1.0, 1.4]:
+					var pv := maxi(int(round(fair * mmul)), 1)
+					popts.append({"id": "prc:%d" % pv, "text": "$%s" % _fmt(pv)})
+				_jp.icon_row(popts, Vector2(130, 42), "ending")
+				var t_i := target_i
+				var t_name := String(target.get("name", "the offer"))
+				_jp.choice_made.connect(func(id: String) -> void:
+					if id.begins_with("prc:"):
+						var pv2 := int(id.substr(4))
+						(state.offers[t_i] as Dictionary)["price"] = float(pv2)
+						state.log_action("priced %s at $%d" % [t_name, pv2])
+						_answer_clarify("we price %s at $%d" % [t_name, pv2]))
 		var ce := _jp.write_field("", "ending")
 		ce.placeholder_text = "type an amount, or tap one…" \
 				if String(_clarify["kind"]) == "amount" else "answer, then roll…"

@@ -28,6 +28,11 @@ func _go() -> void:
 	s.marketing_budget = 400
 	s.price_mult = 1.1
 	s.founder_pct = 61.0
+	s.offers = [
+		{"name": "standard session", "unit": "per session", "fair_price": 70.0,
+		 "elasticity": 2.6, "unit_cost": 18.0, "price": 0.0, "weight": 0.7},
+		{"name": "premium package", "unit": "per package", "fair_price": 180.0,
+		 "elasticity": 2.0, "unit_cost": 55.0, "price": 500.0, "weight": 0.3}]
 	s.cofounders = [{"role": 0, "commitment": 0, "equity": 25.0, "vesting": true, "name": "Nico Ferreira"}]
 	s.employees = [{"name": "Priya Voss", "role": "engineer", "salary": 1500, "burnout": 30.0}]
 	s.investors = [{"name": "Harborline Syndicate", "archetype": "the operator VC",
@@ -62,11 +67,11 @@ func _go() -> void:
 	root.add_child(b)
 	b.size = Vector2(1536, 1024)
 	await create_timer(0.6).timeout
-	for i in 8:
+	for i in 9:
 		b.set("_tab", i)
 		b.call("_refresh")
 		await create_timer(0.35).timeout
 		await RenderingServer.frame_post_draw
 		root.get_viewport().get_texture().get_image().save_png("%s/binder_%d.png" % [dir, i])
-	print("BINDER SHOTS -> %s/binder_0..7.png" % dir)
+	print("BINDER SHOTS -> %s/binder_0..8.png" % dir)
 	quit(0)

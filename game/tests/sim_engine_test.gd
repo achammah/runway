@@ -313,6 +313,37 @@ func _go() -> void:
 	_ok(closer < wrong * 0.6,
 		"beliefs converge toward truth (gap %d -> %d)" % [int(wrong), int(closer)])
 
+	# ── pricing: the demand curve discriminates (owner: no $500 massages)
+	var mo := {"name": "massage", "unit": "per session", "fair_price": 70.0,
+		"elasticity": 2.6, "unit_cost": 18.0, "price": 0.0, "weight": 1.0}
+	_ok(SimEngine.offer_demand(mo, 70.0) > 0.95 and SimEngine.offer_demand(mo, 70.0) <= 1.05,
+		"fair price = fair demand")
+	_ok(SimEngine.offer_demand(mo, 500.0) < 0.01,
+		"a $500 massage sells to ~nobody (%.4f)" % SimEngine.offer_demand(mo, 500.0))
+	_ok(SimEngine.offer_demand(mo, 45.0) > 1.5, "a discount stokes demand")
+	_ok(SimEngine.offer_demand(mo, 0.0) == 0.0, "unpriced = not on sale")
+	var ps := _state()
+	ps.traction = 100
+	ps.set_flag("launched")
+	ps.offers = [mo.duplicate()]
+	var r_unp := SimEngine.weekly_tick(ps)
+	_ok(int(r_unp.revenue) == 0, "unpriced offers earn ZERO with 100 customers")
+	var ps2 := _state()
+	ps2.traction = 100
+	ps2.set_flag("launched")
+	var mo2 := mo.duplicate(); mo2["price"] = 70.0
+	ps2.offers = [mo2]
+	var r_fair := SimEngine.weekly_tick(ps2)
+	_ok(int(r_fair.revenue) > 800, "fairly priced sessions pay the rent (%d)" % r_fair.revenue)
+	var ps3 := _state()
+	ps3.traction = 100
+	ps3.set_flag("launched")
+	var mo3 := mo.duplicate(); mo3["price"] = 500.0
+	ps3.offers = [mo3]
+	var r_greed := SimEngine.weekly_tick(ps3)
+	_ok(int(r_greed.revenue) < int(r_fair.revenue) / 4,
+		"greed collapses revenue (%d vs %d)" % [r_greed.revenue, r_fair.revenue])
+
 	# ── loan compounding punishes
 	var ln := _state()
 	ln.cash = 500

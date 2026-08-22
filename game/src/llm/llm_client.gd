@@ -157,7 +157,7 @@ const CLARIFY_SCHEMA := {
 	"properties": {
 		"needs_clarification": {"type": "boolean"},
 		"question": {"type": "string", "maxLength": 90},
-		"kind": {"type": "string", "enum": ["amount", "target", "resource", "other"]},
+		"kind": {"type": "string", "enum": ["amount", "target", "resource", "price", "other"]},
 	},
 }
 

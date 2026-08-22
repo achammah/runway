@@ -123,6 +123,42 @@ const RIVAL_TACTICS := [["undercut pricing", "poached a customer", "shipped a cl
 	["raised a loud round", "hired away talent", "bought ads on your name"],
 	["landed a press feature", "announced a partnership", "opened your segment"]]
 
+## What a business of this shape plausibly sells, priced by the market it
+## serves — the deterministic skeleton the LLM refines. fair_price is the
+## street's reference; elasticity is how hard demand punishes deviation.
+static func default_offers(what: String, who: String, rng: RandomNumberGenerator) -> Array:
+	match what:
+		"Service":
+			return [
+				{"name": "standard session", "unit": "per session",
+				 "fair_price": float(rng.randi_range(45, 85)), "elasticity": 2.6,
+				 "unit_cost": 18.0, "price": 0.0, "weight": 0.7},
+				{"name": "premium package", "unit": "per package",
+				 "fair_price": float(rng.randi_range(140, 260)), "elasticity": 2.0,
+				 "unit_cost": 55.0, "price": 0.0, "weight": 0.3}]
+		"Hardware":
+			return [
+				{"name": "the device", "unit": "per unit",
+				 "fair_price": float(rng.randi_range(120, 420)), "elasticity": 1.8,
+				 "unit_cost": float(rng.randi_range(40, 150)), "price": 0.0, "weight": 0.8},
+				{"name": "accessories", "unit": "per kit",
+				 "fair_price": float(rng.randi_range(25, 60)), "elasticity": 2.4,
+				 "unit_cost": 9.0, "price": 0.0, "weight": 0.2}]
+		"Marketplace":
+			return [
+				{"name": "take rate", "unit": "% of each order",
+				 "fair_price": float(rng.randi_range(8, 18)), "elasticity": 3.0,
+				 "unit_cost": 1.0, "price": 0.0, "weight": 1.0}]
+		_:
+			var base := 12 if who == "Consumer" else (rng.randi_range(29, 79) if who == "SMB" else rng.randi_range(190, 590))
+			return [
+				{"name": "monthly plan", "unit": "per month",
+				 "fair_price": float(base), "elasticity": 2.2 if who != "Enterprise" else 1.5,
+				 "unit_cost": 3.0, "price": 0.0, "weight": 0.8},
+				{"name": "annual plan", "unit": "per year",
+				 "fair_price": float(base) * 10.0, "elasticity": 1.9,
+				 "unit_cost": 30.0, "price": 0.0, "weight": 0.2}]
+
 ## The complete deterministic bible. `seed` is the run seed.
 static func build(state: GameState) -> void:
 	var rng := RandomNumberGenerator.new()
@@ -155,6 +191,8 @@ static func build(state: GameState) -> void:
 			"secret": "quietly running out of money" if rng.randf() < 0.3 else "",
 		})
 	state.rivals = rivals
+	if state.offers.is_empty():
+		state.offers = default_offers(state.biz_what, state.biz_who, rng)
 
 ## Merge an LLM-generated world onto the deterministic skeleton: names, theses
 ## and rivals come from the model (born from the pitch); coords and tactics

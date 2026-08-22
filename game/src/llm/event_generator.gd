@@ -182,6 +182,11 @@ func _directives(state: GameState) -> String:
 				int((c as Dictionary).get("weeks_left", 0)), String((c as Dictionary).get("consequence", ""))])
 	if state.tech_debt >= 70.0:
 		out.append("- Tech debt is %d. The cracks are visible to customers." % int(state.tech_debt))
+	if state.has_flag("launched"):
+		for o in state.offers:
+			if float((o as Dictionary).get("price", 0.0)) <= 0.0:
+				out.append("- '%s' has NO PRICE: it is not on sale and earns $0 however many sign up. If the plan sells, the week must confront this." % String((o as Dictionary).get("name", "an offer")))
+				break
 	return "\n".join(out)
 
 ## Background prefetch of generated event cards.
@@ -270,7 +275,9 @@ func clarify(state: GameState, ev: Dictionary, move: String, cb: Callable) -> vo
 	var user := JSON.stringify({
 		"run_state": {"cash": state.cash, "week": state.week, "era": state.era,
 			"customers": state.traction, "crew": _crew_names(state),
-			"items": state.items, "budgets": state.budgets},
+			"items": state.items, "budgets": state.budgets,
+			"offers": state.offers.map(func(o): return {
+				"name": o.get("name", ""), "priced": float(o.get("price", 0.0)) > 0.0})},
 		"event_card": {"title": String(ev.get("title", "")), "body": String(ev.get("body", "")).left(160)},
 		"move": move.substr(0, 300)})
 	llm.request_json(_clarify_prompt, user, LlmClient.CLARIFY_SCHEMA, func(res: Dictionary):

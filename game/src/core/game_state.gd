@@ -41,7 +41,12 @@ var budgets: Dictionary = {"marketing": 0, "sales": 0, "care": 0, "rnd": 0}
 # WORKING ASSUMPTIONS (owner: nobody knows their LTV on day one): what the
 # founder BELIEVES about the market. Starts wrong, converges toward theta as
 # analytics, customers and R&D teach the truth. The binder shows THESE.
-var beliefs: Dictionary = {}         # $ per week
+var beliefs: Dictionary = {}
+# WHAT WE SELL (owner: pricing is a real decision): 1-3 offers born with the
+# world. {name, unit, fair_price, elasticity, unit_cost, price (0 = NOT ON
+# SALE), weight}. Revenue exists only for priced offers, through the demand
+# curve — a $500 massage sells to almost nobody.
+var offers: Array = []         # $ per week
 var analytics_level: int = 0          # 0..3 — the binder's fog of war
 var tech_debt: float = 10.0
 var fatigue: float = 20.0

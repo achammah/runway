@@ -68,7 +68,7 @@ static func save_run(state: GameState, record: RunRecord) -> void:
 			"statuses": state.statuses, "clocks": state.clocks,
 			"commitments": state.commitments, "pipeline": state.pipeline,
 			"price_mult": state.price_mult, "marketing_budget": state.marketing_budget,
-			"budgets": state.budgets, "beliefs": state.beliefs,
+			"budgets": state.budgets, "beliefs": state.beliefs, "offers": state.offers,
 			"analytics_level": state.analytics_level, "tech_debt": state.tech_debt,
 			"fatigue": state.fatigue, "exhaustion": state.exhaustion,
 			"loan_principal": state.loan_principal, "market_trend": state.market_trend,

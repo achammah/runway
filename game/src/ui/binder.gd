@@ -22,7 +22,7 @@ const YELL := Color("F4B942")
 const BLUE := Color("6E8CA0")
 const HAND := "res://assets/fonts/PatrickHand-Regular.ttf"
 
-const TABS := ["vitals", "the ledger", "customers", "product", "crew", "cap table", "the street", "threats"]
+const TABS := ["vitals", "the ledger", "pricing", "customers", "product", "crew", "cap table", "the street", "threats"]
 
 var state: GameState
 var _font: Font
@@ -61,13 +61,13 @@ func _ready() -> void:
 		b.flat = true
 		b.text = TABS[i]
 		b.add_theme_font_override("font", _font)
-		b.add_theme_font_size_override("font_size", 25)
+		b.add_theme_font_size_override("font_size", 23)
 		b.add_theme_color_override("font_color", INK)
 		b.add_theme_color_override("font_hover_color", PEN)
 		for stn in ["normal", "hover", "pressed", "focus"]:
 			b.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
-		b.position = Vector2(30 + i * 150, 54)
-		b.set_deferred("size", Vector2(146, 44))
+		b.position = Vector2(24 + i * 133, 54)
+		b.set_deferred("size", Vector2(130, 44))
 		var idx := i
 		b.pressed.connect(func() -> void:
 			_tab = idx
@@ -110,12 +110,13 @@ func _refresh() -> void:
 	match _tab:
 		0: _tab_vitals()
 		1: _tab_ledger()
-		2: _tab_customers()
-		3: _tab_product()
-		4: _tab_crew()
-		5: _tab_cap()
-		6: _tab_street()
-		7: _tab_threats()
+		2: _tab_pricing()
+		3: _tab_customers()
+		4: _tab_product()
+		5: _tab_crew()
+		6: _tab_cap()
+		7: _tab_street()
+		8: _tab_threats()
 
 func _label(text: String, pos: Vector2, sz: int = 30, col: Color = INK, w: float = 1100.0) -> Label:
 	var l := Label.new()
@@ -293,7 +294,74 @@ func _ink_btn(btn: Button) -> void:
 	for stn in ["normal", "hover", "pressed", "focus"]:
 		btn.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
 
-# ── tab 2: customers (fog of war) ────────────────────────────────────────────
+# ── tab 2: PRICING — what we sell, at what price, and what the curve says ───
+func _tab_pricing() -> void:
+	_label("pricing — what %s sells" % state.company_name, Vector2(10, 6), 36)
+	if state.offers.is_empty():
+		_label("the world hasn't defined your offers yet — they arrive with the bible.",
+			Vector2(10, 90), 28, Color(INK, 0.6))
+		return
+	var y := 84.0
+	for oi in state.offers.size():
+		var o: Dictionary = state.offers[oi]
+		var price := float(o.get("price", 0.0))
+		var fair := float(o.get("fair_price", 1.0))
+		_label("%s  ·  %s" % [String(o.get("name", "?")).to_upper(), String(o.get("unit", ""))],
+			Vector2(10, y), 30)
+		_label("the street charges ≈ $%s" % _fmt(int(fair)), Vector2(10, y + 38), 23, Color(INK, 0.55))
+		if price <= 0.0:
+			_label("NOT ON SALE — set a price or it earns nothing", Vector2(430, y + 6), 27, PEN)
+		else:
+			var dem := SimEngine.offer_demand(o, price)
+			var verdict := "about fair" if dem > 0.85 and dem < 1.15 else \
+					("a deal — demand ×%.1f" % dem if dem >= 1.15 else \
+					("pricey — %d%% of fair demand" % int(dem * 100.0) if dem > 0.25 else "absurd — ~nobody buys"))
+			_label("$%s   ·   %s" % [_fmt(int(price)), verdict], Vector2(430, y + 6), 28,
+				INK if dem > 0.25 else PEN)
+		var minus := Button.new()
+		minus.text = "−"
+		minus.position = Vector2(1000, y)
+		minus.size = Vector2(52, 46)
+		_ink_btn(minus)
+		var idx := oi
+		minus.pressed.connect(func() -> void:
+			_price_step(idx, -1)
+			_refresh())
+		_content.add_child(minus)
+		var plus := Button.new()
+		plus.text = "+"
+		plus.position = Vector2(1064, y)
+		plus.size = Vector2(52, 46)
+		_ink_btn(plus)
+		plus.pressed.connect(func() -> void:
+			_price_step(idx, 1)
+			_refresh())
+		_content.add_child(plus)
+		y += 104.0
+	var arpu := SimEngine.offers_arpu(state)
+	if arpu >= 0.0:
+		_label("all offers together: ≈ $%.1f per customer per week  →  ≈ $%s/wk at %d customers" % [
+			arpu, _fmt(int(arpu * float(state.traction))), state.traction],
+			Vector2(10, y + 10), 27, BLUE)
+	_label("the curve: price at the street's level and demand is fair · discount and demand grows · overprice and it dies fast",
+		Vector2(10, y + 56), 22, Color(INK, 0.5), 1100.0)
+
+## price steps: sensible ladder around the fair price (0 = off sale)
+func _price_step(oi: int, dir: int) -> void:
+	var o: Dictionary = state.offers[oi]
+	var fair := float(o.get("fair_price", 10.0))
+	var steps: Array = [0.0]
+	for m in [0.4, 0.55, 0.7, 0.85, 1.0, 1.15, 1.35, 1.6, 2.0, 2.6, 3.5, 5.0]:
+		steps.append(maxf(roundf(fair * m), 1.0))
+	var cur := float(o.get("price", 0.0))
+	var idx := 0
+	for i in steps.size():
+		if float(steps[i]) <= cur:
+			idx = i
+	idx = clampi(idx + dir, 0, steps.size() - 1)
+	o["price"] = float(steps[idx])
+
+# ── tab 3: customers (fog of war) ────────────────────────────────────────────
 func _tab_customers() -> void:
 	_icon("customers", Vector2(10, 6))
 	if state.analytics_level <= 0:
@@ -487,11 +555,11 @@ class _Clipboard:
 		# the pen ring around the active tab
 		# 8 tabs at 150px pitch since the ledger arrived — the ring must match
 		# the buttons' own row (owner photos: it circled the gap, then thin air)
-		var tx := 30.0 + float(active_tab) * 150.0
+		var tx := 24.0 + float(active_tab) * 133.0
 		var ring := PackedVector2Array()
 		for i in 33:
 			var t := TAU * float(i) / 32.0
-			ring.append(Vector2(tx + 73.0 + cos(t) * 76.0, 76.0 + sin(t) * 26.0)
+			ring.append(Vector2(tx + 65.0 + cos(t) * 68.0, 76.0 + sin(t) * 26.0)
 				+ Vector2(rng.randf_range(-2, 2), rng.randf_range(-2, 2)))
 		draw_polyline(ring, Binder.PEN, 3.5, true)
 		# a rule under the tab row

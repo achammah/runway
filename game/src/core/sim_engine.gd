@@ -259,6 +259,11 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	var wom := float(th.adopt_ic) * A * P / maxf(N, 1.0) * status_adopt \
 			* (1.0 - pressure) * quality_gate * (1.0 if launched else 0.5)
 	var price_demand := pow(maxf(state.price_mult, 0.1), -1.5)
+	var offer_mult := offers_demand_mult(state)
+	if offer_mult >= 0.0:
+		# offers exist: THEY are the price signal. Nothing on sale still lets
+		# people sign up out of interest (half rate) — but nobody pays.
+		price_demand = 0.5 if offer_mult == 0.0 else offer_mult
 	var adds := (p_eff * P + wom) * clampf(price_demand, 0.1, 3.0)
 	# THE GTM CAPACITY CLAMP (tycoon's staffingBalance): demand is not closing.
 	# A tiny team can only land what its go-to-market can actually handle —
@@ -288,7 +293,14 @@ static func weekly_tick(state: GameState) -> Dictionary:
 		rep["lines"].append("−%d churned (lifetime %d wks at v0.%d)" % [int(round(churn)), int(round(residence)), state.product])
 
 	# 9 ── money: revenue, burn, loan
-	var revenue := float(state.traction) * float(th.arpu_wk) * state.price_mult * status_arpu
+	var arpu_off := offers_arpu(state)
+	var revenue := 0.0
+	if arpu_off >= 0.0:
+		revenue = float(state.traction) * arpu_off * status_arpu
+		if arpu_off == 0.0 and state.traction > 0:
+			rep["lines"].append("NOTHING IS ON SALE — %d customers, $0 revenue. Set prices in THE BINDER." % state.traction)
+	else:
+		revenue = float(state.traction) * float(th.arpu_wk) * state.price_mult * status_arpu
 	var payroll := 0
 	for e2 in state.employees:
 		payroll += int(e2.get("salary", 0))
@@ -567,6 +579,47 @@ static func apply_round(state: GameState, amount: int, equity_pct: float) -> voi
 	state.morale = clampi(state.morale + 5, 0, 100)
 
 # ───────────────────────────── derived signals ───────────────────────────────
+## THE DEMAND CURVE (owner: nobody EVER buys a $500 massage): how much of
+## fair demand survives at this price. (p/fair)^-elasticity, clamped so a
+## giveaway can at most triple demand and an absurd price sells ~nothing.
+static func offer_demand(offer: Dictionary, price: float) -> float:
+	var fair := maxf(float(offer.get("fair_price", 1.0)), 0.01)
+	if price <= 0.0:
+		return 0.0   # not on sale
+	var e := float(offer.get("elasticity", 2.0))
+	return clampf(pow(price / fair, -e), 0.0, 3.0)
+
+## Weekly revenue per customer across PRICED offers (0 when nothing is on
+## sale — an unpriced product earns nothing, however many sign up).
+static func offers_arpu(state: GameState) -> float:
+	if state.offers.is_empty():
+		return -1.0   # legacy runs: fall back to theta arpu
+	var total := 0.0
+	for o in state.offers:
+		var od: Dictionary = o
+		var price := float(od.get("price", 0.0))
+		if price <= 0.0:
+			continue
+		var dem := offer_demand(od, price)
+		# margin per customer-week: weight × demand share × (price − unit cost),
+		# normalised by the unit cadence baked into fair_price scale
+		total += float(od.get("weight", 1.0)) * dem * maxf(price - float(od.get("unit_cost", 0.0)), 0.0) * 0.25
+	return total
+
+## The blended price-demand multiplier adoption feels (1.0 at fair prices).
+static func offers_demand_mult(state: GameState) -> float:
+	if state.offers.is_empty():
+		return -1.0
+	var num := 0.0
+	var den := 0.0
+	for o in state.offers:
+		var od: Dictionary = o
+		var wgt := float(od.get("weight", 1.0))
+		den += wgt
+		var price := float(od.get("price", 0.0))
+		num += wgt * (offer_demand(od, price) if price > 0.0 else 0.0)
+	return clampf(num / maxf(den, 0.01), 0.0, 3.0) if den > 0.0 else 0.0
+
 ## What one week may plausibly spend at this stage — the DM's inputs are
 ## clamped here so no narration can invent hq money in a garage.
 ## First guesses about the market — wrong on purpose, corrected by playing.
