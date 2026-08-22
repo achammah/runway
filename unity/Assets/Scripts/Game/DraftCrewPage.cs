@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Runway.App;
+using Runway.Audio;
 using Runway.Core;
 
 namespace Runway.Game
@@ -44,7 +45,7 @@ namespace Runway.Game
         RectTransform _row;
         RectTransform _recruitLayer;
         Image _donut;
-        TextMeshProUGUI _donutLabel;
+        TextMeshProUGUI _donutPct;
 
         public DraftCrewPage(FounderDraftScreen s) { _s = s; }
 
@@ -68,8 +69,23 @@ namespace Runway.Game
             _donut = DrawnChart.Mount(_body, "donut",
                 DrawnChart.Donut(new[] { 100f }, new[] { DrawnUI.Sage }, 210),
                 1240f, 206f, 210f, 210f);
-            _donutLabel = DrawnUI.HandLabel(_body, "100%\nyours", 1240f, 286f, 30f, DrawnUI.Ink,
-                                            210f, TextAlignmentOptions.Top);
+            // TWO STRINGS, NOT ONE WRAPPED LABEL. `CapTableDonut._draw()` writes the hole
+            // with two separate draw_string calls in Baloo2-Bold — the number at 34 on a
+            // 90px centred field, and "yours" at 18 on a 64px one, thirteen pixels of
+            // baseline apart with the second at 70% ink. Folding them into "100%\nyours"
+            // gave both lines one size, one alpha and TMP's own line pitch, which is why
+            // the word under the number read as loud as the number. draw_string is handed
+            // a BASELINE, so each top-left is that baseline less the display hand's ascent.
+            const float DonutX = 1240f;   // the donut control's own top-left, page space
+            const float DonutY = 206f;
+            const float Cx = DonutX + 105f;   // centre of the 210px donut
+            const float Cy = DonutY + 105f;
+            _donutPct = DrawnUI.DisplayLabel(_body, "100%", Cx - 42f,
+                Cy + 4f - DrawnUI.Ascent(DrawnUI.Display, 34f), 34f, DrawnUI.Ink, 90f,
+                TextAlignmentOptions.Top);
+            DrawnUI.DisplayLabel(_body, "yours", Cx - 32f,
+                Cy + 32f - DrawnUI.Ascent(DrawnUI.Display, 18f), 18f,
+                DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f), 64f, TextAlignmentOptions.Top);
             DrawnUI.HandLabel(_body, "the cap table", 1236f, 430f, 26f,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 218f, TextAlignmentOptions.Top);
 
@@ -107,8 +123,8 @@ namespace Runway.Game
                 }
                 _donut.sprite = DrawnChart.Donut(pcts, cols, 210);
             }
-            if (_donutLabel != null)
-                _donutLabel.text = string.Format("{0:0}%\nyours", founderPct);
+            if (_donutPct != null)
+                _donutPct.text = string.Format("{0:0}%", founderPct);
             RebuildCrew(founderPct);
         }
 
@@ -135,9 +151,12 @@ namespace Runway.Game
             string yname = "YOU";
             string signed = (_s.FounderName ?? "").Trim();
             if (signed.Length > 0) yname = signed.Split(' ')[0].ToUpper();
-            DrawnUI.HandLabel(you, yname + " · CEO", 0f, 210f, 28f, DrawnUI.Ink, cw,
-                              TextAlignmentOptions.Top);
-            DrawnUI.HandLabel(you, string.Format("{0:0}%", founderPct), 0f, 262f, 64f,
+            // NAME AND NUMBER ARE PRINTED, THE REST IS WRITTEN. `_rebuild_crew` sets the
+            // "X · CEO" line and the big percentage with `_dlabel`, and everything under
+            // them — "your slice", the company name, OUTVOTED! — with `_label`.
+            DrawnUI.DisplayLabel(you, yname + " · CEO", 0f, 210f, 28f, DrawnUI.Ink, cw,
+                                 TextAlignmentOptions.Top);
+            DrawnUI.DisplayLabel(you, string.Format("{0:0}%", founderPct), 0f, 262f, 64f,
                 outvoted ? DrawnUI.Coral : DrawnUI.Sage, cw, TextAlignmentOptions.Top);
             DrawnUI.HandLabel(you, "your slice", 0f, 358f, 26f,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), cw, TextAlignmentOptions.Top);
@@ -162,42 +181,50 @@ namespace Runway.Game
                 string art = CofounderArt(slug, mood);
                 if (art.Length > 0) GameUi.Picture(card, "port", art, 30f, 14f, cw - 60f, 176f);
 
+                // EVERY PEN MARK ON THIS SHEET IS `_ink_button`, which sets `_font_d`:
+                // the ✕, both toggles and the two counters are printed, ringed in pen.
                 GameUi.InkWord(card, "✕", cw - 54f, 10f, 44f, 44f, 24f, DrawnUI.Coral, () =>
                 {
+                    Sfx.Cash();
                     _s.Cofounders.RemoveAt(index);
                     _s.RefreshCapLine();
-                });
+                }, TextAlignmentOptions.Center, DrawnUI.Display);
                 if (cf.Name.Length == 0) cf.Name = WorldGen.PersonName(_s.Prng);
-                DrawnUI.HandLabel(card, cf.Name.Split(' ')[0] + " · " + cf.Role.ToUpper(),
+                DrawnUI.DisplayLabel(card, cf.Name.Split(' ')[0] + " · " + cf.Role.ToUpper(),
                     0f, 196f, 24f, DrawnUI.Ink, cw, TextAlignmentOptions.Top);
 
                 bool ft = cf.Commitment == "Full-time";
                 GameUi.InkWord(card, ft ? "FULL-TIME" : "PART-TIME ⚠", 20f, 238f, cw - 40f, 46f,
                     24f, ft ? DrawnUI.Sage : DrawnUI.Coral, () =>
                     {
+                        Sfx.Cash();
                         cf.Commitment = ft ? "Part-time" : "Full-time";
                         _s.RefreshCapLine();
-                    });
+                    }, TextAlignmentOptions.Center, DrawnUI.Display);
 
+                // the two counters are the ONLY controls on this card the original leaves
+                // silent — `minus`/`plus` shake the sprite instead, and a cue on every
+                // fifth of a percent would be a rattle rather than an answer
                 GameUi.InkWord(card, "−", 14f, 298f, 52f, 56f, 34f, DrawnUI.Coral, () =>
                 {
                     cf.Equity = Mathf.Max(1f, (float)cf.Equity - 5f);
                     _s.RefreshCapLine();
-                });
-                DrawnUI.HandLabel(card, string.Format("{0:0}%", cf.Equity), 68f, 296f, 48f,
+                }, TextAlignmentOptions.Center, DrawnUI.Display);
+                DrawnUI.DisplayLabel(card, string.Format("{0:0}%", cf.Equity), 68f, 296f, 48f,
                     DrawnUI.Ink, cw - 136f, TextAlignmentOptions.Top);
                 GameUi.InkWord(card, "+", cw - 66f, 298f, 52f, 56f, 34f, DrawnUI.Sage, () =>
                 {
                     cf.Equity = Mathf.Min(60f, (float)cf.Equity + 5f);
                     _s.RefreshCapLine();
-                });
+                }, TextAlignmentOptions.Center, DrawnUI.Display);
 
                 GameUi.InkWord(card, noVest ? "NO VESTING ⚠" : "VESTED ✓", 20f, 370f, cw - 40f,
                     46f, 24f, noVest ? DrawnUI.Coral : DrawnUI.Sage, () =>
                     {
+                        Sfx.Cash();
                         cf.Vesting = !cf.Vesting;
                         _s.RefreshCapLine();
-                    });
+                    }, TextAlignmentOptions.Center, DrawnUI.Display);
 
                 string moodWord = mood == "happy" ? "☀ thrilled"
                     : (mood == "neutral" ? "steady" : "⛈ resentful…");
@@ -212,9 +239,10 @@ namespace Runway.Game
             {
                 var slot = GameUi.PaperSheet(_row, x0 + (n + 1) * (cw + gap), 0f, cw, ch, 4, 3f,
                     DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), "empty");
+                // the phone and the hint are `_label`; only "+ RECRUIT" is `_dlabel`
                 DrawnUI.HandLabel(slot, "☎", 0f, 150f, 78f,
                     DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), cw, TextAlignmentOptions.Top);
-                DrawnUI.HandLabel(slot, "+ RECRUIT", 0f, 266f, 32f, DrawnUI.Ink, cw,
+                DrawnUI.DisplayLabel(slot, "+ RECRUIT", 0f, 266f, 32f, DrawnUI.Ink, cw,
                     TextAlignmentOptions.Top);
                 DrawnUI.HandLabel(slot, "an empty chair", 0f, 316f, 26f,
                     DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), cw, TextAlignmentOptions.Top);
@@ -252,8 +280,9 @@ namespace Runway.Game
                 string slug = RoleInfo[role][1];
                 string art = CofounderArt(slug, "neutral");
                 if (art.Length > 0) GameUi.Picture(card, "port", art, 30f, 16f, 160f, 190f);
-                DrawnUI.HandLabel(card, role.ToUpper(), 10f, 216f, 26f, DrawnUI.Ink, 200f,
-                                  TextAlignmentOptions.Top);
+                // the role's NAME is `_dlabel`; what it gives you is `_label` under it
+                DrawnUI.DisplayLabel(card, role.ToUpper(), 10f, 216f, 26f, DrawnUI.Ink, 200f,
+                                     TextAlignmentOptions.Top);
                 DrawnUI.HandLabel(card, RoleInfo[role][0], 10f, 262f, 25f, DrawnUI.Ink, 200f,
                                   TextAlignmentOptions.Top);
                 if (taken)
@@ -261,8 +290,8 @@ namespace Runway.Game
                     // already on the cap table: scribbled out in pen, not dimmed —
                     // fading the sheet turned the paper brown, which reads as dirty
                     GameUi.PenCross(card, 220f, 424f);
-                    DrawnUI.HandLabel(card, "ON BOARD", 10f, 372f, 26f, DrawnUI.Coral, 200f,
-                                      TextAlignmentOptions.Top);
+                    DrawnUI.DisplayLabel(card, "ON BOARD", 10f, 372f, 26f, DrawnUI.Coral, 200f,
+                                         TextAlignmentOptions.Top);
                     continue;
                 }
                 var hit = card.gameObject.AddComponent<Image>();
@@ -274,6 +303,7 @@ namespace Runway.Game
                 string pickRole = role;
                 b.onClick.AddListener(() =>
                 {
+                    Sfx.Cash();
                     CloseRecruit();
                     _s.Cofounders.Add(new DraftCofounder
                     {

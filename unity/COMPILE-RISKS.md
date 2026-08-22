@@ -1689,3 +1689,144 @@ below come out either way). Four PNGs and a `measurements.txt`.
 - `FontBaker`'s menu item is now `RUNWAY!/Rebuild the fonts` (it bakes four assets,
   not one). `Editor/Bootstrap.cs:44` calls `FontBaker.Rebuild()`, which still
   exists with the same signature.
+
+---
+
+# D-ROUTE — which hand each word is in, and the cues the flow was missing
+
+D-TYPE proved the display hand exists, measures right and bakes its borrowed glyphs.
+It deliberately routed **nothing**: `DrawnUI.Display` shipped with one caller, the
+probe. This section is the routing itself, plus the sound the same screens were
+short of, plus one line of copy that was not true.
+
+The rule is Godot's own and it is **per site, never wholesale**. Anything
+`_font_d`/`_dlabel`/`_style_button`/`_paper_card`/`_bare_button`/`_ink_button`/
+`_rule_under`/`StatPips`/`TraitPips` draws is Baloo2 Bold; anything `_label`/`_font`
+draws is Patrick Hand. Every site in the eleven files was read against
+`founder_draft_screen.gd` / `garage_view_screen.gd` before anything moved:
+**48 went to the display hand** (27 labels, 15 paper-card captions, 6 pen-marked
+controls) and **47 were checked and stayed in the writing one**. The two live side
+by side on the same card more often than not, which is why a wholesale swap would
+have been worse than no swap at all.
+
+## D-ROUTE-1. Blocking risks — these stop a compile if they are wrong
+
+| # | API | Where | Why it was a guess | Fallback |
+|---|---|---|---|---|
+| D-ROUTE-A1 | An optional trailing `TMP_FontAsset font = null` on three public button factories | `DrawnUI.PaperButton`, `DrawnUI.FlatButton`, `GameUi.InkWord` | Adding a parameter to a public method breaks any caller that already passes something positional in that slot. `PaperButton` had `hoverScale` and `PaperStyle?` before it; `FlatButton` and `InkWord` had `TextAlignmentOptions`. | Every caller was enumerated before the change — 7 `PaperButton` (three of them editor probes), 7 `FlatButton`, 14 `InkWord` — and none passes anything past the new tail. The default is `null`, which resolves to `Hand`: the exact behaviour that shipped. Compile is clean at 0 errors. |
+| D-ROUTE-A2 | `DrawnUI.Written(font, …)` reachable from `PaperButton`/`FlatButton` | `DrawnUI` | `Written` is the private core `HandLabel`/`DisplayLabel` both wrap; the two button factories called `HandLabel` and had to reach one rung lower to take a font. | Same class, same file — a private static is visible to its own type. If it ever moves, `DisplayLabel`/`HandLabel` on a branch does the same job in two lines. |
+| D-ROUTE-A3 | `Runway.Audio.Sfx` from `Runway.Game` and `Runway.Screens` | six files gained `using Runway.Audio;` | `Sfx` is a static class in a sibling namespace with no assembly definition between them; `GarageScreen` and `JournalSpreads` already reached it, which is the precedent. | Nothing in `Runway.Game` declares a competing `Sfx`, so the `using` cannot become ambiguous. Verified by compile. |
+| D-ROUTE-A4 | `DrawnUI.Ascent(TMP_FontAsset, float)` | `DraftCrewPage` donut hole | The two-argument overload is newer than `Ascent(float)` and is what converts a `draw_string` BASELINE into a TMP top-left for a font that is not the hand. | Public since D-TYPE, and it guards `pointSize > 0f` internally with Patrick Hand's literal hhea numbers under it. A null display font returns the hand's ascent, which is 3% short and still on the right line. |
+
+## D-ROUTE-2. Runtime risks — they compile, but may not do what Godot does
+
+| # | Risk | Where | Detail | What was done |
+|---|---|---|---|---|
+| D-ROUTE-B1 | **Every draft door now answers, including the six Godot leaves silent.** | `FounderDraftScreen.Nav` | The original plays `cash.wav` on most doors and on **none** of the back arrows or the recruit modal's hang-up. Wrapping the factory covers all **fourteen** Nav sites at once, six of which the original does not cue. | Deliberate, and the one place this lane departs from the `.gd`. A back arrow that clicks and says nothing reads as a click that did not land; the alternative is fourteen call sites each remembering. The cue is the same `cash` at the same 0dB, so nothing new is heard, only more often. |
+| D-ROUTE-B2 | **The first cue of a run can be dropped rather than played.** | `Sfx`, everywhere | `Sfx` is lazy per cue: the first ask of a cold cue starts the load and only plays it on arrival if that lands inside `LateWindow` (250ms). `DraftSelectPage.Select` is called once at build with index 0, so on a cold machine the boot click may be swallowed while `cash.wav` decodes. | Left alone — it is `Sfx`'s own documented contract and it is right (a whoosh answering 400ms late reads as a fault). If the boot click is ever wanted, `Sfx.Warm(Sfx.Cue.Cash, Sfx.Cue.CardFlip, Sfx.Cue.Deposit)` in `OnBuild` is the Godot `_ready()` behaviour and is one line. |
+| D-ROUTE-B3 | **The cap-table hole stopped being one label and became two.** | `DraftCrewPage` | `CapTableDonut._draw()` writes the hole with **two** `draw_string` calls in Baloo2 Bold: the number at 34 on a 90px centred field at full ink, and `"yours"` at 18 on a 64px field at 70% ink, 28px of baseline apart. The port had folded them into `"100%\nyours"` on one wrapped 30px hand label, which gave the word under the number the number's own size and alpha. | Split, at the transcribed geometry: `centre + (-42, +4)` and `centre + (-32, +32)`, each top-left computed as that baseline less `DrawnUI.Ascent(Display, size)`. Only the number is re-bound on `Refresh`; `"yours"` never changes. The field is `_donutPct` now, not `_donutLabel` — the rename is contained to this file. |
+| D-ROUTE-B4 | **`⚠` on the crew toggles is now shaped by the display hand's fallback chain.** | `DraftCrewPage` FULL-TIME / VESTED | D-TYPE-B3 flagged U+26A0 as the loud one: STIX Two Math draws it as a large open triangle. The character has not changed and neither has the face that supplies it — `LendGlyphs` hangs the same chain off both hands — but it now sits beside Baloo2 letterforms instead of Patrick Hand ones. | Accepted. Godot has the identical pairing (`_ink_button` sets `_font_d` and Godot's own system fallback draws the triangle), so this is the original's look, not a new one. |
+| D-ROUTE-B5 | **The dice cues fire only when a sheet is actually on hand.** | `DiceRoll.BuildParts` | `dice_roll.gd` opens its whoosh in `_ready()` — before `roll(n)` has looked for a sheet — so the original plays a curtain even for a roll it then skips. The port's missing-sheet branch returns above the cue. | Deliberate: a whoosh with no cup after it is a sound with nothing attached. Both cues sit immediately after `PlaySheet`, so the ceremony that sounds is the ceremony that plays. Levels are the original's: `Curtain(-6f, 1.25f)` is the cue's own -8dB plus a -6 trim = -14dB at 1.25x, and `DiceRattle()` bare is -6dB. |
+| D-ROUTE-B6 | **`Toggle` cues after the full-bag refusal, not before it.** | `DraftBagPage.Toggle` | `_toggle_bag` returns out of its shake branch **without** reaching `_sfx_click.play()`, so a bag that will not take the thing is silent. Cueing on entry would make a refusal sound exactly like an acceptance. | The cue sits after the if/else, which is where the `.gd` puts it. The take-it-back-out path reaches it too, which the original also does. |
+| D-ROUTE-B7 | **A heading's rule is now measured in a wider hand, so it is 24% longer.** | `FounderDraftScreen.Heading` | Nothing on the seven pages sits under a heading closely enough to collide, but the rule now runs to 639px at 58 instead of 515. The widest is `CHOOSE YOUR FOUNDER` at x=60, ending at 701 — clear of the stat sheet at 936. | Checked at all seven headings plus the recruit modal's. The tightest is `WHO DO YOU CALL?` at x=188 @48, whose rule ends around 630 and whose first card starts at 188/y=306, a row below. |
+
+## D-ROUTE-3. Verified, not guessed — `Editor/RouteShot.cs`
+
+`Unity -batchmode -quit -projectPath unity -executeMethod Runway.EditorTools.RouteShot.Run`
+(**no `-nographics`** — the frame needs a device to rasterise type with). Writes
+`route-select.png` and `measurements.txt` to `$RUNWAY_ROUTE_OUT`.
+
+One frame, built through the **shipping** calls — `FounderDraftScreen.Heading`,
+`GameUi.StatPips`, `GameUi.TraitPips`, `DrawnUI.PaperButton` — so which hand each
+element ended up in is looked at, not asserted about. It carries its own control:
+the page heading is drawn twice, once through the shipping path and once the way it
+read before, each under a rule measured in its own hand, with a coral tick at the
+width Godot's headless probe reported.
+
+- **The heading now measures what Godot measured.** Display 638.75 against Godot's
+  639.00 (−0.25px); the hand measures 514.77 against 515.00. The rule under every
+  draft heading was cut to the second number and is now cut to the first —
+  **123.98px short of its own word at 58**, which the frame shows as a coral rule
+  stopping a fifth of the way before the tick.
+- **The trait rule was short by the same proportion.** `TraitPips` measures the word
+  it just wrote: PARANOIA 89.03 display against 70.72 hand, CHARISMA 89.81 against
+  70.97, LUCK 44.40 against 37.86. Both the word and its measurement moved together,
+  so the dotted rule under each trait name now ends where the name does.
+- **Both fonts resolve and they are different objects.** `PatrickHand SDF` and
+  `Baloo2 SDF`, ascent 1.04x and 1.08x. The probe says so out loud if `Display`
+  ever falls back to `Hand`, because that is the state in which every route below
+  looks correct and none of them did anything.
+- **The frame shows the mixed sheet, which is the point.** On one card:
+  `THE GARAGE HACKER` display over a Patrick Hand tagline; BUILD/SELL/RAISE/RECRUIT/
+  GRIT display; `HIDDEN TRAITS` display beside `click any trait for what it does` in
+  the hand; six display trait names with hand-written `+1`/`−1` beside them;
+  `IN THE BANK, DAY ONE` in the hand over `$12,000` in display. That interleaving is
+  what a wholesale swap would have destroyed.
+- **The cap-table hole reads as two things again**: `62%` at 34 full ink over
+  `yours` at 18 at 70%, centred in the donut, on the crew page's own paper.
+- **Both papers and both hands, side by side**: the draft's LOCK IN card (display
+  caption, shadow (7,9) at 0.18) beside the title screen's (writing hand, (4,5) at
+  0.35).
+- 604,754 lit pixels of 1,572,864 — the device rasterised.
+
+**Running it dirties two files** (D-TYPE-B7): rendering this much Baloo2 populates
+`Assets/Resources/Fonts/Baloo2 SDF.asset` from 6KB to 1.9MB, and the editor persists
+it. The tree here was restored to its committed state afterwards; nothing depends on
+a pre-populated atlas, because the fallback wiring lives in `DrawnUI.LendGlyphs`,
+which runs on first use in the editor and in a player alike.
+
+## D-ROUTE-4. What stayed in the writing hand, and the line that proves it
+
+34 sites were checked and left alone. The pattern is consistent enough to state as a
+rule: **on this flow the printed thing is the label and the written thing is the
+value's company** — headings, names, numbers and controls are `_dlabel`, and every
+caption, subtitle, hint, blurb, mood and joke around them is `_label`.
+
+| Left in the hand | `.gd` evidence |
+|---|---|
+| the tagline under the founder's name, `_dTag` | `founder_draft_screen.gd:541` `_label(…, 26, …)` |
+| `click any trait for what it does` | `:576` |
+| `IN THE BANK, DAY ONE`, `PERK`, and the perk text | `:603`, `:609`, `:612` — three `_label` around one `_dlabel` number at `:606` |
+| the tip's body under its display head | `:643` (head is `_dlabel` at `:633`) |
+| `LOCKED IN`, the 110px stamp | `:894` — the biggest word on the page, and it is hand-written |
+| every page's subtitle line | `:923`, `:1087`, `:1154`, `:1297`, `:1517`, `:1622` |
+| the shape card's description and its `✓` chip | `:1231`, and the chip is built on `_font` at `:1243` |
+| the money card's cost line and flavour | `:1559`, `:1564` |
+| the money strip's preview line | `:1582` |
+| `everything you own`, the shelf's section captions, `▼ scroll` | `:1638`, `:1696`, `:1773` |
+| the item detail's blurb and slot cost | `:1826`, `:1831` |
+| `nothing packed yet.`, the packed ticks and names | `:1888`, `:2136`, `:2141` |
+| the bag summary and the loadout note | `:1907`, `:1922` |
+| the `+1`/`−1` beside each trait row | `:2751` — `TraitPips._draw()` uses `font`, not `fontd`, for this one element |
+| `your slice`, the company name, `OUTVOTED!`, `is yours to run` | `:2297`, `:2303`, `:2310`, `:2316` |
+| the cofounder's mood line | `:2434` |
+| the empty chair's `☎` and `an empty chair` | `:2456`, `:2468` (only `+ RECRUIT` between them is `_dlabel`, `:2462`) |
+| what a role gives you, on the recruit card | `:1469` |
+| `whoever you call will want ~25%` | `:1493` |
+| `the cap table`, under the donut | `:1321` |
+| the ItemCard's hand-lettered name | `:2782` — its own `_draw` loads Patrick Hand |
+| the garage's cap-table scrap, `%\nyours` | `garage_view_screen.gd:264` `_mk_label`, beside two `_mk_dlabel` chips at `:231` and `:311` |
+| every `ModStrip`/`TokenLine` token | `:2846` — the strip loads Patrick Hand for the whole line |
+
+## D-ROUTE-5. The seam
+
+- **Three public signatures gained an optional trailing font**, defaulted to `null`
+  → the writing hand. `DrawnUI.PaperButton`, `DrawnUI.FlatButton`, `GameUi.InkWord`.
+  Every existing caller compiles and renders unchanged; the title screen, the keys
+  screen, `MissingScreen`, `BinderScreen`, `BookIntroScreen` and `AutopsyScreen` were
+  all read and all stay in the hand.
+- **`FounderDraftScreen.Nav` is the only place a draft cue is registered.** Fourteen
+  doors, one `Sfx.Cash()`. A page that wants a different cue passes its own `onClick`
+  and gets both, which is what the original does on the pages that cue twice.
+- **`DraftCrewPage._donutLabel` is now `_donutPct`** and there are two labels where
+  there was one. Nothing outside the file touched either.
+- **`GameUi.StatPips` and `GameUi.TraitPips` route internally.** No caller changed,
+  including `Editor/DraftSelectProbe.cs`, which photographs both.
+- **`GarageScreen`'s three HUD chips moved; its cap-table scrap did not.** The room's
+  other five hand labels (the missing-run note, the item note's two lines, the paint
+  ribbon, the dread-beat fun fact) are `_font` in the `.gd` and were left.
+- **`KeysScreen`'s storage line is now true.** It read "never sent anywhere but
+  OpenAI"; `SceneDirector.MiddlewareCall` sends this very key to the game's own
+  render middleware as an `x-openai-api-key` header so the rooms can be painted. It
+  now reads "sent only to OpenAI and the game's own art painter" — same voice, same
+  band, one line, and nothing the build cannot keep.

@@ -4,6 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Runway.App;
+using Runway.Audio;
 
 namespace Runway.Game
 {
@@ -61,10 +62,12 @@ namespace Runway.Game
                                              4f, null, "fund");
                 GameUi.Tilt(card, leans[i % 3]);
                 GameUi.Picture(card, "icon", ArtCache.SpritePath(d.Icon ?? ""), 125f, 30f, 150f, 150f);
-                DrawnUI.HandLabel(card, ContentDb.Str(f, "name"), 20f, 196f, 30f, DrawnUI.Ink,
-                                  360f, TextAlignmentOptions.Top);
-                DrawnUI.HandLabel(card, d.Big ?? "", 20f, 252f, 40f, DrawnUI.Ink, 360f,
-                                  TextAlignmentOptions.Top);
+                // NAME AND NUMBER ARE `_dlabel`. What it costs and the joke under it are
+                // `_label` — the money is printed on the card, the terms are written on it.
+                DrawnUI.DisplayLabel(card, ContentDb.Str(f, "name"), 20f, 196f, 30f, DrawnUI.Ink,
+                                     360f, TextAlignmentOptions.Top);
+                DrawnUI.DisplayLabel(card, d.Big ?? "", 20f, 252f, 40f, DrawnUI.Ink, 360f,
+                                     TextAlignmentOptions.Top);
                 DrawnUI.HandLabel(card, d.Cost ?? "", 20f, 330f, 32f,
                     d.CostIsCoral ? DrawnUI.Coral : DrawnUI.Sage, 360f, TextAlignmentOptions.Top);
                 DrawnUI.HandLabel(card, d.Flavor ?? "", 30f, 404f, 27f,
@@ -80,6 +83,7 @@ namespace Runway.Game
                 b.onClick.AddListener(() =>
                 {
                     _s.SelFund = pick;
+                    Sfx.Cash();
                     _s.RefreshCapLine();
                 });
                 _cards.Add(card);

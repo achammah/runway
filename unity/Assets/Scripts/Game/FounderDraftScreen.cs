@@ -6,6 +6,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Runway.App;
+using Runway.Audio;
 using Runway.Core;
 
 namespace Runway.Game
@@ -141,6 +142,7 @@ namespace Runway.Game
             }
             Runway.Effects.GlowSprites.Apply(Rect, Runway.Effects.GlowScene.SelectStage);
 
+            Runway.Audio.Sfx.Warm(Runway.Audio.Sfx.Cue.CardFlip, Runway.Audio.Sfx.Cue.Cash);
             if (Archetypes.Count > 0) SelArch = Archetypes[0] as JObject;
 
             _sign = new DraftSignPage(this);
@@ -192,12 +194,16 @@ namespace Runway.Game
             DrawnUI.FullFill(page, "dim", new Color(0.11f, 0.13f, 0.16f, 0.84f), true);
         }
 
-        /// A hand-lettered heading with a coral rule under it, measured to the word.
+        /// EVERY HEADING ON THIS FLOW IS `_dlabel` — the DISPLAY hand. Each of the seven
+        /// `_build_*` pages opens with `_ink_outline(_dlabel(...))`, and `_rule_under`
+        /// then asks `_font_d` — not `_font` — how wide those words are before it draws
+        /// the coral. Patrick Hand is about a fifth narrower at the same size, so a
+        /// heading measured in the writing hand under-runs its own rule by ~120px at 58.
         public static TextMeshProUGUI Heading(RectTransform page, string text, float size,
                                               float x, float y)
         {
-            var t = DrawnUI.HandLabel(page, text, x, y, size, DrawnUI.Cream);
-            float w = DrawnUI.MeasureWidth(text, size);
+            var t = DrawnUI.DisplayLabel(page, text, x, y, size, DrawnUI.Cream);
+            float w = DrawnUI.MeasureWidth(text, size, DrawnUI.Display);
             GameUi.HandRule(page, x + 2f, y + size * 1.48f, w, DrawnUI.Coral, 6);
             return t;
         }
@@ -205,12 +211,18 @@ namespace Runway.Game
         /// The paper card every "next"/"back" door on this flow is cut from — the SAME
         /// paper as every sheet on it (`_paper_card` builds a PaperEdge, not the title
         /// screen's card), leaning by its own x exactly as `int(b.position.x) % 5` does.
+        /// Its caption is re-issued in `_font_d`, so the word is the display hand.
+        ///
+        /// EVERY DOOR ANSWERS. The original plays `cash.wav` on most of these and on
+        /// none of the back arrows, which leaves a third of the flow's clicks silent
+        /// for no reason a player can hear. One cue in the factory covers all thirteen.
         public Button Nav(RectTransform page, string text, float x, float y, float w, float h,
                           float size, Action onClick)
         {
             return DrawnUI.PaperButton(page, text, x, y, w, h, size, DrawnUI.Ink,
-                                       DrawnUI.CoralDark, onClick, 1.045f,
-                                       GameUi.DraftPaper((int)x % 5));
+                                       DrawnUI.CoralDark,
+                                       () => { Sfx.Cash(); if (onClick != null) onClick(); },
+                                       1.045f, GameUi.DraftPaper((int)x % 5), DrawnUI.Display);
         }
 
         // ══ page switching ═════════════════════════════════════════════════════
@@ -228,6 +240,9 @@ namespace Runway.Game
         IEnumerator Wipe(int pageIndex)
         {
             _wiping = true;
+            // the pad comes up off the desk — `_transition_to` builds a card_flip player
+            // and plays it as the panels start to close, not when they finish
+            Sfx.CardFlip();
             var top = DrawnUI.Fill(Rect, "wipe_top", DrawnUI.Ink, 0f, 0f, RunwayPaths.StageWidth, 0f);
             var bottom = DrawnUI.Fill(Rect, "wipe_bottom", DrawnUI.Ink, 0f,
                                       RunwayPaths.StageHeight, RunwayPaths.StageWidth, 0f);

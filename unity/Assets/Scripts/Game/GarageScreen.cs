@@ -294,11 +294,14 @@ namespace Runway.Game
         {
             var plate = GameUi.PaperSheet(Rect, 24f, 14f, 430f, 52f, 1, 3f, null, "hud");
             GameUi.Tilt(plate, -0.004f);
-            _hudLabel = DrawnUI.HandLabel(plate, "", 16f, 4f, 29f, DrawnUI.Ink, 400f);
+            // THE ROOM'S CHIPS ARE PRINTED, ITS CAP-TABLE PAPER IS WRITTEN. The company
+            // line and the money tag are `_mk_dlabel`; the "%\nyours" on the pinned scrap
+            // is `_mk_label`, and is the one HUD element that stays in the writing hand.
+            _hudLabel = DrawnUI.DisplayLabel(plate, "", 16f, 4f, 29f, DrawnUI.Ink, 400f);
 
             _moneyTag = GameUi.PaperSheet(Rect, 64f, 700f, 180f, 48f, 2, 3f, null, "moneytag");
             GameUi.Tilt(_moneyTag, -0.02f);
-            _moneyLabel = DrawnUI.HandLabel(_moneyTag, "$0", 14f, 4f, 29f, DrawnUI.Ink, 160f);
+            _moneyLabel = DrawnUI.DisplayLabel(_moneyTag, "$0", 14f, 4f, 29f, DrawnUI.Ink, 160f);
 
             _capPaper = GameUi.PaperSheet(Rect, 1164f, 306f, 118f, 138f, 3, 3f, null, "cap");
             GameUi.Tilt(_capPaper, 0.045f);
@@ -310,8 +313,9 @@ namespace Runway.Game
             style.Seed = 14;
             var card = DrawnUI.PaperCard(_openBtn, new Vector2(420f, 76f), 0f, 0f, style, "card");
             card.SetSiblingIndex(0);
-            _openWord = DrawnUI.HandLabel(_openBtn, "OPEN THE JOURNAL", 0f, 0f, 30f,
-                                          DrawnUI.Ink, 420f, TextAlignmentOptions.Center);
+            // both doors out of the room go through `_style_button`, which sets `_font_d`
+            _openWord = DrawnUI.DisplayLabel(_openBtn, "OPEN THE JOURNAL", 0f, 0f, 30f,
+                                             DrawnUI.Ink, 420f, TextAlignmentOptions.Center);
             _openWord.rectTransform.anchorMin = Vector2.zero;
             _openWord.rectTransform.anchorMax = Vector2.one;
             _openWord.rectTransform.offsetMin = Vector2.zero;
@@ -326,8 +330,8 @@ namespace Runway.Game
 
             // the binder's doorway: a smaller drawn tab beside the journal button
             var bb = GameUi.PaperSheet(Rect, 1272f, 936f, 240f, 56f, 4, 3f, null, "bindertab");
-            DrawnUI.HandLabel(bb, "THE BINDER (TAB)", 0f, 12f, 24f, DrawnUI.Ink, 240f,
-                              TextAlignmentOptions.Top);
+            DrawnUI.DisplayLabel(bb, "THE BINDER (TAB)", 0f, 12f, 24f, DrawnUI.Ink, 240f,
+                                 TextAlignmentOptions.Top);
             var bh = bb.gameObject.AddComponent<Image>();
             bh.color = new Color(0f, 0f, 0f, 0f);
             bh.raycastTarget = true;

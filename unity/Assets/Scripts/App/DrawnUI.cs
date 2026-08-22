@@ -618,11 +618,17 @@ namespace Runway.App
         /// A paper button: cream card, wobbled edge, and the word re-issued ABOVE the
         /// paper — the exact assembly title_screen.gd builds, for the exact reason
         /// (the card paints over a Button's own label).
+        ///
+        /// THE WORD IS IN THE WRITING HAND UNLESS A CALLER SAYS OTHERWISE. title_screen.gd
+        /// loads Patrick Hand and nothing else, so its cards stay in the hand; the draft's
+        /// `_paper_card` re-issues its caption in `_font_d`, so every card on that flow
+        /// passes `DrawnUI.Display`. One optional argument keeps both true at once.
         public static Button PaperButton(RectTransform parent, string text,
                                          float x, float y, float w, float h,
                                          float fontSize, Color word, Color wordHover,
                                          Action onClick, float hoverScale = 1.045f,
-                                         PaperStyle? style = null)
+                                         PaperStyle? style = null,
+                                         TMP_FontAsset font = null)
         {
             var rt = Rect(parent, "paperbutton", x, y, w, h);
             rt.pivot = new Vector2(0.5f, 0.5f);
@@ -639,8 +645,8 @@ namespace Runway.App
             card.pivot = new Vector2(0f, 1f);
             card.anchoredPosition = Vector2.zero;
 
-            var label = HandLabel(inner, text, 0f, 0f, fontSize, word, w,
-                                  TextAlignmentOptions.Center);
+            var label = Written(font != null ? font : Hand, inner, text, 0f, 0f, fontSize,
+                                word, w, TextAlignmentOptions.Center, LabelLeading);
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMin = Vector2.zero;
@@ -658,18 +664,23 @@ namespace Runway.App
 
         /// A flat word with no paper under it: the keys screen's two doors, the title's
         /// corner links, "← back". flat = true in Godot, every stylebox emptied.
+        ///
+        /// Same font rule as PaperButton: the hand by default, and the display hand for
+        /// the callers whose Godot original stands on `_ink_button`, which sets `_font_d`.
         public static Button FlatButton(RectTransform parent, string text,
                                         float x, float y, float w, float h,
                                         float fontSize, Color word, Color wordHover,
                                         Action onClick,
-                                        TextAlignmentOptions align = TextAlignmentOptions.Left)
+                                        TextAlignmentOptions align = TextAlignmentOptions.Left,
+                                        TMP_FontAsset font = null)
         {
             var rt = Rect(parent, "flatbutton", x, y, w, h);
             var hit = rt.gameObject.AddComponent<Image>();
             hit.color = new Color(0f, 0f, 0f, 0f);
             hit.raycastTarget = true;
 
-            var label = HandLabel(rt, text, 0f, 0f, fontSize, word, w, align);
+            var label = Written(font != null ? font : Hand, rt, text, 0f, 0f, fontSize,
+                                word, w, align, LabelLeading);
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMin = Vector2.zero;

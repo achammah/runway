@@ -4,6 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Runway.App;
+using Runway.Audio;
 using Runway.Core;
 
 namespace Runway.Game
@@ -186,8 +187,10 @@ namespace Runway.Game
             _detailArt = artRt.gameObject.AddComponent<RawImage>();
             _detailArt.raycastTarget = false;
             _detailArt.enabled = false;
-            _detailName = DrawnUI.HandLabel(_detailPanel, "", 10f, 176f, 30f, DrawnUI.Ink, 320f,
-                                            TextAlignmentOptions.Top);
+            // the thing's NAME is `_dlabel`; the arithmetic strip, the joke and the slot
+            // cost under it are all `_label` — one printed line on a written card
+            _detailName = DrawnUI.DisplayLabel(_detailPanel, "", 10f, 176f, 30f, DrawnUI.Ink,
+                                               320f, TextAlignmentOptions.Top);
             GameUi.HandRule(_detailPanel, 115f, 226f, 110f, DrawnUI.Coral, 10);
             _detailMods = DrawnUI.Rect(_detailPanel, "mods", 14f, 240f, 312f, 34f);
             _detailBlurb = DrawnUI.HandLabel(_detailPanel, "", 30f, 280f, 26f, DrawnUI.Ink, 280f,
@@ -248,7 +251,10 @@ namespace Runway.Game
             var tag = GameUi.PaperSheet(_page, 1178f, 352f, 288f, 238f, 3, 4f, null, "label");
             GameUi.TiltCentre(tag, -0.018f);
             _boxAnchor = new Vector2(1178f + 144f, 352f + 119f);
-            _slotsLabel = DrawnUI.HandLabel(tag, "IN THE BAG · 0/4", 18f, 12f, 28f, DrawnUI.Ink, 252f);
+            // the label's HEADING is `_dlabel`; the ruled lines under it, "nothing packed
+            // yet." and every packed name are `_label` — a printed form, filled in by hand
+            _slotsLabel = DrawnUI.DisplayLabel(tag, "IN THE BAG · 0/4", 18f, 12f, 28f,
+                                               DrawnUI.Ink, 252f);
             GameUi.HandRule(tag, 18f, 52f, 252f, DrawnUI.WithAlpha(DrawnUI.Sage, 0.8f), 11);
             // four printed rules, one per slot: ruled, the same emptiness reads as a
             // form waiting to be filled in rather than a blank cream field
@@ -310,6 +316,10 @@ namespace Runway.Game
                 _s.Bag.Add(id);
                 Paint(id, true);
             }
+            // AFTER the full-bag refusal, never before it: `_toggle_bag` returns out of
+            // the shake branch without ever reaching its `_sfx_click.play()`, so a bag
+            // that will not take the thing stays silent and the refusal reads as one.
+            Sfx.Cash();
             _s.RefreshCapLine();
         }
 

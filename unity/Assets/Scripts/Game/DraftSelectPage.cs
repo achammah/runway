@@ -4,6 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Runway.App;
+using Runway.Audio;
 using Runway.Core;
 
 namespace Runway.Game
@@ -83,10 +84,11 @@ namespace Runway.Game
             BuildRoster();
 
             // the same paper as the sheet it sits beside — a card with the title
-            // screen's harder shadow on it reads as a different piece of paper
+            // screen's harder shadow on it reads as a different piece of paper, and the
+            // word on it is `_paper_card`'s re-issued cap, which is set in `_font_d`
             _lockBtn = DrawnUI.PaperButton(_page, "LOCK IN  →", 1230f, 880f, 260f, 84f, 36f,
                 DrawnUI.Ink, DrawnUI.CoralDark, LockIn, 1.045f,
-                GameUi.DraftPaper(1230 % 5)).GetComponent<RectTransform>();
+                GameUi.DraftPaper(1230 % 5), DrawnUI.Display).GetComponent<RectTransform>();
 
             _breath = _page.gameObject.AddComponent<DraftBreath>();
             _breath.Bind(_heroHolder, _heroShadow, _title, _lockBtn, _heroBaseY);
@@ -101,7 +103,9 @@ namespace Runway.Game
                 FounderDraftScreen.SheetBottomMax - 72f, 1, 4f, null, "sheet");
             GameUi.Tilt(_panel, -0.008f);
 
-            _dName = DrawnUI.HandLabel(_panel, "", 44f, 20f, 46f, DrawnUI.Ink, 470f);
+            // the founder's NAME is `_dlabel` — the display hand; the tagline under it
+            // is `_label`, and stays in the writing one
+            _dName = DrawnUI.DisplayLabel(_panel, "", 44f, 20f, 46f, DrawnUI.Ink, 470f);
             _dTag = DrawnUI.HandLabel(_panel, "", 44f, 82f, 26f,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.9f), 470f);
             GameUi.HandRule(_panel, 44f, 146f, 140f, DrawnUI.Coral, 7);
@@ -123,7 +127,7 @@ namespace Runway.Game
                 b.onClick.AddListener(() => ShowStatTip(sname));
             }
 
-            DrawnUI.HandLabel(_panel, "HIDDEN TRAITS", 44f, 434f, 22f,
+            DrawnUI.DisplayLabel(_panel, "HIDDEN TRAITS", 44f, 434f, 22f,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.62f));
             DrawnUI.HandLabel(_panel, "click any trait for what it does", 232f, 436f, 20f,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f));
@@ -147,7 +151,8 @@ namespace Runway.Game
 
             DrawnUI.HandLabel(_panel, "IN THE BANK, DAY ONE", 44f, 614f, 23f,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f));
-            _dCash = DrawnUI.HandLabel(_panel, "", 44f, 638f, 40f, DrawnUI.Sage, 470f);
+            // the NUMBER is `_dlabel`; the caption over it and the perk under it are not
+            _dCash = DrawnUI.DisplayLabel(_panel, "", 44f, 638f, 40f, DrawnUI.Sage, 470f);
             DrawnUI.HandLabel(_panel, "PERK", 44f, 692f, 23f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f));
             _dPerk = DrawnUI.HandLabel(_panel, "", 44f, 714f, 25f, DrawnUI.Ink, 470f);
 
@@ -156,12 +161,15 @@ namespace Runway.Game
             // more click puts it away — a footnote, not a second screen.
             _tip = GameUi.PaperSheet(_panel, 28f, 604f, 486f, 142f, 2, 3.5f, DrawnUI.Coral, "tip");
             GameUi.Tilt(_tip, 0.006f);
-            _tipHead = DrawnUI.HandLabel(_tip, "", 22f, 12f, 26f, DrawnUI.Ink, 440f);
+            // the note's HEAD is `_dlabel`, its body is `_label` — the rule and the
+            // footnote are hand-written under a printed heading
+            _tipHead = DrawnUI.DisplayLabel(_tip, "", 22f, 12f, 26f, DrawnUI.Ink, 440f);
             GameUi.HandRule(_tip, 22f, 44f, 100f, DrawnUI.WithAlpha(DrawnUI.Sage, 0.9f), 8);
             _tipBody = DrawnUI.HandLabel(_tip, "", 22f, 58f, 21f, DrawnUI.Ink, 440f);
             _tipBody.rectTransform.sizeDelta = new Vector2(440f, 92f);
             GameUi.InkWord(_tip, "×", 430f, 4f, 48f, 42f, 30f,
-                DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), () => _tip.gameObject.SetActive(false));
+                DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), () => _tip.gameObject.SetActive(false),
+                TextAlignmentOptions.Center, DrawnUI.Display);
             _tip.gameObject.SetActive(false);
         }
 
@@ -208,6 +216,10 @@ namespace Runway.Game
             _s.SelIndex = ((i % n) + n) % n;               // wrapi
             _s.SelArch = _s.Archetypes[_s.SelIndex] as JObject;
             JObject arch = _s.SelArch;
+            // THE ROSTER IS A SCALE. `_select` sets `pitch_scale = 0.9 + 0.08 * _sel_i`
+            // before it plays, so walking the row with the arrow keys runs up a ladder
+            // of notes and the ear learns where in the cast it is.
+            Sfx.Cash(0f, 0.9f + 0.08f * _s.SelIndex);
 
             for (int c = 0; c < _chips.Count; c++)
             {
@@ -273,6 +285,9 @@ namespace Runway.Game
                 _tip.gameObject.SetActive(false);
                 return;
             }
+            // opening the note is a lighter, higher click than picking a founder —
+            // `_show_trait_tip` sets pitch 1.15, and only AFTER the close-again branch
+            Sfx.Cash(0f, 1.15f);
             string rule;
             if (!SimEngine.TRAIT_RULES.TryGetValue(tname, out rule)) rule = "";
             _tipHead.text = head;
@@ -291,6 +306,8 @@ namespace Runway.Game
                 _tip.gameObject.SetActive(false);
                 return;
             }
+            // the stat rows open the same note a touch lower than the traits do — 1.1
+            Sfx.Cash(0f, 1.1f);
             string rule;
             if (!StatRules.TryGetValue(sname, out rule)) rule = "";
             _tipHead.text = head;
@@ -343,6 +360,10 @@ namespace Runway.Game
 
         System.Collections.IEnumerator Stamp()
         {
+            // the stamp lands on `deposit.wav`, not on the click cue — `_lock_in` builds
+            // its own player for it, and it is the only place in the draft that does
+            Sfx.Deposit();
+            // LOCKED IN is `_label`: the one big word on this page written by the hand
             var stamp = DrawnUI.HandLabel(_page, "LOCKED IN", 400f, 380f, 110f, DrawnUI.Coral, 900f);
             GameUi.Tilt(stamp.rectTransform, -0.14f);
             var g = DrawnUI.Group(stamp.rectTransform);

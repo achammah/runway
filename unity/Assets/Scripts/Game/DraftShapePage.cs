@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Runway.App;
+using Runway.Audio;
 
 namespace Runway.Game
 {
@@ -51,7 +52,8 @@ namespace Runway.Game
             DrawnUI.HandLabel(page, "This shapes every week that follows.", 64f, 116f, 27f,
                 DrawnUI.WithAlpha(DrawnUI.Cream, 0.85f));
 
-            DrawnUI.HandLabel(page, "WHAT", 64f, 172f, 30f, DrawnUI.Yellow);
+            // WHAT and FOR WHO are `_dlabel` — the two section heads on this page
+            DrawnUI.DisplayLabel(page, "WHAT", 64f, 172f, 30f, DrawnUI.Yellow);
             // four WHATs share the row three used to fill: the cards slim down together
             float wcard = What.Length > 3 ? 340f : 440f;
             float wstep = (RunwayPaths.StageWidth - 128f - wcard) / Mathf.Max(What.Length - 1, 1);
@@ -62,7 +64,7 @@ namespace Runway.Game
                 _whatNames.Add(What[i][0]);
             }
 
-            DrawnUI.HandLabel(page, "FOR WHO", 64f, 552f, 30f, DrawnUI.Yellow);
+            DrawnUI.DisplayLabel(page, "FOR WHO", 64f, 552f, 30f, DrawnUI.Yellow);
             for (int i = 0; i < Who.Length; i++)
             {
                 RectTransform card = Card(page, Who[i], 64f + i * 470f, 606f, 440f, false, i);
@@ -84,8 +86,10 @@ namespace Runway.Game
                               * (x < 500f ? 1f : (x > 900f ? -1f : 0.45f)));
             GameUi.Picture(card, "icon", ArtCache.SpritePath(spec[1]),
                            w * 0.5f - 62f, 12f, 124f, 124f);
-            DrawnUI.HandLabel(card, spec[0].ToUpper(), 20f, 128f, 30f, DrawnUI.Ink, w - 40f,
-                              TextAlignmentOptions.Top);
+            // the trade's NAME is `_dlabel`; the line under it is `_label`, and the check
+            // chip is a Label built by hand on `_font` — the tick stays in the writing one
+            DrawnUI.DisplayLabel(card, spec[0].ToUpper(), 20f, 128f, 30f, DrawnUI.Ink, w - 40f,
+                                 TextAlignmentOptions.Top);
             DrawnUI.HandLabel(card, spec[2], 28f, 184f, w >= 440f ? 27f : 24f,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.88f), w - 56f, TextAlignmentOptions.Top);
             var chk = DrawnUI.HandLabel(card, "✓", w - 44f, 6f, 34f, DrawnUI.Coral, 40f);
@@ -104,6 +108,7 @@ namespace Runway.Game
             b.onClick.AddListener(() =>
             {
                 if (isWhat) _s.BizWhat = pick; else _s.BizWho = pick;
+                Sfx.Cash();
                 Restyle();
             });
             return card;

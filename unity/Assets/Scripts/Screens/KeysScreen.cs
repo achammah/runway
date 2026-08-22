@@ -68,8 +68,12 @@ namespace Runway.Screens
                                         "PASTE YOUR OPENAI API KEY", "sk-…", 28f);
             _openai.Submitted += _ => Save();
 
+            // THE LINE HAS TO BE TRUE. It used to end "never sent anywhere but OpenAI",
+            // and the scene renderer sends this very key to the game's own middleware as
+            // an `x-openai-api-key` header (SceneDirector.MiddlewareCall) so the pictures
+            // can be painted. Same voice, same length, no promise the build cannot keep.
             DrawnUI.HandLabel(Rect,
-                "· stored only on this machine, in your user folder — never in the game, never sent anywhere but OpenAI",
+                "· stored only on this machine, in your user folder — never in the game, sent only to OpenAI and the game's own art painter",
                 256f, 668f, 24f, DrawnUI.WithAlpha(Ink, 0.55f), 1000f);
             DrawnUI.HandLabel(Rect,
                 "· a typical evening of play costs about a coffee in API credit",

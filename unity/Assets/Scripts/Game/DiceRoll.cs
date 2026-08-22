@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.UI;
 using Runway.App;
+using Runway.Audio;
 
 namespace Runway.Game
 {
@@ -97,6 +98,13 @@ namespace Runway.Game
             _loop = SheetLoop.AttachAt(rt, "cup",
                 (RunwayPaths.StageWidth - square) * 0.5f, 0f, square, square);
             _loop.PlaySheet(art, Cols, Frames, Fps, true, Cell, Cell);
+            // THE TABLE ARRIVES ON A BREATH OF CURTAIN, THEN THE CUP RATTLES. dice_roll.gd
+            // opens its whoosh at -14dB / 1.25x — the curtain cue's own -8 with a -6 trim
+            // on top, thinner and higher than the one the menus sweep on — and starts the
+            // rattle with the sheet. A missing sheet returned above, so neither sounds
+            // over a ceremony that is being skipped.
+            Sfx.Curtain(-6f, 1.25f);
+            Sfx.DiceRattle();
             // the settled number is HELD, not glimpsed. A coroutine rather than
             // Invoke(): a string method name is the one call IL2CPP stripping can lose.
             _loop.Finished += () => StartCoroutine(HoldThenFinish());

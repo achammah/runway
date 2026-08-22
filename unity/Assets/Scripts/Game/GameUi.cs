@@ -236,14 +236,16 @@ namespace Runway.Game
 
         // ── the two ledgers on the founder card ────────────────────────────────
 
-        /// StatPips: five chunky pip rows, 52px to the row.
+        /// StatPips: five chunky pip rows, 52px to the row. BUILD / SELL / RAISE /
+        /// RECRUIT / GRIT are set in the DISPLAY hand — `StatPips._draw()` loads
+        /// Baloo2-Bold for the row labels, not the writing hand.
         public static void StatPips(RectTransform parent, float x, float y,
                                     IDictionary<string, int> stats, string[] names, string[] labels)
         {
             for (int i = 0; i < names.Length; i++)
             {
                 float ry = y + i * 52f;
-                DrawnUI.HandLabel(parent, labels[i], x, ry + 2f, 26f, DrawnUI.Ink, 150f);
+                DrawnUI.DisplayLabel(parent, labels[i], x, ry + 2f, 26f, DrawnUI.Ink, 150f);
                 int v;
                 if (stats == null || !stats.TryGetValue(names[i], out v)) v = 0;
                 for (int p = 0; p < 5; p++)
@@ -291,13 +293,16 @@ namespace Runway.Game
                 if (deltas == null || !deltas.TryGetValue(t, out d)) d = 0;
                 v = Mathf.Clamp(v + d, 1, 5);
                 string word = t.ToUpper();
-                DrawnUI.HandLabel(parent, word, cx, cy, 19f, DrawnUI.Ink, 124f);
+                // the trait NAME is the display hand — `TraitPips._draw()` writes it with
+                // `fontd`, and keeps the writing hand only for the ± beside the row
+                DrawnUI.DisplayLabel(parent, word, cx, cy, 19f, DrawnUI.Ink, 124f);
                 // THE RULE IS MEASURED, NOT COUNTED. Eleven pixels a letter makes
                 // "PARANOIA" and "LUCK" the wrong lengths in this hand; the original
-                // asks the font how wide the word actually is and stops at 124.
+                // asks the font how wide the word actually is and stops at 124 — and it
+                // asks THE SAME font it just wrote the word in, which is the display one.
                 DrawnUI.Fill(parent, "dot", DrawnUI.WithAlpha(DrawnUI.Ink, 0.22f),
                              cx, cy + 26f,
-                             Mathf.Min(DrawnUI.MeasureWidth(word, 19f), 124f), 1.5f);
+                             Mathf.Min(DrawnUI.MeasureWidth(word, 19f, DrawnUI.Display), 124f), 1.5f);
                 for (int p = 0; p < 5; p++)
                 {
                     bool on = p < v;
@@ -315,9 +320,12 @@ namespace Runway.Game
                     edge.color = on ? DrawnUI.Ink : DrawnUI.WithAlpha(DrawnUI.Ink, 0.30f);
                 }
                 // What the bag did to this trait, in sage for a gain and coral for a
-                // cost. It lives in the 26px gutter between the last pip and the next
-                // column, so it is set a size down from the original's 20 and pushed
-                // right against the column edge — at 20 it touches the next word.
+                // cost — and in the WRITING hand: the swing is the one thing on this
+                // ledger `TraitPips._draw()` sets in `font` rather than `fontd`, because
+                // it is the founder's own note beside a printed row. It lives in the 26px
+                // gutter between the last pip and the next column, so it is set a size
+                // down from the original's 20 and pushed right against the column edge —
+                // at 20 it touches the next word.
                 if (d != 0)
                     DrawnUI.HandLabel(parent, (d > 0 ? "+" : "") + d, cx + 206f, cy + 1f,
                                       17f, d > 0 ? DrawnUI.Sage : DrawnUI.Coral, 27f,
@@ -397,13 +405,18 @@ namespace Runway.Game
 
         /// A flat word-only button that answers with a coral hover — the shape every
         /// journal control and binder tab uses.
+        ///
+        /// The writing hand by default. The draft's toggles and counters come from
+        /// `_ink_button`, which sets `_font_d`, so those call sites pass
+        /// `DrawnUI.Display`; the journal and binder controls stay as they were.
         public static Button InkWord(RectTransform parent, string text,
                                      float x, float y, float w, float h, float size,
                                      Color word, Action onClick,
-                                     TextAlignmentOptions align = TextAlignmentOptions.Center)
+                                     TextAlignmentOptions align = TextAlignmentOptions.Center,
+                                     TMP_FontAsset font = null)
         {
             return DrawnUI.FlatButton(parent, text, x, y, w, h, size, word, DrawnUI.Coral,
-                                      onClick, align);
+                                      onClick, align, font);
         }
 
         /// A full-stage click swallower — the dim behind a modal, and its dismissal.
