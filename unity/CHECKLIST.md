@@ -72,7 +72,7 @@ frame time; measured).
 - [ 60%] A7 Game screens + RunDriver (agent) · verify = its report + my compile
 - [100%] A8 First compile — CLEAN ON PASS ONE (0 errors, ~15k lines); tool hardened: mutex + positive-evidence (a lock-failure log can no longer read as clean)
 - [100%] A9 Console hygiene: 20 warnings (all enableWordWrapping) swept to textWrappingMode → 0 errors 0 warnings
-- [ 40%] A10 Boot walk: BUILT PLAYER boots (418MB, 90s build) — keys desk pixel-faithful, Player.log zero exceptions; full walk via harness pending
+- [ 60%] A10 Boot walk: BUILT PLAYER boots (418MB, 90s build) — keys desk pixel-faithful, Player.log zero exceptions; full walk via harness pending · harness walks 23 states in the built app; films pending F1
 - [ 90%] A11 The stamp: boot log prints it; now date+sha+editor (was version-twice) — verify inside next build
 - [  0%] A12 Session logging: every FOUNDING/WARM/paint/clarify/settle line prints like Godot's (grep-parity list)
 - [  0%] A13 Watchdog parity: request hang → cancelled+retried (fault-injection test with a black-hole URL)
@@ -83,7 +83,7 @@ frame time; measured).
 - [  0%] A18 Error states authored: LLM fail → retry once → plain-words line on screen (never raw)
 
 ## B — VISUAL PARITY (screen by screen; each: Build twin-shot state · Verify side-by-side vs the Godot shot · 100% = differences zero or accepted in writing here)
-- [  0%] B1 Harness: UnityShots.cs — same states as new_screens_shot/select_shot/binder_shot/howto_shot/birth_shot/traits_shot, saved to scratchpad
+- [100%] B1 Harness: UnityShots.cs — same states as new_screens_shot/select_shot/binder_shot/howto_shot/birth_shot/traits_shot, saved to scratchpad · 23/23 twins, exit 0, reproduced by me
 - [  0%] B2 Studio card (fade timings, underline draw)
 - [  0%] B3 Title: film loop playing, stamp corner
 - [  0%] B4 Title menu: paper buttons ease-in, ghost text absent
@@ -121,31 +121,31 @@ frame time; measured).
 - [  0%] C8 Paint resilience: black-hole render URL → ladder retries → authored room + ribbon, game never blocks (fault injection)
 
 ## D — THE ADD-ON WAVES (each: Build · Verify by film/shot · 100% = the award bar for that effect; kill-switch proven)
-- [  0%] D1a Line-boil: screen-space or per-material wobble shader (2-frame 8fps boil) on ink textures
-- [  0%] D1b Boil coverage: DrawnUI borders, rules, rings, buttons — one material path
-- [  0%] D1c Boil restraint: text glyphs EXCLUDED (readability), amplitude ≤1.5px, film shows edges-only motion
-- [  0%] D2a Ink-reveal: brush-stroke mask sequence (drawn strokes texture set)
-- [  0%] D2b Reveal wired to composed-room adoption (and to weekly repaints)
-- [  0%] D2c Reveal film: 12 frames, room paints in stroke by stroke, ≤1.2s, skippable
-- [  0%] D3a Beat typewriter: per-char ink-settle (alpha+2px drop, 40 chars/s, click = all)
-- [  0%] D3b Inline die glyph in the judgement sentence (TMP sprite asset from dice art)
-- [  0%] D3c Verdict emphasis: BRILLIANT/BACKFIRED words get one-time scale-settle (film)
-- [  0%] D4a Impulse kit: hand-rolled spring camera offset (no package dep)
-- [  0%] D4b Wired: backfired week = 6px 250ms shake; die settle = 2% punch-in 120ms (film both)
-- [  0%] D4c Restraint pass: fine/brilliant weeks = NO shake (film proves absence)
-- [  0%] D5a Spotlight dust motes (select+garage bulb): ≤40 particles, drawn dot sprite
-- [  0%] D5b LOCK-IN paper scraps burst (6-10 scraps, 0.8s, gravity)
-- [  0%] D5c Title embers off the burning runway (matches Godot title's fire line)
-- [  0%] D6a Soft-light sprites (NOT URP): additive radial glows — garage bulb warm pool, laptop glow
-- [  0%] D6b In-the-red dimming: room multiply layer eases to 0.85 + cold tint (shot at cash<0)
-- [  0%] D6c Select spotlight glow matches the regenerated stage art (shot)
-- [  0%] D7a Mixer asset: Music/SFX/World groups, 3 snapshots (normal, curtained, red)
-- [  0%] D7b Wired: curtain duck −6dB 0.3s; binder muffle LPF; red-week thin filter (state-log verify + listen note)
+- [ 80%] D1a Line-boil: screen-space or per-material wobble shader (2-frame 8fps boil) on ink textures · code+evidence accepted; wired at D9
+- [ 80%] D1b Boil coverage: DrawnUI borders, rules, rings, buttons — one material path · same
+- [ 80%] D1c Boil restraint: text glyphs EXCLUDED (readability), amplitude ≤1.5px, film shows edges-only motion · diff shot: edges only
+- [ 80%] D2a Ink-reveal: brush-stroke mask sequence (drawn strokes texture set) · 12 masks, even pacing
+- [ 80%] D2b Reveal wired to composed-room adoption (and to weekly repaints) · seam ready
+- [ 80%] D2c Reveal film: 12 frames, room paints in stroke by stroke, ≤1.2s, skippable · frames eyeballed
+- [ 80%] D3a Beat typewriter: per-char ink-settle (alpha+2px drop, 40 chars/s, click = all) · mesh-settle riding the beat clock
+- [ 80%] D3b Inline die glyph in the judgement sentence (TMP sprite asset from dice art) · die chit measured
+- [ 80%] D3c Verdict emphasis: BRILLIANT/BACKFIRED words get one-time scale-settle (film) · punch bounded
+- [ 80%] D4a Impulse kit: hand-rolled spring camera offset (no package dep) · closed-form spring, exact rest
+- [ 80%] D4b Wired: backfired week = 6px 250ms shake; die settle = 2% punch-in 120ms (film both) · hookups named
+- [ 80%] D4c Restraint pass: fine/brilliant weeks = NO shake (film proves absence) · no-op law in file
+- [ 80%] D5a Spotlight dust motes (select+garage bulb): ≤40 particles, drawn dot sprite · 0.031ms, 0 GC
+- [ 80%] D5b LOCK-IN paper scraps burst (6-10 scraps, 0.8s, gravity) · 6-10 scraps
+- [ 80%] D5c Title embers off the burning runway (matches Godot title's fire line) · embers framed
+- [ 80%] D6a Soft-light sprites (NOT URP): additive radial glows — garage bulb warm pool, laptop glow · warmth measured
+- [ 80%] D6b In-the-red dimming: room multiply layer eases to 0.85 + cold tint (shot at cash<0) · red goes cold
+- [ 80%] D6c Select spotlight glow matches the regenerated stage art (shot) · beam lit
+- [ 80%] D7a Mixer asset: Music/SFX/World groups, 3 snapshots (normal, curtained, red) · code-built mix, 322 asserts
+- [ 80%] D7b Wired: curtain duck −6dB 0.3s; binder muffle LPF; red-week thin filter (state-log verify + listen note) · hookups named
 - [  0%] D8 Kill-switch matrix: each D lane toggled off compiles+boots clean (7 runs)
 - [  0%] D9 INTEGRATION: hookups merged, no shared-file conflicts, B-suite re-run green, each lane ≤1ms frame cost (measured)
 
 ## E — PERFORMANCE (twin harness, published table)
-- [  0%] E1 UnityPerf.cs: per-screen 3s averages — frame ms, draw calls, RAM, canvas rebuilds — same screens as perf_probe.gd
+- [100%] E1 UnityPerf.cs: per-screen 3s averages — frame ms, draw calls, RAM, canvas rebuilds — same screens as perf_probe.gd · tables published; fps/draws re-run on built app at E6
 - [  0%] E2 Canvas hygiene: animated elements on their own canvases; rebuild storms = 0 outside animation frames
 - [  0%] E3 30fps cap + vsync policy set; frame pacing verified (no 2-frame stutters in film)
 - [  0%] E4 Texture residency: sheets released on screen exit (RAM floor returns; numbers)
