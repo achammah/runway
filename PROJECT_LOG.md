@@ -303,3 +303,21 @@ select stage REGENERATED with the beam on the founder (48 fresh dust
 frames), the export renderer finally reads user://keys.env (why every
 shipped room stayed default), paint starts at the signature, clickable
 stat rows, key re-ask + api-key link, top-down book.
+
+## 2026-08-22 — #175: the empty logbook, killed at the root (three layers)
+The book opened on "the first entry is being written…" and nothing ever
+came (owner had to quit at the start). Root: the founding request WEDGED
+past its own 90s timeout — HTTPRequest.timeout proven asleep on macOS for
+the second time (render ladder was the first) — so the retry never ran.
+Fixes: (1) every text request now races a hard scene-tree watchdog
+(50s founding/clarify, 100s assess) that cancels the wedge and hands the
+caller its failure path — proven with a black-hole socket + the soft clock
+disabled; (2) the birth loop now holds until the words AND the paint are
+both done (owner's law) — 3 watchdogged attempts ≈150s, then the ENGINE
+writes day one itself from facts it owns (lease, cash, prices, promise) so
+the page can never be empty; (3) the probe's own screenshot caught a latent
+order bug the change would have shipped: feeding the book before _ready()
+dropped the text on a null label and re-locked the gate — entries now
+buffer and land through the same door. FIRSTFLOW fault probe re-run
+end-to-end against the black hole; watchdog_probe.gd is the permanent
+harness. RUNWAY_LLM_URL / RUNWAY_LLM_NO_SOFT are the fault-injection keys.

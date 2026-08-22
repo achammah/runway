@@ -34,12 +34,21 @@ var _sbar: Control
 func setup(p_state: GameState) -> void:
 	state = p_state
 
-## The founding entry arrives whenever the prefetch lands — before or after
-## this screen opened. Until then the page says it is being written.
+var _pending_entry := ""   # words that arrived before the page was built
+
+## The founding entry arrives whenever the prefetch lands — before, during or
+## after this screen opened. Until then the page says it is being written.
 func feed_entry(text: String) -> void:
 	# an empty entry never opens the notes: the placeholder keeps breathing
 	# and the retry upstream gets its chance
 	if text.strip_edges() == "":
+		return
+	if _entry_lbl == null or not is_instance_valid(_entry_lbl):
+		# fed before _ready() built the page (the birth screen now holds until
+		# the words exist, so this is the NORMAL order): keep them for _ready —
+		# writing into the null label used to silently drop the whole entry,
+		# and _ready then re-locked the gate over the release
+		_pending_entry = text
 		return
 	_waiting = false
 	_holding_entry = false
@@ -170,6 +179,13 @@ func _ready() -> void:
 
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.4)
+
+	# the entry that arrived before the page existed lands now, through the
+	# same door as a live one (gate release, notes reveal, ink color)
+	if _pending_entry != "":
+		var pe := _pending_entry
+		_pending_entry = ""
+		feed_entry(pe)
 
 func hold_for_paint() -> void:
 	_holding_paint = true

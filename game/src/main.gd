@@ -953,11 +953,29 @@ func _finish_worldgen(g: GarageViewScreen, birth: BirthScreen = null) -> void:
 	# ever sees is the finished entry.
 	_prefetch_founding(g)
 	if birth != null and is_instance_valid(birth):
+		# THE LOOP HOLDS UNTIL THE BOOK IS TRULY READY (owner, #175: "the
+		# world building animated video loop staying until the log AND the
+		# image painted is fully done"). First the words — three watchdogged
+		# attempts get ~160s; a 60s ceiling used to hand the reader an empty
+		# page while a wedged request was still nominally in flight.
 		birth.status_line = "writing day one"
 		var fwait := 0.0
-		while _founding_inflight and _founding_res.is_empty() and fwait < 60.0:
+		while _founding_inflight and _founding_res.is_empty() and fwait < 160.0:
 			await get_tree().create_timer(0.25).timeout
 			fwait += 0.25
+		if _founding_res.is_empty():
+			# every attempt is dead (or there is no key): the engine writes
+			# day one itself from facts it owns — a plain true entry beats an
+			# empty page every time. The DM takes over again from week one.
+			print("FOUNDING dead after %.0fs — the engine writes day one" % fwait)
+			_founding_res = _authored_founding()
+		# then the paint: day one's room, started at the signature. The book
+		# only opens on a painted world (idle = keyless/authored: no wait).
+		birth.status_line = "painting the room"
+		var pwait := 0.0
+		while _warm_status == "painting" and pwait < 240.0:
+			await get_tree().create_timer(0.25).timeout
+			pwait += 0.25
 	var bk := BookIntroScreen.new()
 	bk.setup(state)
 	if not _founding_res.is_empty():
@@ -1007,6 +1025,30 @@ func _founding_move() -> String:
 			+ "night on day one.") % [state.company_name,
 			state.company_idea if state.company_idea != "" else "a company that refuses to explain itself"]
 
+## The last line of defense for day one: every attempt died, or there is no
+## key at all. The engine writes the entry from facts it owns — no fiction,
+## no brochure voice, the same lowercase night-writing as the DM's.
+func _authored_founding() -> Dictionary:
+	var lines: Array = []
+	lines.append("signed the lease tonight. the shutter sticks. the key works.")
+	if state.company_idea != "":
+		lines.append("what we are promising: %s." %
+				state.company_idea.strip_edges().trim_suffix(".").to_lower())
+	lines.append("cash in the drawer: $%d. that is the whole runway." % state.cash)
+	var priced: Array = []
+	for o in state.offers:
+		if o is Dictionary and float(o.get("price", 0.0)) > 0.0:
+			priced.append("%s at $%d" % [String(o.get("name", "the offer")).to_lower(),
+					int(float(o.get("price", 0.0)))])
+	if priced.is_empty():
+		lines.append("nothing has a price on it yet. that conversation is coming, "
+				+ "and i suspect it will hurt.")
+	else:
+		lines.append("prices on the wall: %s." % ", ".join(priced))
+	lines.append("tomorrow we open the door and find out which of my guesses survive.")
+	return {"narration": "\n\n".join(lines), "reality_check": "",
+			"scene": {}, "cast": [], "effects": []}
+
 func _prefetch_founding(gv: GarageViewScreen, attempt: int = 1) -> void:
 	if generator == null or not generator.llm.enabled() or _founding_inflight:
 		return
@@ -1017,10 +1059,11 @@ func _prefetch_founding(gv: GarageViewScreen, attempt: int = 1) -> void:
 	generator.adjudicate(state, {}, _founding_move(), func(res: Dictionary) -> void:
 		_founding_inflight = false
 		print("FOUNDING returned (%d chars)" % String(res.get("narration", "")).length())
-		if res.is_empty() and attempt < 2:
-			# one silent transport failure must not cost the whole day one:
-			# retry once before anyone notices (the book keeps its placeholder)
-			print("FOUNDING empty — retrying once")
+		if res.is_empty() and attempt < 3:
+			# transport failures must not cost the whole day one: the hard
+			# watchdog kills wedged attempts fast enough that two retries
+			# still land inside the birth screen's wait
+			print("FOUNDING empty — retry %d" % (attempt + 1))
 			_prefetch_founding(gv, attempt + 1)
 			return
 		_founding_res = res
@@ -1530,7 +1573,9 @@ func _firstflow(dir: String) -> void:
 	d._do_launch()
 	await get_tree().create_timer(0.6).timeout
 	await _shot(dir, "f2_birth")
-	var cap := 90
+	# the birth screen now legitimately holds through words AND paint
+	# (160s + 240s worst case) — wait like a player, not like a harness
+	var cap := 840
 	while cap > 0 and not (_screen is BookIntroScreen):
 		cap -= 1
 		await get_tree().create_timer(0.5).timeout

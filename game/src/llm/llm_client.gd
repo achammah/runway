@@ -314,11 +314,25 @@ func request_json(system_prompt: String, user_prompt: String, schema: Dictionary
 		return
 	var http := HTTPRequest.new()
 	add_child(http)
-	# 35s cut off real terra founding calls in the shipped app (the book showed
-	# an empty entry and settle-in paid the whole call again). 90s is the cap;
-	# the beat/curtain narrate the wait.
-	http.timeout = 90.0
-	http.request_completed.connect(_on_completed.bind(http, cb))
+	# TWO CLOCKS ON EVERY REQUEST. The soft one is HTTPRequest.timeout — but
+	# that clock has been caught SLEEPING through wedged sockets on macOS (the
+	# render ladder learned it first; then a founding hung >90s and the book
+	# waited forever on an entry that was never coming). So a hard scene-tree
+	# watchdog races every request: if it wins, the request is cancelled and
+	# the caller's failure path (retry, fallback) actually runs.
+	# founding/clarify are prose on the fast lane — a wedged attempt must die
+	# fast enough that the retry still lands inside the player's wait.
+	var tier := String(opts.get("tier", ""))
+	var wd := float(opts.get("watchdog_s",
+			50.0 if tier in ["clarify", "founding"] else 100.0))
+	# 35s once cut off real terra founding calls (the book showed an empty
+	# entry and settle-in paid the whole call again) — the soft cap stays
+	# generous, just under the hard one.
+	http.timeout = wd - 5.0
+	if OS.get_environment("RUNWAY_LLM_NO_SOFT") == "1":
+		http.timeout = 0.0   # probe-only: simulate the soft clock sleeping
+	var fired := {"v": false}
+	http.request_completed.connect(_on_completed.bind(http, cb, fired))
 	var headers: PackedStringArray
 	var body: Dictionary
 	if provider == "openai":
@@ -344,10 +358,16 @@ func request_json(system_prompt: String, user_prompt: String, schema: Dictionary
 			# It costs a per-token premium. Set RUNWAY_LLM_TIER=standard to opt out.
 			"service_tier": _service_tier_for(opts),
 		}
-		if http.request(OPENAI_URL, headers, HTTPClient.METHOD_POST, JSON.stringify(body)) != OK:
+		# fault injection: RUNWAY_LLM_URL points the client at a black hole so
+		# the watchdog/retry ladder can be proven without touching the network
+		var url := OS.get_environment("RUNWAY_LLM_URL") \
+				if OS.has_environment("RUNWAY_LLM_URL") else OPENAI_URL
+		if http.request(url, headers, HTTPClient.METHOD_POST, JSON.stringify(body)) != OK:
 			http.queue_free()
 			if cb.is_valid():
 				cb.call({})
+		else:
+			_watchdog(http, cb, fired, wd)
 	elif provider == "anthropic":
 		headers = PackedStringArray([
 			"Content-Type: application/json",
@@ -366,8 +386,27 @@ func request_json(system_prompt: String, user_prompt: String, schema: Dictionary
 			http.queue_free()
 			if cb.is_valid():
 				cb.call({})
+		else:
+			_watchdog(http, cb, fired, wd)
 
-func _on_completed(result: int, code: int, _h: PackedStringArray, body: PackedByteArray, http: HTTPRequest, cb: Callable) -> void:
+## The hard clock. Exactly one of (_on_completed, _watchdog) may answer the
+## caller — the `fired` guard is the referee.
+func _watchdog(http: HTTPRequest, cb: Callable, fired: Dictionary, seconds: float) -> void:
+	await get_tree().create_timer(seconds).timeout
+	if fired["v"] or not is_instance_valid(http):
+		return
+	fired["v"] = true
+	print("LLM WATCHDOG fired after %.0fs — cancelling the wedged request" % seconds)
+	http.cancel_request()
+	http.queue_free()
+	if cb.is_valid():
+		cb.call({})
+
+func _on_completed(result: int, code: int, _h: PackedStringArray, body: PackedByteArray, http: HTTPRequest, cb: Callable, fired: Dictionary) -> void:
+	if fired["v"]:
+		http.queue_free()
+		return
+	fired["v"] = true
 	http.queue_free()
 	if result != HTTPRequest.RESULT_SUCCESS or code < 200 or code >= 300:
 		# print, not push_warning: release builds swallow warnings, and this
