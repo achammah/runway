@@ -49,7 +49,7 @@ all nine variants: exit 0, 23/23 screens, zero exceptions each.
 | Uncapped frame time | n/a (30fps cap) | 2.5-3.6 ms (280-405 fps headroom), capped to 30 in play |
 | Steady RAM (alloc) | — | 81-137 MB vs the 400 MB bar |
 | Hitches (10-min soak, pre-fix build) | multi-minute freezes reported live | 31 frames >50ms / 17915; worst 890ms — since fixed (decode pump); re-soak pending |
-| Fresh per-screen table | — | scratchpad uperf/unity_perf.md (harness-written) |
+| Per-screen (final build) | 12-25 redraws/s | 12-26 rebuilds/s · 270-308 fps uncapped · 3.2-3.7 ms · gc 0.00/s · tex peak 152 MB with floors returning |
 
 ## Harnesses (all in the app, env-gated)
 - `RUNWAY_USHOTS=<dir>` — 23 screenshot twins of the Godot shot harnesses.
