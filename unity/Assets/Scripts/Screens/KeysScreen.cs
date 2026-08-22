@@ -47,7 +47,10 @@ namespace Runway.Screens
             }
 
             DrawnUI.HandLabel(Rect, "ONE KEY MAKES THE WORLD ALIVE", 250f, 128f, 48f, Ink);
-            DrawnUI.Rule(Rect, 252f, 204f, 560f, Pen, 4f, 4, 1.5f, 21);
+            // the .gd draws this rule inside a control parked at y=204 and puts the
+            // polyline 5px down its own box; DrawnUI.Rule takes the STROKE CENTRE, so
+            // the number that transcribes is 209, not the control's corner
+            DrawnUI.Rule(Rect, 252f, 209f, 560f, Pen, 4f, 4, 1.5f, 21);
 
             DrawnUI.HandLabel(Rect,
                 "RUNWAY! is a fully generative survival game. There is no script: "

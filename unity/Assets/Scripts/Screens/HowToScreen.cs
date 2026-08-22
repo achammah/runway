@@ -69,7 +69,8 @@ namespace Runway.Screens
         TextMeshProUGUI _caption;
         RectTransform _button;
         TextMeshProUGUI _word;
-        readonly List<Image> _dots = new List<Image>();
+        readonly List<Image> _dots = new List<Image>();   // the coral disc + its ink ring
+        readonly List<Image> _off = new List<Image>();    // the dim ring for every other page
         int _page;
         int _count = 3;
 
@@ -115,10 +116,14 @@ namespace Runway.Screens
                 DrawnUI.Fill(Rect, "sprocket", tick, FrameR.xMax + 17f, y - 9f, 14f, 18f);
             }
 
+            // both of these are draw_string()/draw_multiline_string() in the original:
+            // the y they are given is a BASELINE, and neither passes through a theme,
+            // so neither gets the Label leading
             _title = DrawnUI.InkString(Rect, Titles[0], 90f, 56f, DrawnUI.Ink);
-            _caption = DrawnUI.HandLabel(Rect, Caps[0], 238f, 812f - 30f * 0.78f, 30f,
+            _caption = DrawnUI.HandLabel(Rect, Caps[0], 238f,
+                                         812f - DrawnUI.Ascent(DrawnUI.Hand, 30f), 30f,
                                          DrawnUI.WithAlpha(DrawnUI.Ink, 0.85f), 1060f,
-                                         TextAlignmentOptions.Top);
+                                         TextAlignmentOptions.Top, DrawnUI.StringLeading);
 
             BuildDots();
             BuildButton();
@@ -134,25 +139,42 @@ namespace Runway.Screens
             Show(0);
         }
 
-        /// three page dots: the one you are on is filled coral
+        /// Three page dots, in Godot's three layers. The one you are on is a solid
+        /// coral disc at r=11 with a full-strength INK ring drawn over it; the others
+        /// are a single dim ring at r=9. Each host is the size the sprite BAKES at —
+        /// a 28px ring stretched into a 32px box is a dot a sixth too big, and the
+        /// hand-drawn wobble stretches with it.
         void BuildDots()
         {
+            const float Cy = 952f;
+            int onSide = DrawnUI.RingSide(11f, 3);    // the current dot, disc and ring
+            int offSide = DrawnUI.RingSide(9f, 3);    // the others
             for (int i = 0; i < _count; i++)
             {
                 float cx = 768f + (i - (_count - 1) * 0.5f) * 46f;
-                var host = DrawnUI.Rect(Rect, "dot", cx - 16f, 952f - 16f, 32f, 32f);
-                var fillImg = host.gameObject.AddComponent<Image>();
-                fillImg.sprite = DrawnUI.RingSprite(11f, 3f, 1.2f, 20 + i, 3, true);
-                fillImg.color = DrawnUI.Pen;
-                fillImg.raycastTarget = false;
 
-                var ringRt = DrawnUI.FullRect(host, "ring");
+                var offRt = DrawnUI.Rect(Rect, "dot", cx - offSide * 0.5f, Cy - offSide * 0.5f,
+                                         offSide, offSide);
+                var offImg = offRt.gameObject.AddComponent<Image>();
+                offImg.sprite = DrawnUI.RingSprite(9f, 3f, 1.2f, 20 + i, 3, false);
+                offImg.color = DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f);
+                offImg.raycastTarget = false;
+
+                var discRt = DrawnUI.Rect(Rect, "dot-on", cx - onSide * 0.5f, Cy - onSide * 0.5f,
+                                          onSide, onSide);
+                var discImg = discRt.gameObject.AddComponent<Image>();
+                discImg.sprite = DrawnUI.DiscSprite(11f, 3);
+                discImg.color = DrawnUI.Pen;
+                discImg.raycastTarget = false;
+
+                var ringRt = DrawnUI.FullRect(discRt, "ring");
                 var ringImg = ringRt.gameObject.AddComponent<Image>();
-                ringImg.sprite = DrawnUI.RingSprite(9f, 3f, 1.2f, 20 + i, 3, false);
-                ringImg.color = DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f);
+                ringImg.sprite = DrawnUI.RingSprite(11f, 3f, 1.2f, 20 + i, 3, false);
+                ringImg.color = DrawnUI.Ink;
                 ringImg.raycastTarget = false;
 
-                _dots.Add(fillImg);
+                _off.Add(offImg);
+                _dots.Add(discImg);
             }
         }
 
@@ -206,7 +228,11 @@ namespace Runway.Screens
             }
 
             for (int d = 0; d < _dots.Count; d++)
-                _dots[d].enabled = d == _page;
+            {
+                bool on = d == _page;
+                _dots[d].gameObject.SetActive(on);     // the disc carries the ink ring
+                if (d < _off.Count) _off[d].enabled = !on;
+            }
 
             // the long word rides a notch smaller, or its card crowds the page dots
             bool last = _page + 1 >= _count;

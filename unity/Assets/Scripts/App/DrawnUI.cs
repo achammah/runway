@@ -46,10 +46,12 @@ namespace Runway.App
             return new Color(c.r, c.g, c.b, a);
         }
 
-        // ── the hand ───────────────────────────────────────────────────────────
+        // ── the two hands ──────────────────────────────────────────────────────
 
         static TMP_FontAsset _hand;
         static bool _handTried;
+        static TMP_FontAsset _display;
+        static bool _displayTried;
 
         /// Patrick Hand, resolved through a ladder that never throws:
         ///   1. a TMP font asset baked into Resources/Fonts by an editor pass
@@ -64,20 +66,21 @@ namespace Runway.App
                 _handTried = true;
 
                 _hand = Resources.Load<TMP_FontAsset>("Fonts/PatrickHand SDF");
-                if (_hand != null) return _hand;
-
-                Font ttf = Resources.Load<Font>("Fonts/PatrickHand-Regular");
-                if (ttf != null)
+                if (_hand == null)
                 {
-                    try
+                    Font ttf = Resources.Load<Font>("Fonts/PatrickHand-Regular");
+                    if (ttf != null)
                     {
-                        _hand = TMP_FontAsset.CreateFontAsset(ttf);
-                        if (_hand != null) _hand.name = "PatrickHand SDF (runtime)";
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogWarning("RUNWAY! could not build the hand font at runtime ("
-                                         + e.Message + ") — falling back to the TMP default.");
+                        try
+                        {
+                            _hand = TMP_FontAsset.CreateFontAsset(ttf);
+                            if (_hand != null) _hand.name = "PatrickHand SDF (runtime)";
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.LogWarning("RUNWAY! could not build the hand font at runtime ("
+                                             + e.Message + ") — falling back to the TMP default.");
+                        }
                     }
                 }
                 if (_hand == null)
@@ -88,8 +91,221 @@ namespace Runway.App
                 if (_hand == null)
                     Debug.LogWarning("RUNWAY! no hand font: put PatrickHand-Regular.ttf in "
                                      + "Assets/Resources/Fonts/ and import the TMP essentials.");
+                LendGlyphs(_hand);
                 return _hand;
             }
+        }
+
+        /// Baloo2 Bold, THE OTHER HAND. Every .gd screen that has a heading carries a
+        /// second font it calls `_font_d` and drives the display type through: the
+        /// draft titles, the pip labels, the equity donut, the captions on paper
+        /// buttons. Patrick Hand is about a fifth narrower at the same size — CHOOSE
+        /// YOUR FOUNDER measures 639px in the display hand and 515px in the writing
+        /// one at 58 — so a heading set in the wrong font under-fills its own rule.
+        ///
+        /// Same ladder as Hand, with Hand itself as the last rung: a missing display
+        /// font is a screen that reads narrow, never a screen that fails to draw.
+        public static TMP_FontAsset Display
+        {
+            get
+            {
+                if (_displayTried) return _display;
+                _displayTried = true;
+
+                _display = Resources.Load<TMP_FontAsset>("Fonts/Baloo2 SDF");
+                if (_display == null)
+                {
+                    Font ttf = Resources.Load<Font>("Fonts/Baloo2-Bold");
+                    if (ttf != null)
+                    {
+                        try
+                        {
+                            _display = TMP_FontAsset.CreateFontAsset(ttf);
+                            if (_display != null) _display.name = "Baloo2 SDF (runtime)";
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.LogWarning("RUNWAY! could not build the display font at runtime ("
+                                             + e.Message + ") — headings fall back to the hand.");
+                        }
+                    }
+                }
+                if (_display == null)
+                {
+                    Debug.LogWarning("RUNWAY! no display font: put Baloo2-Bold.ttf in "
+                                     + "Assets/Resources/Fonts/ — headings will read narrow.");
+                    _display = Hand;
+                    return _display;
+                }
+                LendGlyphs(_display);
+                return _display;
+            }
+        }
+
+        // ── the characters neither hand draws ──────────────────────────────────
+
+        /// Everything the game writes that Patrick Hand's cmap does not contain.
+        /// Godot never had to think about this: its font importer ships with
+        /// `allow_system_fallback=true` and TextServer quietly borrows a face off the
+        /// OS for ★ ✓ ⏰ ⚠ ☐ and even the plain arrow →. TMP borrows nothing, so
+        /// every one of these came out a box. The same borrowing is made explicit
+        /// here, baked to an atlas by the editor pass so it survives a build.
+        public const string GlyphSet =
+            "★✓⏰⚠☐☑✗✕☎☀⛈⚡"
+            + "▲▼●►↻✎→←↔−≈≤≥";
+
+        /// The faces the glyphs are borrowed FROM, best coverage first. Each entry is
+        /// { file path, family name, style name }: the editor pass bakes from the
+        /// path, the runtime rung asks the OS for the family. STIX Two Math carries
+        /// every symbol above except the pencil and the cross; Arial Unicode carries
+        /// those two. TMP walks a fallback chain, so both are hung in order and the
+        /// first face that owns a character wins.
+        static readonly string[][] GlyphFaces =
+        {
+            new[] { "/System/Library/Fonts/Supplemental/STIXTwoMath.otf", "STIX Two Math", "Regular" },
+            new[] { "/System/Library/Fonts/Supplemental/Arial Unicode.ttf", "Arial Unicode MS", "Regular" },
+        };
+
+        /// Where the editor pass parks the bakes — index 0 is asked for first.
+        public static string GlyphAssetName(int i)
+        {
+            return "Fonts/RunwayGlyphs " + i + " SDF";
+        }
+
+        public static int GlyphFaceCount { get { return GlyphFaces.Length; } }
+        public static string GlyphFacePath(int i) { return GlyphFaces[i][0]; }
+        public static string GlyphFaceFamily(int i) { return GlyphFaces[i][1]; }
+        public static string GlyphFaceStyle(int i) { return GlyphFaces[i][2]; }
+
+        static TMP_FontAsset _glyphs;
+        static bool _glyphsTried;
+
+        /// The head of the borrowed chain: a baked asset out of Resources if the
+        /// editor pass ran, otherwise the OS face asked for by name, otherwise null
+        /// (and the boxes come back, which is what shipped before this).
+        public static TMP_FontAsset Glyphs
+        {
+            get
+            {
+                if (_glyphsTried) return _glyphs;
+                _glyphsTried = true;
+
+                var chain = new List<TMP_FontAsset>();
+                for (int i = 0; i < GlyphFaces.Length; i++)
+                {
+                    TMP_FontAsset f = Resources.Load<TMP_FontAsset>(GlyphAssetName(i));
+                    if (f == null)
+                    {
+                        try { f = TMP_FontAsset.CreateFontAsset(GlyphFaces[i][1], GlyphFaces[i][2], 90); }
+                        catch (Exception) { f = null; }
+                        if (f != null) f.name = "RunwayGlyphs " + i + " SDF (runtime)";
+                    }
+                    if (f != null) chain.Add(f);
+                }
+                if (chain.Count == 0)
+                {
+                    Debug.LogWarning("RUNWAY! no glyph face for ★ ✓ ⏰ ⚠ → — run "
+                                     + "RUNWAY!/Rebuild the fonts so they bake into Resources.");
+                    return null;
+                }
+                for (int i = 0; i + 1 < chain.Count; i++) Chain(chain[i], chain[i + 1]);
+                _glyphs = chain[0];
+                return _glyphs;
+            }
+        }
+
+        /// Hangs the borrowed chain off a hand, once, without ever hanging a font off
+        /// itself (TMP walks the table recursively and a loop is a hang, not an error).
+        static void LendGlyphs(TMP_FontAsset host)
+        {
+            if (host == null) return;
+            TMP_FontAsset g = Glyphs;
+            if (g == null || g == host) return;
+            Chain(host, g);
+        }
+
+        static void Chain(TMP_FontAsset host, TMP_FontAsset tail)
+        {
+            if (host == null || tail == null || host == tail) return;
+            try
+            {
+                List<TMP_FontAsset> table = host.fallbackFontAssetTable;
+                if (table == null)
+                {
+                    table = new List<TMP_FontAsset>();
+                    host.fallbackFontAssetTable = table;
+                }
+                // TMP walks this table with `i < Count && table[i] != null` and so
+                // STOPS DEAD at the first hole. The baked hand shipped with three
+                // empty slots at the top, which is how a perfectly good glyph face
+                // sat in the list and was never once asked for a character.
+                for (int i = table.Count - 1; i >= 0; i--)
+                    if (table[i] == null) table.RemoveAt(i);
+                if (!table.Contains(tail)) table.Insert(0, tail);
+            }
+            catch (Exception) { }
+        }
+
+        // ── the metrics Godot lays type out on ─────────────────────────────────
+
+        /// Godot's default theme drops three pixels between the lines of a Label. It
+        /// is a constant and not a ratio, so at 19px it is a tenth of the line and at
+        /// 58px it is a twentieth — which is exactly why a single "line spacing"
+        /// number ported from one screen was wrong on the next.
+        public const float LabelLeading = 3f;
+
+        /// draw_string() and draw_multiline_string() go through no theme at all, so
+        /// they get none of it.
+        public const float StringLeading = 0f;
+
+        static float AscentRatio(TMP_FontAsset f)
+        {
+            if (f != null && f.faceInfo.pointSize > 0f)
+                return f.faceInfo.ascentLine / f.faceInfo.pointSize;
+            return 1.042f;    // Patrick Hand's hhea ascender, 1042/1000
+        }
+
+        static float DescentRatio(TMP_FontAsset f)
+        {
+            if (f != null && f.faceInfo.pointSize > 0f)
+                return -f.faceInfo.descentLine / f.faceInfo.pointSize;
+            return 0.312f;    // Patrick Hand's hhea descender, -312/1000
+        }
+
+        static float LineRatio(TMP_FontAsset f)
+        {
+            if (f != null && f.faceInfo.pointSize > 0f && f.faceInfo.lineHeight > 0f)
+                return f.faceInfo.lineHeight / f.faceInfo.pointSize;
+            return AscentRatio(f) + DescentRatio(f);
+        }
+
+        /// How far below the top of a line its baseline sits. draw_string() is given
+        /// a BASELINE and a TMP label is given a TOP, so every transcribed
+        /// draw_string() subtracts this. It is the font's own ascent, unrounded,
+        /// because that is the number TMP itself uses to place the first line.
+        public static float Ascent(TMP_FontAsset f, float size)
+        {
+            return AscentRatio(f) * size;
+        }
+
+        public static float Ascent(float size) { return Ascent(Hand, size); }
+
+        /// Godot's line pitch, expressed in TMP's units.
+        ///
+        /// TMP lays lines out on a continuous ratio — 1.354 x the size for Patrick
+        /// Hand, straight off the hhea table. Godot lays them out the way FreeType
+        /// does: the ascent rounded UP to a whole pixel, the descent rounded DOWN,
+        /// and then the theme's leading on top. At 30 that is 32 + 10 + 3 = 45px
+        /// against TMP's 40.6 — the ten per cent every ported body block was tight
+        /// by. TMP's lineSpacing is measured in hundredths of the font size, so the
+        /// whole difference is handed over as one number, per label, per size.
+        public static float GodotLineSpacing(TMP_FontAsset f, float size, float leading)
+        {
+            if (size <= 0f) return 0f;
+            float godot = Mathf.Ceil(AscentRatio(f) * size)
+                        + Mathf.Ceil(DescentRatio(f) * size) + leading;
+            float tmp = LineRatio(f) * size;
+            return 100f * (godot - tmp) / size;
         }
 
         // ── rects, in Godot's top-left space ───────────────────────────────────
@@ -162,15 +378,37 @@ namespace Runway.App
 
         /// A Label: (x, y) is the TOP-LEFT of the text box, exactly like Label.position.
         /// `width` 0 means "no wrapping"; any other width wraps like custom_minimum_size.
+        /// `leading` is Godot's Label theme constant — leave it alone for a Label and
+        /// pass StringLeading for a transcribed draw_multiline_string(), which has no
+        /// theme under it.
         public static TextMeshProUGUI HandLabel(RectTransform parent, string text,
                                                 float x, float y, float size, Color color,
                                                 float width = 0f,
-                                                TextAlignmentOptions align = TextAlignmentOptions.TopLeft)
+                                                TextAlignmentOptions align = TextAlignmentOptions.TopLeft,
+                                                float leading = LabelLeading)
+        {
+            return Written(Hand, parent, text, x, y, size, color, width, align, leading);
+        }
+
+        /// The same label in the display hand — every heading, pip label and paper
+        /// caption the .gd screens set in `_font_d`.
+        public static TextMeshProUGUI DisplayLabel(RectTransform parent, string text,
+                                                   float x, float y, float size, Color color,
+                                                   float width = 0f,
+                                                   TextAlignmentOptions align = TextAlignmentOptions.TopLeft,
+                                                   float leading = LabelLeading)
+        {
+            return Written(Display, parent, text, x, y, size, color, width, align, leading);
+        }
+
+        static TextMeshProUGUI Written(TMP_FontAsset font, RectTransform parent, string text,
+                                       float x, float y, float size, Color color,
+                                       float width, TextAlignmentOptions align, float leading)
         {
             float w = width > 0f ? width : RunwayPaths.StageWidth;
             var rt = Rect(parent, "label", x, y, w, size * 4f);
             var t = rt.gameObject.AddComponent<TextMeshProUGUI>();
-            if (Hand != null) t.font = Hand;
+            if (font != null) t.font = font;
             t.text = text;
             t.fontSize = size;
             t.color = color;
@@ -178,20 +416,25 @@ namespace Runway.App
             t.raycastTarget = false;
             t.textWrappingMode = width > 0f ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
             t.overflowMode = TextOverflowModes.Overflow;
+            // Godot's pitch, not TMP's — set BEFORE the box is measured, or the box is
+            // sized for lines that are about to move apart
+            t.lineSpacing = GodotLineSpacing(font, size, leading);
             // the box grows down from its top-left, never re-centres the line
             t.rectTransform.sizeDelta = new Vector2(w, Mathf.Max(size * 1.6f, PreferredHeight(t, w)));
             return t;
         }
 
         /// A centred line across the whole stage at Godot BASELINE y — the shape
-        /// draw_string() takes. The baseline sits about 0.78 of the size below the top.
+        /// draw_string() takes. draw_string is handed a baseline and TMP is handed a
+        /// top, so the font's own ascent is subtracted: 1.042 of the size for Patrick
+        /// Hand, off its hhea table, not the 0.78 this used to guess.
         public static TextMeshProUGUI InkString(RectTransform parent, string text,
                                                 float baselineY, float size, Color color,
                                                 float stageWidth = 0f)
         {
             float w = stageWidth > 0f ? stageWidth : RunwayPaths.StageWidth;
-            var t = HandLabel(parent, text, 0f, baselineY - size * 0.78f, size, color, w,
-                              TextAlignmentOptions.Top);
+            var t = HandLabel(parent, text, 0f, baselineY - Ascent(Hand, size), size, color, w,
+                              TextAlignmentOptions.Top, StringLeading);
             return t;
         }
 
@@ -202,26 +445,66 @@ namespace Runway.App
         }
 
         static TextMeshProUGUI _ruler;
+        static RectTransform _rulerHost;
 
-        /// Width of a string in the hand, for the two places the original sizes a card
-        /// from its word. TMP metrics are not Godot metrics, so this is close, not equal.
+        /// Width of a string, for every place the original sizes a card from its word.
+        /// Godot's get_string_size() is a sum of ADVANCES — where the pen ends up. TMP's
+        /// GetPreferredValues() is a box, and the box carries the atlas padding the SDF
+        /// needs on both sides, which made every measured card two dozen pixels wide of
+        /// Godot's. The pen position is read straight off the shaped text instead.
         public static float MeasureWidth(string text, float size)
         {
+            return MeasureWidth(text, size, null);
+        }
+
+        public static float MeasureWidth(string text, float size, TMP_FontAsset font)
+        {
+            if (string.IsNullOrEmpty(text)) return 0f;
             if (_ruler == null)
             {
-                var host = Boot.Instance != null ? Boot.Instance.Stage : null;
+                RectTransform host = RulerHost();
                 if (host == null) return text.Length * size * 0.5f;
                 var rt = Rect(host, "ruler", -5000f, -5000f, 4000f, size * 3f);
                 _ruler = rt.gameObject.AddComponent<TextMeshProUGUI>();
                 _ruler.raycastTarget = false;
                 _ruler.textWrappingMode = TextWrappingModes.NoWrap;
+                _ruler.overflowMode = TextOverflowModes.Overflow;
             }
-            if (Hand != null) _ruler.font = Hand;
+            TMP_FontAsset f = font != null ? font : Hand;
+            if (f != null) _ruler.font = f;
             _ruler.fontSize = size;
-            // the single-argument overload measures against no container at all, which
-            // is what a card sized from its word needs
+            _ruler.lineSpacing = 0f;
+            _ruler.text = text;
+            try
+            {
+                _ruler.ForceMeshUpdate(true, true);
+                TMP_TextInfo info = _ruler.textInfo;
+                if (info != null && info.characterCount > 0)
+                {
+                    float pen = info.characterInfo[info.characterCount - 1].xAdvance;
+                    if (pen > 0f) return pen;
+                }
+            }
+            catch (Exception) { }
             try { return _ruler.GetPreferredValues(text).x; }
             catch (Exception) { return text.Length * size * 0.5f; }
+        }
+
+        /// The stage when there is one; a parked canvas of its own when there is not,
+        /// so an editor probe or a test can measure type without booting the game.
+        static RectTransform RulerHost()
+        {
+            RectTransform stage = Boot.Instance != null ? Boot.Instance.Stage : null;
+            if (stage != null) return stage;
+            if (_rulerHost == null)
+            {
+                var go = new GameObject("~runway-ruler", typeof(RectTransform), typeof(Canvas));
+                go.hideFlags = HideFlags.HideAndDontSave;
+                var canvas = go.GetComponent<Canvas>();
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                _rulerHost = go.GetComponent<RectTransform>();
+            }
+            return _rulerHost;
         }
 
         // ── paper ──────────────────────────────────────────────────────────────
@@ -596,6 +879,33 @@ namespace Runway.App
             Sprite s = Bake(px, side, side);
             _sprites[key] = s;
             return s;
+        }
+
+        /// A solid disc with nothing drawn round it — draw_circle(). The how-to's
+        /// current page dot is a coral disc with an INK ring laid over it, two
+        /// different colours, so the fill cannot ride inside the ring's own sprite:
+        /// one white bake tinted once comes out coral ring on coral disc.
+        public static Sprite DiscSprite(float radius, int pad)
+        {
+            string key = string.Format("d|{0}|{1}", radius, pad);
+            Sprite cached;
+            if (_sprites.TryGetValue(key, out cached) && cached != null) return cached;
+
+            int side = Mathf.Max(Mathf.CeilToInt(radius * 2f) + pad * 2, 4);
+            Color32[] px = NewCanvas(side, side);
+            Disc(px, side, side, side * 0.5f, side * 0.5f, radius, new Color32(255, 255, 255, 255));
+
+            Sprite s = Bake(px, side, side);
+            _sprites[key] = s;
+            return s;
+        }
+
+        /// The side of the texture RingSprite/DiscSprite bake at that radius — a host
+        /// rect wants the sprite's own size, or the wobble is stretched into a wider
+        /// dot than the one Godot drew.
+        public static int RingSide(float radius, int pad)
+        {
+            return Mathf.Max(Mathf.CeilToInt(radius * 2f) + pad * 2, 4);
         }
 
         static float Rand(System.Random rng, float amount)
