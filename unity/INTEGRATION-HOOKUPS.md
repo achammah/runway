@@ -10,3 +10,29 @@ Applied all at once at integration; each lane proven OFF-able first (D8).
   instead; optionally add `partial` at integration (one word, line 31).
 - Evidence: scratchpad/d2/ steps 0-10; pacing re-spaced to even %-per-frame
   (91→0% cream, ~8%/frame); 0.18s deaf window so the beat-closing click can't skip.
+
+## D7 audio mix — ACCEPTED (322 assertions, evidence file spot-read)
+- Hookups (6 lines, 3 files): Curtain.cs Close:159 + Open:167 + SnapShut:184 →
+  SetState curtained/normal/curtained; BinderScreen.cs:59 → "binder", OnDestroy:64 →
+  "normal"; GarageScreen.cs:471 (breath) → SetRed(State.Cash<0) (idempotent).
+- Registration seam for future audio: RegisterSource(src, "music"|"sfx"|"world")
+  beside each AddComponent<AudioSource>. No Install() needed.
+- Kill-switch RUNWAY_FX_MIX=0 verified (no filter, base volume held).
+- GAP FOUND: nothing plays audio yet — MusicManager/sfx cues unported (ledger C6).
+  NEW WORK ITEM: port music loops + 14 sfx cues, register each with the mix.
+- Manifest: com.unity.modules.particlesystem ADDED by me (D5 needs it; a missing
+  module was failing the shared compile gate for every lane).
+
+## D4 impulse — ACCEPTED (curves + zero-alloc verified in two independent runs)
+- Hookup A (backfired shake): TurnRunner.cs TurnRoutine after line 256 RaiseCurtain():
+  `yield return new WaitForSecondsRealtime(0.55f);`
+  `Runway.Effects.Impulse.Verdict(ContentDb.Str(dm, "verdict"));`
+  (ordering trap documented: at line 237 the curtain still masks it; without the
+  wait the 250ms shake hides under the 450ms sweep. Line 199 = day-one path, gets nothing.)
+- Hookup B (die punch): DiceRoll.cs HoldThenFinish() line 106 first statement:
+  `Runway.Effects.Impulse.DieSettled();` (skip path deliberately unpunched)
+- Optional: Impulse.Install() in Boot.BootFlow (log line only).
+- Restraint law in the file: Verdict() no-ops for every band except backfired.
+- Kill-switch RUNWAY_FX_IMPULSE (+ SetEnabled for the D8 matrix). Return-to-rest EXACT.
+- Constraints ledgered: never Punch below 1.0 (letterbox reveal); Impulse owns the
+  Stage transform (rest pose captured at idle→active edge).
