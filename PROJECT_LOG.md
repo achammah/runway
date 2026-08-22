@@ -285,3 +285,21 @@ the birth intro chain (walk in → open the box → seamless into the loop,
 seam RMS 5.6). Inline: title revealed by the parting sway curtain, binder
 rises, keys/name mascots idle, crew-line baseline compensated, 13 new
 item sprites generated. All screenshots verified by eye; suites green.
+
+## 2026-08-22 — The founder loops earn their gate; the game stops burning
+Idle loops v2 (agent + follow-through): a calibrated perceptual gate
+(blur-scale RMS over the still's alpha, eyes scored separately — raw RMS
+is registration noise on flat line art) accepted three regenerated loops
+(hacker/exfaang/consultant: median error ~5x lower, eye error 15-35x,
+seams 24-36 -> ~1) and correctly rejected every walk-continuing hustler.
+Root cause: the only mid-stride pose. A planted-feet source still got the
+eyes right (13.7 vs 81) and its best clip was shipped on an eyeball
+override (the flagged max is breathing bulge, on-model). Perf pass
+(agent): repaints 145-289/s -> 12-25/s via frame-index gating + 12fps
+breathe quantisation, spent sheets freed (curtain open 110->20MB), 30fps
+cap; CPU -45% on the comparable screen; perf_probe.gd is the permanent
+harness with the occlusion/spike-gauge traps documented. Plus: the
+select stage REGENERATED with the beam on the founder (48 fresh dust
+frames), the export renderer finally reads user://keys.env (why every
+shipped room stayed default), paint starts at the signature, clickable
+stat rows, key re-ask + api-key link, top-down book.
