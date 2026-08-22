@@ -301,3 +301,13 @@ Remaining to 100 across the board: live human play-feel confirmation (the one th
 - [x] K7 Clickable stat rows + perk-adjacent rules (five muscles join the six traits)
 - [x] K8 Book top-down (field notes after the entry)
 - [x] K9 FINAL DMG: 2.2GB, stamp 2026-08-22 01:49 · 6bea0cd verified inside the pck
+
+## WINDOW 7 — pricing is real, the book gates the paint
+- [x] P0 Book holds until painted (never the default room) — SETTLE IN yields to "painting your garage…"
+- [ ] P1 OFFERS at worldgen: 1-3 products/services with unit, fair market price, elasticity, unit cost (LLM + deterministic skeleton)
+- [ ] P2 Engine: revenue = priced offers × demand curve ((p/fair)^-elasticity); unpriced sells NOTHING; $500 massages sell ~zero; adoption feels price too
+- [ ] P3 Binder PRICING tab: price steppers per offer, live demand/revenue preview, "the street charges ≈$X" hint, NOT-ON-SALE states
+- [ ] P4 Clarify: selling with unpriced offers asks "what do you charge for X?" (kind price, chips around fair, sets the engine price; sequential questions supported)
+- [ ] P5 Engine tests for the curve + unpriced-zero + binder shot
+- [ ] P6 Unity migration: honest assessment + recommendation (separate deliberate project, not a mid-flight rewrite)
+- [ ] P7 My own end-to-end played test of the shipped flow (owner: "have you actually tested it?")
