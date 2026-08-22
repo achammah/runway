@@ -22,7 +22,7 @@ namespace Runway.Game
     public sealed class DraftLoop : MonoBehaviour
     {
         const int MaxFrames = 36;
-        const float LoopSeconds = 2f;      // one full breath, however many frames there are
+        const float LoopSeconds = 1f;      // one breath; 12 reborn frames = Godot's own 12fps
 
         RawImage _target;
         RectTransform _rt;
