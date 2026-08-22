@@ -459,9 +459,30 @@ namespace Runway.CoreTests
             ps3.SetFlag("launched");
             Offer mo3 = mo.Duplicate(); mo3.Price = 500.0;
             ps3.Offers = new List<Offer> { mo3 };
-            WeeklyReport rGreed = SimEngine.WeeklyTick(ps3);
-            Ok(rGreed.Revenue < rFair.Revenue / 4,
-                "greed collapses revenue (" + S(rGreed.Revenue) + " vs " + S(rFair.Revenue) + ")");
+            // THE LAW CHANGED (#196): greed no longer taxes existing spend
+            // invisibly — it starves acquisition and bleeds the base. The
+            // overpriced pay full freight until they leave.
+            Ok(SimEngine.OffersDemandMult(ps3) < 0.15,
+                "greed starves adoption (mult " + S2(SimEngine.OffersDemandMult(ps3)) + ")");
+            Ok(SimEngine.OffersPricePain(ps3) > 1.5,
+                "greed pains retention (pain " + S2(SimEngine.OffersPricePain(ps3)) + ")");
+            GameState psFairRun = NewState(); psFairRun.Traction = 40; psFairRun.Cash = 100000;
+            psFairRun.Offers = new List<Offer> { mo.Duplicate() };
+            GameState psGreedRun = NewState(); psGreedRun.Traction = 40; psGreedRun.Cash = 100000;
+            psGreedRun.Offers = new List<Offer> { mo3.Duplicate() };
+            for (int wk = 0; wk < 8; wk++) { SimEngine.WeeklyTick(psFairRun); SimEngine.WeeklyTick(psGreedRun); }
+            Ok(psGreedRun.Traction < 40 && psGreedRun.Traction <= psFairRun.Traction - 5,
+                "greed bleeds the base while fair holds (" + S(psGreedRun.Traction) + " vs " + S(psFairRun.Traction) + ")");
+            // THE OWNER'S CASE, PINNED: 16 customers on a $70 weekly-cadence
+            // offer read like founder math — hundreds per week, not $200.
+            GameState own = NewState();
+            own.Traction = 16;
+            var ownOffer = new Offer { Name = "standard session", Unit = "per session",
+                                       Price = 70.0, FairPrice = 45.0, UnitCost = 18.0, Weight = 1.0 };
+            own.Offers = new List<Offer> { ownOffer };
+            WeeklyReport rOwn = SimEngine.WeeklyTick(own);
+            Ok(rOwn.Revenue >= 900 && rOwn.Revenue <= 1300,
+                "16 x $70 session reads like founder math (" + S(rOwn.Revenue) + "/wk)");
 
             // ── loan compounding punishes
             GameState ln = NewState();
@@ -471,6 +492,8 @@ namespace Runway.CoreTests
             SimEngine.WeeklyTick(ln);
             Ok(ln.LoanPrincipal >= 11800, "18%/wk compounds (owe " + S(ln.LoanPrincipal) + ")");
         }
+
+        static string S2(double v) { return v.ToString("0.00", CultureInfo.InvariantCulture); }
 
         // ═══════════════════════════ THE BALANCE HARNESS ═════════════════════════
         /// <summary>

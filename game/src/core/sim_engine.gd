@@ -283,6 +283,8 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	# customer care keeps people: churn eases toward −30% as care approaches ~$3k/wk
 	var care_mult := 1.0 - 0.30 * (1.0 - exp(-b_care / 1500.0))
 	var churn := A / maxf(residence, 2.0) * float(th.churn_mult) * status_churn * care_mult
+	# pricing pain lands on RETENTION, never on invisible spend-shrink
+	churn *= offers_price_pain(state)
 	var net := int(round(adds - churn))
 	state.traction = maxi(state.traction + net, 0)
 	rep["adds"] = int(round(adds))
@@ -319,7 +321,12 @@ static func weekly_tick(state: GameState) -> Dictionary:
 			state.product = mini(state.product + whole, 100)
 			rep["lines"].append("R&D shipped: product v0.%d" % state.product)
 		state.tech_debt = maxf(state.tech_debt - b_rnd / 1500.0, 0.0)
-	var burn := int((float(rent + payroll + infra) + mk_budget + b_sales + b_care + b_rnd) * float(th.burn_mult))
+	var cogs := 0.0
+	if arpu_off >= 0.0:
+		cogs = float(state.traction) * offers_cogs_per_customer(state)
+		if cogs >= 1.0:
+			rep["lines"].append("cost of serving customers: $%d" % int(round(cogs)))
+	var burn := int((float(rent + payroll + infra) + mk_budget + b_sales + b_care + b_rnd) * float(th.burn_mult) + cogs)
 	state.cash += int(round(revenue)) - burn
 	if state.get_meta("prev_revenue", 0.0) > 1.0:
 		state.last_growth = clampf((revenue - float(state.get_meta("prev_revenue"))) / float(state.get_meta("prev_revenue")), -0.5, 0.5)
@@ -589,8 +596,30 @@ static func offer_demand(offer: Dictionary, price: float) -> float:
 	var e := float(offer.get("elasticity", 2.0))
 	return clampf(pow(price / fair, -e), 0.0, 3.0)
 
-## Weekly revenue per customer across PRICED offers (0 when nothing is on
-## sale — an unpriced product earns nothing, however many sign up).
+## How often one customer pays for an offer, in purchases per week. The
+## founder's mental math is "customers × price"; the cadence is the honest
+## bridge between that and a weekly ledger line.
+static func offer_cadence(unit: String) -> float:
+	var u := unit.to_lower()
+	if u.contains("session") or u.contains("order") or u.contains("hour"):
+		return 1.0
+	if u.contains("month") or u.contains("plan"):
+		return 0.25
+	if u.contains("year"):
+		return 0.02
+	if u.contains("package") or u.contains("kit") or u.contains("unit") or u.contains("device"):
+		return 0.2
+	return 0.5
+
+## REAL weekly revenue per customer across PRICED offers (0 when nothing is
+## on sale — an unpriced product earns nothing, however many sign up).
+## THE OWNER'S LAW (#196: "16 customers, $70 product, $200 revenue — the
+## math is not mathing"): the old form taxed EXISTING customers' spend by
+## price-demand and a hidden 0.25 cadence and quietly subtracted unit cost —
+## three silent multipliers between a founder's mental math and the number.
+## Now: demand gates ACQUISITION (adds) and pushes CHURN above fair price;
+## existing customers simply pay their offer's price at its cadence, and
+## the cost of serving them is a VISIBLE cogs line in burn.
 static func offers_arpu(state: GameState) -> float:
 	if state.offers.is_empty():
 		return -1.0   # legacy runs: fall back to theta arpu
@@ -600,11 +629,45 @@ static func offers_arpu(state: GameState) -> float:
 		var price := float(od.get("price", 0.0))
 		if price <= 0.0:
 			continue
-		var dem := offer_demand(od, price)
-		# margin per customer-week: weight × demand share × (price − unit cost),
-		# normalised by the unit cadence baked into fair_price scale
-		total += float(od.get("weight", 1.0)) * dem * maxf(price - float(od.get("unit_cost", 0.0)), 0.0) * 0.25
+		total += float(od.get("weight", 1.0)) * price * offer_cadence(String(od.get("unit", "")))
 	return total
+
+## The weekly cost of serving one customer's purchases (unit costs at the
+## same cadence) — lands in burn where the ledger can show it.
+static func offers_cogs_per_customer(state: GameState) -> float:
+	if state.offers.is_empty():
+		return 0.0
+	var total := 0.0
+	for o in state.offers:
+		var od: Dictionary = o
+		if float(od.get("price", 0.0)) <= 0.0:
+			continue
+		total += float(od.get("weight", 1.0)) * float(od.get("unit_cost", 0.0)) \
+				* offer_cadence(String(od.get("unit", "")))
+	return total
+
+## Above fair price the invoice reminds people to leave: retention pain,
+## 1.0 at or below fair, rising 0.4 per 100% over fair, capped at 1.6.
+static func offers_price_pain(state: GameState) -> float:
+	if state.offers.is_empty():
+		return 1.0
+	var num := 0.0
+	var den := 0.0
+	for o in state.offers:
+		var od: Dictionary = o
+		var price := float(od.get("price", 0.0))
+		if price <= 0.0:
+			continue
+		var fair := maxf(float(od.get("fair_price", price)), 1.0)
+		var wgt := float(od.get("weight", 1.0))
+		num += wgt * (price / fair)
+		den += wgt
+	if den <= 0.0:
+		return 1.0
+	var ratio := num / den
+	if ratio <= 1.0:
+		return 1.0
+	return 1.0 + minf((ratio - 1.0) * 0.4, 0.6)
 
 ## The blended price-demand multiplier adoption feels (1.0 at fair prices).
 static func offers_demand_mult(state: GameState) -> float:

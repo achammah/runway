@@ -340,9 +340,30 @@ func _go() -> void:
 	ps3.set_flag("launched")
 	var mo3 := mo.duplicate(); mo3["price"] = 500.0
 	ps3.offers = [mo3]
-	var r_greed := SimEngine.weekly_tick(ps3)
-	_ok(int(r_greed.revenue) < int(r_fair.revenue) / 4,
-		"greed collapses revenue (%d vs %d)" % [r_greed.revenue, r_fair.revenue])
+	# THE LAW CHANGED (#196): greed starves acquisition and bleeds the base;
+	# the overpriced pay full freight until they leave.
+	_ok(SimEngine.offers_demand_mult(ps3) < 0.15,
+		"greed starves adoption (mult %.2f)" % SimEngine.offers_demand_mult(ps3))
+	_ok(SimEngine.offers_price_pain(ps3) > 1.5,
+		"greed pains retention (pain %.2f)" % SimEngine.offers_price_pain(ps3))
+	var ps_fair_run := _state(); ps_fair_run.traction = 40; ps_fair_run.cash = 100_000
+	ps_fair_run.offers = [mo.duplicate()]
+	var ps_greed_run := _state(); ps_greed_run.traction = 40; ps_greed_run.cash = 100_000
+	ps_greed_run.offers = [mo3.duplicate()]
+	for wk in range(8):
+		SimEngine.weekly_tick(ps_fair_run)
+		SimEngine.weekly_tick(ps_greed_run)
+	_ok(ps_greed_run.traction < 40 and ps_greed_run.traction <= ps_fair_run.traction - 5,
+		"greed bleeds the base while fair holds (%d vs %d)" % [ps_greed_run.traction, ps_fair_run.traction])
+	# THE OWNER'S CASE, PINNED: 16 customers on a $70 weekly-cadence offer
+	# read like founder math — hundreds per week, not $200.
+	var own := _state()
+	own.traction = 16
+	own.offers = [{"name": "standard session", "unit": "per session",
+		"price": 70.0, "fair_price": 45.0, "unit_cost": 18.0, "weight": 1.0}]
+	var r_own := SimEngine.weekly_tick(own)
+	_ok(int(r_own.revenue) >= 900 and int(r_own.revenue) <= 1300,
+		"16 x $70 session reads like founder math (%d/wk)" % int(r_own.revenue))
 
 	# ── loan compounding punishes
 	var ln := _state()

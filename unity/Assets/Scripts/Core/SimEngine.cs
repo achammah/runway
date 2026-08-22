@@ -550,6 +550,8 @@ namespace Runway.Core
             // customer care keeps people: churn eases toward -30% as care approaches ~$3k/wk
             double careMult = 1.0 - 0.30 * (1.0 - Math.Exp(-bCare / 1500.0));
             double churn = A / Gd.Maxf(residence, 2.0) * th.ChurnMult * statusChurn * careMult;
+            // pricing pain lands on RETENTION, never on invisible spend-shrink
+            churn *= OffersPricePain(state);
             int net = Gd.RoundToInt(adds - churn);
             state.Traction = Gd.Maxi(state.Traction + net, 0);
             rep.Adds = Gd.RoundToInt(adds);
@@ -616,7 +618,15 @@ namespace Runway.Core
                 }
                 state.TechDebt = Gd.Maxf(state.TechDebt - bRnd / 1500.0, 0.0);
             }
-            int burn = Gd.ToInt(((double)(rent + payroll + infra) + mkBudget + bSales + bCare + bRnd) * th.BurnMult);
+            double cogs = 0.0;
+            if (arpuOff >= 0.0)
+            {
+                cogs = state.Traction * OffersCogsPerCustomer(state);
+                if (cogs >= 1.0)
+                    rep.Lines.Add(string.Format(CultureInfo.InvariantCulture,
+                        "cost of serving customers: ${0}", Gd.RoundToInt(cogs)));
+            }
+            int burn = Gd.ToInt(((double)(rent + payroll + infra) + mkBudget + bSales + bCare + bRnd) * th.BurnMult + cogs);
             state.Cash += Gd.RoundToInt(revenue) - burn;
             if (state.GetMetaF("prev_revenue", 0.0) > 1.0)
             {
@@ -1051,12 +1061,57 @@ namespace Runway.Core
                 {
                     continue;
                 }
-                double dem = OfferDemand(od, price);
-                // margin per customer-week: weight x demand share x (price - unit cost),
-                // normalised by the unit cadence baked into fair_price scale
-                total += od.Weight * dem * Gd.Maxf(price - od.UnitCost, 0.0) * 0.25;
+                // THE OWNER'S LAW (#196): existing customers simply pay their
+                // offer's price at its cadence. Demand gates ACQUISITION and
+                // pushes CHURN above fair; it never taxes spend invisibly.
+                total += od.Weight * price * OfferCadence(od.Unit);
             }
             return total;
+        }
+
+        /// <summary>Purchases per week for one customer of this offer — the honest
+        /// bridge between "customers x price" and a weekly ledger line.</summary>
+        public static double OfferCadence(string unit)
+        {
+            string u = (unit ?? "").ToLowerInvariant();
+            if (u.Contains("session") || u.Contains("order") || u.Contains("hour")) return 1.0;
+            if (u.Contains("month") || u.Contains("plan")) return 0.25;
+            if (u.Contains("year")) return 0.02;
+            if (u.Contains("package") || u.Contains("kit") || u.Contains("unit") || u.Contains("device")) return 0.2;
+            return 0.5;
+        }
+
+        /// <summary>The weekly cost of serving one customer's purchases — a VISIBLE
+        /// cogs line inside burn, never a silent subtraction from revenue.</summary>
+        public static double OffersCogsPerCustomer(GameState state)
+        {
+            if (state.Offers == null || state.Offers.Count == 0) return 0.0;
+            double total = 0.0;
+            foreach (Offer od in state.Offers)
+            {
+                if (od.Price <= 0.0) continue;
+                total += od.Weight * od.UnitCost * OfferCadence(od.Unit);
+            }
+            return total;
+        }
+
+        /// <summary>Above fair price the invoice reminds people to leave: 1.0 at or
+        /// below fair, +0.4 per 100% over fair, capped at 1.6.</summary>
+        public static double OffersPricePain(GameState state)
+        {
+            if (state.Offers == null || state.Offers.Count == 0) return 1.0;
+            double num = 0.0, den = 0.0;
+            foreach (Offer od in state.Offers)
+            {
+                if (od.Price <= 0.0) continue;
+                double fair = Gd.Maxf(od.FairPrice, 1.0);
+                num += od.Weight * (od.Price / fair);
+                den += od.Weight;
+            }
+            if (den <= 0.0) return 1.0;
+            double ratio = num / den;
+            if (ratio <= 1.0) return 1.0;
+            return 1.0 + Gd.Minf((ratio - 1.0) * 0.4, 0.6);
         }
 
         /// <summary>The blended price-demand multiplier adoption feels (1.0 at fair prices).</summary>
