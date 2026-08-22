@@ -199,11 +199,17 @@ namespace Runway.App
             Apply();
         }
 
+        int _lineFrame = -1;   // 12fps quantizer: per-frame TMP writes rebuilt
+                               // the curtain canvas 2118x/s (the perf probe's
+                               // E2 headline); the line now breathes on the
+                               // same clock as the baked sway
+
         void Update()
         {
             if (_t <= 0.98f)
             {
                 _shutFor = 0f;
+                _lineFrame = -1;
                 if (_swayImage != null && _swayImage.enabled) _swayImage.enabled = false;
                 if (_line != null) _line.color = DrawnUI.WithAlpha(_line.color, 0f);
                 return;
@@ -218,11 +224,15 @@ namespace Runway.App
             }
             if (_shutFor > 0.9f && _line != null)
             {
-                _line.text = ConsideringLine;
-                float a = Mathf.Clamp01((_shutFor - 0.9f) * 2f)
-                          * (0.75f + 0.25f * Mathf.Sin(_shutFor * 2.2f));
+                int frame = (int)(_shutFor * LoopFps);
+                if (frame == _lineFrame) return;
+                _lineFrame = frame;
+                float qt = frame / LoopFps;   // the quantized clock drives the same curves
+                if (_line.text != ConsideringLine) _line.text = ConsideringLine;
+                float a = Mathf.Clamp01((qt - 0.9f) * 2f)
+                          * (0.75f + 0.25f * Mathf.Sin(qt * 2.2f));
                 _line.color = new Color(0.95f, 0.92f, 0.83f, a);
-                float bob = Mathf.Sin(_shutFor * 1.3f) * 4f;
+                float bob = Mathf.Sin(qt * 1.3f) * 4f;
                 DrawnUI.SetTopLeft(_line.rectTransform,
                                    0f, RunwayPaths.StageHeight * 0.5f - 40f * 0.78f + bob);
             }
