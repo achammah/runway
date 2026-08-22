@@ -72,11 +72,11 @@ frame time; measured).
 - [ 60%] A7 Game screens + RunDriver (agent) · verify = its report + my compile
 - [100%] A8 First compile — CLEAN ON PASS ONE (0 errors, ~15k lines); tool hardened: mutex + positive-evidence (a lock-failure log can no longer read as clean)
 - [100%] A9 Console hygiene: 20 warnings (all enableWordWrapping) swept to textWrappingMode → 0 errors 0 warnings
-- [ 90%] A10 Boot walk: · built player walks all 23 states incl. films (baked sheets), 0 exceptions
+- [ 95%] A10 Boot walk: · built player walks all 23 states incl. films (baked sheets), 0 exceptions
 - [100%] A11 The stamp: · title corner reads date·sha·editor in the shot (eyeballed)
-- [  0%] A12 Session logging: every FOUNDING/WARM/paint/clarify/settle line prints like Godot's (grep-parity list)
+- [ 80%] A12 Session logging: every FOUNDING/WARM/paint/clarify/settle line prints like Godot's (grep-parity list)
 - [ 90%] A13 hard watchdog live in BOTH engines (Godot fault-proven; Unity same design, live fault-injection pending)
-- [  0%] A14 Keyless mode: full boot→draft→garage on authored deck, zero network calls (probe with network denied)
+- [ 90%] A14 Keyless mode: full boot→draft→garage on authored deck, zero network calls (probe with network denied)
 - [100%] A15 round-trip suite 104 checks; ObjectCreationHandling fix proven (saves corrupted on every CONTINUE before)
 - [100%] A16 slots suite green incl. overwrite/delete/restore; state-less guard in
 - [100%] A17 env layering + no-key-in-logs proven both hosts; whitespace fix in
@@ -84,90 +84,90 @@ frame time; measured).
 
 ## B — VISUAL PARITY (screen by screen; each: Build twin-shot state · Verify side-by-side vs the Godot shot · 100% = differences zero or accepted in writing here)
 - [100%] B1 Harness: UnityShots.cs — same states as new_screens_shot/select_shot/binder_shot/howto_shot/birth_shot/traits_shot, saved to scratchpad · 23/23 twins, exit 0, reproduced by me
-- [  0%] B2 Studio card (fade timings, underline draw)
+- [ 90%] B2 Studio card (fade timings, underline draw)
 - [ 90%] B3 · Unity twin shows film+stamp; side-by-side vs Godot pending
-- [  0%] B4 Title menu: paper buttons ease-in, ghost text absent
-- [  0%] B5 Slot table: 3 dossiers, ago-times, back
-- [  0%] B6 Keys desk: pitch copy, mascot idle, no cleartext
-- [  0%] B7 HowTo p1/p2/p3: loops un-squished, dots, captions
-- [  0%] B8 Draft sign page (deal-another works)
-- [  0%] B9 Draft select: spotlight ON founder, idle loop playing, traits block, stat-click tip open
-- [  0%] B10 Draft name: witness idles, inputs
-- [  0%] B11 Draft shape page
-- [  0%] B12 Draft crew: named cards, redeal, capline
-- [  0%] B13 Draft money page
-- [  0%] B14 Draft bag: categories, scroll+drawn bar, detail card with trait mods, loadout+in-play lines
-- [  0%] B15 Birth: intro→loop seamless, phase lines
-- [  0%] B16 Book: entry, field notes after entry, gates (door absent until entry+paint), drawn scrollbar
-- [  0%] B17 Garage room: composed painting adopted, ribbon during paint, HUD chips
-- [  0%] B18 Journal was-page: headline, diary line, receipts, strips
-- [  0%] B19 Journal decision page: event body, ask line, telegraph formula line
-- [  0%] B20 Clarify on page: question line, chips (amount + price kinds)
-- [  0%] B21 Dice: full-height sheet play over darkening page, engine number == shown number (5 rolls)
-- [  0%] B22 Beat: title, judgement sentence, scroll + ▼ honesty, look-up close
-- [  0%] B23 Curtain: sway loop, considering line, sweep
-- [  0%] B24 Binder ×9 tabs incl. ledger effects + pricing verdicts (twin of binder_shot with offers)
-- [  0%] B25 Autopsy-minimal: summary + back
-- [  0%] B26 Transition sweep: film every swap (fade, journal rise/drop, binder rise) — no pops anywhere
+- [100%] B4 Title menu: paper buttons ease-in, ghost text absent
+- [100%] B5 Slot table: 3 dossiers, ago-times, back
+- [ 90%] B6 Keys desk: pitch copy, mascot idle, no cleartext
+- [ 95%] B7 HowTo p1/p2/p3: loops un-squished, dots, captions
+- [ 90%] B8 Draft sign page (deal-another works)
+- [ 95%] B9 Draft select: spotlight ON founder, idle loop playing, traits block, stat-click tip open
+- [ 90%] B10 Draft name: witness idles, inputs
+- [ 90%] B11 Draft shape page
+- [ 90%] B12 Draft crew: named cards, redeal, capline
+- [ 90%] B13 Draft money page
+- [ 90%] B14 Draft bag: categories, scroll+drawn bar, detail card with trait mods, loadout+in-play lines
+- [ 90%] B15 Birth: intro→loop seamless, phase lines
+- [ 90%] B16 Book: entry, field notes after entry, gates (door absent until entry+paint), drawn scrollbar
+- [ 90%] B17 Garage room: composed painting adopted, ribbon during paint, HUD chips
+- [ 85%] B18 Journal was-page: headline, diary line, receipts, strips
+- [ 85%] B19 Journal decision page: event body, ask line, telegraph formula line
+- [ 85%] B20 Clarify on page: question line, chips (amount + price kinds)
+- [ 90%] B21 Dice: full-height sheet play over darkening page, engine number == shown number (5 rolls)
+- [ 85%] B22 Beat: title, judgement sentence, scroll + ▼ honesty, look-up close
+- [ 90%] B23 Curtain: sway loop, considering line, sweep
+- [100%] B24 Binder ×9 tabs incl. ledger effects + pricing verdicts (twin of binder_shot with offers)
+- [ 90%] B25 Autopsy-minimal: summary + back
+- [ 70%] B26 Transition sweep: film every swap (fade, journal rise/drop, binder rise) — no pops anywhere
 
 ## C — BEHAVIOR PARITY (live, paid where needed)
-- [  0%] C1 First-flow probe: sign→world→day-one written→gate→settle→PAINTED room, full trace
-- [  0%] C2 Week loop ×3 weeks: event→move→clarify(silent)→dice→beat→effects→was-page→binder deltas
-- [  0%] C3 Clarify ask-paths: amountless ad move asks amount; unpriced sell asks price and SETS the engine price
-- [  0%] C4 Money law: written $1,500 spend debits exactly; era-clamp; THE RED countdown appears at cash<0
-- [  0%] C5 Pricing: $500 session ≈ zero adds/revenue in play; fair price pays (numbers from the tick log)
-- [  0%] C6 Traits at the table: doors-open advantage visible in telegraph; luck reroll observed in logs (seeded)
-- [  0%] C7 No-repeat: 4 weeks, no repeated leads/titles (log check)
-- [  0%] C8 Paint resilience: black-hole render URL → ladder retries → authored room + ribbon, game never blocks (fault injection)
+- [100%] C1 First-flow probe: sign→world→day-one written→gate→settle→PAINTED room, full trace
+- [100%] C2 Week loop ×3 weeks: event→move→clarify(silent)→dice→beat→effects→was-page→binder deltas
+- [100%] C3 Clarify ask-paths: amountless ad move asks amount; unpriced sell asks price and SETS the engine price
+- [ 90%] C4 Money law: written $1,500 spend debits exactly; era-clamp; THE RED countdown appears at cash<0
+- [ 60%] C5 Pricing: $500 session ≈ zero adds/revenue in play; fair price pays (numbers from the tick log)
+- [ 90%] C6 Traits at the table: doors-open advantage visible in telegraph; luck reroll observed in logs (seeded)
+- [ 95%] C7 No-repeat: 4 weeks, no repeated leads/titles (log check)
+- [ 50%] C8 Paint resilience: black-hole render URL → ladder retries → authored room + ribbon, game never blocks (fault injection)
 
 ## D — THE ADD-ON WAVES (each: Build · Verify by film/shot · 100% = the award bar for that effect; kill-switch proven)
 - [ 95%] D1a Line-boil: screen-space or per-material wobble shader (2-frame 8fps boil) on ink textures · code+evidence accepted; wired at D9
 - [ 95%] D1b Boil coverage: DrawnUI borders, rules, rings, buttons — one material path · same
-- [ 80%] D1c Boil restraint: text glyphs EXCLUDED (readability), amplitude ≤1.5px, film shows edges-only motion · diff shot: edges only
-- [ 80%] D2a Ink-reveal: brush-stroke mask sequence (drawn strokes texture set) · 12 masks, even pacing
+- [ 95%] D1c Boil restraint: text glyphs EXCLUDED (readability), amplitude ≤1.5px, film shows edges-only motion · diff shot: edges only
+- [ 95%] D2a Ink-reveal: brush-stroke mask sequence (drawn strokes texture set) · 12 masks, even pacing
 - [ 95%] D2b Reveal wired to composed-room adoption (and to weekly repaints) · seam ready
-- [ 80%] D2c Reveal film: 12 frames, room paints in stroke by stroke, ≤1.2s, skippable · frames eyeballed
+- [ 95%] D2c Reveal film: 12 frames, room paints in stroke by stroke, ≤1.2s, skippable · frames eyeballed
 - [ 95%] D3a Beat typewriter: per-char ink-settle (alpha+2px drop, 40 chars/s, click = all) · mesh-settle riding the beat clock
-- [ 80%] D3b Inline die glyph in the judgement sentence (TMP sprite asset from dice art) · die chit measured
-- [ 80%] D3c Verdict emphasis: BRILLIANT/BACKFIRED words get one-time scale-settle (film) · punch bounded
-- [ 80%] D4a Impulse kit: hand-rolled spring camera offset (no package dep) · closed-form spring, exact rest
+- [ 95%] D3b Inline die glyph in the judgement sentence (TMP sprite asset from dice art) · die chit measured
+- [ 95%] D3c Verdict emphasis: BRILLIANT/BACKFIRED words get one-time scale-settle (film) · punch bounded
+- [100%] D4a Impulse kit: hand-rolled spring camera offset (no package dep) · closed-form spring, exact rest
 - [ 95%] D4b Wired: backfired week = 6px 250ms shake; die settle = 2% punch-in 120ms (film both) · hookups named
-- [ 80%] D4c Restraint pass: fine/brilliant weeks = NO shake (film proves absence) · no-op law in file
+- [100%] D4c Restraint pass: fine/brilliant weeks = NO shake (film proves absence) · no-op law in file
 - [ 95%] D5a Spotlight dust motes (select+garage bulb): ≤40 particles, drawn dot sprite · 0.031ms, 0 GC
 - [ 95%] D5b LOCK-IN paper scraps burst (6-10 scraps, 0.8s, gravity) · 6-10 scraps
 - [ 95%] D5c Title embers off the burning runway (matches Godot title's fire line) · embers framed
 - [ 95%] D6a Soft-light sprites (NOT URP): additive radial glows — garage bulb warm pool, laptop glow · warmth measured
 - [ 95%] D6b In-the-red dimming: room multiply layer eases to 0.85 + cold tint (shot at cash<0) · red goes cold
-- [ 95%] D6c Select spotlight glow matches the regenerated stage art (shot) · beam lit
-- [ 80%] D7a Mixer asset: Music/SFX/World groups, 3 snapshots (normal, curtained, red) · code-built mix, 322 asserts
+- [ 90%] D6c Select spotlight glow matches the regenerated stage art (shot) · beam lit
+- [100%] D7a Mixer asset: Music/SFX/World groups, 3 snapshots (normal, curtained, red) · code-built mix, 322 asserts
 - [ 95%] D7b Wired: curtain duck −6dB 0.3s; binder muffle LPF; red-week thin filter (state-log verify + listen note) · hookups named
 - [100%] D8 Kill-switch matrix: 9/9 variants (all-on + 8 offs) exit 0, 23 shots, 0 exceptions
-- [ 95%] D9 INTEGRATION: 20 hookups wired, matrix green, shots eyeballed (stage lit, title burns); per-lane ≤1ms frame check rides E6
+- [100%] D9 INTEGRATION: 20 hookups wired, matrix green, shots eyeballed (stage lit, title burns); per-lane ≤1ms frame check rides E6
 
 ## E — PERFORMANCE (twin harness, published table)
 - [100%] E1 UnityPerf.cs: per-screen 3s averages — frame ms, draw calls, RAM, canvas rebuilds — same screens as perf_probe.gd · tables published; fps/draws re-run on built app at E6
-- [  0%] E2 Canvas hygiene: animated elements on their own canvases; rebuild storms = 0 outside animation frames
-- [  0%] E3 30fps cap + vsync policy set; frame pacing verified (no 2-frame stutters in film)
-- [  0%] E4 Texture residency: sheets released on screen exit (RAM floor returns; numbers)
-- [  0%] E5 Hitch hunt: 10-minute scripted session, zero >50ms spikes (Profiler capture)
-- [  0%] E6 THE TABLE (in this file): boot→title, title→draft, settle→room, steady CPU/RAM per screen, app size — Unity vs Godot measured (Godot: draft 382-620ms, settle 297ms, redraws 12-25/s)
-- [  0%] E7 Every row equal-or-better or fixed; misses explained in writing
-- [  0%] E8 App size ≤ Godot 2.77GB (same staged art)
+- [ 95%] E2 Canvas hygiene: animated elements on their own canvases; rebuild storms = 0 outside animation frames
+- [ 90%] E3 30fps cap + vsync policy set; frame pacing verified (no 2-frame stutters in film)
+- [ 95%] E4 Texture residency: sheets released on screen exit (RAM floor returns; numbers)
+- [ 70%] E5 Hitch hunt: 10-minute scripted session, zero >50ms spikes (Profiler capture)
+- [ 95%] E6 THE TABLE (in this file): boot→title, title→draft, settle→room, steady CPU/RAM per screen, app size — Unity vs Godot measured (Godot: draft 382-620ms, settle 297ms, redraws 12-25/s)
+- [ 90%] E7 Every row equal-or-better or fixed; misses explained in writing
+- [100%] E8 App size ≤ Godot 2.77GB (same staged art)
 
 ## ART-CHAR — the characters, reborn (owner directive)
-- [  0%] AC1 Character bible: one master sheet per archetype (hacker/consultant/exfaang/skater + crew cast) — same body language family, the game's ink-and-paper hand · Verify: my eyeball on consistency · 100% = every character unmistakably the same person across every frame they appear in
-- [  0%] AC2 Pipeline: tools/char_pipeline.py — master → per-frame edits (idle keyframes), TRANSPARENT background from the generator, alpha-bbox check (no pixel touches an edge = no cutoffs), auto-retry on violation · 100% = one command per character, deterministic outputs
-- [  0%] AC3 Pilot: ONE archetype end-to-end (master + 12-frame idle loop + still) · Verify: frames eyeballed for consistency/loop-smoothness/no-cutoff BEFORE the fleet runs
-- [  0%] AC4 Fleet: all archetypes + crew variants regenerated; same filenames so both engines adopt (game/assets/sprites/chr_* + unity Art staging)
-- [  0%] AC5 Integration: select stage presence (scale/baseline vs the cone), crew cards, keys mascot, garage crew line — no cutoffs anywhere · Verify: twin shots re-eyeballed
-- [  0%] AC6 The loops breathe: 12fps idle reads alive (with the boil) — film check
+- [ 95%] AC1 Character bible: one master sheet per archetype (hacker/consultant/exfaang/skater + crew cast) — same body language family, the game's ink-and-paper hand · Verify: my eyeball on consistency · 100% = every character unmistakably the same person across every frame they appear in
+- [100%] AC2 Pipeline: tools/char_pipeline.py — master → per-frame edits (idle keyframes), TRANSPARENT background from the generator, alpha-bbox check (no pixel touches an edge = no cutoffs), auto-retry on violation · 100% = one command per character, deterministic outputs
+- [100%] AC3 Pilot: ONE archetype end-to-end (master + 12-frame idle loop + still) · Verify: frames eyeballed for consistency/loop-smoothness/no-cutoff BEFORE the fleet runs
+- [100%] AC4 Fleet: all archetypes + crew variants regenerated; same filenames so both engines adopt (game/assets/sprites/chr_* + unity Art staging)
+- [ 90%] AC5 Integration: select stage presence (scale/baseline vs the cone), crew cards, keys mascot, garage crew line — no cutoffs anywhere · Verify: twin shots re-eyeballed
+- [ 80%] AC6 The loops breathe: 12fps idle reads alive (with the boil) — film check
 
 ## F — SHIP
-- [  0%] F1 Build.BuildMac batch build succeeds headless
-- [  0%] F2 Stamp verified INSIDE the app bundle (twin of the pck check)
-- [  0%] F3 Launch from Finder on this Mac: full first-flow played by me in the BUILT app (not editor)
-- [  0%] F4 RUNWAY-Unity.app + side-by-side hand-off note (what to feel for, the perf table)
-- [  0%] F5 Repo synced: all lanes committed, this file at 100
+- [100%] F1 Build.BuildMac batch build succeeds headless
+- [100%] F2 Stamp verified INSIDE the app bundle (twin of the pck check)
+- [ 90%] F3 Launch from Finder on this Mac: full first-flow played by me in the BUILT app (not editor)
+- [ 95%] F4 RUNWAY-Unity.app + side-by-side hand-off note (what to feel for, the perf table)
+- [ 90%] F5 Repo synced: all lanes committed, this file at 100
 
 DECIDED: monorepo; game/data+prompts single source (staged at build).
 EXPERIMENT LANE (post-F5): LOCAL-NARRATOR via LLMUnity (Apache-2.0, llama.cpp,
