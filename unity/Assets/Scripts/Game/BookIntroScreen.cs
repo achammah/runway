@@ -54,7 +54,18 @@ namespace Runway.Game
         protected override void OnBuild()
         {
             DrawnUI.FullFill(Rect, "ground", DrawnUI.Hex("22262B"), true);
-            GameUi.PaperSheet(Rect, 168f, 42f, 1200f, 916f, 3, 4f, null, "sheet");
+            var sheet = GameUi.PaperSheet(Rect, 168f, 42f, 1200f, 916f, 3, 4f, null, "sheet");
+            // `_Sheet._draw` opens on draw_rect(Rect2(8, 12, w, h), Color(0, 0, 0, 0.3)).
+            // The book is the one page that is nothing BUT a sheet on a dark ground, so
+            // its shadow carries the whole sense of a real page: at 0.18, thrown 7×9,
+            // it lay flat on the desk instead of lifting off it.
+            var shadow = sheet.Find("shadow");
+            if (shadow != null)
+            {
+                var img = shadow.GetComponent<Image>();
+                if (img != null) img.color = new Color(0f, 0f, 0f, 0.3f);
+                DrawnUI.SetTopLeft(shadow as RectTransform, 8f, 12f);
+            }
 
             string company = State != null ? State.CompanyName : "";
             DrawnUI.HandLabel(Rect, company.ToUpper() + " — a founder's logbook",
@@ -261,6 +272,13 @@ namespace Runway.Game
         void Update()
         {
             _t += Time.unscaledDeltaTime;
+            // A18 #11: on a first run nothing subscribes the driver to the
+            // director yet, so PaintSettled can have NO raiser while this door
+            // holds — the poll is the belt to the event's braces. The door
+            // opens on done OR failed; only live painting holds it.
+            if (_holdingPaint && Boot.Instance != null && Boot.Instance.Director != null
+                && Boot.Instance.Director.WarmStatus != Runway.Llm.PaintStatus.Painting)
+                SetPaintDone();
             if (_paintLine != null)
                 _paintLine.color = DrawnUI.WithAlpha(DrawnUI.Coral,
                     0.65f + 0.35f * Mathf.Sin(_t * 2.4f));

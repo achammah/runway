@@ -37,6 +37,21 @@ namespace Runway.Game
         };
         static readonly int[] LeverSteps = { 0, 250, 500, 1000, 2000, 4000, 8000 };
 
+        // THE PEN RING, from `_Clipboard._draw`: an ellipse centred on (24 + tab*133 +
+        // 65, 76) with radii 68 and 26, wobbled ±2 and stroked 3.5. The sprite is the
+        // ink's own box — its pad is the jitter plus half the stroke plus a margin —
+        // and it mounts 1:1, so the ring is the size the hand drew and not a squashed
+        // circle. A 60r circle stretched into a 130×52 cell measured 127×50 of ink
+        // against Godot's ~143×59, at 607 coral pixels against 1321, and its stroke ran
+        // 3.28 across but 1.31 top and bottom — a stretched circle holds no one width.
+        const float RingRx = 68f;
+        const float RingRy = 26f;
+        const float RingPad = 6f;                       // ceil(2 + 3.5/2 + 2)
+        const float RingW = RingRx * 2f + RingPad * 2f;   // 148
+        const float RingH = RingRy * 2f + RingPad * 2f;   // 64
+        const float RingTop = 76f - RingH * 0.5f;         // 44
+        static float RingX(int tab) { return 24f + tab * 133f + 65f - RingW * 0.5f; }
+
         GameState _st;
         RectTransform _sheet;
         RectTransform _content;
@@ -70,6 +85,16 @@ namespace Runway.Game
             GameUi.Scrim(rt, new Color(0.05f, 0.05f, 0.06f, 0.55f), Dismiss);
 
             _sheet = GameUi.PaperSheet(rt, 148f, 52f, 1240f, 920f, 7, 4f, null, "clipboard");
+            // the clipboard's own shadow: `_Clipboard._draw` opens on draw_rect(Rect2(
+            // 8, 12, w, h), Color(0, 0, 0, 0.25)) — a heavier, further-thrown shadow
+            // than the shared sheet's, because this board is held over a dimmed room
+            var board = _sheet.Find("shadow");
+            if (board != null)
+            {
+                var boardImg = board.GetComponent<Image>();
+                if (boardImg != null) boardImg.color = new Color(0f, 0f, 0f, 0.25f);
+                DrawnUI.SetTopLeft(board as RectTransform, 8f, 12f);
+            }
             // the clip at the top
             var clip = DrawnUI.Fill(_sheet, "clip", DrawnUI.Yellow, 1240f * 0.5f - 70f, -18f, 140f, 34f);
             clip.raycastTarget = false;
@@ -79,16 +104,21 @@ namespace Runway.Game
                 StepsPerEdge = 6, Jitter = 1f, Thickness = 4f, Seed = 7,
             });
 
+            // THE PEN RING AND THE RULE GO DOWN BEFORE THE WORDS. `_Clipboard._draw`
+            // paints both, and a Godot node draws under its own children — so the ring
+            // passes BEHIND the tab it circles, never across it.
+            _tabRing = DrawnChart.Mount(_sheet, "tabring",
+                DrawnChart.PenEllipse(RingRx, RingRy, 3.5f, 2f, 5, DrawnUI.Coral),
+                RingX(0), RingTop, RingW, RingH);
+            DrawnUI.Fill(_sheet, "tabrule", DrawnUI.WithAlpha(DrawnUI.Ink, 0.25f),
+                         30f, 108f, 1180f, 2f);
+
             for (int i = 0; i < Tabs.Length; i++)
             {
                 int idx = i;
                 GameUi.InkWord(_sheet, Tabs[i], 24f + i * 133f, 54f, 130f, 44f, 23f,
                     DrawnUI.Ink, () => { _tab = idx; Refresh(); });
             }
-            // the pen ring around the active tab
-            _tabRing = GameUi.PenRing(_sheet, 24f, 50f, 130f, 52f, DrawnUI.Coral, 5, 3.5f);
-            DrawnUI.Fill(_sheet, "tabrule", DrawnUI.WithAlpha(DrawnUI.Ink, 0.25f),
-                         30f, 108f, 1180f, 2f);
 
             GameUi.InkWord(_sheet, "×", 1180f, 8f, 52f, 52f, 46f, DrawnUI.Coral, Dismiss);
             _content = DrawnUI.Rect(_sheet, "content", 40f, 118f, 1160f, 760f);
@@ -125,7 +155,7 @@ namespace Runway.Game
             for (int i = _content.childCount - 1; i >= 0; i--)
                 Destroy(_content.GetChild(i).gameObject);
             if (_tabRing != null)
-                DrawnUI.SetTopLeft(_tabRing.rectTransform, 24f + _tab * 133f, 50f);
+                DrawnUI.SetTopLeft(_tabRing.rectTransform, RingX(_tab), RingTop);
             switch (_tab)
             {
                 case 0: TabVitals(); break;
@@ -172,16 +202,12 @@ namespace Runway.Game
             return outp;
         }
 
+        /// One `_Spark`, whole: the ground wash, the wobbled line, and the hi/lo numbers
+        /// in its corners. The short-series line comes with it, so an empty chart is
+        /// still a panel of the sheet rather than a hole in it.
         void Spark(string key, float x, float y, float w, float h, Color col)
         {
-            List<float> s = Series(key);
-            if (s.Count < 2)
-            {
-                L("not enough weeks on record yet", x + 12f, y + h * 0.4f, 24f,
-                  DrawnUI.WithAlpha(DrawnUI.Ink, 0.4f), w);
-                return;
-            }
-            DrawnChart.Mount(_content, "spark", DrawnChart.Spark(s, col, (int)w, (int)h), x, y, w, h);
+            DrawnChart.MountSpark(_content, Series(key), col, x, y, w, h);
         }
 
         // ── tab 0: vitals ──────────────────────────────────────────────────────
@@ -252,10 +278,12 @@ namespace Runway.Game
             int cac = Gd.ToInt(UnitEcon("cac"));
             int ltv = Gd.ToInt(UnitEcon("ltv"));
             int pb = Gd.ToInt(UnitEcon("payback_wk"));
+            // THE DOLLAR SIGN BELONGS TO THE SENTENCE, not to the number. The ledger
+            // says "$?" when it does not know yet — a bare "?" reads as a missing word.
             L(string.Format(
-                "a customer pays ≈ ${0:0}/wk · costs {1} to win (CAC) · is worth {2} over their stay (LTV) · pays back in {3}",
-                arpu, cac > 0 ? "$" + GameUi.Money(cac) : "?",
-                ltv > 0 ? "$" + GameUi.Money(ltv) : "?", pb > 0 ? pb + " wks" : "—"),
+                "a customer pays ≈ ${0:0}/wk · costs ${1} to win (CAC) · is worth ${2} over their stay (LTV) · pays back in {3}",
+                arpu, cac > 0 ? GameUi.Money(cac) : "?",
+                ltv > 0 ? GameUi.Money(ltv) : "?", pb > 0 ? pb + " wks" : "—"),
                 10f, y + 40f, 25f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.75f));
             L(string.Format("levers total ${0}/wk · runway {1}", GameUi.Money(leverSum),
                 rw < 999 ? rw + " weeks" : "gaining money"), 10f, y + 108f, 28f);
@@ -450,8 +478,13 @@ namespace Runway.Game
               DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f));
             if (_st.AnalyticsLevel >= 2)
             {
-                L(string.Format("price ×{0:0.00} · marketing ${1}/wk", _st.PriceMult,
-                    GameUi.Money(_st.MarketingBudget)), 10f, 404f, 28f);
+                // the second analytics level BUYS the CAC read — dropping it left the
+                // upgrade paying for a line the player already had
+                double mk = _st.MarketingBudget;
+                string cac = mk <= 0.0 ? "∞"
+                    : "$" + Gd.ToInt(mk / Gd.Maxf(1.0, mk / 900.0));
+                L(string.Format("price ×{0:0.00} · marketing ${1}/wk · CAC roughly {2}",
+                    _st.PriceMult, GameUi.Money(_st.MarketingBudget), cac), 10f, 404f, 28f);
                 L(string.Format("lifetime ≈ {0} wks at v0.{1} quality",
                     Gd.ToInt(life * (0.4 + _st.Product / 100.0 * 1.2)), _st.Product), 10f, 448f, 28f);
             }
@@ -467,12 +500,19 @@ namespace Runway.Game
             Icon("product", 10f, 6f);
             L("v0." + _st.Product, 100f, 10f, 46f);
             L("tech debt:", 10f, 110f, 28f);
-            // the debt jar: a drawn vessel filling with coral
+            // THE DEBT JAR — `_DebtJar._draw` at position (160, 92), size 90×110. It is
+            // a VESSEL: a faint ground, a coral level, a 4px ink outline round the whole
+            // height and a heavier line across the lip. Without the outline the level
+            // floats and the jar is not a jar. Every number below is the .gd's own,
+            // with the jar's (160, 92) already added in.
             DrawnUI.Fill(_content, "jarback", DrawnUI.WithAlpha(DrawnUI.Ink, 0.04f), 166f, 102f, 78f, 96f);
             float fill = Mathf.Clamp01((float)_st.TechDebt / 100f);
+            // the level rides h-16 = 94, not the ground's 96
             DrawnUI.Fill(_content, "jarfill", DrawnUI.WithAlpha(DrawnUI.Coral, 0.55f),
-                168f, 102f + 96f * (1f - fill), 74f, 96f * fill);
-            DrawnUI.Fill(_content, "jarlip", DrawnUI.Ink, 162f, 100f, 88f, 5f);
+                168f, 102f + 94f * (1f - fill), 74f, 94f * fill);
+            JarEdge(166f, 102f, 78f, 96f, 4f);
+            // draw_line((2, 10) → (w-2, 10), INK, 5.0): a stroke CENTRED on the lip
+            DrawnUI.Fill(_content, "jarlip", DrawnUI.Ink, 162f, 99.5f, 86f, 5f);
             double risk = Gd.Maxf((_st.TechDebt - 40.0) / 250.0, 0.0) * 100.0;
             L(string.Format("outage odds ≈ {0}% weekly", Gd.ToInt(risk)), 290f, 120f, 28f,
               risk > 10.0 ? DrawnUI.Coral : DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f));
@@ -480,6 +520,17 @@ namespace Runway.Game
             Spark("debt", 10f, 268f, 1120f, 170f, DrawnUI.Coral);
             L("hype:", 10f, 470f, 28f);
             Spark("hype", 120f, 452f, 1010f, 130f, DrawnUI.Yellow);
+        }
+
+        /// draw_rect(rect, INK, false, t): a rect OUTLINE, four bars whose centre lines
+        /// are the rect's own edges — which is where Godot puts a thick unfilled rect.
+        void JarEdge(float x, float y, float w, float h, float t)
+        {
+            float half = t * 0.5f;
+            DrawnUI.Fill(_content, "jaredge", DrawnUI.Ink, x - half, y - half, w + t, t);
+            DrawnUI.Fill(_content, "jaredge", DrawnUI.Ink, x - half, y + h - half, w + t, t);
+            DrawnUI.Fill(_content, "jaredge", DrawnUI.Ink, x - half, y - half, t, h + t);
+            DrawnUI.Fill(_content, "jaredge", DrawnUI.Ink, x + w - half, y - half, t, h + t);
         }
 
         // ── tab 5: crew ────────────────────────────────────────────────────────
@@ -539,13 +590,19 @@ namespace Runway.Game
                 cof += _st.Cofounders[i].EquityDiluted.HasValue
                     ? _st.Cofounders[i].EquityDiluted.Value : _st.Cofounders[i].Equity;
             double investors = Gd.Maxf(100.0 - founder - cof, 0.0);
-            DrawnChart.Mount(_content, "pie", DrawnChart.Donut(
-                new[] { (float)founder, (float)cof, (float)investors },
-                new[] { DrawnUI.Coral, DrawnUI.Blue, DrawnUI.Sage }, 340, 0f),
-                40f, 30f, 340f, 340f);
-            L(string.Format("you {0:0}%", founder), 60f, 386f, 26f, DrawnUI.Coral, 300f);
-            L(string.Format("cofounders {0:0}%", cof), 60f, 418f, 26f, DrawnUI.Blue, 300f);
-            L(string.Format("investors {0:0}%", investors), 60f, 450f, 26f, DrawnUI.Sage, 300f);
+            // THE WHEEL IS 430 WIDE AND ITS INK IS AT 0.38 OF THAT. A 340 box put the
+            // centre at (210, 200) where the original has it at (255, 245), and every
+            // label hung off it inherited the error.
+            var pcts = new[] { (float)founder, (float)cof, (float)investors };
+            var cols = new[] { DrawnUI.Coral, DrawnUI.Blue, DrawnUI.Sage };
+            var names = new[] {
+                string.Format("you {0:0}%", founder),
+                string.Format("cofounders {0:0}%", cof),
+                string.Format("investors {0:0}%", investors),
+            };
+            DrawnChart.Mount(_content, "pie", DrawnChart.CapPie(pcts, cols, PieSide),
+                             PieX, PieY, PieSide, PieSide);
+            PieLabels(pcts, names);
 
             float y = 60f;
             L("rounds:", 540f, 30f, 32f, DrawnUI.Ink, 560f);
@@ -562,6 +619,34 @@ namespace Runway.Game
             L("your slice today: $" + GameUi.Money(
                 Gd.ToInt(SimEngine.Valuation(_st) * _st.FounderPct / 100.0)),
                 540f, y + 128f, 30f, DrawnUI.Coral, 560f);
+        }
+
+        const int PieSide = 430;      // `pie.set_deferred("size", Vector2(430, 430))`
+        const float PieX = 40f;
+        const float PieY = 30f;
+
+        /// THE NAMES GO ROUND THE WHEEL, NOT UNDER IT. `_Pie._draw` walks the slices a
+        /// second time and hangs each label at the MIDDLE of its own arc, 40px outside
+        /// the ink, all in plain ink — a stacked legend beside the chart is a different
+        /// drawing and it stopped saying which colour was whose.
+        /// draw_string plants a BASELINE, and the original nudges it by (-46, +8).
+        void PieLabels(IList<float> pct, IList<string> names)
+        {
+            const float TwoPi = Mathf.PI * 2f;
+            float cx = PieX + PieSide * 0.5f;
+            float cy = PieY + PieSide * 0.5f;
+            float rr = PieSide * DrawnChart.PieRadiusFrac + 40f;
+            float a0 = -Mathf.PI * 0.5f;                 // twelve o'clock
+            for (int i = 0; i < pct.Count; i++)
+            {
+                float frac = Mathf.Clamp(pct[i], 0f, 100f) / 100f;
+                if (frac <= 0.01f) continue;             // a sliver gets no name
+                float mid = a0 + TwoPi * frac * 0.5f;
+                float px = cx + Mathf.Cos(mid) * rr;
+                float py = cy + Mathf.Sin(mid) * rr;
+                L(names[i], px - 46f, py + 8f - 24f * 0.78f, 24f, DrawnUI.Ink, 0f);
+                a0 += TwoPi * frac;
+            }
         }
 
         // ── tab 7: the street ──────────────────────────────────────────────────
@@ -601,6 +686,8 @@ namespace Runway.Game
 
         // ── tab 8: threats & promises ──────────────────────────────────────────
 
+        const int ClockSide = 30;         // the footprint the ⏰ had at 30px type
+
         void TabThreats()
         {
             L("threats & promises", 10f, 6f, 40f);
@@ -610,8 +697,14 @@ namespace Runway.Game
                   DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f));
             for (int i = 0; i < _st.Clocks.Count; i++)
             {
-                L(string.Format("⏰ in {0} wks: {1}", _st.Clocks[i].WeeksLeft,
-                    _st.Clocks[i].Consequence), 10f, y, 30f, DrawnUI.Coral);
+                // THE CLOCK IS DRAWN, NOT TYPED. The original heads this line with ⏰,
+                // a glyph the hand font has never carried; a drawn face is both the
+                // truer style and the one thing that cannot come out a hollow box.
+                DrawnChart.Mount(_content, "clock",
+                    DrawnChart.Clock(ClockSide, DrawnUI.Coral, DrawnUI.Ink),
+                    10f, y + 3f, ClockSide, ClockSide);
+                L(string.Format("in {0} wks: {1}", _st.Clocks[i].WeeksLeft,
+                    _st.Clocks[i].Consequence), 10f + ClockSide + 8f, y, 30f, DrawnUI.Coral);
                 y += 52f;
             }
             for (int i = 0; i < _st.Statuses.Count; i++)

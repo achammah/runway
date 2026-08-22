@@ -1324,3 +1324,175 @@ are the verdict:
 UFLOW failed checks: c3_price_ask · c6_die_cup
 UFLOW DONE pass=41 fail=2
 ```
+
+---
+
+# D-CHARTS — THE BINDER'S DRAWN CHARTS — `Game/DrawnChart.cs` + `Game/BinderScreen.cs` + `Game/BookIntroScreen.cs`
+
+The nine binder pages were photographed against their Godot twins and eight drawings
+came back wrong. `game/src/ui/binder.gd` is the truth for every number below; the
+class it comes from is named in each row. Nothing outside those three files was
+touched, and one new editor probe was added: `Editor/BinderChartShot.cs`.
+
+## D-CHARTS-1. Blocking risks — these stop a compile if they are wrong
+
+| # | API | Where | Why uncertain | Fallback coded |
+|---|-----|-------|---------------|----------------|
+| DC-A1 | `Transform.Find("shadow")` on the rect `GameUi.PaperSheet` returns | `BinderScreen.BuildParts`, `BookIntroScreen.OnBuild` | Both screens need a shadow the shared helper hard-codes at 0.18 alpha / 7×9, and `GameUi.cs` belongs to another lane. The child's NAME is the whole contract. | The lookup, the `GetComponent<Image>()` and the cast to `RectTransform` are each null-checked; a rename costs the corrected shadow and nothing else — the sheet still draws. If `PaperSheet` ever takes a style argument, both call sites should pass one instead. |
+| DC-A2 | `Mathf.PI` used as a `const` initialiser (`const float TwoPi = Mathf.PI * 2f;`) | `DrawnChart.CapPie`, `BinderScreen.PieLabels` | Only legal because `Mathf.PI` is itself `const`. | It is, and `DrawnChart.Donut` already did this before this lane. |
+| DC-A3 | `DrawnChart.Clock(int side, …)` fed from `BinderScreen.ClockSide` | `TabThreats` | `ClockSide` is deliberately `const int`, not `float`: a float would not convert implicitly and the compile would fail. | Declared `const int`; every use that needs a float (`Mount`, the text x) widens implicitly. |
+
+## D-CHARTS-2. Runtime risks — they compile, but may not do what binder.gd does
+
+| # | Thing | Where | Risk | Fallback coded |
+|---|-------|-------|------|----------------|
+| DC-B1 | **`Donut` and `CapPie` are two different drawings and must stay so.** | `DrawnChart` | The draft page's `CapTableDonut` (a ring, `innerFrac` 0.55, full alpha, no rim) and the binder's `_Pie` (a full pie at 0.38 of the box, 0.75 alpha, 4px ink rim) are separate classes in the original. Collapsing them "fixes" one page by breaking the other. | `Donut` was left byte-identical and still serves `DraftCrewPage`; `CapPie` is new and serves the binder alone. Their cache keys differ by prefix, so neither can serve the other's sprite. |
+| DC-B2 | **The pie rim BLENDS; every other stroke in this file takes the brighter alpha.** | `DrawnChart.BlendStroke` / `BlendDisc` | The shared `Disc` is alpha-max so a stroke crossing itself does not blot. Laid over a 0.75-alpha wedge that rule eats the rim's soft edge wherever coverage is under 75%. | The rim, and only the rim, goes through a source-over compositor. Wedges, sparklines, the pen ellipse and the clock all still use the alpha-max path. |
+| DC-B3 | **The sparkline's ground wash pre-fills the canvas at alpha 8.** | `DrawnChart.Spark` | `Disc` skips any pixel whose wanted alpha is not greater than what is there, so antialiased edge pixels under 3% coverage now keep the wash instead of the line. | Deliberate and immaterial — it is the outermost 1/32 of a stroke's falloff. The alternative, a separate `Fill` behind the sprite, would have put the wash outside the drawing the probe photographs. |
+| DC-B4 | **The hi/lo numbers and the pie's labels are TMP labels, not raster.** | `DrawnChart.MountSpark`, `BinderScreen.PieLabels` | `draw_string` plants a BASELINE; `HandLabel` plants a top-left. The offset is the project's standing `0.78 × size` approximation (B5), so these five strings sit within a pixel or two of the original rather than exactly on it. | Same approximation the whole port already uses for `draw_string`. Every other coordinate on these pages is an explicit top-left transcribed from the `.gd` and is exact. |
+| DC-B5 | **The pie's label loop reproduces a quirk of `_Pie._draw`.** | `BinderScreen.PieLabels` | A slice between 0.1% and 1% is DRAWN (the wedge loop skips at 0.001) but gets no label, and the label loop does not advance its angle past it — so every later label would be rotated backwards by that sliver. | Ported as-is rather than silently corrected, because the wedges and the names must agree about where a slice starts. Unreachable in practice: the three slices always sum to 100 and a founder holding under 1% has lost the game. |
+| DC-B6 | **The pen ellipse is baked at its ink's own size and mounted 1:1.** | `BinderScreen.RingW/RingH/RingX` | If a caller ever mounts this sprite into a differently-sized rect, the stroke stretches again and the whole point is lost. | The three constants derive the box from the radii and the pad, so the box cannot drift from the sprite; `Refresh` moves it with `SetTopLeft` and never touches `sizeDelta`. |
+| DC-B7 | **The ring and the tab rule are now created BEFORE the tab words.** | `BinderScreen.BuildParts` | Sibling order is z-order in uGUI. They were built after the words and drew over them; a Godot node draws under its own children, so the original passes the ring behind the label it circles. | Moved, not restyled. If anything is ever inserted between them and the words, it will land between the ring and the type. |
+| DC-B8 | **The threats page's clock is drawn; ⚠ ▲ ▼ ↻ are still literal characters.** | `BinderScreen.TabThreats`, `TabLedger` | Only ⏰ was replaced. The other four ride whatever font fallback the hand font resolves to, which is another lane's mechanism. | The clock is a sprite that cannot fall back to a box. The remaining four are listed here so the fallback lane knows exactly which glyphs the binder still asks for. |
+
+## D-CHARTS-3. Verified, not guessed — `Editor/BinderChartShot.cs`
+
+Every drawing here is rasterised into a texture, so the evidence needs no camera and
+no graphics device: the probe composites the real sprites onto cream at the SAME
+top-left coordinates the binder mounts them at, writes a PNG each, then reads the
+pixels back and states what it found.
+
+```
+Unity -batchmode -quit -nographics -projectPath unity \
+      -executeMethod Runway.EditorTools.BinderChartShot.Shoot
+```
+
+`RUNWAY_CHARTS_OUT=<dir>` picks the output folder (default: a folder under the system
+temp dir). It writes `pie.png`, `jar.png`, `spark.png`, `ring.png`, `ring_before.png`,
+`clock.png` and `measurements.txt`. What the last run measured, against binder.gd:
+
+| Drawing | Measured | binder.gd |
+|---------|----------|-----------|
+| cap pie | box 430×430, centre (255.0, 245.0), ink radius 165.8, no hole, slice alpha 191/255, rim present, wedges 62.0/18.0/20.0% | `size 430`, centre (255, 245), `r = minf(w,h) * 0.38` = 163.4 + half a 4px rim, `Color(col, 0.75)` = 191, `draw_arc(…, INK, 4.0)` |
+| pie labels | (398.1, 309.2) · (12.0, 284.9) · (89.4, 69.7), all ink, all at r+40 = 203.4 from the centre | `p = c + Vector2(cos, sin) * (r + 40)`, `draw_string(font, p - Vector2(46, -8), …, 24, INK)` |
+| debt jar | ground (166, 102, 78, 96) · level (168, …, 74, 94·fill) · a 4px outline round all 96 · lip (162, 99.5, 86, 5) | `draw_rect(6, 10, w-12, h-14)` · `(8, …, w-16, (h-16)·lv)` · `draw_rect(…, INK, false, 4.0)` · `draw_line((2,10) → (w-2,10), INK, 5.0)` |
+| sparkline | corner pixel rgba(0,0,0,8) over 207 039 of 212 800 px; hi "13k" top-left (8, 6.4), lo "3k" top-left (8, 170.4) | `draw_rect(size, Color(0,0,0,0.03))`; `draw_string` at (8, 22) and (8, h-4), size 20, `Color(INK, 0.45)` |
+| pen ring | 148×64 sprite mounted 1:1 → 140×54 of ink, 1321 coral px, stroke 3.50 all round | 33 points of `(cos·68, sin·26)`, jitter ±2, `draw_polyline(…, PEN, 3.5)` → ink up to 143×59 |
+| pen ring, BEFORE | a 60r circle baked 128×128 and stretched into a 130×52 cell: 127×50 of ink, 607 coral px, stroke 3.28 across but 1.31 top and bottom | — a stretched circle cannot hold one width |
+
+## D-CHARTS-4. What else the tab-by-tab read found
+
+Read against `binder.gd` page by page. The columns, the tab pitch, the rules and every
+label coordinate already matched and were not touched. Beyond the eight drawings:
+
+- **`_tab_customers` had lost a clause.** At `analytics_level >= 2` the original ends
+  its line with `· CAC roughly %s`, where the number is `"∞"` on no marketing and
+  `int(mk / maxf(1.0, mk / 900.0))` otherwise — which is `min(marketing, 900)`. Level
+  two was paying for a line the player already had. Restored.
+- **The ledger printed a bare `?`.** The `$` lives in the original's format string, so
+  an unknown CAC or LTV reads `$?`, not `?`. Restored.
+- **The empty sparkline's placeholder moved.** `_Spark` puts its baseline at
+  `size.y * 0.55`; the port had a top-left at `h * 0.4`, about 10px high on the vitals
+  page. It now goes through the same baseline conversion as the hi/lo numbers.
+- **Both sheet shadows were the shared helper's, not the screen's.** `_Clipboard` opens
+  on `Color(0,0,0,0.25)` at (8, 12) and `book_intro_screen.gd`'s `_Sheet` on
+  `Color(0,0,0,0.3)` at (8, 12); `GameUi.PaperSheet` gives every screen 0.18 at (7, 9).
+  Each screen now corrects its own after the fact (DC-A1).
+
+## D-CHARTS-5. The seam
+
+Nothing. No other file needs a line. `BinderChartShot` lives under
+`Assets/Scripts/Editor/`, so it is editor-only by folder, has no `Apply()` and
+installs nothing — it runs only when `-executeMethod` names it.
+
+---
+
+# D-FLOW — THE SHELF, THE LOGOTYPE, THE TABLE — `Game/ShelfScroll.cs` + `Game/BirthScreen.cs` + `Game/DiceRoll.cs` + `Game/TurnRunner.cs` + `App/Build.cs`
+
+Four defects measured against `game/src`, three of them things a player sees on the
+first minute of a run. The Godot files they are measured against are
+`screens/founder_draft_screen.gd` (`_ShelfBar`), `screens/book_intro_screen.gd`
+(`_ScrollInk`), `ui/birth_screen.gd` and `ui/dice_roll.gd`. One new editor probe:
+`Editor/FlowShots.cs`.
+
+## D-FLOW-1. Blocking risks — these stop a compile if they are wrong
+
+| # | API | Where | Why uncertain | Fallback coded |
+|---|-----|-------|---------------|----------------|
+| DF-A1 | `float.NaN` as a field initialiser and an `==` sentinel | `ShelfScroll._lastDrawn` | The redraw guard has to have a value no legal scroll offset can equal, and `Mathf.Approximately` cannot provide one — `0` is a legal offset and the shelf spends most of its life there. | `float.NaN` compares false against everything including itself, so the first draw always lands and any invalidation always redraws. It is a plain field, not a `const` default parameter, so no metadata encoding is involved. |
+| DF-A2 | `Transform.GetChild(i) as RectTransform` + `RectTransform.rect.height` at build time | `ShelfScroll.TrackHeightOf` | Reading `rect` before a layout pass returns the wrong size for a rect with STRETCHED anchors. | Every track in this game is built by `DrawnUI.Fill`/`Rect`, which pin `anchorMin == anchorMax`, and for those `rect.size` is `sizeDelta` with no layout pass needed. The whole lookup falls back to the viewport height if it finds nothing, which is exactly what the code did before. |
+| DF-A3 | `copied \|= Stage(...)` on a `bool` | `Build.EnsureSheets` | `\|=` on `bool` is bitwise-or-assign, and it does **not** short-circuit. | That is the wanted behaviour: every sheet must be considered, not just the ones before the first hit. |
+| DF-A4 | `Runway.Build` named from inside `Runway.EditorTools` while `using UnityEditor;` is in scope | `FlowShots.SheetLedger` | `UnityEditor.Build` is a NAMESPACE. A bare `Build.X` is legal (namespace members beat using-directives) but reads as a trap. | Aliased at file scope: `using RunwayBuild = Runway.Build;`. Zero ambiguity, and it says which `Build` is meant. |
+| DF-A5 | `Runway.Build.StagedSheetNames()` is public but the class is inside `#if UNITY_EDITOR` | `FlowShots` | A player build that could see it would not compile. | `FlowShots.cs` lives under `Assets/Scripts/Editor/`, so it is editor-only by folder and can never be compiled into a player. |
+
+## D-FLOW-2. Runtime risks — they compile, but may not do what the original does
+
+| # | Thing | Where | Risk | Fallback coded |
+|---|-------|-------|------|----------------|
+| DF-B1 | **The thumb is found by NAME and by COLUMN, not by reference.** | `ShelfScroll.TrackHeightOf` | The track is a sibling the caller drew; this reads its height off a child called `"track"` standing within 12px of the thumb's centre line. A rename, or a track built more than 12px away from its own thumb, silently costs the 476-vs-484 correction. | It falls back to the viewport height — the number the code used before, so a miss is the old behaviour, never a broken page. Both current callers (`DraftBagPage`, `BookIntroScreen`) name it `"track"` and centre thumb and track on the same x to within 0.0px. The column test is what lets one page carry two shelves. |
+| DF-B2 | **The thumb's WIDTH is now written by the component, not by the caller.** | `ShelfScroll.Apply` | Both callers author a 7px thumb; Godot strokes 6. `Apply` overwrites `sizeDelta` wholesale, so a caller that wanted a different width would not get it. | Deliberate: the stroke width is Godot's, and the callers' x already puts a 6px thumb exactly where `draw_line` centred on absolute x 711 (draft) / 1325 (book) puts it. Changing it back is one constant. |
+| DF-B3 | **The track stays drawn when there is nothing to scroll; Godot's shelf hides it.** | `ShelfScroll.Apply` | `_ShelfBar._draw` returns early at `maxs <= 8` and so draws neither line; `_ScrollInk` always draws both. One shared component cannot match both. | Only the THUMB is hidden (`enabled = maxs > 8`), which matches the book exactly and leaves the draft page one pencil line it did not have. A track with no thumb reads as "nothing to scroll", which is what it is. The component never touches the track object. |
+| DF-B4 | **`SetContentHeight` now DRAWS, it does not just record.** | `ShelfScroll` | It is called from `BookIntroScreen.Relayout`, which runs inside a text-landed callback. It now writes `sizeDelta` and `anchoredPosition` on two rects from there. | Both are plain transform writes with no layout rebuild of their own, and `Relayout` is already writing rect positions on the line above. This is the fix for the book's thumb never appearing at all: the offset does not move when the column grows, so the old `_lastDrawn` guard swallowed every post-relayout draw. |
+| DF-B5 | **The dice veil stops at 0.55 — the ceremony no longer owns the frame.** | `DiceRoll.VeilAt` | `dice_roll.gd` ramps its shade to a fully opaque 1.0, so this is a DELIBERATE divergence from the shipped Godot line, taken on the owner's live-play #179 ("background looks REALLY bad") and on that same file's own header: *"the page stays visible and darkens under the cup — no popping felt card"*. The code and its comment disagreed; the comment is what the owner asked for. | One constant, `DiceRoll.VeilCeiling`. Setting it to `1f` restores the Godot pixel exactly. The rise is unchanged at 0.55s. |
+| DF-B6 | **The vignette disc is gone.** | `DiceRoll.BuildParts` | A `RingSprite` disc 1.16× the smaller screen axis used to sit under the die. Over a visible page it would read as a grey plate laid on the desk. | Removed rather than dimmed: at any alpha it is a flat circle over hand-drawn paper. The sheets carry their own alpha and their own light, which is what the disc was standing in for. |
+| DF-B7 | **A missing streamed PNG is no longer "no sheet".** | `DiceRoll.SheetOnHand` | The gate used to be `RunwayPaths.ArtExists` alone. With the cup films staged into `Resources/Sheets`, a build without `StreamingAssets/Art/dice` would have skipped a ceremony whose film was sitting right there. | The `Resources` probe only runs when the streamed file is genuinely absent, and the texture it loads is the very one `SheetLoop` is about to play (Unity caches it, so the second load is free and `DiceRoll.OnDestroy` gives it back). `ReadingBeat.TextFx.DieSheet` still reads the STREAMED copy for the beat's still frame, which is why the PNGs stay staged as well. |
+| DF-B8 | **`ShowDie` claims the top sibling slot immediately.** | `TurnRunner.ShowDie` | `Boot` builds the curtain first, so the cup already comes up above it; the extra `SetAsLastSibling` is belt-and-braces. If any future furniture is added to `TopLayer` after the cup and must sit ABOVE it, this is the line that will be in the way. | One line, and `DropRoutine` already did the same thing a moment later. The die-settle punch (`Impulse.DieSettled` in `DiceRoll.HoldThenFinish`) and the backfired flinch (`Impulse.Verdict` in `TurnRoutine`) were not touched. |
+| DF-B9 | **The twenty cup films add ~200MB to the app.** | `Build.EnsureSheets` | 4096×2560 with alpha, block-compressed at 8 bits/px, is 10.0MB per sheet resident and on disk — five times the six title films put together. | Measured, not estimated (`FlowShots` reads each PNG's IHDR). Only ONE is resident at a time: `DiceRoll.OnDestroy` releases the loop and `SheetLoop.ReleaseSheet` hands a baked texture straight back through `Resources.UnloadAsset`. If the disk cost is ever the binding constraint, `SheetImport` can turn on `crunchedCompression` for `roll_*` alone — same VRAM, roughly a quarter of the bytes, at the cost of a decode hitch on load. That trade was NOT taken here: a hitch is the exact thing this fix exists to remove. |
+
+## D-FLOW-3. Verified, not guessed — `Editor/FlowShots.cs`
+
+Rendered headless with a real graphics device (`-batchmode -quit`, **no**
+`-nographics`) at 1536×1024. The probe raises the SHIPPING components — the real
+`ShelfScroll`, the real `BirthScreen.PlaceType`, the real `DiceRoll.Veil`/`VeilAt`
+— so every number below is one the game produces.
+
+```
+RUNWAY_DFLOW_OUT=<dir> Unity -batchmode -quit -projectPath unity \
+      -executeMethod Runway.EditorTools.FlowShots.Shoot
+echo $?          # 0 = every assertion held
+```
+
+It writes `01-shelf-top.png`, `02-shelf-middle.png`, `03-shelf-bottom.png`,
+`04-birth-logotype.png`, `05-dice-page-bare.png`, `06-dice-veil-rising.png`,
+`07-dice-veil-settled.png`, `08-dice-old-blanked.png` and `measurements.txt`.
+
+| Measured | Before | After | The original |
+|----------|--------|-------|--------------|
+| shelf thumb top at scroll 0 / 324 / 648 | 0.0 / 138.6 / 277.1 — track-RELATIVE, so at rest the thumb sat at the very top of the PAGE, 232px above its own track | 236.00 / 368.24 / 500.48, bottom 704.00 | `_ShelfBar` at (704, 232) size (14, 476): `ty = 4 + (size.y - 8 - th) * frac`, absolute `232 + ty`; last position bottoms out at `232 + 476 - 4` = 704 |
+| shelf thumb size | 7 × 206.9 (sized against the 484 viewport) | 6.0 × 203.5 | `draw_line(…, 6.0)`; `th = max(size.y * clamp(scroll.size.y / grid.y, 0.1, 1), 30)` on the 476 BAR |
+| a shelf that grew | thumb height frozen at whatever the first draw made it — the book's never appeared at all | 203.5 → 384.0 → 203.5 across `SetContentHeight` calls that never moved the offset | `_ShelfBar._process` guards on `scroll_vertical`, but Godot re-runs `_draw` on `queue_redraw`, and a resized `grid` is a new drawing |
+| the book's thumb | never drawn | hidden while the column is empty, then at top 186.0 the moment the entry lands (track top 182) | `_ScrollInk` at (1316, 182) size (18, 660): `ty = 4 + (660 - 8 - th) * frac` |
+| birth logotype top | 278.85 | 122.88 — **lifted 155.97px** | `draw_texture_rect(type, Rect2((w - lw) * 0.5, h * 0.12, lw, lh))` → 122.88 |
+| birth logotype size | 952.32 × 259.46 (right, by luck: `Fit` clamps on the long side) | 952.32 × 259.46 | `lw = w * 0.62`, `lh = lw * 267 / 980` |
+| journal paper under the dice, mean luma | 24.7 — the page was gone | 119.0, **51% of the open page's 233.8**; 187.9 while the veil is still rising at 0.22s | `dice_roll.gd`: "the page stays visible and darkens under the cup" |
+| `Resources/Sheets` basenames | 6 | 26 — `birth_intro`, `birth_loop`, `curtain_loop`, `howto_1..3`, `roll_01..20`, all unique | `SheetLoop` looks a sheet up by BASENAME alone, so a collision would be a silently wrong film |
+| dice sheets | streamed: 58.5MB of PNG, ~3.4s per load through `UnityWebRequest`, killable mid-load | staged imported as well: **+200.0MB** on disk, 10.0MB resident, one at a time | Godot pays this at export; `Resources/Sheets` is the Unity spelling |
+
+Two traps this probe walked into and now documents:
+
+- **`AssetDatabase.LoadAssetAtPath` is the WRONG texture to measure a fit against.**
+  `type_main.png` is 980×267 on disk; the importer, left on its defaults, rounds it
+  to the nearest power of two and hands back 1024×256. Measuring the fit against
+  that gave a 166.66px error instead of the true 155.97. The runtime path is
+  `ArtCache.Load` → `UnityWebRequestTexture`, which decodes the file as it is, so
+  `FlowShots.TypeTexture` reads the bytes off disk and only falls back to the
+  imported asset.
+- **The evidence run needs the compile mutex too.** `tools/unity_compile.sh` takes
+  `$TMPDIR/runway_unity_compile.lock`; a `-executeMethod` run opens the same Library
+  and must queue behind it, or two editors corrupt it. A run started without the
+  lock picked up a sibling lane's half-saved file and logged its compile errors into
+  the middle of this probe's output.
+
+## D-FLOW-4. The seam
+
+Nothing. Every change is inside a file this lane owns, and no call site moved:
+
+- `ShelfScroll.Attach` keeps its five-argument signature — the track's top and
+  height are read off the page the caller already drew, so `DraftBagPage` and
+  `BookIntroScreen` are untouched.
+- `BirthScreen.PlaceType` replaces one `GameUi.Fit` call inside the same file.
+- `Build.EnsureSheets` stages the dice itself; **nothing is copied until somebody
+  builds**, which is why the twenty 10MB textures do not slow a compile pass down
+  today.
+- `FlowShots.cs` is editor-only by folder, installs nothing, and runs only when
+  `-executeMethod` names it.

@@ -132,32 +132,63 @@ namespace Runway
             }
         }
 
-        /// The six film sheets play as IMPORTED textures (GPU-ready — a 16MB
-        /// PNG cost seconds of runtime decode through UnityWebRequest). The
-        /// PNGs are local-only art, so the build stages them into
-        /// Resources/Sheets itself; SheetImport.cs sets the import flags.
-        static readonly string[] SheetNames =
+        /// The film sheets play as IMPORTED textures (GPU-ready — a 16MB PNG cost
+        /// seconds of runtime decode through UnityWebRequest). The PNGs are
+        /// local-only art, so the build stages them into Resources/Sheets itself;
+        /// SheetImport.cs sets the import flags for anything that lands there.
+        static readonly string[] TitleSheets =
         {
             "howto_1", "howto_2", "howto_3",
             "birth_intro", "birth_loop", "curtain_loop",
         };
 
+        /// THE TWENTY CUP FILMS GET THE SAME TREATMENT. `dice/roll_NN.png` is
+        /// 4096x2560 with alpha and took ~3.4s through UnityWebRequest, which is
+        /// long enough for the screen that asked for it to move on and KILL the
+        /// load — the exact failure the six title films were pulled out of the
+        /// stream for. Imported they arrive in milliseconds. Only one is resident
+        /// at a time: DiceRoll.OnDestroy releases the loop, which gives the
+        /// texture straight back through Resources.UnloadAsset.
+        const int DiceSheets = 20;
+
+        /// Every basename Resources/Sheets is asked to hold. SheetLoop looks a
+        /// sheet up by BASENAME alone ("Sheets/birth_loop", "Sheets/roll_07"), so
+        /// two sources that share one are the same sheet as far as it is
+        /// concerned. `roll_NN` collides with nothing the title folder ships.
+        public static string[] StagedSheetNames()
+        {
+            var names = new string[TitleSheets.Length + DiceSheets];
+            for (int i = 0; i < TitleSheets.Length; i++) names[i] = TitleSheets[i];
+            for (int i = 1; i <= DiceSheets; i++)
+                names[TitleSheets.Length + i - 1] = string.Format("roll_{0:00}", i);
+            return names;
+        }
+
         static void EnsureSheets()
         {
-            string srcDir = Path.Combine(ProjectRoot(), "Assets/Art/title");
             string dstDir = Path.Combine(ProjectRoot(), "Assets/Resources/Sheets");
             Directory.CreateDirectory(dstDir);
+            string titleDir = Path.Combine(ProjectRoot(), "Assets/Art/title");
+            string diceDir = Path.Combine(ProjectRoot(), "Assets/Art/dice");
+
             bool copied = false;
-            foreach (string n in SheetNames)
-            {
-                string src = Path.Combine(srcDir, n + ".png");
-                string dst = Path.Combine(dstDir, n + ".png");
-                if (!File.Exists(src)) { Debug.LogWarning("RUNWAY! no sheet source " + src); continue; }
-                if (File.Exists(dst) && new FileInfo(dst).Length == new FileInfo(src).Length) continue;
-                File.Copy(src, dst, true);
-                copied = true;
-            }
+            foreach (string n in TitleSheets) copied |= Stage(titleDir, dstDir, n);
+            for (int i = 1; i <= DiceSheets; i++)
+                copied |= Stage(diceDir, dstDir, string.Format("roll_{0:00}", i));
             if (copied) AssetDatabase.Refresh();
+        }
+
+        /// One sheet into Resources. Same length means the same file: these are
+        /// copies of an unchanging source, and re-copying 200MB on every build to
+        /// prove it would cost more than it is worth.
+        static bool Stage(string srcDir, string dstDir, string name)
+        {
+            string src = Path.Combine(srcDir, name + ".png");
+            string dst = Path.Combine(dstDir, name + ".png");
+            if (!File.Exists(src)) { Debug.LogWarning("RUNWAY! no sheet source " + src); return false; }
+            if (File.Exists(dst) && new FileInfo(dst).Length == new FileInfo(src).Length) return false;
+            File.Copy(src, dst, true);
+            return true;
         }
 
         static void WriteBuildStamp()

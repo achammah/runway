@@ -20,6 +20,13 @@ namespace Runway.Game
     ///
     /// FULL HEIGHT (owner: "fill screen in height so we avoid video cropping"): the
     /// clip is square, so height is the constraint and the loop takes all of it.
+    ///
+    /// THE TABLE ARRIVES ON THE ROOM (dice_roll.gd's own header: "the page stays
+    /// visible and darkens under the cup — no popping felt card"). Live-play #179,
+    /// owner: "background looks REALLY bad" — the cup was rolling on a flat dark
+    /// disc over black, because the veil ran all the way to opaque and a vignette
+    /// was painted under the die. The page the week was written on stays readable
+    /// underneath; the disc is gone.
     /// </summary>
     public sealed class DiceRoll : MonoBehaviour
     {
@@ -29,14 +36,34 @@ namespace Runway.Game
         const float Cell = 512f;
         const float HoldLast = 0.7f;   // the settled number is READ, not glimpsed
 
+        /// How dark the page goes under the cup, and how long it takes to get there.
+        /// It STOPS at the ceiling: the room or the open journal reads through it for
+        /// the whole roll, which is the only thing that makes the ceremony feel like
+        /// it happens on the desk instead of in a lightbox.
+        public const float VeilCeiling = 0.55f;
+        public const float VeilRise = 0.55f;
+
+        /// The ink the page darkens under — Godot's Color(0.11, 0.095, 0.08).
+        public static Color VeilAt(float t)
+        {
+            return new Color(0.11f, 0.095f, 0.08f,
+                             Mathf.Clamp01(t / VeilRise) * VeilCeiling);
+        }
+
         public event Action Finished;
         public bool Settled { get; private set; }
 
-        Image _shade;
-        Image _felt;
+        Image _veil;
         SheetLoop _loop;
         float _t;
         bool _done;
+
+        /// The veil the ceremony owns its beat with: nothing behind it may be
+        /// pressed. Built here so an evidence probe raises the SHIPPING one.
+        public static Image Veil(RectTransform parent)
+        {
+            return DrawnUI.FullFill(parent, "veil", VeilAt(0f), true);
+        }
 
         public static DiceRoll Create(RectTransform parent, int n)
         {
@@ -49,20 +76,15 @@ namespace Runway.Game
         void BuildParts(int n)
         {
             var rt = GetComponent<RectTransform>();
-            // the ceremony owns its beat: nothing behind it may be pressed
-            _shade = DrawnUI.FullFill(rt, "shade", new Color(0.11f, 0.095f, 0.08f, 0f), true);
-            float side = Mathf.Min(RunwayPaths.StageWidth, RunwayPaths.StageHeight) * 1.16f;
-            var feltRt = DrawnUI.Rect(rt, "felt",
-                (RunwayPaths.StageWidth - side) * 0.5f, (RunwayPaths.StageHeight - side) * 0.5f,
-                side, side);
-            _felt = feltRt.gameObject.AddComponent<Image>();
-            _felt.sprite = DrawnUI.RingSprite(64f, 1f, 0f, 5, 2, true);
-            _felt.color = new Color(0.145f, 0.125f, 0.10f, 0f);
-            _felt.raycastTarget = false;
+            // ONE VEIL, NO FELT. The disc under the die was a 1.16x-of-the-screen
+            // bake that only ever read as a grey plate once the veil behind it had
+            // gone opaque; with the page showing through there is nothing for it to
+            // sit on and nothing for it to do.
+            _veil = Veil(rt);
 
             int roll = Mathf.Clamp(n, 1, 20);
             string art = string.Format("dice/roll_{0:00}.png", roll);
-            if (!RunwayPaths.ArtExists(art))
+            if (!SheetOnHand(art, roll))
             {
                 // A MISSING SHEET IS A SILENT SKIP — but not a SYNCHRONOUS one: the
                 // caller subscribes to Finished on the line after Create(), so firing
@@ -82,19 +104,30 @@ namespace Runway.Game
             // a click skips to the settled number — a reader is never held
             var btn = gameObject.AddComponent<Button>();
             btn.transition = Selectable.Transition.None;
-            btn.targetGraphic = _shade;
+            btn.targetGraphic = _veil;
             btn.onClick.AddListener(Complete);
+        }
+
+        /// THE SHEET MAY BE BAKED RATHER THAN STREAMED. Build.EnsureSheets stages
+        /// the twenty cup films into Resources/Sheets, and SheetLoop reaches for
+        /// that copy first, so "no file under Art/dice" is not "no sheet" — asking
+        /// the streamed tree alone would skip a ceremony whose film is right there.
+        /// The Resources probe only runs when the streamed file is genuinely absent,
+        /// and the texture it loads is the very one SheetLoop is about to play.
+        static bool SheetOnHand(string relative, int roll)
+        {
+            if (RunwayPaths.ArtExists(relative)) return true;
+            return Resources.Load<Texture2D>(string.Format("Sheets/roll_{0:00}", roll)) != null;
         }
 
         void Update()
         {
             if (_done) return;
             _t += Time.unscaledDeltaTime;
-            // the room fades to black UNDER the cup over 0.55s; by the time the die is
-            // tumbling the table is fully its own screen
-            float a = Mathf.Clamp01(_t / 0.55f);
-            if (_shade != null) _shade.color = new Color(0.11f, 0.095f, 0.08f, a);
-            if (_felt != null) _felt.color = new Color(0.145f, 0.125f, 0.10f, a);
+            // the page darkens UNDER the cup over 0.55s and STOPS at the ceiling —
+            // it never blanks, so the week you just wrote is still there behind the
+            // die that is deciding it
+            if (_veil != null) _veil.color = VeilAt(_t);
         }
 
         System.Collections.IEnumerator SkipNextFrame()

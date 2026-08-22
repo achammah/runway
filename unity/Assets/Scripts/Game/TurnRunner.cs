@@ -128,12 +128,19 @@ namespace Runway.Game
         /// The table roll: the pre-rendered cup-and-die clip for the rolled number
         /// plays ON the room, then the curtain falls. The DM is already thinking while
         /// the die tumbles, so the ceremony costs no extra wait.
+        ///
+        /// THE CEREMONY OUTRANKS THE CURTAIN FROM ITS FIRST FRAME. The cup lives on
+        /// TopLayer beside the curtain, which Boot builds first — so it already comes
+        /// up above it. It is claimed explicitly anyway: a roll started while a
+        /// curtain was still on its way down would otherwise play behind black, and
+        /// black is exactly what the veil below is there to avoid.
         public void ShowDie(int n)
         {
             if (_cup != null) return;
             var boot = Boot.Instance;
             if (boot == null) return;
             _cup = DiceRoll.Create(boot.TopLayer, n);
+            _cup.transform.SetAsLastSibling();
             _cup.Finished += () =>
             {
                 if (_cup != null) Destroy(_cup.gameObject);

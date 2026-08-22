@@ -103,7 +103,7 @@ namespace Runway.Game
                     if (_logo == null || tex == null) return;
                     _logo.texture = tex;
                     _logo.enabled = true;
-                    GameUi.Fit(_logoRt, tex, boxX, boxY, lw, lw * 0.6f);
+                    PlaceType(_logoRt, tex, boxX, boxY, lw, lw * 0.6f);
                 });
             }
             else
@@ -131,6 +131,24 @@ namespace Runway.Game
             _line = DrawnUI.HandLabel(Rect, StatusLine, 0f, ly, 34f,
                 DrawnUI.Cream, RunwayPaths.StageWidth,
                 TextAlignmentOptions.Top);
+        }
+
+        /// THE TYPE HANGS FROM ITS TOP — it is not centred in a box. Godot draws it
+        /// at `Rect2((w - lw) * 0.5, h * 0.12, lw, lh)`: the top edge IS h * 0.12,
+        /// and the height simply follows the picture's own aspect.
+        ///
+        /// `GameUi.Fit` is TextureRect.STRETCH_KEEP_ASPECT_CENTERED, so it centres
+        /// what it draws inside the box it is handed. A 980x267 logotype fitted to
+        /// 952x571 came out 259px tall in a 571px box — 156px of slack, halved, put
+        /// the painted RUNWAY! that far below where Godot pins it. Fit still does
+        /// the sizing (it keeps the aspect, and it clamps a taller picture to the
+        /// box rather than overflowing it); only the top is pinned back.
+        public static void PlaceType(RectTransform rt, Texture2D tex,
+                                     float boxX, float boxY, float boxW, float boxH)
+        {
+            if (rt == null || tex == null) return;
+            GameUi.Fit(rt, tex, boxX, boxY, boxW, boxH);
+            DrawnUI.SetTopLeft(rt, boxX + (boxW - rt.sizeDelta.x) * 0.5f, boxY);
         }
 
         void OnIntroDone()
