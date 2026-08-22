@@ -359,3 +359,20 @@ at their true percentages: C5 pricing-economics measurement, C8 paint
 fault-injection, the re-soak, P8/P10/P11 cosmetics, the streamed-art
 migration plan (docs/config-plan.md) and the LLMUnity local-narrator
 dossier (unity/briefs/) as the two post-ship lanes.
+
+## 2026-08-22 (late) — #196: the money math tells the founder's truth
+Sixteen customers on a $70 product earned $200/wk because three silent
+multipliers sat between founder math and the ledger (a demand tax on
+existing spend, a hidden 0.25 cadence, a quiet unit-cost subtraction).
+The law is rewritten IDENTICALLY in both engines: demand gates
+acquisition and pains retention above fair (invoices remind people to
+leave); customers pay their offer's price at its honest cadence; cogs
+is a visible burn line. Both suites evolved and pin the owner's case:
+16 x $70 sessions = $900-1300/wk; greed starves adoption, pains
+retention 1.6x, bleeds the base while fair holds. 76 checks per
+engine. Plus the storm batch: studio card registers, title film
+imported (no growing-count loop), buttons never boil, runInBackground,
+birth line under the title, horizon dies under paintings, warm painting
+worn from frame one, hotkeys yield to typing, the tilted page crops
+straight, one scroll follower, the price question is engine-owned.
+Ship: 2026-08-22 23:38 · 24906b0.
