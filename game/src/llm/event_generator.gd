@@ -364,6 +364,15 @@ func next_card(state: GameState, content: ContentDb, rng: SeededRng) -> Dictiona
 	var eligible := content.eligible_events(state)
 	if eligible.is_empty():
 		return {}
+	# NEVER THE SAME CARD TWICE while anything fresh remains (the Unity
+	# probe caught the pool-dry re-deal; this draw had the same hole)
+	if not state.played_events.is_empty():
+		var fresh: Array = []
+		for ev in eligible:
+			if not state.played_events.has(String(ev.get("title", ""))):
+				fresh.append(ev)
+		if not fresh.is_empty():
+			eligible = fresh
 	for ev in eligible:
 		if state.future_weights.has(ev.get("id", "")):
 			state.future_weights.erase(ev.get("id", ""))

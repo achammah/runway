@@ -196,6 +196,18 @@ namespace Runway.Game
         {
             List<JObject> eligible = EligibleEvents(state);
             if (eligible.Count == 0) return null;
+            // NEVER THE SAME CARD TWICE while anything fresh remains: the live
+            // probe watched week 3 re-deal week 1's card the moment the
+            // generated pool went dry. (The Godot build carries the same
+            // latent draw; its keyed pool cadence merely hid it.)
+            if (state.PlayedEvents != null && state.PlayedEvents.Count > 0)
+            {
+                var fresh = new List<JObject>();
+                for (int i = 0; i < eligible.Count; i++)
+                    if (!state.PlayedEvents.Contains(Str(eligible[i], "title")))
+                        fresh.Add(eligible[i]);
+                if (fresh.Count > 0) eligible = fresh;
+            }
             for (int i = 0; i < eligible.Count; i++)
             {
                 string id = Str(eligible[i], "id");
