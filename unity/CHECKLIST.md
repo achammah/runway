@@ -162,5 +162,11 @@ frame time; measured).
 - [  0%] F5 Repo synced: all lanes committed, this file at 100
 
 DECIDED: monorepo; game/data+prompts single source (staged at build).
+EXPERIMENT LANE (post-F5): LOCAL-NARRATOR via LLMUnity (Apache-2.0, llama.cpp,
+Metal, grammar-enforced JSON) — keyless mode generates instead of playing the
+authored deck: UPM install, convert the three schemas to grammars, route
+clarify+founding to a ~3B local model when no key, judge quality vs the
+authored deck, ship as a toggle + optional model download. Store scouting
+(tools/juice packs) also parked post-F5.
 DEFERRED: WebGL full-game; URP migration (soft-light sprites chosen instead —
 style-truer and zero pipeline risk); Addressables (paired with WebGL later).
