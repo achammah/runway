@@ -5,8 +5,11 @@
     python3 tools/char_pipeline.py master  <id> [--quality high] [--tries 3]
     python3 tools/char_pipeline.py frames  <id> [--only 3,7] [--workers 4] [--tries 2]
     python3 tools/char_pipeline.py adopt   <id> [--only 7,8] [--try 1]   # re-gate, no API
+    python3 tools/char_pipeline.py promote <id> --try 4 [--refit]        # a raw becomes the master
     python3 tools/char_pipeline.py sheet   <id>
     python3 tools/char_pipeline.py preview <id> [--fps 6]                # animated GIF
+    python3 tools/char_pipeline.py stage   <id> [--frame 1] [--plain]    # feet vs the pool
+    python3 tools/char_pipeline.py family  [--ids a,b,c]       # the whole cast, one baseline
     python3 tools/char_pipeline.py finish  <id> [--size 368]
     python3 tools/char_pipeline.py audit   <id|--all>          # gates only, no API
     python3 tools/char_pipeline.py run     <id>                # master + frames + finish + sheet
@@ -20,7 +23,10 @@ writes into game/assets, a human copies the approved set across):
     chr_arch_<id>.png    the still, downscaled to the shipping size
     chr_loop_<id>_NN.png 12 frames, downscaled to the shipping size
     _contact.png         the contact sheet the eye judges identity on
+    _on_stage.png        the founder standing on the real select stage, pool ellipse marked
+    _loop_6fps.gif       the loop as Unity plays it, over that same stage
     _report.json         every gate measurement for every image
+and one sheet for the whole cast at OUT/_family.png.
 
 WHY IT IS BUILT THIS WAY
 ------------------------
@@ -70,6 +76,23 @@ SPECK_FRAC = 0.004                         # an ink island under 0.4% of the tot
                                            # carries a stray blue tick in all 48 frames)
 BREAKER = 3                                # consecutive endpoint failures before we stop
                                            # and report rather than burn credit
+FOOT_MARGIN = 0.072                        # WHERE THE SOLES SIT. Every master is shifted
+                                           # vertically until the bottom of its ink leaves
+                                           # exactly this much of the image empty beneath
+                                           # it, and every frame is then planted on the
+                                           # master's feet — so all five founders stand on
+                                           # ONE baseline instead of five. CALIBRATED
+                                           # against the screen that shows them:
+                                           # DraftSelectPage puts the hero in a 560 box at
+                                           # y 240 and paints the contact-shadow ellipse at
+                                           # y 742..788, so the pool's near rim is at 10.4%
+                                           # of the box and its centre at 6.25%. The pilot
+                                           # master drew its soles at 9.3% — grazing the
+                                           # rim, the founder standing on the far edge of
+                                           # his own light. 7.2% drops him ~2% of the box
+                                           # lower: soles well inside the pool and just
+                                           # above its centre, which is where a figure
+                                           # stands in a ground ellipse.
 IDENTITY_MIN = 0.75                        # alpha-mask IoU against the master, after the
                                            # feet are aligned. CALIBRATED, not guessed: on
                                            # the hacker pilot, frames the eye reads as the
@@ -159,7 +182,13 @@ CHARACTERS = {
               "one thin stick arm bent to press a muted-blue #6E8CA0 phone against the side of "
               "its head, the other arm held straight out to the side holding a second "
               "muted-blue phone at arm's length. A single narrow coral #E86A5C necktie hangs "
-              "down the front of its body, tied at the neck. Nothing else is in the image."),
+              "on the LOWER HALF of the front of its body. The necktie has NO KNOT: it is one "
+              "single narrow flat coral shape that begins at the MIDDLE of the bean's height "
+              "— at least one third of the bean's height BELOW the eyes — and hangs straight "
+              "down from there towards the bottom of the bean. The whole area between the eyes "
+              "and the middle of the bean is empty solid black with absolutely nothing drawn "
+              "on it: a knot, a triangle or any coral shape under the eyes reads as a MOUTH, "
+              "and this creature has no mouth. Nothing else is in the image."),
     "exfaang": dict(
         title="THE EX-FAANG PM",
         props="THE POSE AND PROPS — this is THE EX-FAANG PM: the creature stands upright and "
@@ -446,23 +475,28 @@ def identity(master_path, frame_path):
             "area_ratio": round(float(B.sum()) / max(float(A.sum()), 1.0), 4)}
 
 
+def foot(p):
+    """Where the drawing stands: the row of its lowest ink, and the horizontal centre of
+    the lowest band of it — the soles, not the centroid. An idle shifts its weight, so a
+    centroid would move with the very motion being drawn, and planting on it would subtract
+    the animation."""
+    import numpy as np
+    from PIL import Image
+    a = np.array(Image.open(p).convert("RGBA").getchannel("A")) > 16
+    ys, xs = np.where(a)
+    b = int(ys.max())
+    band = a[max(0, b - max(4, (b - int(ys.min())) // 12)): b + 1]
+    bys, bxs = np.where(band)
+    return float(bxs.mean()), b
+
+
 def align(master_path, frame_path, out_path):
     """Plant the feet. Each frame is generated independently, so its figure can sit a few
     pixels off from the master's and the loop hops. The anchor is the FEET, not the
     centroid: an idle is supposed to shift its weight, so aligning on the whole mass would
     subtract the very motion being drawn. The bottom of the ink is the soles, and the
     horizontal centre of the lowest band is where the character stands."""
-    import numpy as np
     from PIL import Image
-
-    def foot(p):
-        a = np.array(Image.open(p).convert("RGBA").getchannel("A")) > 16
-        ys, xs = np.where(a)
-        b = int(ys.max())
-        band = a[max(0, b - max(4, (b - int(ys.min())) // 12)): b + 1]
-        bys, bxs = np.where(band)
-        return float(bxs.mean()), b
-
     mx, mb = foot(master_path)
     fx, fb = foot(frame_path)
     dx, dy = int(round(mx - fx)), int(round(mb - fb))
@@ -473,6 +507,59 @@ def align(master_path, frame_path, out_path):
         im = moved
     im.save(out_path)
     return {"dx": dx, "dy": dy}
+
+
+def seat(path, margin=FOOT_MARGIN):
+    """Put the drawing on the house baseline. The model composes freely inside the square,
+    so one master lands with its soles at 9% of the height and the next at 6%, and the
+    select stage — whose contact-shadow ellipse is painted at a FIXED y — then has one
+    founder standing in his light and the next hovering above it. Seating is a whole-image
+    integer translate, so it costs nothing, loses nothing, and is idempotent: the frames
+    align onto the seated master and inherit the same ground for free."""
+    import numpy as np
+    from PIL import Image
+    im = Image.open(path).convert("RGBA")
+    W, H = im.size
+    a = np.array(im.getchannel("A")) > 16
+    if not a.any():
+        return 0
+    dy = int(round((H - 1 - margin * H) - int(np.where(a)[0].max())))
+    if dy:
+        moved = Image.new("RGBA", im.size, (0, 0, 0, 0))
+        moved.paste(im, (0, dy))
+        moved.save(path)
+    return dy
+
+
+def fit(path, want=MARGIN_WANT, floor=FOOT_MARGIN):
+    """Shrink a drawing that is simply drawn too big for its frame, about the centre of
+    its own feet. The model is asked for 80% fill and sometimes gives 92%, and 92% cannot
+    be seated on the house baseline without shoving the cowlick off the top — a defect the
+    margin gate then rejects, at the price of a whole re-roll. But 'draw it smaller' is a
+    transformation, not a redrawing: the render on disk is already the right character with
+    the right props, and scaling it is exactly what the re-roll would have asked for. It is
+    applied only where the eye keeps a render the gate refused, it is recorded in the
+    report, and the gates are then run again on the result — never silently, never to
+    rescue a drawing that is wrong rather than big."""
+    import numpy as np
+    from PIL import Image
+    im = Image.open(path).convert("RGBA")
+    W, H = im.size
+    a = np.array(im.getchannel("A")) > 16
+    if not a.any():
+        return 1.0
+    ys, xs = np.where(a)
+    hi = (int(ys.max()) - int(ys.min()) + 1) / H
+    wi = (int(xs.max()) - int(xs.min()) + 1) / W
+    s = min(1.0, (1.0 - floor - want) / hi, (1.0 - 2 * want) / wi)
+    if s >= 0.999:
+        return 1.0
+    n = im.resize((int(round(W * s)), int(round(H * s))), Image.LANCZOS)
+    out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    fx, _ = foot(path)
+    out.paste(n, (int(round(fx - fx * s)), (H - n.size[1]) // 2))   # feet stay under the body
+    out.save(path)
+    return round(s, 4)
 
 
 def despeck(path):
@@ -517,27 +604,41 @@ def _report(cid, key_, value):
         json.dump(rep, open(p, "w"), indent=1, sort_keys=True)
 
 
-def master(cid, quality="high", tries=3, force=False):
+def master(cid, quality="high", tries=3, force=False, fix=""):
+    """`fix` lets the EYE name a defect the numbers cannot see — a tie knot that reads as
+    a mouth, a bean gone squat — in the same channel the gates use. A blind re-roll of the
+    same words reproduces the same drawing, so a rejection is never silent."""
+    import shutil
     d = cdir(cid)
     dst = f"{d}/_master_1024.png"
-    if os.path.exists(dst) and not force:
-        print("%s: master exists, skipping (--force to redo)" % cid)
-        return dst
-    fix = ""
-    for attempt in range(1, tries + 1):
-        print("%s: master attempt %d/%d" % (cid, attempt, tries))
+    if os.path.exists(dst):
+        if not force:
+            print("%s: master exists, skipping (--force to redo)" % cid)
+            return dst
+        # a rejected master is kept, never overwritten: it is the before-shot of the fix
+        v = 1
+        while os.path.exists(f"{d}/_master_v{v}.png"):
+            v += 1
+        shutil.copyfile(dst, f"{d}/_master_v{v}.png")
+        print("%s: previous master kept as _master_v%d.png" % (cid, v))
+    done = len([f for f in os.listdir(f"{d}/_raw") if f.startswith("master_try")])
+    for attempt in range(done + 1, done + tries + 1):
+        print("%s: master attempt %d%s" % (cid, attempt, " (fix: %s)" % fix[:60] if fix else ""))
         url = _call("gen", master_prompt(cid, fix), quality=quality)
         raw = f"{d}/_raw/master_try{attempt}.png"
         _download(url, raw)
         despeck(raw)
+        # seat BEFORE the gates, never after: the margins that get measured have to be the
+        # margins the shipped image actually has, and seating moves them
+        dy = seat(raw)
         m = measure(raw)
         why = verdict(m)
-        print("   margin %.1f%% fill %.0f%%h islands %s offpal %.1f%% -> %s"
-              % (100 * m["margin"], 100 * m["fill_h"], m["islands"][:4],
+        print("   seat %+dpx margin %.1f%% fill %.0f%%h islands %s offpal %.1f%% -> %s"
+              % (dy, 100 * m["margin"], 100 * m["fill_h"], m["islands"][:4],
                  100 * m["offpalette_frac"], why or "PASS"))
-        _report(cid, "master_try%d" % attempt, {**m, "verdict": why or "PASS"})
+        _report(cid, "master_try%d" % attempt, {**m, "seat_dy": dy,
+                                                "verdict": why or "PASS"})
         if not why:
-            import shutil
             shutil.copyfile(raw, dst)
             if m["margin"] < MARGIN_WANT:
                 print("   NOTE: margin %.1f%% is under the %.0f%% target but clears the "
@@ -546,6 +647,39 @@ def master(cid, quality="high", tries=3, force=False):
             return dst
         fix = why
     raise SystemExit("%s: master failed %d attempts, last defect: %s" % (cid, tries, fix))
+
+
+def promote(cid, which=1, refit=False):
+    """Make an existing raw render the master — no API call. The eye picks which of the
+    tries on disk is the character (the numbers cannot see a tie knot that reads as a
+    mouth), `--refit` shrinks one that was only ever too big, and the gates then judge the
+    result exactly as they judge a fresh render."""
+    import shutil
+    d = cdir(cid)
+    raw = f"{d}/_raw/master_try{which}.png"
+    if not os.path.exists(raw):
+        raise SystemExit("%s: no _raw/master_try%d.png to promote" % (cid, which))
+    dst = f"{d}/_master_1024.png"
+    work = f"{d}/_raw/master_try{which}_fit.png"
+    shutil.copyfile(raw, work)
+    s = fit(work) if refit else 1.0
+    dy = seat(work)
+    m = measure(work)
+    why = verdict(m)
+    print("%s: promote try%d  scale %.3f seat %+dpx  margin %.1f%% fill %.0f%%h -> %s"
+          % (cid, which, s, dy, 100 * m["margin"], 100 * m["fill_h"], why or "PASS"))
+    if why:
+        raise SystemExit("%s: try%d still fails the gates after refit: %s" % (cid, which, why))
+    if os.path.exists(dst):
+        v = 1
+        while os.path.exists(f"{d}/_master_v{v}.png"):
+            v += 1
+        shutil.copyfile(dst, f"{d}/_master_v{v}.png")
+    shutil.copyfile(work, dst)
+    _report(cid, "master_promoted", {**m, "from_try": which, "scale": s, "seat_dy": dy,
+                                     "verdict": "PASS"})
+    print("%s: master saved from try%d" % (cid, which))
+    return dst
 
 
 def ref_url(cid, force=False):
@@ -558,7 +692,7 @@ def ref_url(cid, force=False):
     return url
 
 
-def frames(cid, only=None, quality="high", tries=2, workers=4):
+def frames(cid, only=None, quality="high", tries=2, workers=4, fix=""):
     import shutil
     d = cdir(cid)
     mp = f"{d}/_master_1024.png"
@@ -577,9 +711,9 @@ def frames(cid, only=None, quality="high", tries=2, workers=4):
     results = {}
 
     def one(n):
-        fix = ""
+        why_last = fix          # the eye's own words lead the first try when it re-rolls
         for attempt in range(1, tries + 1):
-            u = _call("edit", frame_prompt(cid, n, fix), ref=url, quality=quality)
+            u = _call("edit", frame_prompt(cid, n, why_last), ref=url, quality=quality)
             raw = f"{d}/_raw/frame_%02d_try%d.png" % (n, attempt)
             _download(u, raw)
             despeck(raw)
@@ -600,7 +734,7 @@ def frames(cid, only=None, quality="high", tries=2, workers=4):
             _report(cid, "frame_%02d" % n, rec)
             if not why:
                 return
-            fix = why
+            why_last = why
             os.remove(aligned)
         results[n] = "FAILED"
 
@@ -618,15 +752,22 @@ def frames(cid, only=None, quality="high", tries=2, workers=4):
     print("%s: frames done, %d missing %s" % (cid, len(missing), missing))
 
 
-def adopt(cid, only=None, which=1):
+def adopt(cid, only=None, which=1, eye=False):
     """Re-gate a render that is already on disk — no API call.
 
     An image that arrived intact is never paid for twice. When a threshold moves, when the
     alignment changes, or when the eye overrules a numeric gate, the raw 1024 render in
     _raw/ is re-aligned, re-measured and promoted from local files. This is the same
     discipline the pose library uses to re-key hundreds of sprites for free."""
+    import shutil
     d = cdir(cid)
     mp = f"{d}/_master_1024.png"
+    # the master is re-seated first and frame 01 re-cut from it, because every other frame
+    # is planted on the master's feet: move the master and the whole loop follows for free
+    dy = seat(mp)
+    if dy:
+        print("   master re-seated %+dpx to the %.1f%% baseline" % (dy, 100 * FOOT_MARGIN))
+    shutil.copyfile(mp, f"{d}/frames/frame_01.png")
     done = 0
     for n in range(2, NFRAMES + 1):
         if only is not None and n not in only:
@@ -640,13 +781,24 @@ def adopt(cid, only=None, which=1):
         m = measure(dst)
         why = verdict(m)
         ident = identity(mp, dst)
+        overruled = ""
         if not why and ident["iou"] < IDENTITY_MIN:
-            why = "re-drawn too differently from the reference"
+            if eye:
+                # THE EYE OVERRULES THE NUMBER, and only this number. IoU is a proxy for
+                # "same drawing" and it is unfair to a wide stride: a walking figure's thin
+                # splayed legs are a large share of a small mask, so a two-degree change in
+                # a shin costs more IoU than a whole bean narrowing does on a standing one.
+                # The margin, transparency, speck and palette gates measure the image
+                # itself and are never overridable — this one measures a resemblance, which
+                # is what an eye is for. Every override is recorded as an override.
+                overruled = "identity overruled by eye at iou %.3f" % ident["iou"]
+            else:
+                why = "re-drawn too differently from the reference"
         print("   f%02d adopt try%d margin %.1f%% iou %.3f area %.3f shift(%+d,%+d) -> %s"
               % (n, which, 100 * m["margin"], ident["iou"], ident["area_ratio"],
-                 adj["dx"], adj["dy"], why or "PASS"))
-        _report(cid, "frame_%02d" % n, {**m, "align": adj, **ident,
-                                        "verdict": why or "PASS", "adopted_try": which})
+                 adj["dx"], adj["dy"], why or overruled or "PASS"))
+        _report(cid, "frame_%02d" % n, {**m, "align": adj, **ident, "adopted_try": which,
+                                        "verdict": why or "PASS", "override": overruled})
         if why:
             os.remove(dst)
         else:
@@ -736,36 +888,154 @@ def sheet(cid, cell=300):
     return p
 
 
+# THE SELECT SCREEN, IN ITS OWN NUMBERS. Every value below is read off
+# DraftSelectPage.Build() so a preview cannot flatter the art with a kinder layout than
+# the game gives it: a 1536x1024 page, the founder in a 560 box at (335,240), and
+# GameUi.Shadow's contact ellipse at (465,742) sized 300x46 in ink at 35% alpha.
+PAGE = (1536, 1024)
+HERO = (335, 240, 560, 560)
+POOL = (465, 742, 300, 46)
+WINDOW = (315, 245, 600, 600)              # what a preview crops out of that page
+
+
+def stage_plate(marks=False):
+    """The select stage as the player sees it, with the contact-shadow ellipse painted
+    where the engine paints it. Compositing a sprite over a bare stage.png answers a
+    different question than the one that matters — the founder can look fine on the floor
+    and still hover over his own shadow."""
+    from PIL import Image, ImageDraw
+    # the same file the screen picks, in the same order (FounderDraftScreen.OnBuild), so a
+    # preview never flatters the art with a stage the player will not see
+    art = os.path.join(GAME, os.pardir, "unity/Assets/Art/env")
+    back = None
+    for name in ("select_stage_scene.png", "stage.png"):
+        if os.path.exists(f"{art}/{name}"):
+            back = Image.open(f"{art}/{name}").convert("RGBA").resize(PAGE, Image.LANCZOS)
+            break
+    if back is None:
+        back = Image.new("RGBA", PAGE, (26, 38, 54, 255))
+    pool = Image.new("RGBA", PAGE, (0, 0, 0, 0))
+    ImageDraw.Draw(pool).ellipse([POOL[0], POOL[1], POOL[0] + POOL[2], POOL[1] + POOL[3]],
+                                 fill=(10, 10, 10, 89))
+    back.alpha_composite(pool)
+    if marks:
+        dr = ImageDraw.Draw(back)
+        dr.ellipse([POOL[0], POOL[1], POOL[0] + POOL[2], POOL[1] + POOL[3]],
+                   outline=(110, 200, 255, 255), width=3)
+        dr.line([POOL[0] - 40, POOL[1] + POOL[3] // 2, POOL[0] + POOL[2] + 40,
+                 POOL[1] + POOL[3] // 2], fill=(110, 200, 255, 160), width=1)
+    return back
+
+
+def on_stage(img_path, marks=False, size=600):
+    """One frame standing on the select stage, cropped to the window around the hero box."""
+    from PIL import Image
+    plate = stage_plate(marks)
+    fig = Image.open(img_path).convert("RGBA").resize((HERO[2], HERO[3]), Image.LANCZOS)
+    plate.alpha_composite(fig, (HERO[0], HERO[1]))
+    x, y, w, h = WINDOW
+    out = plate.crop((x, y, x + w, y + h))
+    return out.resize((size, size), Image.LANCZOS) if size != w else out
+
+
+def stage_still(cid, frame=1, marks=True):
+    """The verification image for the baseline: is the founder standing IN the pool?"""
+    d = cdir(cid)
+    src = f"{d}/chr_loop_{cid}_%02d.png" % frame
+    if not os.path.exists(src):
+        src = f"{d}/frames/frame_%02d.png" % frame
+    p = f"{d}/_on_stage.png"
+    on_stage(src, marks=marks).convert("RGB").save(p)
+    # where the soles land, in the page's own coordinates, against the pool's own
+    import numpy as np
+    from PIL import Image
+    a = np.array(Image.open(src).convert("RGBA").getchannel("A")) > 16
+    ys = np.where(a)[0]
+    sole = HERO[1] + HERO[3] * (int(ys.max()) + 1) / a.shape[0]
+    top, mid, bot = POOL[1], POOL[1] + POOL[3] / 2.0, POOL[1] + POOL[3]
+    where = ("IN THE POOL" if top <= sole <= bot else
+             "ABOVE the pool by %.0fpx" % (top - sole) if sole < top else
+             "BELOW the pool by %.0fpx" % (sole - bot))
+    print("%s: soles at page y=%.0f — pool %d..%d (centre %.0f) -> %s"
+          % (cid, sole, top, bot, mid, where))
+    print("%s: stage still -> %s" % (cid, p))
+    return p
+
+
 def preview(cid, fps=6, size=480):
     """An animated GIF of the loop at the rate the game actually plays it, over the select
     stage. A contact sheet proves identity; only motion proves the loop reads as breathing
-    and not as a jitter, and Unity runs 12 frames over its 2s LoopSeconds — 6fps."""
+    and not as a jitter, and Unity runs 12 frames over its 1s LoopSeconds — 12 frames is a
+    6fps boil, while Godot's 0.09s timer plays the same sheet at 11fps."""
     from PIL import Image
     d = cdir(cid)
-    stage = f"{GAME}/../unity/Assets/Art/env/stage.png"
-    if os.path.exists(stage):
-        s = Image.open(stage).convert("RGBA")
-        # the hero box is a 560 square on a 1080-tall page: crop the stage the same way
-        s = s.resize((int(size * 1.6), int(size * 1.6 * s.size[1] / s.size[0])), Image.LANCZOS)
-        bx = (s.size[0] - size) // 2
-        by = int(s.size[1] * 0.30)
-        back = s.crop((bx, by, bx + size, by + size))
-    else:
-        back = Image.new("RGBA", (size, size), (242, 234, 211, 255))
     out = []
     for n in range(1, NFRAMES + 1):
         p = f"{d}/chr_loop_{cid}_%02d.png" % n
         if not os.path.exists(p):
             continue
-        f = back.copy()
-        f.alpha_composite(Image.open(p).convert("RGBA").resize((size, size), Image.LANCZOS))
-        out.append(f.convert("P", palette=Image.ADAPTIVE, colors=128))
+        out.append(on_stage(p, size=size).convert("P", palette=Image.ADAPTIVE, colors=128))
     if not out:
         raise SystemExit("%s: no shipping frames — run finish first" % cid)
     p = f"{d}/_loop_{fps}fps.gif"
     out[0].save(p, save_all=True, append_images=out[1:], duration=int(1000 / fps), loop=0,
                 disposal=2)
     print("%s: %d-frame loop at %dfps -> %s" % (cid, len(out), fps, p))
+    return p
+
+
+def family(ids=None, cell=520, out=None):
+    """THE WHOLE CAST IN ONE LINE-UP. Each founder is judged alone on a contact sheet — but
+    the player meets them as a row, one swapping in for the last inside the same lit box,
+    and the only sheet that can catch a founder drawn a size too big or standing a step too
+    high is the one that puts all five at the same scale on ONE ground line. The pool under
+    each is the select stage's own contact ellipse, scaled to this sheet: a founder whose
+    soles miss it here misses it in the game."""
+    from PIL import Image, ImageDraw
+    ids = ids or [c for c in CHARACTERS if os.path.exists(f"{OUT}/{c}/_master_1024.png")]
+    pad = 44
+    W, H = cell * len(ids), cell + 96
+    sh = Image.new("RGB", (W, H), (246, 243, 235))
+    dr = ImageDraw.Draw(sh)
+    dr.text((12, 14), "RUNWAY! founders — %s. One scale, one baseline: every figure is its "
+                      "own 1024 master dropped into an identical box, so the ground line and "
+                      "the pool below are literally the same row for all of them "
+                      "(foot margin %.1f%% of the box)."
+            % (", ".join(ids), 100 * FOOT_MARGIN), fill=(30, 30, 30))
+    box = cell - 2 * pad                       # the shared 'hero box' each founder stands in
+    top = 40 + pad
+    ground = top + int(box * (1 - FOOT_MARGIN))
+    # the stage's own ellipse, in this sheet's units: 300x46 inside a 560 box, centred on
+    # the box and on the baseline
+    ew, eh = box * 300.0 / 560.0, box * 46.0 / 560.0
+    for i, cid in enumerate(ids):
+        x = i * cell + pad
+        pool = Image.new("RGBA", (int(ew) + 4, int(eh) + 4), (0, 0, 0, 0))
+        ImageDraw.Draw(pool).ellipse([2, 2, int(ew), int(eh)], fill=(10, 10, 10, 89))
+        sh.paste(Image.alpha_composite(
+            Image.new("RGBA", pool.size, (246, 243, 235, 255)), pool).convert("RGB"),
+            (int(x + (box - ew) / 2), int(ground - eh / 2)))
+        fig = Image.open(f"{OUT}/{cid}/_master_1024.png").convert("RGBA").resize(
+            (box, box), Image.LANCZOS)
+        tile = Image.new("RGBA", (box, box), (0, 0, 0, 0))
+        tile.alpha_composite(fig)
+        sh.paste(tile.convert("RGB"), (x, top), tile)
+        dr.text((i * cell + 12, 46), CHARACTERS[cid]["title"], fill=(60, 56, 50))
+        # the numbers behind "same ground", measured on the shipping image
+        src = f"{OUT}/{cid}/chr_arch_{cid}.png"
+        if not os.path.exists(src):
+            src = f"{OUT}/{cid}/_master_1024.png"
+        m = measure(src)
+        fx, fb = foot(src)
+        n = m["h"]
+        dr.text((i * cell + 12, cell + 52),
+                "%s   foot margin %.1f%%   fills %.0f%% of height   soles %+.1f%% off centre"
+                % (cid, 100 * (n - 1 - fb) / n, 100 * m["fill_h"],
+                   100 * (fx - m["w"] / 2.0) / m["w"]), fill=(90, 86, 78))
+    dr.line([0, ground, W, ground], fill=(200, 120, 105), width=1)
+    p = out or f"{OUT}/_family.png"
+    sh.save(p)
+    print("family sheet (%d founders) -> %s" % (len(ids), p))
     return p
 
 
@@ -801,7 +1071,9 @@ def run(cid, quality="high"):
     frames(cid, quality=quality)
     finish(cid)
     sheet(cid)
-    preview(cid)
+    preview(cid, 6)
+    preview(cid, 11)
+    stage_still(cid)
     audit(cid)
     print("calls made: %d in %.0fs" % (_state["calls"], time.time() - _state["t0"]))
 
@@ -817,18 +1089,26 @@ if __name__ == "__main__":
     only = [int(x) for x in re.split(r"[,\s]+", opt["only"])] if "only" in opt else None
     q = opt.get("quality", "high")
     if cmd == "master":
-        master(cid, quality=q, tries=int(opt.get("tries", 3)), force="force" in opt)
+        master(cid, quality=q, tries=int(opt.get("tries", 3)), force="force" in opt,
+               fix=opt.get("fix", "") if isinstance(opt.get("fix", ""), str) else "")
     elif cmd == "frames":
         frames(cid, only=only, quality=q, tries=int(opt.get("tries", 2)),
-               workers=int(opt.get("workers", 4)))
+               workers=int(opt.get("workers", 4)),
+               fix=opt.get("fix", "") if isinstance(opt.get("fix", ""), str) else "")
     elif cmd == "adopt":
-        adopt(cid, only=only, which=int(opt.get("try", 1)))
+        adopt(cid, only=only, which=int(opt.get("try", 1)), eye="eye" in opt)
+    elif cmd == "promote":
+        promote(cid, which=int(opt.get("try", 1)), refit="refit" in opt)
     elif cmd == "finish":
         finish(cid, int(opt.get("size", SHIP_SIZE)))
     elif cmd == "sheet":
         sheet(cid)
     elif cmd == "preview":
         preview(cid, int(opt.get("fps", 6)))
+    elif cmd == "stage":
+        stage_still(cid, int(opt.get("frame", 1)), marks="plain" not in opt)
+    elif cmd == "family":
+        family([c.strip() for c in opt["ids"].split(",")] if "ids" in opt else None)
     elif cmd == "audit":
         for c in (CHARACTERS if cid is None else [cid]):
             audit(c)
