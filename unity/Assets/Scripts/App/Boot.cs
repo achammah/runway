@@ -348,6 +348,8 @@ namespace Runway.App
             State = state;
             CurrentScreen = screen;
             screen.Build(rt);
+            DrawnBoil.Sweep(rt);
+            Runway.Game.ArtCache.Sweep();
             screen.StartCoroutine(screen.FadeIn(0.18f));
 
             if (previous != null) StartCoroutine(RetirePrevious(previous));
@@ -385,6 +387,7 @@ namespace Runway.App
             // an overlay closes itself when its door is used — the run behind it stands
             screen.Done += _ => screen.Close();
             screen.Build(rt);
+            DrawnBoil.Sweep(rt);
             screen.StartCoroutine(screen.FadeIn(0.18f));
             return screen;
         }
@@ -429,6 +432,7 @@ namespace Runway.App
         {
             "RUNWAY_SHOT", "RUNWAY_FULLRUN", "RUNWAY_FIRSTFLOW",
             "RUNWAY_LANEWIRE", "RUNWAY_READING", "RUNWAY_TURN",
+            "RUNWAY_UPERF",
         };
 
         /// A capture harness is running: no studio card, no curtain, no spending.

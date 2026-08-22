@@ -62,6 +62,7 @@ namespace Runway.Screens
                 Run(LoadStill(raw));
             }
 
+            Runway.Effects.Embers.TitleFire(Rect);
             // which build am I actually running — the question that cost a whole session
             DrawnUI.HandLabel(Rect, BuildStamp.Value, 16f, 996f, 18f,
                               new Color(0.12f, 0.12f, 0.12f, 0.4f));

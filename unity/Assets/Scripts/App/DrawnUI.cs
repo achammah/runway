@@ -307,6 +307,7 @@ namespace Runway.App
             img.type = Image.Type.Simple;
             img.color = Ink;
             img.raycastTarget = false;
+            DrawnBoil.Apply(img, st.Seed);
             return img;
         }
 
@@ -325,6 +326,7 @@ namespace Runway.App
             img.type = Image.Type.Simple;
             img.color = color;
             img.raycastTarget = false;
+            DrawnBoil.Apply(img, seed);
             return img;
         }
 

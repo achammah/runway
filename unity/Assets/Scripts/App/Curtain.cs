@@ -157,6 +157,7 @@ namespace Runway.App
             transform.SetAsLastSibling();
             if (_swallow != null) _swallow.raycastTarget = true;
             RequestLoop();
+            Runway.Audio.RunwayMix.SetState("curtained");
             if (_tween != null) StopCoroutine(_tween);
             _tween = StartCoroutine(Sweep(_t, 1f, secs, DrawnUI.EaseOutCubic));
             yield return _tween;
@@ -165,6 +166,7 @@ namespace Runway.App
         public IEnumerator Open(float secs = 0.55f)
         {
             if (!gameObject.activeSelf) yield break;   // never opened; nothing to part
+            Runway.Audio.RunwayMix.SetState("normal");
             if (_tween != null) StopCoroutine(_tween);
             _tween = StartCoroutine(Sweep(_t, 0f, secs, DrawnUI.EaseInOutCubic));
             yield return _tween;
@@ -182,6 +184,7 @@ namespace Runway.App
             _shutFor = 0f;
             if (_swallow != null) _swallow.raycastTarget = true;
             RequestLoop();
+            Runway.Audio.RunwayMix.SetState("curtained");
             Apply();
         }
 
