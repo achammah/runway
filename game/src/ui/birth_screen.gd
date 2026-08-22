@@ -9,6 +9,7 @@ const INK := Color("1E1E1E")
 const PEN := Color("E86A5C")
 
 var _t := 0.0
+var status_line := "creating your world"   # main flips this per phase
 var _font: Font
 ## The unpacking loop (seedance-baked sheet, 5x8 grid of 1024x576 frames).
 ## Missing sheet = the drawn fallback below keeps the screen alive.
@@ -128,7 +129,7 @@ func _draw() -> void:
 				draw_rect(Rect2(x, ry, dash_w, 6), Color(CREAM, 0.25))
 	# creating your world… — a cream ring behind, ink in front. a single offset
 	# copy only ghosted the glyphs; the ring is what carries it over the boxes.
-	var msg := "creating your world"
+	var msg := status_line
 	var dots := ".".repeat(1 + int(fmod(_t * 1.6, 3.0)))
 	var msz := _font.get_string_size(msg + "...", HORIZONTAL_ALIGNMENT_LEFT, -1, 34)
 	var a := 0.82 + 0.18 * sin(_t * 2.4)   # breathes, never dims to unreadable

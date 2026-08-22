@@ -903,7 +903,7 @@ func _after_draft(result: Dictionary) -> void:
 		while _worldgen_inflight and _worldgen_res.is_empty() and waited < 25.0:
 			await get_tree().create_timer(0.25).timeout
 			waited += 0.25
-		_finish_worldgen(g)
+		_finish_worldgen(g, birth)
 	else:
 		_swap(g)
 		# the SHOT harness photographs screens, not story: a live-key founding
@@ -941,24 +941,35 @@ func _hook_worldgen_prefetch(d: FounderDraftScreen) -> void:
 			print("WORLDGEN prefetched during the bag page")))
 
 ## The bible lands (or the ceiling fired): apply it, then the book opens.
-func _finish_worldgen(g: GarageViewScreen) -> void:
+func _finish_worldgen(g: GarageViewScreen, birth: BirthScreen = null) -> void:
 	var gen := _worldgen_res
 	if gen.is_empty():
 		print("WORLDGEN: skeleton world (prefetch empty or timed out)")
 	WorldGen.apply_llm_world(state, gen)
 	SimEngine.seed_beliefs(state)
-	# THE BOOK OPENS ON THE FOUNDER'S OWN ENTRY (owner, scrapping the old
-	# stats sheet): the founding is written while the reader holds the book;
-	# field notes (working assumptions) sit below the entry.
+	# DAY ONE IS WRITTEN BEFORE THE BOOK OPENS (owner: the book kept opening
+	# onto an empty page): the birth screen stays up — "writing day one…" —
+	# until the founding lands (60s ceiling), so the first thing the reader
+	# ever sees is the finished entry.
 	_prefetch_founding(g)
+	if birth != null and is_instance_valid(birth):
+		birth.status_line = "writing day one"
+		var fwait := 0.0
+		while _founding_inflight and _founding_res.is_empty() and fwait < 60.0:
+			await get_tree().create_timer(0.25).timeout
+			fwait += 0.25
 	var bk := BookIntroScreen.new()
 	bk.setup(state)
 	if not _founding_res.is_empty():
 		bk.feed_entry(String(_founding_res.get("narration", "")))
 		_book_showed_entry = true
 	bk.done.connect(func() -> void:
+		var t0 := Time.get_ticks_msec()
+		print("SETTLE pressed")
 		_swap(g)
-		_cold_open(g))
+		print("SETTLE swap+garage_ready %d ms" % (Time.get_ticks_msec() - t0))
+		_cold_open(g)
+		print("SETTLE cold_open returned %d ms" % (Time.get_ticks_msec() - t0)))
 	_swap(bk)
 	bk.size = get_viewport().get_visible_rect().size
 

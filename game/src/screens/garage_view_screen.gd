@@ -186,6 +186,7 @@ func _open_binder() -> void:
 	tw.tween_property(_binder, "modulate:a", 1.0, 0.2)
 
 func _ready() -> void:
+	var t0 := Time.get_ticks_msec()
 	_font = load("res://assets/fonts/PatrickHand-Regular.ttf")
 	_font_d = load("res://assets/fonts/Baloo2-Bold.ttf")
 	_last_cash = state.cash
@@ -208,7 +209,9 @@ func _ready() -> void:
 	add_child(_surface_layer)
 	# SCENE-FIRST: the painted stage, with the cast composited onto its marks.
 	_scene_id = SceneRoomPicker.scene_id_for(state)
+	var t_ms := Time.get_ticks_msec()
 	_mount_scene()
+	print("GARAGE mount_scene %d ms · ready-so-far %d ms" % [Time.get_ticks_msec() - t_ms, Time.get_ticks_msec() - t0])
 
 	# living objects (classic path only builds sprites; scene mode reuses the tag/labels)
 	if not _scene_mode and not _assembled and not _patch_mode:
