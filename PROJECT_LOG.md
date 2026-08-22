@@ -339,3 +339,23 @@ now OPEN the project; README; silent-drop ignore trap closed). LLMUnity
 assessed: GO post-ship for keyless local clarify/worldgen, NO for
 adjudication. Kill-switch matrix 9/9 before the wave; full re-verify
 rides the next build.
+
+## 2026-08-22 (night) — the ship gate: RUNWAY-Unity at 92.6%
+Final build 2026-08-22 22:37 · eb21166 (682MB vs the 2.2GB DMG). The
+23-pair side-by-side verdict pass drove a final fix wave: the painted
+theater returned to the select stage (the two 57%-diff screens died of
+one cause — the missing scene mount plus counterpart-less additive
+glows), loop clocks run continuously like Godot's, the bag's box is
+alpha-trimmed, birth holds its 0.3s and rings its line with a real
+halo. The live keyed probe played four generated weeks: 45/47 checks,
+dice agreement engine=cup=beat proven, and its one real finding — the
+authored deck re-dealing on a dry pool — is fixed in BOTH engines.
+Perf on the final build: 12-26 rebuilds/s per screen, 270-308fps
+uncapped at 3.2-3.7ms, gc 0.00/s, floors returning. And the cast is
+REBORN: five consistent founders (master IS frame one, native
+transparency, feet seated in the painted pool, ~$12 of image credit),
+installed in both engines. Remaining honest gaps live in the checklist
+at their true percentages: C5 pricing-economics measurement, C8 paint
+fault-injection, the re-soak, P8/P10/P11 cosmetics, the streamed-art
+migration plan (docs/config-plan.md) and the LLMUnity local-narrator
+dossier (unity/briefs/) as the two post-ship lanes.
