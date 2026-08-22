@@ -12,7 +12,7 @@ game/assets/*
 !game/assets/ui/
 !game/assets/backgrounds/
 game/assets/backgrounds/*
-!game/assets/backgrounds/manifest.json
+!game/assets/backgrounds/*.json
 # layout.json is NOT generated art. Crew marks, occluder rects and write_surfaces
 # are hand-authored from measurements taken off each image and cannot be recovered
 # by rerunning anything — 28K of irreplaceable data sitting inside 5.4GB of
@@ -65,3 +65,22 @@ unity/Assets/Resources/Sheets/
 unity/Assets/Art/
 unity/Assets/StreamingAssets/Art/
 unity/build/
+
+# Hand authored data inside the ignored art trees. Same argument as layout.json
+# above: these are measured and curated by hand and cannot be regenerated. Without
+# these rules a NEW pose, icon or patch scene is silently invisible to git add.
+!game/assets/journal_icons/
+!game/assets/poses/
+game/assets/poses/*
+!game/assets/poses/*.json
+!game/assets/poses/*/
+game/assets/poses/*/*
+!game/assets/poses/*/*.json
+!game/assets/patch_scenes/
+game/assets/patch_scenes/*
+!game/assets/patch_scenes/*.json
+!game/assets/patch_scenes/*/
+game/assets/patch_scenes/*/*
+!game/assets/patch_scenes/*/*.json
+!game/assets/scenes/*.json
+game/build_stamp.txt

@@ -1,0 +1,119 @@
+{
+ "characters": {
+  "angel_investor": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "cofd_business": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "cofd_hustler": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "cofd_idea": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "cofd_sales": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "cofd_tech": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "customer_casual": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "customer_suit": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "employee": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "founder_consultant": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "founder_hustler": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "founder_pm": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "hacker": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "landlord": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "lawyer": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "official": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "parent": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "partner": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "press_reporter": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "vc_investor": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  },
+  "yc_partner": {
+   "accepted": 25,
+   "eyes_missing": [],
+   "missing": []
+  }
+ },
+ "events": [],
+ "totals": {
+  "eyes_missing": 0,
+  "eyes_ok": 2,
+  "failed": 0,
+  "generated": 2,
+  "rejected": 0,
+  "skipped": 2,
+  "transients": 0
+ }
+}

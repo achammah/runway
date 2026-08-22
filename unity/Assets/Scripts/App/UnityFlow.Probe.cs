@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using Newtonsoft.Json.Linq;
 using TMPro;
@@ -87,6 +88,8 @@ namespace Runway.App
                 Fail("shot_failed", UnityShotsCamera.Failed[i] + " was never written");
             for (int i = 0; i < UnityShotsPoke.Misses.Count; i++)
                 Fail("poke_miss", UnityShotsPoke.Misses[i]);
+            for (int i = 0; i < UnityFlowReach.Misses.Count; i++)
+                Fail("poke_miss", UnityFlowReach.Misses[i]);
 
             Debug.Log(string.Format("UFLOW walked {0:0}s · {1} shots -> {2}",
                 secs, UnityShotsCamera.Written.Count, _dir));
@@ -191,7 +194,7 @@ namespace Runway.App
         {
             GarageScreen r = GarageScreen.Room;
             if (r == null) return false;
-            var t = UnityShotsPoke.GetField(r, "_paintRibbon") as TextMeshProUGUI;
+            var t = UnityFlowReach.Field(r, "_paintRibbon") as TextMeshProUGUI;
             return t != null;
         }
 
@@ -301,7 +304,7 @@ namespace Runway.App
         static JObject PendingDice(WeekCommit c)
         {
             if (c == null) return null;
-            return UnityShotsPoke.GetField(c, "_pendingDice") as JObject;
+            return UnityFlowReach.Field(c, "_pendingDice") as JObject;   // frame-polled
         }
 
         static JObject LastDice()
@@ -413,8 +416,8 @@ namespace Runway.App
             {
                 ReadingBeat b = BeatNow();
                 if (b == null) yield break;
-                UnityShotsPoke.Call(b, "SkipReading");
-                UnityShotsPoke.SetField(b, "_proceed", true);
+                UnityFlowReach.Call(b, "SkipReading");            // polled, not one-shot
+                UnityFlowReach.SetField(b, "_proceed", true);
                 yield return new WaitForSecondsRealtime(0.5f);
             }
             Debug.LogWarning(string.Format(
@@ -448,22 +451,33 @@ namespace Runway.App
             return FirstInt(s, i + lead.Length);
         }
 
-        /// POKE — `DiceRoll._loop` then `SheetLoop._sheet`. The cup plays
-        /// `dice/roll_NN.png`, and the baked texture keeps that name, so the sheet the
-        /// player watched IS the number they saw. A streamed (non-baked) sheet carries
-        /// no name; the beat sentence then answers for C6 instead.
+        /// POKE — `DiceRoll._loop`, then `SheetLoop._inflight` and `SheetLoop._sheet`.
+        /// The cup plays `dice/roll_NN.png`, so the sheet it asked for IS the number the
+        /// player watched settle. Two readings because the dice sheets are NOT baked
+        /// into `Resources/Sheets` (only birth/curtain/howto are), so the streamed
+        /// texture carries no name and only the in-flight path names the file — which is
+        /// why this is frame-polled from the moment the die is cast. If neither answers,
+        /// the beat's judgement sentence carries C6 instead.
         static int CupNumber()
         {
             DiceRoll cup = CupNow();
             if (cup == null) return -1;
-            var loop = UnityShotsPoke.GetField(cup, "_loop") as SheetLoop;
+            var loop = UnityFlowReach.Field(cup, "_loop") as SheetLoop;   // frame-polled
             if (loop == null) return -1;
-            var sheet = UnityShotsPoke.GetField(loop, "_sheet") as Texture2D;
-            if (sheet == null) return -1;
-            string nm = sheet.name ?? "";
-            int u = nm.LastIndexOf('_');
+            var inflight = UnityFlowReach.Field(loop, "_inflight") as string;
+            int n = RollNumber(inflight);
+            if (n > 0) return n;
+            var sheet = UnityFlowReach.Field(loop, "_sheet") as Texture2D;
+            return sheet == null ? -1 : RollNumber(sheet.name);
+        }
+
+        /// "dice/roll_07.png" or "roll_07" -> 7.
+        static int RollNumber(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return -1;
+            int u = s.LastIndexOf('_');
             if (u < 0) return -1;
-            return FirstInt(nm, u + 1);
+            return FirstInt(s, u + 1);
         }
 
         void CompareDice(int week, int engine, int cup, int beat)
@@ -585,6 +599,12 @@ namespace Runway.App
                 cap, cashAtPress, cashNow));
 
             if (written <= 0) return;   // this week's move named no number; nothing to prove
+
+            // the world's own tick moved cash too (rent, payroll, revenue); its receipts
+            // are printed here so the arithmetic above can be settled by hand
+            var tick = outcome != null ? outcome["log"] as JArray : null;
+            if (tick != null)
+                foreach (JToken t in tick) Debug.Log("UFLOW   tick: " + t);
 
             if (asked < 0 && receipt < 0 && cashOps == 0)
             {
@@ -851,6 +871,105 @@ namespace Runway.App
             }
             string outp = sb.ToString().Trim('_');
             return outp.Length == 0 ? "none" : outp;
+        }
+    }
+
+    /// <summary>
+    /// THE POLLED REACH-INS — the same reflection `UnityShotsPoke` does, with one
+    /// difference that matters here and not there: a MISS IS RECORDED ONCE.
+    ///
+    /// UnityShots pokes a member a handful of times, so a rename is a handful of lines.
+    /// This lane FRAME-POLLS four of them — `WeekCommit._pendingDice` while the die is
+    /// being cast, the cup's sheet while it loads, the room's paint ribbon while it
+    /// paints, `ReadingBeat._proceed` while the week is read — which is thousands of
+    /// reads per run. Through UnityShotsPoke a single renamed field would bury the log
+    /// under seven thousand identical errors and every one of them would be counted as
+    /// a failure. So the polled reads live here: the FieldInfo is resolved once per
+    /// type+member, the miss is shouted once, and `UnityFlow.Report` counts it once.
+    /// Everything one-shot still goes through UnityShotsPoke, whose miss list this
+    /// report also carries.
+    /// </summary>
+    public static class UnityFlowReach
+    {
+        const BindingFlags Any = BindingFlags.Instance | BindingFlags.Static
+                                 | BindingFlags.Public | BindingFlags.NonPublic
+                                 | BindingFlags.DeclaredOnly;
+
+        static readonly Dictionary<string, FieldInfo> _fields = new Dictionary<string, FieldInfo>();
+        static readonly Dictionary<string, MethodInfo> _methods = new Dictionary<string, MethodInfo>();
+
+        /// Every member this run could not reach, once each.
+        public static readonly List<string> Misses = new List<string>();
+
+        public static object Field(object target, string name)
+        {
+            FieldInfo f = FieldOf(target, name);
+            if (f == null) return null;
+            try { return f.GetValue(f.IsStatic ? null : target); }
+            catch (Exception) { return null; }
+        }
+
+        public static void SetField(object target, string name, object value)
+        {
+            FieldInfo f = FieldOf(target, name);
+            if (f == null) return;
+            try { f.SetValue(f.IsStatic ? null : target, value); }
+            catch (Exception) { /* a field that will not take the value already missed */ }
+        }
+
+        public static void Call(object target, string name)
+        {
+            if (target == null) return;
+            Type t = target.GetType();
+            string key = t.FullName + "." + name + "()";
+            MethodInfo m;
+            if (!_methods.TryGetValue(key, out m))
+            {
+                m = MethodOf(t, name);
+                _methods[key] = m;
+                if (m == null) Miss(key);
+            }
+            if (m == null) return;
+            try { m.Invoke(m.IsStatic ? null : target, null); }
+            catch (Exception) { /* the screen went away under the poll; the wall ends it */ }
+        }
+
+        static FieldInfo FieldOf(object target, string name)
+        {
+            if (target == null) return null;
+            Type t = target.GetType();
+            string key = t.FullName + "." + name;
+            FieldInfo f;
+            if (_fields.TryGetValue(key, out f)) return f;
+            Type walk = t;
+            while (walk != null)
+            {
+                f = walk.GetField(name, Any);
+                if (f != null) break;
+                walk = walk.BaseType;
+            }
+            _fields[key] = f;
+            if (f == null) Miss(key);
+            return f;
+        }
+
+        static MethodInfo MethodOf(Type t, string name)
+        {
+            while (t != null)
+            {
+                MethodInfo[] all = t.GetMethods(Any);
+                for (int i = 0; i < all.Length; i++)
+                    if (all[i].Name == name && all[i].GetParameters().Length == 0) return all[i];
+                t = t.BaseType;
+            }
+            return null;
+        }
+
+        static void Miss(string key)
+        {
+            Misses.Add(key);
+            Debug.LogError("UFLOW POKE MISS: " + key
+                           + " — the member this harness polls has been renamed or removed");
         }
     }
 

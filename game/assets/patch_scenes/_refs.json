@@ -1,0 +1,21 @@
+{
+ "hacker": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/68445cfe-46d5-4e22-8e19-cb03be7f9f1b/hacker.png",
+ "hustler": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/a39e9897-ddf3-4a84-8279-f3a2cc134cfc/hustler.png",
+ "pm": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/ae60680d-6970-43e0-9a6e-9e886f091104/pm.png",
+ "consultant": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/542e18d1-2494-4492-bee4-6c21e541598d/consultant.png",
+ "cofd_tech": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/edfaeeaa-f826-4b6e-b717-613dad1bb61f/cofd_tech.png",
+ "cofd_sales": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/7b90aa87-bb0e-4c88-9319-23aa58ec45ad/cofd_sales.png",
+ "cofd_business": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/1e8801a7-fd09-4d99-9d3e-eb1468bb9fd4/cofd_business.png",
+ "employee": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/c715dfff-3ff1-439f-baea-a637a7475793/employee.png",
+ "room_garage": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/54ee9278-df40-401f-a798-d3bda38c8fa5/room_garage.png",
+ "room_coworking": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/0aba5221-6425-4de8-ae06-163634660a92/room_coworking.png",
+ "room_office": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/33369c8b-8340-48a0-9004-87781de82579/room_office.png",
+ "room_floor": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/3cde9383-aa26-4755-94c5-7843284edc1a/room_floor.png",
+ "room_hq": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/967283bf-ef97-4b13-b873-73612ab25e23/room_hq.png",
+ "garage__populated": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/4dadd91c-3608-462b-a8dc-79a2216c2072/populated.png",
+ "coworking__populated": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/1e33e9c8-c402-4603-a8ef-8f4be0fe3f7a/populated.png",
+ "office__populated": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/4fb722bb-46c8-4400-a3de-cccd8120e5df/populated.png",
+ "floor__populated": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/0523c3ed-4441-48af-a275-92ed1258aed4/populated.png",
+ "hq__populated": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/8df37179-ed7f-4db0-ae38-be559205f298/populated.png",
+ "garage__blank": "https://nexus-main-prod.s3.amazonaws.com/orgs/org_3F7cXucWtHdRlohFvvxAeeiGxLj/assets/37e6adcf-4d53-449f-abd8-6df880a5970e/blank.png"
+}

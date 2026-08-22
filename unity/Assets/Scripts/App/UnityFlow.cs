@@ -226,10 +226,14 @@ namespace Runway.App
                 Fail("c1_new_game", "NEW GAME resumed a saved run instead of dealing a fresh one");
             if (app.State == AppState.HowTo)
             {
-                for (int i = 0; i < 3; i++)
+                // the sheet is 3 pages when all three loops ship and ONE when none do,
+                // so this pages until the screen itself leaves — poking Advance at the
+                // draft would log a miss the run would then count as a failure
+                for (int i = 0; i < 4 && app.State == AppState.HowTo; i++)
                 {
                     yield return new WaitForSecondsRealtime(0.8f);
                     if (i == 0) yield return Shoot("c1", "howto");
+                    if (app.State != AppState.HowTo) break;
                     UnityShotsPoke.Call(app.CurrentScreen, "Advance");
                 }
                 yield return Until(() => app.State == AppState.Draft, 15f, "the draft after the rules");
@@ -378,23 +382,35 @@ namespace Runway.App
             yield return new WaitForSecondsRealtime(1.6f);
             yield return Shoot("c1", "garage_settled");
 
-            yield return Until(() => RoomComposed() || RibbonUp() || !RoomAlive(),
-                               PaintCap, "the painted room");
-            if (RoomComposed())
+            // C1's room claim only means anything when the run is allowed to paint:
+            // under RUNWAY_NO_ART there is deliberately nothing to adopt and nothing to
+            // announce, and holding the walk for four minutes to say so would be a lie.
+            if (!app.ArtEnabled)
             {
-                Pass("c1_room");
-                Debug.Log("UFLOW room: composed painting adopted -> "
-                          + GarageScreen.Room.ComposedPath);
-            }
-            else if (RibbonUp())
-            {
-                Pass("c1_room");
-                Debug.Log("UFLOW room: authored room + '✎ your room is being painted…' ribbon");
+                Debug.LogWarning("UFLOW skip c1_room: art is off (RUNWAY_NO_ART) — this walk "
+                                 + "cannot prove the PAINTED room. Re-run without it for C1.");
             }
             else
             {
-                Fail("c1_room", "no composed painting was adopted and no painting ribbon is up — "
-                     + "the player is looking at the stock drawn garage with nothing said about it");
+                yield return Until(() => RoomComposed() || RibbonUp() || !RoomAlive(),
+                                   PaintCap, "the painted room");
+                if (RoomComposed())
+                {
+                    Pass("c1_room");
+                    Debug.Log("UFLOW room: composed painting adopted -> "
+                              + GarageScreen.Room.ComposedPath);
+                }
+                else if (RibbonUp())
+                {
+                    Pass("c1_room");
+                    Debug.Log("UFLOW room: authored room + '✎ your room is being painted…' ribbon");
+                }
+                else
+                {
+                    Fail("c1_room", "no composed painting was adopted and no painting ribbon is "
+                         + "up — the player is looking at the stock drawn garage with nothing "
+                         + "said about it");
+                }
             }
             yield return new WaitForSecondsRealtime(1.0f);
             yield return Shoot("c1", "garage_room");
@@ -549,7 +565,13 @@ namespace Runway.App
                 Pass(tag + "_beat");
                 yield return new WaitForSecondsRealtime(2.2f);
                 yield return Shoot(tag, "w" + Two(weekBefore) + "_beat");
-                beatDie = DieFromBeat(beat);
+                // the judgement sentence is REVEALED on a reading clock — it is the
+                // fourth beat in the queue and lands 10-25s in. One click catches the
+                // page up, and only then is the shown number on the page to be read.
+                ReadingBeat live = BeatNow();
+                if (live != null) UnityShotsPoke.Call(live, "SkipReading");
+                yield return new WaitForSecondsRealtime(0.7f);
+                beatDie = DieFromBeat(BeatNow());
             }
             else
             {
@@ -610,7 +632,7 @@ namespace Runway.App
 
         // ══ the scripted weeks ═════════════════════════════════════════════════
 
-        const string FounderName = "Assem Chammah";
+        const string FounderName = "Tess Marlow";
         const string CompanyName = "Runwayworks";
         const string CompanyIdea = "voice-first bookkeeping for one-van tradespeople";
 
