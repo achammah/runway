@@ -311,3 +311,12 @@ Remaining to 100 across the board: live human play-feel confirmation (the one th
 - [x] P5 Engine tests (73 checks) + binder shot verified + unpriced-zero + binder shot
 - [x] P6 Unity assessment delivered (recommendation: stay, port later if wanted): honest assessment + recommendation (separate deliberate project, not a mid-flight rewrite)
 - [x] P7 Played it myself: paint gate DONE while the book held; first room = the GENERATED garage (screenshot) of the shipped flow (owner: "have you actually tested it?")
+
+## WINDOW 8 — THE UNITY ALTERNATIVE BUILD (owner: full migration, side-by-side)
+- [~] U-1 Toolchain: Unity Hub + dotnet installing (brew, background); editor install + license next (license needs ONE owner Hub sign-in)
+- [x] U-2 Workspace: unity/ scaffold, manifest (TMP/UGUI/Newtonsoft), MIGRATION.md, prompts+data+319MB art copied
+- [~] U-3 Engine port (agent): Runway.Core pure C#, 73-check parity suite runs via dotnet
+- [~] U-4 App shell + LLM (agent): code-built UI framework (paper/ink/sheet-loops), boot flow, title/keys/howto, LlmClient/EventGenerator/SceneDirector with watchdogs + paint gate
+- [ ] U-5 Game screens (agent, after U-4): draft 7 pages, book, birth, garage/journal/dice/curtain/binder(9 tabs incl. pricing)
+- [ ] U-6 Editor compile loop: fix until clean; batch build OSXUniversal
+- [ ] U-7 Side-by-side deliverable: RUNWAY-Unity.app + comparison notes (boot, RAM, redraws, feel)
