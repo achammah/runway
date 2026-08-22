@@ -44,8 +44,40 @@ Applied all at once at integration; each lane proven OFF-able first (D8).
 - FIX-2 (E4): ArtCache holds every sprite forever → steady 704MB vs the 400MB bar.
   Needs LRU/scene-exit eviction while keeping sheets' Release() semantics.
 - FIX-3 (E5): draft chr_loop hydrator stalls main thread up to 889ms → async/sliced.
-- INVESTIGATE-4 (B7/B9/B15): blame sees NO repaint from any sheet-mode SheetLoop
-  (birth loop, howto film, curtain sway, dice cup) — loops may be FROZEN on frame 1
-  in some modes. Verify visually in the built player; ledger N16 has the repro.
+- INVESTIGATE-4 DOWNGRADED: sheet loops verified ALIVE in the built player (keys
+  mascot region differs across 1.3s captures) — blame silence was a batchmode
+  artifact. Recheck per-screen during B-suite side-by-sides; ledger N16 has repro.
 - Batchmode numbers: fps/frame-ms/draws are BLIND (no present) — re-run against the
   built .app for E6; rebuild/s, tex MB, alloc, gc/s, soak pacing are valid now.
+
+## D3 beat text — ACCEPTED (frames eyeballed: inline die chit + mid-settle chars)
+- Hookup (one line): ReadingBeat.cs:243 →
+  `float secs = ReadingBeatText.Apply(b, Mathf.Clamp(body.Length / 95f, 0.3f, 6.5f));`
+  (line 244 WriteIn stays — it keeps _draining/skip/click; Apply must run first.)
+- Kill-switch RUNWAY_FX_TEXT=0 → byte-identical text, Apply returns caller's number.
+- Sealed-class wall again (ReadingBeat) → static seam, optional `partial` word later.
+- FLAG: manifest LIES — Unity 6 resolves builtin TMP 5.0.0/uGUI 2.0.0 over the
+  3.0.9/1.0.0 request; make the manifest tell the truth at integration.
+- Note: capitalized verdicts are dead words in BOTH engines (faithful); the punch
+  rides the plain sentence. `beat.Say("", band)` would surface them if ever wanted.
+
+## MusicManager (my port, gate pending)
+- Zero hookups: self-installs BeforeSceneLoad, polls Boot.Instance 4x/s with
+  main.gd's exact mapping (title/selection/garage/in_the_red/last_page,
+  whistle≥75 hum≥55), bar-trimmed seamless loops, 2.5s dB crossfades,
+  registers with RunwayMix, silent under harness envs, RUNWAY_FX_MUSIC=0 kill.
+
+## D6 glows — ACCEPTED (normal vs red frames eyeballed: temperature is real)
+- Hookups (3 lines): GarageScreen.cs after :146 BuildHud() →
+  `Runway.Effects.GlowSprites.Apply(_room, Runway.Effects.GlowScene.Garage);`
+  GarageScreen.cs Update() before :477 (inside 12fps block) →
+  `Runway.Effects.GlowSprites.SetRed(State.Cash < 0);`
+  FounderDraftScreen.cs after :142 (before pages) →
+  `Runway.Effects.GlowSprites.Apply(Rect, Runway.Effects.GlowScene.SelectStage);`
+- Laptop glow self-tracks item_itm_laptop — no hookup needed.
+- Shader Resources/Shaders/RunwayGlow (one file, additive+multiply via blend props);
+  stripped→graceful alpha fallback. Kill RUNWAY_FX_GLOWS=0 verified.
+- N14 eyes: D6-B9 two red layers (my cold multiply + existing warm _redVignette
+  stack — vignette alpha at GarageScreen.cs:477-484 is the knob if muddy);
+  D6-B3 sibling pinning means D5 motes added later draw UNDER the glow — reorder
+  at integration if motes should live in the light.
