@@ -21,6 +21,12 @@ var _col: VBoxContainer
 var _entry_lbl: Label
 var _waiting := true
 var _notes_nodes: Array = []   # field notes, revealed only once the entry lands
+# THE BOOK HOLDS UNTIL THE PAINT DRIES (owner: never show the default room):
+# while the garage is still rendering, SETTLE IN yields to a breathing line;
+# main calls set_paint_done() (success or final failure) to release it.
+var _holding_paint := false
+var _go_btn: Button
+var _paint_lbl: Label
 var _t := 0.0
 var _sbar: Control
 
@@ -133,6 +139,7 @@ func _ready() -> void:
 	add_child(_sbar)
 
 	var go := Button.new()
+	_go_btn = go
 	go.flat = true
 	go.text = "SETTLE IN  →"
 	go.add_theme_font_override("font", _font)
@@ -158,8 +165,34 @@ func _ready() -> void:
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.4)
 
+func hold_for_paint() -> void:
+	_holding_paint = true
+	if _go_btn != null and is_instance_valid(_go_btn):
+		_go_btn.visible = false
+	if _paint_lbl == null:
+		_paint_lbl = Label.new()
+		_paint_lbl.add_theme_font_override("font", _font)
+		_paint_lbl.add_theme_font_size_override("font_size", 30)
+		_paint_lbl.add_theme_color_override("font_color", PEN)
+		_paint_lbl.text = "✎ painting your garage…"
+		_paint_lbl.position = Vector2(1000, 894)
+		_paint_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_paint_lbl)
+
+func set_paint_done() -> void:
+	_holding_paint = false
+	if _paint_lbl != null and is_instance_valid(_paint_lbl):
+		_paint_lbl.queue_free()
+		_paint_lbl = null
+	if _go_btn != null and is_instance_valid(_go_btn):
+		_go_btn.visible = true
+		_go_btn.modulate.a = 0.0
+		create_tween().tween_property(_go_btn, "modulate:a", 1.0, 0.3)
+
 func _process(delta: float) -> void:
 	_t += delta
+	if _holding_paint and _paint_lbl != null and is_instance_valid(_paint_lbl):
+		_paint_lbl.modulate.a = 0.65 + 0.35 * sin(_t * 2.4)
 	if _waiting and _entry_lbl != null:
 		_entry_lbl.modulate.a = 0.7 + 0.3 * sin(_t * 2.2)
 	if _sbar != null and is_instance_valid(_sbar) and _scroll != null:

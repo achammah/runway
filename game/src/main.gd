@@ -978,6 +978,9 @@ var _founding_inflight := false
 var _worldgen_res := {}
 var _worldgen_key := ""
 var _worldgen_inflight := false
+# day one's warm painting: "idle" | "painting" | "done" | "failed"
+var _warm_status := "idle"
+var _warm_name := ""
 var _book_showed_entry := false   # the reader actually saw the founding text
 
 func _founding_move() -> String:
@@ -1015,6 +1018,8 @@ func _prefetch_founding(gv: GarageViewScreen, attempt: int = 1) -> void:
 		_warm_scene(res)
 		if _screen is BookIntroScreen:
 			(_screen as BookIntroScreen).feed_entry(String(res.get("narration", "")))
+			if _warm_status == "painting":
+				(_screen as BookIntroScreen).hold_for_paint()
 			_book_showed_entry = true
 			print("FOUNDING landed (%d chars) — fed to the open book" % String(res.get("narration", "")).length())
 		elif _screen is GarageViewScreen:
@@ -1032,6 +1037,8 @@ func _warm_scene(dm: Dictionary) -> void:
 	var cast_pack := _cast_pack(dm.get("cast", []))
 	var out_name := "run%d_wk%02d" % [record.seed_value if record != null else 0, state.week]
 	print("TURN art WARM start (%s)" % out_name)
+	_warm_status = "painting"
+	_warm_name = out_name
 	director.make_scene_v2(scene, cast_pack["cast"], cast_pack["urls"],
 			String(scene.get("beat", "")), out_name, _company_ctx())
 
@@ -1744,6 +1751,10 @@ func _on_scene_progress(f: float) -> void:
 	_scene_progress = maxf(_scene_progress, clampf(f, 0.0, 1.0))
 
 func _on_scene_ready(path: String) -> void:
+	if _warm_status == "painting" and _warm_name != "" and path.contains(_warm_name):
+		_warm_status = "done"
+		if _screen is BookIntroScreen:
+			(_screen as BookIntroScreen).set_paint_done()
 	if _scene_seq != _turn_seq:
 		return   # belongs to a run that has already ended
 	print("TURN art landed: %s" % path)
@@ -1755,6 +1766,10 @@ func _on_scene_ready(path: String) -> void:
 ## A FAILED RENDER IS A COSMETIC LOSS. The previous room stays, the week continues,
 ## and the only trace is a line in the log for whoever is watching.
 func _on_scene_failed(reason: String) -> void:
+	if _warm_status == "painting":
+		_warm_status = "failed"
+		if _screen is BookIntroScreen:
+			(_screen as BookIntroScreen).set_paint_done()   # release the reader
 	if _scene_seq != _turn_seq:
 		return
 	print("TURN art FAILED: %s" % reason)
