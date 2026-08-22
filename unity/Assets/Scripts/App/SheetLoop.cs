@@ -191,6 +191,8 @@ namespace Runway.App
 
         /// Play a numbered frame sequence: format is "title/video/frame_{0:00}.png".
         /// Streams from frame 1; the loop plays whatever has landed.
+        int _seqMax;
+
         public Coroutine PlaySequence(string relativeFormat, int maxFrames,
                                       float fps = DefaultFps, bool once = false)
         {
@@ -200,6 +202,7 @@ namespace Runway.App
                 _pendingSheet = null;
                 return null;
             }
+            _seqMax = maxFrames;
             _sequenceMode = true;
             _fps = fps;
             _once = once;
@@ -208,8 +211,39 @@ namespace Runway.App
             return StartCoroutine(StreamSequence(relativeFormat, maxFrames));
         }
 
+        Texture2D BakedFrame(string relativeFormat, int n)
+        {
+            string name = string.Format(relativeFormat, n);
+            int slash = name.LastIndexOf('/');
+            string baseName = name.Substring(slash + 1);
+            if (baseName.EndsWith(".png")) baseName = baseName.Substring(0, baseName.Length - 4);
+            return Resources.Load<Texture2D>("Sheets/" + baseName);
+        }
+
         IEnumerator StreamSequence(string relativeFormat, int maxFrames)
         {
+            // IMPORTED FIRST (the title film's 48 frames ship GPU-ready like
+            // the sheets): all frames land instantly, so the loop never plays
+            // over a growing count — the stream is only the fallback now.
+            {
+                var baked = new List<Texture2D>();
+                for (int n = 1; n <= maxFrames; n++)
+                {
+                    Texture2D b = BakedFrame(relativeFormat, n);
+                    if (b == null) break;
+                    baked.Add(b);
+                }
+                if (baked.Count > 0)
+                {
+                    _ownsTextures = false;   // Resources assets: never Destroy
+                    _sequence.AddRange(baked);
+                    _target.texture = baked[0];
+                    _target.enabled = true;
+                    _shown = -1;
+                    _playing = true;
+                    yield break;
+                }
+            }
             // THE FIRST FRAME NOW, THE REST WHILE THE TITLE BREATHES
             string first = RunwayPaths.ArtUrl(string.Format(relativeFormat, 1));
             if (first.Length == 0) yield break;
@@ -261,6 +295,13 @@ namespace Runway.App
                         return;
                     }
                 }
+            }
+            else if (_sequenceMode && _sequence.Count < _seqMax)
+            {
+                // still streaming: HOLD at the newest frame instead of looping
+                // over a growing count (the loop length changing mid-play was
+                // the title's visible jank)
+                if (idx >= total) idx = total - 1;
             }
             else
             {

@@ -12,6 +12,15 @@ namespace Runway.Screens
     /// </summary>
     public sealed class StudioCard : AppScreen
     {
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        static void Register()
+        {
+            // every screen self-registers; this one never did — harnesses skip
+            // the studio card and keyless boots go to the keys desk, so the
+            // FIRST keyed boot outside a harness met the placeholder instead
+            ScreenRegistry.Register(AppState.StudioCard, typeof(StudioCard));
+        }
+
         /// total life: fade in 0.7, hold, fade out 0.6
         const float Hold = 2.6f;
 

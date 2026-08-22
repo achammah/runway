@@ -242,7 +242,14 @@ namespace Runway.Game
             hit.raycastTarget = true;
 
             var viewport = DrawnUI.FullRect(frt, "viewport");
-            viewport.gameObject.AddComponent<RectMask2D>();
+            // RectMask2D clips AXIS-ALIGNED — under the page's 4-degree lean it
+            // shaved the first letters off every line (owner #191, ledger's own
+            // warning). A stencil Mask rotates with the paper.
+            var maskImg = viewport.gameObject.AddComponent<Image>();
+            maskImg.color = Color.white;
+            maskImg.raycastTarget = false;
+            var vpMask = viewport.gameObject.AddComponent<Mask>();
+            vpMask.showMaskGraphic = false;
             var textRt = DrawnUI.FullRect(viewport, "text");
             var text = textRt.gameObject.AddComponent<TextMeshProUGUI>();
             if (DrawnUI.Hand != null) text.font = DrawnUI.Hand;

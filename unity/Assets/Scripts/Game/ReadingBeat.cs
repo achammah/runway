@@ -243,11 +243,14 @@ namespace Runway.Game
             float secs = ReadingBeatText.Apply(b, Mathf.Clamp(body.Length / 95f, 0.3f, 6.5f));
             StartCoroutine(WriteIn(b, secs));
 
-            // keep the newest beat in view: the reader follows the pen down the page
+            // keep the newest beat in view — ONE follower: overlapping tweens
+            // made the page jump around while the story wrote (owner #194)
             float maxs = Mathf.Max(_columnH - TextH, 0f);
-            StartCoroutine(ScrollTo(maxs, 0.45f));
+            if (_follow != null) StopCoroutine(_follow);
+            _follow = StartCoroutine(ScrollTo(maxs, 0.45f));
         }
 
+        Coroutine _follow;
         bool _skipAll;
 
         IEnumerator ClearSkip()

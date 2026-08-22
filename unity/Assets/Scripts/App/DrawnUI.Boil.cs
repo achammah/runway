@@ -117,6 +117,9 @@ namespace Runway.App
         /// one card are the same redraws every session.
         public static InkBoil Apply(Graphic ink, int seed)
         {
+            // a BUTTON's edge never boils: on a pressable it reads as
+            // vibration (owner live-play); Godot's paper buttons hold still
+            if (ink != null && ink.GetComponentInParent<UnityEngine.UI.Button>() != null) return null;
             if (!Enabled || ink == null) return null;
             if (IsText(ink)) return null;
 

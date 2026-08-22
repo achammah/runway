@@ -144,6 +144,17 @@ namespace Runway.Game
 
             _room = DrawnUI.FullRect(Rect, "room");
             BuildRoom();
+            // the book HELD for this painting — the room must wear it from its
+            // very first frame, never swap it in later (owner #188/#189)
+            {
+                var d = Boot.Instance != null ? Boot.Instance.Director : null;
+                if (d != null && d.WarmStatus == Runway.Llm.PaintStatus.Done && d.WarmName.Length > 0)
+                {
+                    string done = System.IO.Path.Combine(
+                        Runway.App.RunwayPaths.GenScenesDir, d.WarmName + ".png");
+                    if (System.IO.File.Exists(done)) AdoptComposed(done, true);
+                }
+            }
             Runway.Effects.Motes.GarageBulb(_room);
             BuildHud();
             Runway.Effects.GlowSprites.Apply(_room, Runway.Effects.GlowScene.Garage);
@@ -314,7 +325,7 @@ namespace Runway.Game
             var card = DrawnUI.PaperCard(_openBtn, new Vector2(420f, 76f), 0f, 0f, style, "card");
             card.SetSiblingIndex(0);
             // both doors out of the room go through `_style_button`, which sets `_font_d`
-            _openWord = DrawnUI.DisplayLabel(_openBtn, "OPEN THE JOURNAL", 0f, 0f, 30f,
+            _openWord = DrawnUI.DisplayLabel(_openBtn, "OPEN THE JOURNAL", 0f, 0f, 24f,
                                              DrawnUI.Ink, 420f, TextAlignmentOptions.Center);
             _openWord.rectTransform.anchorMin = Vector2.zero;
             _openWord.rectTransform.anchorMax = Vector2.one;
@@ -386,6 +397,12 @@ namespace Runway.Game
             }
             for (int i = 0; i < _crew.Count; i++)
                 if (_crew[i] != null) _crew[i].gameObject.SetActive(!hidden);
+            // the painting brings its own floor: the drawn horizon rule and
+            // the sage tint sliced every composed room at 72% (owner #189)
+            Transform hz = _room != null ? _room.Find("horizon") : null;
+            if (hz != null) hz.gameObject.SetActive(!hidden);
+            Transform fl = _room != null ? _room.Find("floor") : null;
+            if (fl != null) fl.gameObject.SetActive(!hidden);
             if (_capPaper != null) _capPaper.gameObject.SetActive(!hidden);
             // in a room we did not lay out, the only ground we can trust is the calm
             // top strip the composition law keeps clear

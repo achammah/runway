@@ -90,6 +90,10 @@ namespace Runway.App
             // NOTHING IN THIS GAME IS DRAWN FASTER THAN 12fps (project.godot: max_fps=30)
             Application.targetFrameRate = 30;
             QualitySettings.vSyncCount = 0;
+            // an unfocused window must keep simulating: founding calls,
+            // renders and adjudications all wait on network — a pause looks
+            // exactly like the wedge class we watchdogged (owner live-play)
+            Application.runInBackground = true;
 
             BuildFurniture();
             BuildServices();
@@ -424,6 +428,12 @@ namespace Runway.App
 
         void Update()
         {
+            // a focused text field owns the keyboard: TAB popped the binder
+            // over the player's half-written move (owner live-play)
+            var sel = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+            if (sel != null && sel.GetComponent<TMPro.TMP_InputField>() != null
+                && sel.GetComponent<TMPro.TMP_InputField>().isFocused)
+                return;
             if (Input.GetKeyDown(KeyCode.Escape) && !_settingsOpen)
             {
                 var s = OpenOverlay(AppOverlay.Settings);

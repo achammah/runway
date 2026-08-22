@@ -201,6 +201,35 @@ namespace Runway.Game
             EventGenerator gen = boot != null ? boot.Generator : null;
             bool live = boot != null && boot.Llm != null && boot.Llm.Enabled;
 
+            // ── THE PRICING LAW IS ENGINE-OWNED (owner #192): customers on
+            // the books with not one price on the wall IS the clarification —
+            // it cannot depend on the model noticing.
+            if (!ClarifyChecked && Clarify == null && St.Traction > 0 && St.Offers != null)
+            {
+                bool anyPriced = false;
+                string firstName = "the offer";
+                for (int i = 0; i < St.Offers.Count; i++)
+                    if (St.Offers[i] != null)
+                    {
+                        if (i == 0 && St.Offers[i].Name != null && St.Offers[i].Name.Length > 0)
+                            firstName = St.Offers[i].Name;
+                        if (St.Offers[i].Price > 0.0) { anyPriced = true; break; }
+                    }
+                if (!anyPriced)
+                {
+                    ClarifyChecked = true;
+                    Clarify = new JObject
+                    {
+                        ["q"] = "customers are here and nothing has a price — what does "
+                                + firstName + " cost?",
+                        ["kind"] = "price",
+                        ["base"] = t,
+                    };
+                    _book.Redraw();
+                    return;
+                }
+            }
+
             // ── THE PRE-PASS: one question when the move hides its number ──
             if (!ClarifyChecked && gen != null && live)
             {
