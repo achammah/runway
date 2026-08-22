@@ -203,6 +203,12 @@ namespace Runway.Game
                                               float x, float y)
         {
             var t = DrawnUI.DisplayLabel(page, text, x, y, size, DrawnUI.Cream);
+            // _ink_outline, ported: cream words over the spotlight need the ink
+            // ring or their tail washes out INTO the beam (seen on the rebuilt
+            // select shot). TMP does it in the material, not with offset copies.
+            var mat = t.fontMaterial;   // instance — never the shared material
+            mat.SetColor(TMPro.ShaderUtilities.ID_OutlineColor, DrawnUI.Ink);
+            mat.SetFloat(TMPro.ShaderUtilities.ID_OutlineWidth, 0.22f);
             float w = DrawnUI.MeasureWidth(text, size, DrawnUI.Display);
             GameUi.HandRule(page, x + 2f, y + size * 1.48f, w, DrawnUI.Coral, 6);
             return t;
