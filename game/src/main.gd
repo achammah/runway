@@ -1531,6 +1531,14 @@ func _firstflow(dir: String) -> void:
 		await get_tree().create_timer(0.5).timeout
 	await get_tree().create_timer(2.0).timeout
 	await _shot(dir, "f3b_book_entry")
+	# THE REAL DOOR: wait for the paint gate like a player (SETTLE IN hidden
+	# while the garage renders) — up to 4 minutes, photographing the hold
+	cap = 480
+	while cap > 0 and _warm_status == "painting":
+		cap -= 1
+		await get_tree().create_timer(0.5).timeout
+	await _shot(dir, "f3c_paint_state")
+	print("FIRSTFLOW paint gate: %s" % _warm_status)
 	if _screen is BookIntroScreen:
 		(_screen as BookIntroScreen).done.emit()
 	await get_tree().create_timer(1.0).timeout
