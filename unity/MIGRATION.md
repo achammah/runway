@@ -6,9 +6,16 @@ drawn look. The Godot build remains the primary until the owner decides.
 
 ## Architecture (mirrors the Godot original)
 - Runway.Core (Assets/Scripts/Core): PURE C# — no UnityEngine. SimEngine,
-  WorldGen, GameState, RunRecord. Deterministic; seeded RNG = xxHash-based
-  to mirror hash(str)-salted streams. Verified by the console test runner in
-  Runway.Core.Tests (dotnet) replicating the 73 GDScript engine checks.
+  WorldGen, GameState, Rng. Deterministic; the seeded RNG builds the SAME
+  "seed:week:salt" key strings the GDScript builds, then runs them through a
+  64-bit FNV-1a into a xorshift64* (Godot's hash() and PCG32 are engine
+  internals and cannot be reproduced outside Godot). Streams are therefore
+  identically STRUCTURED and fully deterministic, but numerically different
+  from the Godot build: same laws, different draws. Core does no file IO —
+  the host supplies a Func<string,string> reader (Unity: StreamingAssets).
+  Verified by the console test runner in Runway.Core.Tests (dotnet) replicating
+  all 73 GDScript engine checks plus the 5-strategy balance run.
+  Run: export PATH="$HOME/.dotnet:$PATH"; dotnet run --project unity/Runway.Core.Tests
 - App (Assets/Scripts/App): bootstrap (Main.cs builds everything from code —
   the Godot game already constructs all UI programmatically, so the port
   keeps that: ONE scene, code-built screens), DrawnUI framework (cream

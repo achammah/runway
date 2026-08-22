@@ -50,3 +50,12 @@ __pycache__/
 
 # build output
 dist/
+
+# Unity + dotnet regenerate these; the Core test runner writes bin/obj on every run
+unity/**/bin/
+unity/**/obj/
+unity/Library/
+unity/Temp/
+unity/Logs/
+unity/UserSettings/
+unity/Builds/

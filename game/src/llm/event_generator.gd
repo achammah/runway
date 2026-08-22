@@ -231,7 +231,7 @@ static func keyless_adjudication() -> Dictionary:
 ## Adjudicate the player's own written move for an event. cb gets
 ## {narration, verdict, effects} (validated), the keyless stub above when there is no
 ## key at all, or {} when a live call came back empty or failed its validator.
-func adjudicate(state: GameState, ev: Dictionary, player_text: String, cb: Callable, dice: Dictionary = {}) -> void:
+func adjudicate(state: GameState, ev: Dictionary, player_text: String, cb: Callable, dice: Dictionary = {}, tier: String = "assess") -> void:
 	if not llm.enabled():
 		if cb.is_valid():
 			cb.call(keyless_adjudication())
@@ -258,7 +258,7 @@ func adjudicate(state: GameState, ev: Dictionary, player_text: String, cb: Calla
 				final = result            # the first reply, sanitized below
 			_sanitize(state, final)
 			if cb.is_valid():
-				cb.call(final), {"tier": "assess"}), {"tier": "assess"})
+				cb.call(final), {"tier": tier}), {"tier": tier})
 
 ## THE CLARIFY PRE-PASS (owner: terra assesses, luna clarifies): one cheap
 ## call before the dice — does this move need ONE follow-up question?

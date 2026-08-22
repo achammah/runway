@@ -25,6 +25,7 @@ var _notes_nodes: Array = []   # field notes, revealed only once the entry lands
 # while the garage is still rendering, SETTLE IN yields to a breathing line;
 # main calls set_paint_done() (success or final failure) to release it.
 var _holding_paint := false
+var _holding_entry := false   # SETTLE also waits for the words themselves
 var _go_btn: Button
 var _paint_lbl: Label
 var _t := 0.0
@@ -41,6 +42,8 @@ func feed_entry(text: String) -> void:
 	if text.strip_edges() == "":
 		return
 	_waiting = false
+	_holding_entry = false
+	_refresh_go()
 	if _entry_lbl != null and is_instance_valid(_entry_lbl):
 		_entry_lbl.text = text
 		_entry_lbl.add_theme_color_override("font_color", INK)
@@ -95,6 +98,7 @@ func _ready() -> void:
 
 	_entry_lbl = _mk("the first entry is being written…", 30, Color(INK, 0.45))
 	_col.add_child(_entry_lbl)
+	_holding_entry = true   # released by feed_entry
 
 	# ── FIELD NOTES: the working assumptions, plainly marked as such.
 	# They stay HIDDEN until the entry lands (owner: notes floating under a
@@ -152,6 +156,8 @@ func _ready() -> void:
 	go.pressed.connect(func() -> void:
 		done.emit())
 	add_child(go)
+	if _holding_entry:
+		go.visible = false
 
 	gui_input.connect(func(ev: InputEvent) -> void:
 		if ev is InputEventPanGesture:
@@ -167,6 +173,7 @@ func _ready() -> void:
 
 func hold_for_paint() -> void:
 	_holding_paint = true
+	_refresh_go()
 	if _go_btn != null and is_instance_valid(_go_btn):
 		_go_btn.visible = false
 	if _paint_lbl == null:
@@ -184,10 +191,21 @@ func set_paint_done() -> void:
 	if _paint_lbl != null and is_instance_valid(_paint_lbl):
 		_paint_lbl.queue_free()
 		_paint_lbl = null
-	if _go_btn != null and is_instance_valid(_go_btn):
+	_refresh_go()
+
+## ONE gate for the door: SETTLE IN exists only when the entry is on the page
+## and no paint hold remains (owner: never wait on an empty log with an
+## unlocked door — the door is what must wait).
+func _refresh_go() -> void:
+	if _go_btn == null or not is_instance_valid(_go_btn):
+		return
+	var open := not _holding_entry and not _holding_paint
+	if open and not _go_btn.visible:
 		_go_btn.visible = true
 		_go_btn.modulate.a = 0.0
 		create_tween().tween_property(_go_btn, "modulate:a", 1.0, 0.3)
+	elif not open:
+		_go_btn.visible = false
 
 func _process(delta: float) -> void:
 	_t += delta

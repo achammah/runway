@@ -1016,6 +1016,7 @@ func _prefetch_founding(gv: GarageViewScreen, attempt: int = 1) -> void:
 		gv.set("_adjudicating", true)   # the lock holds until day one lands
 	generator.adjudicate(state, {}, _founding_move(), func(res: Dictionary) -> void:
 		_founding_inflight = false
+		print("FOUNDING returned (%d chars)" % String(res.get("narration", "")).length())
 		if res.is_empty() and attempt < 2:
 			# one silent transport failure must not cost the whole day one:
 			# retry once before anyone notices (the book keeps its placeholder)
@@ -1035,7 +1036,7 @@ func _prefetch_founding(gv: GarageViewScreen, attempt: int = 1) -> void:
 			print("FOUNDING landed (%d chars) — fed to the open book" % String(res.get("narration", "")).length())
 		elif _screen is GarageViewScreen:
 			# the player is already in the room waiting on the curtain: play it
-			_consume_founding(_screen as GarageViewScreen))
+			_consume_founding(_screen as GarageViewScreen), {}, "founding")
 
 ## Fire the week's v2 render early, fire-and-forget: the per-week cache key
 ## means the real turn either finds the finished file or waits on this one.

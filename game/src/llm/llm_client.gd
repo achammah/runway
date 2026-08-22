@@ -287,7 +287,9 @@ func _model_for(opts: Dictionary) -> String:
 	match String(opts.get("tier", "")):
 		"assess":
 			return assess_model if assess_model != "" else model
-		"clarify":
+		"clarify", "founding":
+			# the founding is pure prose — the fast writer model, on the fast
+			# lane: day one must not take a minute
 			return clarify_model if clarify_model != "" else model
 	return model
 

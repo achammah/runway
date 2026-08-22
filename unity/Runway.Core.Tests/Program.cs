@@ -1,0 +1,598 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using Runway.Core;
+
+namespace Runway.CoreTests
+{
+    /// <summary>
+    /// SimEngine contract suite — hermetic, no network. The C# twin of
+    /// game/tests/sim_engine_test.gd (every _ok ported, in the same order),
+    /// followed by the 5-strategy balance run from game/tests/balance_sim.gd.
+    ///
+    /// Run: dotnet run --project unity/Runway.Core.Tests
+    /// </summary>
+    public static class Program
+    {
+        private static int _checks;
+        private static bool _failed;
+        private static readonly List<string> _failures = new List<string>();
+
+        private static void Ok(bool cond, string msg)
+        {
+            _checks += 1;
+            if (!cond)
+            {
+                _failed = true;
+                _failures.Add("FAIL: " + msg);
+            }
+        }
+
+        private static string S(object v)
+        {
+            return Convert.ToString(v, CultureInfo.InvariantCulture);
+        }
+
+        private static GameState NewState()
+        {
+            var s = new GameState();
+            s.SimSeed = 42;
+            s.Week = 5;
+            s.Cash = 50000;
+            s.Traction = 40;
+            s.Product = 50;
+            s.Morale = 70;
+            s.Hype = 40;
+            s.BizWhat = "Software";
+            s.BizWho = "SMB";
+            s.Theta = SimEngine.DefaultTheta(s.BizWhat, s.BizWho);
+            return s;
+        }
+
+        /// <summary>
+        /// Core does no IO of its own. Here the host is a console app reading the
+        /// same StreamingAssets folder Unity ships.
+        /// </summary>
+        private static string ResolveStreamingAssets()
+        {
+            var probes = new List<string>();
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (dir != null)
+            {
+                probes.Add(Path.Combine(dir.FullName, "Assets", "StreamingAssets"));
+                dir = dir.Parent;
+            }
+            var cwd = new DirectoryInfo(Directory.GetCurrentDirectory());
+            while (cwd != null)
+            {
+                probes.Add(Path.Combine(cwd.FullName, "Assets", "StreamingAssets"));
+                probes.Add(Path.Combine(cwd.FullName, "unity", "Assets", "StreamingAssets"));
+                cwd = cwd.Parent;
+            }
+            foreach (string p in probes)
+            {
+                if (File.Exists(Path.Combine(p, "items.json")))
+                {
+                    return p;
+                }
+            }
+            throw new FileNotFoundException("could not locate Assets/StreamingAssets/items.json");
+        }
+
+        public static int Main(string[] args)
+        {
+            string dataDir = ResolveStreamingAssets();
+            CoreFiles.Reader = name =>
+            {
+                string path = Path.Combine(dataDir, name);
+                return File.Exists(path) ? File.ReadAllText(path) : string.Empty;
+            };
+
+            RunChecks();
+            Console.WriteLine();
+            RunBalanceSim();
+            Console.WriteLine();
+
+            if (_failed)
+            {
+                foreach (string f in _failures)
+                {
+                    Console.WriteLine(f);
+                }
+                Console.WriteLine(S(_checks) + " checks run, " + S(_failures.Count) + " failed");
+                Console.WriteLine("ENGINE FAIL");
+                return 1;
+            }
+            Console.WriteLine(S(_checks) + " checks held");
+            Console.WriteLine("ENGINE PASS");
+            return 0;
+        }
+
+        private static void RunChecks()
+        {
+            // ── theta clamps hold against hostile input
+            Theta mad = SimEngine.ClampTheta(new Dictionary<string, double>
+            {
+                { "tam", 1e12 }, { "adopt_p", 9.0 }, { "lifetime_wk", -5 }
+            });
+            Ok(mad.Tam <= 5000000.0, "tam clamps down");
+            Ok(mad.AdoptP <= 0.004, "adopt_p clamps down");
+            Ok(mad.LifetimeWk >= 6.0, "lifetime clamps up");
+
+            // ── determinism: same seed+week = identical tick
+            GameState a = NewState();
+            GameState b = NewState();
+            SimEngine.WeeklyTick(a);
+            SimEngine.WeeklyTick(b);
+            Ok(a.Cash == b.Cash && a.Traction == b.Traction,
+                "tick is deterministic for identical state");
+
+            // ── the world grinds: an unlaunched idle company loses money
+            GameState s0 = NewState();
+            s0.Traction = 0;
+            int cash0 = s0.Cash;
+            for (int i = 0; i < 4; i++)
+            {
+                s0.Week += 1;
+                SimEngine.WeeklyTick(s0);
+            }
+            Ok(s0.Cash < cash0, "an idle company burns down (" + S(cash0) + " -> " + S(s0.Cash) + ")");
+
+            // ── churn punishes a bad product; a good one retains
+            GameState bad = NewState(); bad.Product = 5;
+            GameState good = NewState(); good.Product = 95;
+            WeeklyReport rb = SimEngine.WeeklyTick(bad);
+            WeeklyReport rg = SimEngine.WeeklyTick(good);
+            Ok(rb.Churn > rg.Churn, "worse product churns more (" + S(rb.Churn) + " > " + S(rg.Churn) + ")");
+
+            // ── statuses: catalog-only, install, expire, affect the tick
+            GameState st = NewState();
+            Ok(!SimEngine.AddStatus(st, "made_up_buff", 3), "unknown status refused");
+            Ok(SimEngine.AddStatus(st, "viral_moment", 2), "catalog status installs");
+            WeeklyReport boosted = SimEngine.WeeklyTick(st);
+            GameState st2 = NewState();
+            WeeklyReport plain = SimEngine.WeeklyTick(st2);
+            Ok(boosted.Adds > plain.Adds,
+                "viral_moment lifts adoption (" + S(boosted.Adds) + " > " + S(plain.Adds) + ")");
+            SimEngine.WeeklyTick(st);
+            Ok(!SimEngine.HasStatus(st, "viral_moment"), "status expires on schedule");
+
+            // ── clocks fire exactly once, at zero
+            GameState ck = NewState();
+            SimEngine.AddClock(ck, 2, "the term sheet expires");
+            WeeklyReport t1 = SimEngine.WeeklyTick(ck);
+            Ok(t1.FiredClocks.Count == 0, "clock silent with a week left");
+            WeeklyReport t2 = SimEngine.WeeklyTick(ck);
+            Ok(t2.FiredClocks.Contains("the term sheet expires"), "clock fires at zero");
+            Ok(ck.Clocks.Count == 0, "fired clock is removed");
+
+            // ── hiring pipeline: paid immediately, productive after onboarding
+            GameState hp = NewState();
+            hp.Pipeline.Add(new PipelineHire { Name = "Priya", Role = "engineer", Salary = 1500, WeeksIn = 0 });
+            WeeklyReport r1 = SimEngine.WeeklyTick(hp);
+            Ok(hp.Employees.Count == 0, "week 1: still onboarding");
+            Ok(r1.Burn > 1500, "week 1: already on payroll");
+            SimEngine.WeeklyTick(hp);
+            Ok(hp.Employees.Count == 1, "week 2: productive");
+
+            // ── advantage/disadvantage from state
+            GameState av = NewState();
+            SimEngine.AddStatus(av, "data_room_ready", 3);
+            RollContext ctx = SimEngine.RollContext(av, "raise");
+            Ok(ctx.Advantage, "data room grants advantage on raise");
+            SimEngine.AddStatus(av, "investor_pressure", 3);
+            ctx = SimEngine.RollContext(av, "raise");
+            Ok(!ctx.Advantage && !ctx.Disadvantage, "adv + dis cancel to a straight roll");
+            av.Exhaustion = 4;
+            RollContext gctx = SimEngine.RollContext(av, "grit");
+            Ok(gctx.Disadvantage, "exhaustion 4 = disadvantage on grit");
+
+            // ── the 2d20 keep rule
+            int[] seq = { 3, 17 };
+            int[] i2 = { 0 };
+            Func<int> roller = () =>
+            {
+                int v = seq[i2[0] % 2];
+                i2[0] += 1;
+                return v;
+            };
+            RollContext advRoll = SimEngine.RollD20Ctx(av, "raise", roller);   // cancels: straight
+            Ok(advRoll.D20 == 3, "straight roll takes the first die");
+            i2[0] = 0;
+            RollContext g2 = SimEngine.RollD20Ctx(av, "grit", roller);
+            Ok(g2.D20 == 3, "disadvantage keeps the WORST of 2d20");
+
+            // ── THE SIX TRAITS: who the founder is, priced.
+            // The spreads below mirror data/archetypes.json on purpose — this suite
+            // is about the RULES, and a rule that only holds for today's numbers is
+            // not one.
+            Func<Dictionary<string, int>> exfaang = () => new Dictionary<string, int>
+            {
+                { "charisma", 3 }, { "luck", 2 }, { "network", 4 },
+                { "focus", 3 }, { "credibility", 5 }, { "stamina", 2 }
+            };
+            Func<Dictionary<string, int>> hacker = () => new Dictionary<string, int>
+            {
+                { "charisma", 1 }, { "luck", 4 }, { "network", 1 },
+                { "focus", 5 }, { "credibility", 2 }, { "stamina", 4 }
+            };
+
+            GameState tl = NewState();
+            tl.Traits = hacker();
+            Ok(tl.TraitLevel("focus") == 5, "trait reads its archetype base");
+            tl.Items = new List<string> { "itm_houseplant" };            // +1 focus, -1 network
+            Ok(tl.TraitLevel("focus") == 5, "a buff on a maxed trait clamps at 5");
+            Ok(tl.TraitLevel("network") == 1, "a nerf on a floored trait clamps at 1");
+            tl.Traits = exfaang();
+            tl.Items = new List<string> { "itm_headphones" };            // +2 focus, -1 network
+            Ok(tl.TraitLevel("focus") == 5 && tl.TraitLevel("network") == 3,
+                "item mods add to the base (focus " + S(tl.TraitLevel("focus"))
+                + ", network " + S(tl.TraitLevel("network")) + ")");
+            Ok(tl.ItemTraitDelta("focus") == 2, "the bag's own swing is readable on its own");
+
+            // the owner's case: the ex-FAANG PM walks into the raise with the doors open
+            GameState ex = NewState();
+            ex.Traits = exfaang();
+            RollContext exRaise = SimEngine.RollContext(ex, "raise");
+            Ok(exRaise.Advantage && exRaise.AdvReasons.Count > 0 && exRaise.AdvReasons[0].StartsWith("doors open"),
+                "credibility 5 + network 4 = advantage on raise");
+            GameState hk = NewState();
+            hk.Traits = hacker();
+            Ok(!SimEngine.RollContext(hk, "raise").Advantage,
+                "credibility 2 + network 1 gets no such door");
+            // and the bag can buy the door: 3+3 is six, the ring makes it eight
+            GameState ring = NewState();
+            Ok(!SimEngine.RollContext(ring, "raise").Advantage, "a plain founder has no door");
+            ring.Items = new List<string> { "itm_alumni_ring" };         // +1 network, +1 credibility
+            Ok(SimEngine.RollContext(ring, "raise").Advantage, "an item can open the investor doors");
+
+            GameState ch = NewState();
+            ch.Traits = new Dictionary<string, int>
+            {
+                { "charisma", 4 }, { "luck", 3 }, { "network", 3 },
+                { "focus", 4 }, { "credibility", 3 }, { "stamina", 2 }
+            };
+            Ok(SimEngine.RollContext(ch, "sell").Advantage, "charisma 4 = advantage on sell");
+            Ok(SimEngine.RollContext(ch, "recruit").Advantage, "charisma 4 = advantage on recruit");
+            Ok(SimEngine.RollContext(ch, "build").Advantage, "focus 4 = advantage on build");
+            Ok(!SimEngine.RollContext(ch, "grit").Disadvantage,
+                "stamina 2 costs nothing while the founder is rested");
+            ch.Exhaustion = 3;
+            RollContext tired = SimEngine.RollContext(ch, "grit");
+            Ok(tired.Disadvantage && tired.DisReasons.Contains("no reserves"),
+                "stamina 2 + exhaustion 3 = no reserves on grit");
+
+            // LUCK bends the two extremes, deterministically, through the caller's dice
+            GameState lucky = NewState();
+            lucky.Traits = hacker();                                     // luck 4
+            int[] lseq = { 1, 12, 17 };
+            int[] li = { 0 };
+            Func<int> lroll = () =>
+            {
+                int v = lseq[Gd.Mini(li[0], lseq.Length - 1)];
+                li[0] += 1;
+                return v;
+            };
+            RollContext luckyRoll = SimEngine.RollD20Ctx(lucky, "sell", lroll);
+            Ok(luckyRoll.D20 == 17 && luckyRoll.LuckNote == "luck rerolls the 1",
+                "luck 4 rerolls the natural 1 (kept " + S(luckyRoll.D20) + ")");
+            GameState plainLuck = NewState();                            // luck 3: the 1 stands
+            li[0] = 0;
+            Ok(SimEngine.RollD20Ctx(plainLuck, "sell", lroll).D20 == 1,
+                "luck 3 leaves the natural 1 exactly where it fell");
+            GameState cursed = NewState();
+            cursed.Traits = new Dictionary<string, int>
+            {
+                { "charisma", 4 }, { "luck", 1 }, { "network", 3 },
+                { "focus", 3 }, { "credibility", 4 }, { "stamina", 2 }
+            };
+            int[] cseq = { 20, 4 };
+            int[] ci = { 0 };
+            Func<int> croll = () =>
+            {
+                int v = cseq[Gd.Mini(ci[0], cseq.Length - 1)];
+                ci[0] += 1;
+                return v;
+            };
+            RollContext cursedRoll = SimEngine.RollD20Ctx(cursed, "grit", croll);
+            Ok(cursedRoll.D20 == 19 && cursedRoll.LuckNote == "never quite perfect",
+                "luck 1 turns the natural 20 into a 19 (kept " + S(cursedRoll.D20) + ")");
+
+            // the room is warmer for people it already believes: same company, better terms
+            GameState warm = NewState();
+            warm.Traction = 500;
+            warm.LastGrowth = 0.10;
+            warm.Investors = new List<Investor> { new Investor { Name = "Fund A", Thesis = "momentum" } };
+            warm.Traits = new Dictionary<string, int>
+            {
+                { "charisma", 3 }, { "luck", 2 }, { "network", 5 },
+                { "focus", 3 }, { "credibility", 5 }, { "stamina", 2 }
+            };
+            GameState cold = NewState();
+            cold.Traction = 500;
+            cold.LastGrowth = 0.10;
+            cold.Investors = warm.Investors;
+            cold.Traits = new Dictionary<string, int>
+            {
+                { "charisma", 3 }, { "luck", 2 }, { "network", 1 },
+                { "focus", 3 }, { "credibility", 1 }, { "stamina", 2 }
+            };
+            List<FundingOffer> warmOffers = SimEngine.GenerateOffers(warm, warm.Investors);
+            List<FundingOffer> coldOffers = SimEngine.GenerateOffers(cold, cold.Investors);
+            Ok(Gd.Absf(warmOffers[0].Warmth - 8.0) < 0.01,
+                "warmth caps at 8% (got " + Gd.F(warmOffers[0].Warmth, 1) + ")");
+            Ok(coldOffers[0].Warmth == 0.0, "a cold room discounts nothing");
+            Ok(warmOffers[0].EquityPct < coldOffers[0].EquityPct,
+                "the same company gives up less equity when the room is warm ("
+                + Gd.F(warmOffers[0].EquityPct, 1) + "% < " + Gd.F(coldOffers[0].EquityPct, 1) + "%)");
+            Ok(warmOffers[0].EquityPct >= warmOffers[0].FairPct,
+                "a warm offer is still never below fair");
+
+            // and every rule the engine runs can say its own name
+            List<string> says = SimEngine.TraitEffects(ex);
+            bool doorsSaid = false;
+            foreach (string line in says)
+            {
+                if (line.StartsWith("doors open"))
+                {
+                    doorsSaid = true;
+                }
+            }
+            Ok(doorsSaid, "trait_effects reports the door it opened");
+            Ok(SimEngine.TRAIT_RULES.Count == GameState.TRAIT_NAMES.Count,
+                "every trait carries the words that explain it");
+
+            // ── margin bands
+            Ok(SimEngine.MarginBand(20, 12) == "brilliant", "beat by 5+ = brilliant");
+            Ok(SimEngine.MarginBand(12, 12) == "fine", "meet it = fine");
+            Ok(SimEngine.MarginBand(10, 12) == "risky", "miss by 1-2 = risky");
+            Ok(SimEngine.MarginBand(5, 12) == "backfired", "miss by 3+ = backfired");
+
+            // ── funding: dilution math and the desperation spread
+            GameState f = NewState();
+            f.Traction = 500;
+            f.LastGrowth = 0.10;
+            int pre = SimEngine.Valuation(f);
+            Ok(pre > f.Cash, "traction + growth beats cash-floor valuation");
+            f.Investors = new List<Investor> { new Investor { Name = "Fund A", Thesis = "momentum" } };
+            List<FundingOffer> offers = SimEngine.GenerateOffers(f, f.Investors);
+            Ok(offers.Count == 3, "three offers");
+            foreach (FundingOffer o in offers)
+            {
+                Ok(o.EquityPct >= o.FairPct, "every offer is priced at or above fair");
+            }
+            GameState broke = NewState();
+            broke.Cash = -100;
+            broke.Investors = f.Investors;
+            List<FundingOffer> sharky = SimEngine.GenerateOffers(broke, broke.Investors);
+            Ok(sharky[0].EquityPct > offers[0].FairPct, "desperation prices against the founder");
+            double fp = f.FounderPct;
+            SimEngine.ApplyRound(f, 100000, 20.0);
+            Ok(Gd.Absf(f.FounderPct - fp * 0.8) < 0.01, "20% round dilutes founder by exactly 20%");
+            Ok(f.RoundsRaised.Count == 1 && f.RoundsRaised[0] == "pre-seed",
+                "round ladder appends by count");
+
+            // ── commitments recur then expire
+            GameState cm = NewState();
+            cm.Commitments.Add(new Commitment { Name = "the lease deal", CashWk = -300, WeeksLeft = 2 });
+            SimEngine.WeeklyTick(cm);
+            Ok(cm.Commitments.Count == 1, "commitment persists mid-term");
+            WeeklyReport rc = SimEngine.WeeklyTick(cm);
+            Ok(cm.Commitments.Count == 0 && rc.Expired.Contains("the lease deal"),
+                "commitment expires and is reported");
+
+            // ── signals speak founder
+            Dictionary<string, object> sg = SimEngine.Signals(NewState());
+            string health = S(sg["health"]);
+            Ok(health.StartsWith("STABLE") || health.StartsWith("WARNING"), "health band renders");
+            Ok(sg.ContainsKey("runway_weeks") && sg.ContainsKey("market_phase"), "signals carry the vitals");
+
+            // ── the ledger levers are real money with real effects
+            GameState lv = NewState();
+            lv.SetFlag("launched");
+            lv.Traction = 600;
+            WeeklyReport plainR = SimEngine.WeeklyTick(lv);
+            GameState lv2 = NewState();
+            lv2.SetFlag("launched");
+            lv2.Traction = 600;
+            lv2.Budgets = new Budgets { Marketing = 0, Sales = 0, Care = 2000, Rnd = 0 };
+            WeeklyReport cared = SimEngine.WeeklyTick(lv2);
+            Ok(cared.Churn < plainR.Churn,
+                "care budget retains (" + S(cared.Churn) + " < " + S(plainR.Churn) + " churn)");
+            Ok(cared.Burn >= plainR.Burn + 2000, "care budget is real burn");
+            GameState lv3 = NewState();
+            lv3.Budgets = new Budgets { Marketing = 0, Sales = 0, Care = 0, Rnd = 2400 };
+            int p0 = lv3.Product;
+            SimEngine.WeeklyTick(lv3);
+            Ok(lv3.Product >= p0 + 2, "rnd budget ships product (+" + S(lv3.Product - p0) + ")");
+            GameState lv4 = NewState();
+            lv4.Budgets = new Budgets { Marketing = 3000, Sales = 1000, Care = 0, Rnd = 0 };
+            lv4.SetFlag("launched");
+            lv4.Traction = 40;
+            WeeklyReport ue = SimEngine.WeeklyTick(lv4);
+            Ok(ue.Cac > 0 && ue.Ltv > 0,
+                "unit economics computed (CAC " + S(ue.Cac) + ", LTV " + S(ue.Ltv) + ")");
+
+            // ── beliefs start wrong and converge with analytics
+            GameState bl = NewState();
+            SimEngine.WeeklyTick(bl);
+            double wrong = Gd.Absf(bl.Beliefs.Tam - bl.Theta.Tam);
+            bl.AnalyticsLevel = 2;
+            bl.Traction = 60;
+            for (int i = 0; i < 12; i++)
+            {
+                bl.Week += 1;
+                SimEngine.WeeklyTick(bl);
+            }
+            double closer = Gd.Absf(bl.Beliefs.Tam - bl.Theta.Tam);
+            Ok(closer < wrong * 0.6,
+                "beliefs converge toward truth (gap " + S(Gd.ToInt(wrong)) + " -> " + S(Gd.ToInt(closer)) + ")");
+
+            // ── pricing: the demand curve discriminates (no $500 massages)
+            var mo = new Offer
+            {
+                Name = "massage", Unit = "per session", FairPrice = 70.0,
+                Elasticity = 2.6, UnitCost = 18.0, Price = 0.0, Weight = 1.0
+            };
+            Ok(SimEngine.OfferDemand(mo, 70.0) > 0.95 && SimEngine.OfferDemand(mo, 70.0) <= 1.05,
+                "fair price = fair demand");
+            Ok(SimEngine.OfferDemand(mo, 500.0) < 0.01,
+                "a $500 massage sells to ~nobody (" + Gd.F(SimEngine.OfferDemand(mo, 500.0), 4) + ")");
+            Ok(SimEngine.OfferDemand(mo, 45.0) > 1.5, "a discount stokes demand");
+            Ok(SimEngine.OfferDemand(mo, 0.0) == 0.0, "unpriced = not on sale");
+            GameState ps = NewState();
+            ps.Traction = 100;
+            ps.SetFlag("launched");
+            ps.Offers = new List<Offer> { mo.Duplicate() };
+            WeeklyReport rUnp = SimEngine.WeeklyTick(ps);
+            Ok(rUnp.Revenue == 0, "unpriced offers earn ZERO with 100 customers");
+            GameState ps2 = NewState();
+            ps2.Traction = 100;
+            ps2.SetFlag("launched");
+            Offer mo2 = mo.Duplicate(); mo2.Price = 70.0;
+            ps2.Offers = new List<Offer> { mo2 };
+            WeeklyReport rFair = SimEngine.WeeklyTick(ps2);
+            Ok(rFair.Revenue > 800, "fairly priced sessions pay the rent (" + S(rFair.Revenue) + ")");
+            GameState ps3 = NewState();
+            ps3.Traction = 100;
+            ps3.SetFlag("launched");
+            Offer mo3 = mo.Duplicate(); mo3.Price = 500.0;
+            ps3.Offers = new List<Offer> { mo3 };
+            WeeklyReport rGreed = SimEngine.WeeklyTick(ps3);
+            Ok(rGreed.Revenue < rFair.Revenue / 4,
+                "greed collapses revenue (" + S(rGreed.Revenue) + " vs " + S(rFair.Revenue) + ")");
+
+            // ── loan compounding punishes
+            GameState ln = NewState();
+            ln.Cash = 500;
+            ln.Traction = 0;
+            ln.LoanPrincipal = 10000;
+            SimEngine.WeeklyTick(ln);
+            Ok(ln.LoanPrincipal >= 11800, "18%/wk compounds (owe " + S(ln.LoanPrincipal) + ")");
+        }
+
+        // ═══════════════════════════ THE BALANCE HARNESS ═════════════════════════
+        /// <summary>
+        /// Scripted founder strategies through the REAL engine for 50 weeks. No LLM
+        /// — strategies apply the same lever/status moves the DM would, so this
+        /// calibrates the ECONOMY, not the prose.
+        /// </summary>
+        private const int WEEKS = 50;
+
+        private static List<KeyValuePair<string, Action<GameState, int>>> Strategies()
+        {
+            return new List<KeyValuePair<string, Action<GameState, int>>>
+            {
+                new KeyValuePair<string, Action<GameState, int>>("idle", (s, w) =>
+                {
+                }),
+                new KeyValuePair<string, Action<GameState, int>>("builder", (s, w) =>
+                {
+                    if (w == 6)
+                    {
+                        s.SetFlag("launched");
+                        s.Product = Gd.Maxi(s.Product, 45);
+                    }
+                    s.Product = Gd.Mini(s.Product + 3, 100);
+                    s.TechDebt = Gd.Maxf(s.TechDebt - 1.0, 0.0);
+                    if (w % 8 == 0)
+                    {
+                        SimEngine.AddStatus(s, "founder_flow", 2);
+                    }
+                }),
+                new KeyValuePair<string, Action<GameState, int>>("seller", (s, w) =>
+                {
+                    if (w == 4)
+                    {
+                        s.SetFlag("launched");
+                    }
+                    s.Product = Gd.Mini(s.Product + 1, 100);
+                    s.MarketingBudget = s.Cash > 10000 ? 400 : 0;
+                    if (w % 6 == 0)
+                    {
+                        SimEngine.AddStatus(s, "word_of_mouth", 2);
+                    }
+                    s.Traction += 2;     // direct founder sales, the written-move analog
+                }),
+                new KeyValuePair<string, Action<GameState, int>>("balanced", (s, w) =>
+                {
+                    if (w == 5)
+                    {
+                        s.SetFlag("launched");
+                    }
+                    s.Product = Gd.Mini(s.Product + 2, 100);
+                    if (w > 8)
+                    {
+                        s.MarketingBudget = 300;
+                    }
+                    if (w == 12 && s.Traction >= 20)
+                    {
+                        List<FundingOffer> offers = SimEngine.GenerateOffers(s, s.Investors);
+                        if (offers.Count > 0)
+                        {
+                            FundingOffer o = offers[0];
+                            SimEngine.ApplyRound(s, o.Amount, o.EquityPct);
+                            s.SetFlag("seed_raised");
+                        }
+                    }
+                }),
+                new KeyValuePair<string, Action<GameState, int>>("reckless", (s, w) =>
+                {
+                    if (w == 3)
+                    {
+                        s.SetFlag("launched");
+                    }
+                    SimEngine.AddStatus(s, "crunch", 2);
+                    s.Product = Gd.Mini(s.Product + 4, 100);
+                    s.TechDebt = Gd.Minf(s.TechDebt + 3.0, 100.0);
+                    s.MarketingBudget = 800;
+                    if (s.Cash < 2000 && s.LoanPrincipal == 0)
+                    {
+                        s.LoanPrincipal = 15000;
+                        s.Cash += 15000;
+                    }
+                }),
+            };
+        }
+
+        private static void RunBalanceSim()
+        {
+            Console.WriteLine(string.Format(CultureInfo.InvariantCulture,
+                "{0,-9} {1,6} {2,8} {3,6} {4,6} {5,5} {6,5} {7,4} {8,6}",
+                "strategy", "week", "cash", "cust", "morale", "prod", "debt", "exh", "state"));
+            foreach (KeyValuePair<string, Action<GameState, int>> kv in Strategies())
+            {
+                var s = new GameState();
+                s.SimSeed = 1234;
+                s.Cash = 25000;
+                s.Traction = 0;
+                s.Product = 20;
+                s.BizWhat = "Software";
+                s.BizWho = "SMB";
+                s.Theta = SimEngine.DefaultTheta(s.BizWhat, s.BizWho);
+                s.Investors = new List<Investor> { new Investor { Name = "Fund A", Thesis = "momentum" } };
+                int diedAt = 0;
+                for (int w = 1; w <= WEEKS; w++)
+                {
+                    s.Week = w;
+                    kv.Value(s, w);
+                    SimEngine.WeeklyTick(s);
+                    if (s.Cash < -5000 && diedAt == 0)
+                    {
+                        diedAt = w;
+                    }
+                    if (w == 10 || w == 25 || w == 50)
+                    {
+                        Console.WriteLine(string.Format(CultureInfo.InvariantCulture,
+                            "{0,-9} {1,6} {2,8} {3,6} {4,6} {5,5} {6,5} {7,4} {8,6}",
+                            kv.Key, w, s.Cash, s.Traction, s.Morale, s.Product,
+                            Gd.ToInt(s.TechDebt), s.Exhaustion,
+                            diedAt > 0 ? "DEAD@" + S(diedAt) : "alive"));
+                    }
+                }
+            }
+            Console.WriteLine("BALANCE SIM DONE");
+        }
+    }
+}
