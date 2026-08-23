@@ -28,6 +28,11 @@ cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
 [ -f "$BG" ] && cp "$BG" "$STAGE/.background/bg.tiff"
 
+echo "── evicting stale volumes (a mounted twin steals the Finder styling) ──"
+for V in /Volumes/*; do
+  case "$(basename "$V")" in "RUNWAY!"|"RUNWAY! "*) hdiutil detach "$V" -force >/dev/null 2>&1 || true;; esac
+done
+
 echo "── building the DMG ──"
 hdiutil create -volname "RUNWAY!" -srcfolder "$STAGE" -ov -format UDRW "$DIST/runway_rw.dmg" >/dev/null
 DEV=$(hdiutil attach -readwrite -noverify -noautoopen "$DIST/runway_rw.dmg" | awk '/\/Volumes\//{print $1; exit}')
