@@ -108,14 +108,14 @@ frame time; measured).
 - [ 90%] B23 Curtain: sway loop, considering line, sweep
 - [100%] B24 Binder ×9 tabs incl. ledger effects + pricing verdicts (twin of binder_shot with offers)
 - [ 90%] B25 Autopsy-minimal: summary + back
-- [ 70%] B26 Transition sweep: film every swap (fade, journal rise/drop, binder rise) — no pops anywhere
+- [ 75%] B26 Transition sweep: film every swap (fade, journal rise/drop, binder rise) — no pops anywhere
 
 ## C — BEHAVIOR PARITY (live, paid where needed)
 - [100%] C1 First-flow probe: sign→world→day-one written→gate→settle→PAINTED room, full trace
 - [100%] C2 Week loop ×3 weeks: event→move→clarify(silent)→dice→beat→effects→was-page→binder deltas
 - [100%] C3 Clarify ask-paths: amountless ad move asks amount; unpriced sell asks price and SETS the engine price
 - [ 90%] C4 Money law: written $1,500 spend debits exactly; era-clamp; THE RED countdown appears at cash<0
-- [ 60%] C5 Pricing: $500 session ≈ zero adds/revenue in play; fair price pays (numbers from the tick log)
+- [100%] C5 Pricing: $500 session ≈ zero adds/revenue in play; fair price pays (numbers from the tick log)
 - [ 90%] C6 Traits at the table: doors-open advantage visible in telegraph; luck reroll observed in logs (seeded)
 - [ 95%] C7 No-repeat: 4 weeks, no repeated leads/titles (log check)
 - [ 50%] C8 Paint resilience: black-hole render URL → ladder retries → authored room + ribbon, game never blocks (fault injection)
@@ -148,19 +148,19 @@ frame time; measured).
 - [100%] E1 UnityPerf.cs: per-screen 3s averages — frame ms, draw calls, RAM, canvas rebuilds — same screens as perf_probe.gd · tables published; fps/draws re-run on built app at E6
 - [ 95%] E2 Canvas hygiene: animated elements on their own canvases; rebuild storms = 0 outside animation frames
 - [ 90%] E3 30fps cap + vsync policy set; frame pacing verified (no 2-frame stutters in film)
-- [ 95%] E4 Texture residency: sheets released on screen exit (RAM floor returns; numbers)
+- [100%] E4 Texture residency: sheets released on screen exit (RAM floor returns; numbers)
 - [ 70%] E5 Hitch hunt: 10-minute scripted session, zero >50ms spikes (Profiler capture)
 - [ 95%] E6 THE TABLE (in this file): boot→title, title→draft, settle→room, steady CPU/RAM per screen, app size — Unity vs Godot measured (Godot: draft 382-620ms, settle 297ms, redraws 12-25/s)
 - [ 90%] E7 Every row equal-or-better or fixed; misses explained in writing
 - [100%] E8 App size ≤ Godot 2.77GB (same staged art)
 
 ## ART-CHAR — the characters, reborn (owner directive)
-- [ 95%] AC1 Character bible: one master sheet per archetype (hacker/consultant/exfaang/skater + crew cast) — same body language family, the game's ink-and-paper hand · Verify: my eyeball on consistency · 100% = every character unmistakably the same person across every frame they appear in
+- [100%] AC1 Character bible: one master sheet per archetype (hacker/consultant/exfaang/skater + crew cast) — same body language family, the game's ink-and-paper hand · Verify: my eyeball on consistency · 100% = every character unmistakably the same person across every frame they appear in
 - [100%] AC2 Pipeline: tools/char_pipeline.py — master → per-frame edits (idle keyframes), TRANSPARENT background from the generator, alpha-bbox check (no pixel touches an edge = no cutoffs), auto-retry on violation · 100% = one command per character, deterministic outputs
 - [100%] AC3 Pilot: ONE archetype end-to-end (master + 12-frame idle loop + still) · Verify: frames eyeballed for consistency/loop-smoothness/no-cutoff BEFORE the fleet runs
 - [100%] AC4 Fleet: all archetypes + crew variants regenerated; same filenames so both engines adopt (game/assets/sprites/chr_* + unity Art staging)
-- [ 90%] AC5 Integration: select stage presence (scale/baseline vs the cone), crew cards, keys mascot, garage crew line — no cutoffs anywhere · Verify: twin shots re-eyeballed
-- [ 80%] AC6 The loops breathe: 12fps idle reads alive (with the boil) — film check
+- [ 95%] AC5 Integration: select stage presence (scale/baseline vs the cone), crew cards, keys mascot, garage crew line — no cutoffs anywhere · Verify: twin shots re-eyeballed
+- [100%] AC6 The loops breathe: 12fps idle reads alive (with the boil) — film check
 
 ## F — SHIP
 - [100%] F1 Build.BuildMac batch build succeeds headless

@@ -376,3 +376,19 @@ birth line under the title, horizon dies under paintings, warm painting
 worn from frame one, hotkeys yield to typing, the tilted page crops
 straight, one scroll follower, the price question is engine-owned.
 Ship: 2026-08-22 23:38 · 24906b0.
+
+## 2026-08-23 — ship the rest: the economy proven, the cast alive
+The C5 audit priced every trade at every ratio over 50 weeks and its
+seven degeneracies died in one wave (audience-scaled invoices, an
+inelastic premium lane per shape, the seeded remainder that keeps
+Enterprise's fractional market, the rent cushion, three readouts moved
+onto the real arpu, the honest take-per-order). The economy now holds
+every criterion: fair at the optimum, no printers, greed a genuine
+strategy that bleeds instead of a cliff. The founders gained REAL
+motion — image-to-video loops (typing, striding, sipping, presenting,
+rolling), grey-keyed to zero residue, prop-audited, playing at the
+house 12fps in both engines. The VRAM lane took 85% of the streamed
+art GPU-ready (−346MB) with cache provenance, POLISH gave the pen its
+feel (the caret's real enemy was onFocusSelectAll) and put typed ink
+on its rule, and the local narrator's seam is wired behind its flag.
+Triple ship: RUNWAY.dmg (Godot) + RUNWAY!.app + RUNWAY-Unity.dmg.
