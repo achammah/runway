@@ -60,8 +60,10 @@ unity/Logs/
 unity/UserSettings/
 unity/Builds/
 
-# Unity mirrors of the local-only art (staged by Build.EnsureSheets at build time)
+# Unity mirrors of the local-only art (staged by Build.EnsureSheets and
+# Build.EnsureArtResources at build time, and regenerated from Assets/Art)
 unity/Assets/Resources/Sheets/
+unity/Assets/Resources/Art/
 unity/Assets/Art/
 unity/Assets/StreamingAssets/Art/
 unity/build/

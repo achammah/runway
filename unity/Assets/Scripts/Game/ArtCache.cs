@@ -29,6 +29,21 @@ namespace Runway.Game
     /// a queue of 144 loop frames can hold the one picture the player is looking at
     /// for two seconds. `urgent` puts an ask at the FRONT of that queue, and promotes
     /// one that is already waiting.
+    ///
+    /// BAKED FIRST, STREAMED SECOND — and the cache REMEMBERS WHICH. `Build` mirrors
+    /// every drawing it can block-compress into `Assets/Resources/Art/<the same
+    /// relative path>`, so most asks are now answered by an imported, GPU-ready
+    /// texture on the very frame they are made: no web request, no main-thread
+    /// decode, no place in the queue. Everything else — `gen_scenes`, which is
+    /// written after the build, and every source whose dimensions cannot be block
+    /// compressed — falls through to exactly the path it took before.
+    ///
+    /// The provenance is not bookkeeping for its own sake. A baked texture is a
+    /// SHARED asset: `Destroy` on it destroys the one copy Unity holds, so the next
+    /// `Resources.Load` of that path can hand back a destroyed object and, in the
+    /// editor, the imported asset itself can be damaged. Baked entries are given
+    /// back with `Resources.UnloadAsset`; only streamed ones are destroyed. Same
+    /// distinction `SheetLoop._sheetBaked` makes, for the same reason.
     /// </summary>
     public static class ArtCache
     {
@@ -36,6 +51,34 @@ namespace Runway.Game
         static readonly Dictionary<string, float> _lastUse = new Dictionary<string, float>();
         static readonly Dictionary<string, List<Action<Texture2D>>> _waiting =
             new Dictionary<string, List<Action<Texture2D>>>();
+
+        /// WHERE EACH HELD PICTURE CAME FROM. A path in here is an asset borrowed
+        /// from Resources; a path in `_tex` and not in here was decoded off disk and
+        /// belongs to the cache. Nothing else may be inferred from a Texture2D at
+        /// runtime — a compressed format is not proof of provenance and a name is
+        /// not either.
+        static readonly HashSet<string> _baked = new HashSet<string>();
+
+        /// True when this path is already held AND came from Resources.
+        public static bool IsBaked(string relative)
+        {
+            return relative != null && _baked.Contains(relative);
+        }
+
+        /// True when there is an imported mirror behind this path at all — asked
+        /// BEFORE any load, which is what a screen's "is there art for this?" gate
+        /// and the harnesses both need: it says which contract applies (baked:
+        /// answered inside the call · streamed: queued, then pumped) without having
+        /// asked for the picture yet.
+        ///
+        /// It does resolve the asset to answer, so the texture is in memory
+        /// afterwards but NOT in `_tex` and NOT counted by `Sweep`. Ask it about a
+        /// path, not about a folder full of them, and follow a true answer with the
+        /// `Load` that was going to happen anyway.
+        public static bool HasBaked(string relative)
+        {
+            return Baked(relative) != null;
+        }
 
         /// True when the picture is already in hand (or already known absent).
         public static bool Known(string relative)
@@ -57,12 +100,66 @@ namespace Runway.Game
             return null;
         }
 
+        /// WHAT A HELD PICTURE ACTUALLY COSTS. A streamed decode is RGBA32 — four
+        /// bytes a pixel, which is the number this budget was written against. A
+        /// BAKED one is block compressed: DXT1 at 4 bits a pixel, BC7 and DXT5 at 8.
+        /// Charging those `width * height * 4` over-counts them by four to eight
+        /// times, and a budget that believes a screen is holding 280MB when it is
+        /// holding 40 evicts the whole screen to reclaim bytes nobody has.
+        ///
+        /// Read off the texture's own format rather than its provenance, so a
+        /// streamed RGBA32 and an imported BC7 of the same picture each cost what
+        /// they cost. Block formats are charged by whole 4x4 blocks, which is how
+        /// the hardware stores them.
+        public static long Footprint(Texture2D t)
+        {
+            if (t == null) return 0L;
+            long blocks = (long)((t.width + 3) / 4) * ((t.height + 3) / 4);
+            long bytes;
+            switch (t.format)
+            {
+                case TextureFormat.DXT1:                       // BC1, 4 bpp
+                case TextureFormat.DXT1Crunched:
+                case TextureFormat.BC4:
+                    bytes = blocks * 8L;
+                    break;
+                case TextureFormat.DXT5:                       // BC3, 8 bpp
+                case TextureFormat.DXT5Crunched:
+                case TextureFormat.BC7:                        // 8 bpp
+                case TextureFormat.BC5:
+                case TextureFormat.BC6H:
+                    bytes = blocks * 16L;
+                    break;
+                case TextureFormat.RGB24:
+                    bytes = (long)t.width * t.height * 3L;
+                    break;
+                case TextureFormat.R8:
+                case TextureFormat.Alpha8:
+                    bytes = (long)t.width * t.height;
+                    break;
+                default:                                       // RGBA32 and friends
+                    bytes = (long)t.width * t.height * 4L;
+                    break;
+            }
+            // a mip chain is a third again on top; nothing this cache holds has one
+            // today (both roads switch mips off), so this is a guard, not a cost
+            if (t.mipmapCount > 1) bytes += bytes / 3L;
+            return bytes;
+        }
+
         /// THE FLOOR COMES BACK DOWN (perf soak: the hold-everything policy
         /// reached a 704MB steady state against a 400MB bar). Called between
         /// screens: while the cache is over budget, the textures nobody has
-        /// asked for in `minAge` seconds are destroyed, oldest first. The
+        /// asked for in `minAge` seconds are released, oldest first. The
         /// age guard keeps everything the LIVE screen holds (it asked
         /// recently); an evicted picture simply reloads on next request.
+        ///
+        /// A BAKED ENTRY IS GIVEN BACK, NOT DESTROYED. `Destroy` on an asset loaded
+        /// from Resources destroys the SHARED instance — every other holder of that
+        /// texture is left pointing at a dead object, the next `Resources.Load` of
+        /// the path can return it dead, and in the editor the imported asset itself
+        /// is at risk. `Resources.UnloadAsset` returns the memory and leaves the
+        /// asset loadable, which is the whole point of having staged it.
         public static void Sweep(long maxBytes = 280L * 1024 * 1024, float minAge = 45f)
         {
             long held = 0;
@@ -70,7 +167,7 @@ namespace Runway.Game
             foreach (var kv in _tex)
             {
                 if (kv.Value == null) continue;
-                held += (long)kv.Value.width * kv.Value.height * 4;
+                held += Footprint(kv.Value);
                 float used;
                 _lastUse.TryGetValue(kv.Key, out used);
                 order.Add(new KeyValuePair<float, string>(used, kv.Key));
@@ -78,21 +175,24 @@ namespace Runway.Game
             if (held <= maxBytes) return;
             order.Sort((a, b) => a.Key.CompareTo(b.Key));
             float now = Time.realtimeSinceStartup;
-            int dropped = 0;
+            int dropped = 0, given = 0;
             foreach (var pair in order)
             {
                 if (held <= maxBytes) break;
                 if (now - pair.Key < minAge) break;   // everything younger stays
                 Texture2D t = _tex[pair.Value];
+                bool baked = _baked.Remove(pair.Value);
                 _tex.Remove(pair.Value);              // reloadable on next ask
                 _lastUse.Remove(pair.Value);
-                held -= (long)t.width * t.height * 4;
-                UnityEngine.Object.Destroy(t);
+                held -= Footprint(t);
+                if (baked) { Resources.UnloadAsset(t); given++; }
+                else UnityEngine.Object.Destroy(t);
                 dropped++;
             }
             if (dropped > 0)
-                Debug.Log("RUNWAY! art sweep: " + dropped + " drawings released, "
-                          + (held / (1024 * 1024)) + "MB held");
+                Debug.Log("RUNWAY! art sweep: " + dropped + " drawings released ("
+                          + given + " given back to Resources, " + (dropped - given)
+                          + " destroyed), " + (held / (1024 * 1024)) + "MB held");
         }
 
         /// Hand the texture to `cb` — this frame if it is cached, later if it is not.
@@ -110,6 +210,23 @@ namespace Runway.Game
             {
                 _lastUse[relative] = Time.realtimeSinceStartup;
                 cb(have);
+                return;
+            }
+
+            // THE BAKED MIRROR, BEFORE ANYTHING TOUCHES THE DISK. An imported
+            // texture needs no runner, no request and no decode, so this answers on
+            // the SAME FRAME the ask was made. It has to sit above the absent-path
+            // memo below as well as above the queue: a staged drawing whose streamed
+            // copy is no longer beside it would otherwise be remembered as missing
+            // for the rest of the session.
+            Texture2D baked = Baked(relative);
+            if (baked != null)
+            {
+                _tex[relative] = baked;
+                _baked.Add(relative);
+                _lastUse[relative] = Time.realtimeSinceStartup;
+                BakedRoute++;
+                cb(baked);
                 return;
             }
 
@@ -139,6 +256,20 @@ namespace Runway.Game
             var job = new KeyValuePair<string, string>(relative, url);
             if (urgent) _fetchQueue.AddFirst(job); else _fetchQueue.AddLast(job);
             Start(boot);
+        }
+
+        /// THE IMPORTED MIRROR, LOOKED UP BY THE WHOLE RELATIVE PATH. `SheetLoop`
+        /// can key a sheet on its basename because 26 hand-picked names cannot
+        /// clash; these paths CAN — `sprites/chart_1.png` and
+        /// `sprites/gv/chart_1.png` are two different drawings — so the folder
+        /// structure is preserved under `Resources/Art` and the whole path minus its
+        /// extension is the key. Null for everything that was never staged, which is
+        /// how `gen_scenes` and every not-yet-compressible source keep streaming.
+        static Texture2D Baked(string relative)
+        {
+            if (string.IsNullOrEmpty(relative)) return null;
+            if (!relative.EndsWith(".png", StringComparison.Ordinal)) return null;
+            return Resources.Load<Texture2D>("Art/" + relative.Substring(0, relative.Length - 4));
         }
 
         static void Start(MonoBehaviour boot)
@@ -197,7 +328,10 @@ namespace Runway.Game
         /// does not, the bytes are read and decoded here instead. The queue, the
         /// ordering, the delivery and every waiting callback are the shipped ones on
         /// either route.
-        public static int WebRoute, DiskRoute;
+        /// THREE ROUTES NOW, AND THE COUNTERS SAY WHICH CARRIED WHAT. `BakedRoute`
+        /// is incremented in `Load` rather than here, because a baked ask never
+        /// reaches this queue at all — which is the point of it.
+        public static int WebRoute, DiskRoute, BakedRoute;
 
         public static int PumpBlocking(int max = 4096)
         {
@@ -274,6 +408,7 @@ namespace Runway.Game
             if (tex != null || !RunwayPaths.ArtExists(relative))
             {
                 _tex[relative] = tex;
+                _baked.Remove(relative);   // whatever lands here was decoded, not borrowed
                 _lastUse[relative] = Time.realtimeSinceStartup;
             }
             else

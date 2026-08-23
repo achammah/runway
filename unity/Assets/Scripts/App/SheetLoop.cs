@@ -115,6 +115,7 @@ namespace Runway.App
                 return null;
             }
             _sequenceMode = false;
+            _ownsTextures = true;   // see PlaySequence
             _cols = Mathf.Max(cols, 1);
             _frames = Mathf.Max(frames, 1);
             _cellW = cellW;
@@ -204,6 +205,9 @@ namespace Runway.App
             }
             _seqMax = maxFrames;
             _sequenceMode = true;
+            // OWNED UNTIL PROVEN BORROWED. A player that showed a baked film once
+            // must not carry `false` into a later streamed play and leak it.
+            _ownsTextures = true;
             _fps = fps;
             _once = once;
             _t = 0f;
@@ -369,10 +373,15 @@ namespace Runway.App
             _shown = -1;
             if (_target != null) { _target.texture = null; _target.enabled = false; }
             ReleaseSheet();
-            if (_ownsTextures)
+            // THE FILM IS GIVEN BACK THE SAME WAY THE SHEET IS. Its 48 frames are
+            // borrowed assets once they are baked, so destroying them would take the
+            // shared copy with them — and simply dropping the list would leave 36MB
+            // of DXT1 resident behind a title screen that has already gone.
+            for (int i = 0; i < _sequence.Count; i++)
             {
-                for (int i = 0; i < _sequence.Count; i++)
-                    if (_sequence[i] != null) Destroy(_sequence[i]);
+                if (_sequence[i] == null) continue;
+                if (_ownsTextures) Destroy(_sequence[i]);
+                else Resources.UnloadAsset(_sequence[i]);
             }
             _sequence.Clear();
         }

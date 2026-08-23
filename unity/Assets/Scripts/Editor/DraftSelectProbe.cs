@@ -143,11 +143,29 @@ namespace Runway.EditorTools
             string path = "sprites/chr_loop_" + id + "_01.png";
             Truth("1 · the file is on disk: " + path, RunwayPaths.ArtExists(path));
 
+            // WHICH CONTRACT IS BEING ASSERTED depends on where the picture lives.
+            // A path with an imported mirror under Resources/Art is answered INSIDE
+            // Load, on the frame it was asked for, and never sees the queue at all;
+            // the streamed contract below still governs gen_scenes and every source
+            // whose dimensions a compression pass has not reached yet, and 5 holds
+            // it to that.
+            bool baked = ArtCache.HasBaked(path);
             _hero.Play(id, "chr_arch_" + id);
-            Truth("1 · the ask was NOT answered 'absent' with no runner to fetch on "
-                  + "(the poison that blanked a founder for a whole session)",
-                  !ArtCache.Known(path));
-            Truth("1 · nothing is up yet — the fetch is still queued", !Showing());
+            if (baked)
+            {
+                Say("   " + path + " is BAKED — Resources/Art answers it with no "
+                    + "runner, no request and no decode.");
+                Truth("1 · a baked founder is UP on the frame he was asked for, with "
+                      + "nothing pumped", ArtCache.Peek(path) != null && Showing());
+                Truth("1 · and he never joined the queue", ArtCache.Pending == 0);
+            }
+            else
+            {
+                Truth("1 · the ask was NOT answered 'absent' with no runner to fetch on "
+                      + "(the poison that blanked a founder for a whole session)",
+                      !ArtCache.Known(path));
+                Truth("1 · nothing is up yet — the fetch is still queued", !Showing());
+            }
 
             int fetched = ArtCache.PumpBlocking();
             Say("   pumped " + fetched + " picture(s) by hand" + Routes());
@@ -180,6 +198,22 @@ namespace Runway.EditorTools
             string path = "sprites/chr_loop_" + id + "_01.png";
             Truth("3 · a founder nobody has asked for yet", !ArtCache.Known(path));
 
+            if (ArtCache.HasBaked(path))
+            {
+                // THE RACE CANNOT HAPPEN TO A BAKED PATH. There is no window between
+                // the ask and the answer for a destroyed loop's callback to fall
+                // into, because there is no queue.
+                _hero.Play(id, "chr_arch_" + id);
+                Truth("3 · a baked founder is answered inside Play, so no fetch is "
+                      + "left queued for a dead loop to outlive",
+                      ArtCache.Pending == 0 && Showing());
+                NewHero();
+                _hero.Play(id, "chr_arch_" + id);
+                Truth("3 · and the replacement loop is standing", Showing());
+                Ink("3-dead-target", dir, "3 · DEAD TARGET, the replacement loop takes the frame");
+                return;
+            }
+
             _hero.Play(id, "chr_arch_" + id);            // queued, not fetched
             Truth("3 · queued", ArtCache.Pending > 0);
             NewHero();                                    // the loop that asked is gone
@@ -205,9 +239,22 @@ namespace Runway.EditorTools
                   ArtCache.Known(ghost));
 
             // 5 · the transient case is what phase 1 ran under: no runner, a real file.
-            // Assert the rule directly on a second real path.
-            const string real = "sprites/chr_loop_exfaang_01.png";
-            if (!RunwayPaths.ArtExists(real)) { Say("5 · skipped, " + real + " is not shipped"); return; }
+            // It is a rule about the STREAMED path, so it needs a path that is still
+            // streamed — a baked one is answered inside Load, by design.
+            string real = FirstStreamed(new[]
+            {
+                "sprites/chr_loop_exfaang_01.png",
+                "sprites/env_bed.png",
+                "sprites/founder.png",
+                "title/layers/type_main.png",
+            });
+            if (real == null)
+            {
+                Say("5 · skipped — every candidate is baked now. The rule it guards "
+                    + "still governs the streamed path, which gen_scenes takes.");
+                return;
+            }
+            Say("5 · held against " + real + ", which still streams");
             bool tooSoon = false;
             ArtCache.Load(real, t => { tooSoon = true; });
             Truth("5 · a file that IS on disk is not answered 'absent' just because "
@@ -335,6 +382,17 @@ namespace Runway.EditorTools
             _hero = DraftLoop.Attach(_holder, "hero", 0f, 0f, HeroW, HeroH);
         }
 
+        /// The first candidate that is on disk and has NO imported mirror behind it.
+        /// Null when every one of them is baked, which is a valid answer and not a
+        /// failure: it means the streamed path's remaining tenant is gen_scenes.
+        static string FirstStreamed(string[] candidates)
+        {
+            for (int i = 0; i < candidates.Length; i++)
+                if (RunwayPaths.ArtExists(candidates[i]) && !ArtCache.HasBaked(candidates[i]))
+                    return candidates[i];
+            return null;
+        }
+
         static bool Showing()
         {
             if (_holder == null) return false;
@@ -410,7 +468,8 @@ namespace Runway.EditorTools
         /// is. Everything else on the path is the same either way.
         static string Routes()
         {
-            return "  (route: " + ArtCache.WebRoute + " web, " + ArtCache.DiskRoute + " disk)";
+            return "  (route: " + ArtCache.BakedRoute + " baked, " + ArtCache.WebRoute
+                   + " web, " + ArtCache.DiskRoute + " disk)";
         }
 
         static void Truth(string what, bool ok)
