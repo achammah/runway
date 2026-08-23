@@ -46,6 +46,7 @@ namespace Runway
                 TryUniversalArchitecture();
 
                 string scene = EnsureScene();
+                EnsureIcon();
                 EnsureSheets();
                 EnsureArtResources();
                 EnsureStreamingArt();
@@ -423,6 +424,17 @@ namespace Runway
         static string Mb(long bytes)
         {
             return (bytes / (1024f * 1024f)).ToString("0.0");
+        }
+
+        /// The RW! mark (the Godot build's own icon art) becomes the .app icon —
+        /// a blank grid on the DMG read as an unfinished product (owner).
+        static void EnsureIcon()
+        {
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Icon/app_icon.png");
+            if (tex == null) { Debug.LogWarning("RUNWAY! no app icon at Assets/Icon/app_icon.png"); return; }
+            UnityEditor.PlayerSettings.SetIcons(
+                UnityEditor.Build.NamedBuildTarget.Standalone,
+                new[] { tex }, UnityEditor.IconKind.Application);
         }
 
         static void WriteBuildStamp()

@@ -41,15 +41,15 @@ tell application "Finder"
     set current view of container window to icon view
     set toolbar visible of container window to false
     set statusbar visible of container window to false
-    set the bounds of container window to {200, 120, 1000, 620}
+    set the bounds of container window to {200, 120, 1096, 624}
     set viewOptions to the icon view options of container window
     set arrangement of viewOptions to not arranged
     set icon size of viewOptions to 128
     try
       set background picture of viewOptions to file ".background:bg.png"
     end try
-    set position of item "RUNWAY!.app" of container window to {200, 250}
-    set position of item "Applications" of container window to {600, 250}
+    set position of item "RUNWAY!.app" of container window to {224, 360}
+    set position of item "Applications" of container window to {672, 360}
     close
     open
     delay 1

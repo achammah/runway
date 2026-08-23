@@ -42,6 +42,15 @@ namespace Runway.EditorTools
     {
         void OnPreprocessTexture()
         {
+            string ap = assetPath.Replace('\\', '/');
+            if (ap.Contains("Assets/Icon/"))
+            {
+                var ii = (TextureImporter)assetImporter;
+                ii.textureCompression = TextureImporterCompression.Uncompressed;
+                ii.mipmapEnabled = false;
+                ii.npotScale = TextureImporterNPOTScale.None;
+                return;
+            }
             string path = assetPath.Replace('\\', '/');
             if (path.Contains("Assets/Resources/Sheets/")) { Sheets(); return; }
             if (path.Contains("Assets/Resources/Art/")) { Mirror(path); return; }
