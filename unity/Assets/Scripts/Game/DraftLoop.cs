@@ -22,7 +22,8 @@ namespace Runway.Game
     public sealed class DraftLoop : MonoBehaviour
     {
         const int MaxFrames = 36;
-        const float LoopSeconds = 1f;      // one breath; 12 reborn frames = Godot's own 12fps
+        const float Fps = 12f;   // the house clock: video loops ship 17-24
+                                  // frames and ALL play at Godot's own 12fps
 
         RawImage _target;
         RectTransform _rt;
@@ -174,8 +175,7 @@ namespace Runway.Game
         {
             if (_frames.Count <= 1) return;
             _t += Time.unscaledDeltaTime;
-            float step = LoopSeconds / _frames.Count;
-            int idx = Mathf.FloorToInt(_t / Mathf.Max(step, 0.03f)) % _frames.Count;
+            int idx = Mathf.FloorToInt(_t * Fps) % _frames.Count;
             if (idx == _shown) return;      // ONE REPAINT PER BAKED FRAME
             Show(idx);
         }
