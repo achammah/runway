@@ -2295,3 +2295,129 @@ Boot branch, no manifest entry. The adapter installs itself from a
   a player rather than by a developer.
 - **Nothing from the art, audio or run lanes.** This lane touches one shipped file,
   by seven lines.
+
+---
+
+# D-POLISH. Four measured defects — the write field, the street's block heights, the select cone's dust, the live tab's ring
+
+Four things the owner could see, taken one at a time. Three are arithmetic or a
+baked texture and are settled in edit mode; the fourth is a live text field and can
+only be settled in play mode, because TMP_InputField builds its caret inside
+`if (Application.isPlaying)` and nowhere else.
+
+Files touched: `Game/PageBlocks.cs`, `Game/BinderScreen.cs`, `Effects/Motes.cs`,
+`App/PaperInput.cs`, plus one budget line in `Editor/ParticleShots.cs` that the mote
+change would otherwise have left failing.
+
+## D-POLISH-1. Blocking risks — these stop a compile if they are wrong
+
+| # | API | Where | Why it was a guess | Fallback |
+|---|-----|-------|--------------------|----------|
+| D-POLISH-A1 | `TMP_InputField.onFocusSelectAll` (public get/set) | `PaperInput.Editable` | The field behind it is `[SerializeField] protected`, and the public property has not always existed. | Verified at `com.unity.ugui@8bb446d869cd/Runtime/TMP/TMP_InputField.cs:808`. If it ever goes, the same effect is one `SerializedProperty`-free reflection set on `m_OnFocusSelectAll`, and losing it costs the click-lands-the-caret behaviour, not the field. |
+| D-POLISH-A2 | `selectionStringAnchorPosition` / `selectionStringFocusPosition` | `TripleClickSelectsAll` | Two index spaces exist (caret indices and raw string indices) and both have public properties with confusingly similar names. | `:1070` and `:1091`. These are the pair TMP's own `SelectAll()` writes (`:1350`), so a rename would break TMP's select-all as well. The caret-index pair (`selectionAnchorPosition`, `:1019`) is the other spelling. |
+| D-POLISH-A3 | `TMP_InputField.ForceLabelUpdate()` | `TripleClickSelectsAll` | `MarkGeometryAsDirty` is private; this is the only public door onto it. | `:3728`, a two-line wrapper over `UpdateLabel()`. Without it the selection is set and never drawn — see D-POLISH-B1, which is not a hypothetical. |
+| D-POLISH-A4 | `TMP_InputField.stringPosition` (setter) | `PaperInput.GrabWriteFocus` | Setting a caret position by RAW STRING index, which is the index space `text.Length` is in. | `:1060`. Its setter clamps and calls `UpdateCaretPositionFromStringIndex()` itself, so no rebuild is needed for a collapsed caret. |
+| D-POLISH-A5 | `TMP_InputField.caretBlinkRate` (setter) | `PaperInput.Editable` | Stated rather than inherited, so a future TMP default cannot change the feel silently. | `:678`. The value written is TMP's own default, 0.85, so removing the line is a no-op. |
+| D-POLISH-A6 | `TMP_Text.textInfo.lineCount` | `BinderScreen.Height` | The count of lines TMP actually laid out, after `ForceMeshUpdate()`. | Long stable, and `Mathf.Max(1, …)` covers the empty-text case where TMP reports 0 and Godot reports one line box. |
+| D-POLISH-A7 | `DrawnUI.GodotLineSpacing` and `DrawnUI.StringLeading` are **public** | `BinderScreen.GodotLineBox` | `AscentRatio`/`DescentRatio` are private, so the rounding is reached through the one public function that already does it. | Both public (`DrawnUI.cs:302`, `:259`). If either is narrowed, the two-line literal form is `Mathf.Ceil(1.042f * size) + Mathf.Ceil(0.312f * size)` for Patrick Hand. |
+| D-POLISH-A8 | **A second top-level MonoBehaviour in `PaperInput.cs`** | `TripleClickSelectsAll` | Unity's file-name rule is about scripts that must be assignable in the Inspector; nothing in this game is. | Every component in this project is attached by `AddComponent<T>()` from code and no scene serialises one, so the rule never applies. Verified: it compiles, and the play-mode shot attaches and fires it. |
+| D-POLISH-A9 | `Motes.DraftMotes` | `Editor/ParticleShots.cs` | A new public const the D5 evidence tool's budget now reads. | If the const is renamed the evidence tool stops compiling, which is the loud failure rather than the quiet one. |
+
+## D-POLISH-2. Runtime risks — they compile, but may not do what is wanted
+
+| # | Risk | Where | Detail | What was done |
+|---|------|-------|--------|---------------|
+| D-POLISH-B1 | **Setting a selection does not draw one.** | `TripleClickSelectsAll` | `selectionString*Position` only raise `m_IsCaretPositionDirty`. The string indices are turned into caret indices, and the wash generated, inside `OnFillVBO` (`:3806`) — which runs on a geometry rebuild that nothing here has caused. The field's own pointer-down for that very click has already been and gone, and `CaretBlink` stops marking the geometry the moment a selection exists (`:1303`, guarded by `if (!hasSelection)`), so the wash could never arrive on its own. | `ForceLabelUpdate()` after the set. **This was measured, not predicted**: the first cut shipped without it and `hasSelection` read False in the shot with the selection plainly set. |
+| D-POLISH-B2 | **`hasSelection` compares STRING indices, not caret indices.** | anything reading TMP selection state | `private bool hasSelection { get { return stringPositionInternal != stringSelectPositionInternal; } }` (`:996`), while `GenerateHighlight` walks CARET indices. The two can disagree for exactly one frame, and a probe that asks the wrong pair gets a confident wrong answer. | The evidence tool states the string pair. Noted here because the next reader will reach for `selectionAnchorPosition` first, as this one did. |
+| D-POLISH-B3 | **`onFocusSelectAll = false` costs the keys screen its paste-over.** | `PaperInput` | With select-all-on-focus off, replacing an existing API key is no longer "click and type". | Deliberate, and the two replacements a person expects both now work: cmd-A (TMP's own, `:2167`, and it reads `EventModifiers.Command` off `SystemInfo` rather than a define) and the new triple click. `GrabWriteFocus` also parks the caret at the END of the existing key rather than in front of it, which is what TMP does not do on its own. |
+| D-POLISH-B4 | **The cone mask takes a mote or two off Godot's fourteen.** | `Motes.DraftSpotlight` | The original scatters its motes in `x 600..990`, which pokes out of the right of its own cone near the top; Godot draws them anyway because it has no mask, and this port does. **Measured: live 14.0, drawn 12.9.** | Left as the literal transcription. Padding the pool to land 14 DRAWN would mean the beam holds more than fourteen motes, which is the defect that was just removed. |
+| D-POLISH-B5 | **`Height()` now trusts TMP's wrap, not Godot's.** | `BinderScreen.Height` | The line COUNT comes from `textInfo.lineCount` after a `ForceMeshUpdate`. Where TMP breaks a line one word earlier than Godot would, the block is one Godot line box taller than `_wrap_h` returned. | Chosen on purpose: the advance can then never disagree with what is actually on the sheet, which is the failure the street had in the first place. The BOX is exact either way — `ceil(ascent) + ceil(descent)`, no leading. |
+| D-POLISH-B6 | **A batch editor cannot use `WaitForEndOfFrame`, and `-quit` kills play mode.** | `Editor/WriteFieldShot.cs` | `-quit` ends the process when `executeMethod` returns, which is before `EnterPlaymode` has done anything; and a yielded `WaitForEndOfFrame` never resumes with no drawn frame to end. Both were hit. | The shot is launched **without `-quit`** and exits the editor itself from the driver. Every wait is `yield return null`, the captures call `Canvas.ForceUpdateCanvases()` + `Camera.Render()` by hand, and a 120s watchdog in `Update` ends the session rather than holding the project lock. |
+| D-POLISH-B7 | **Play mode boots the real game underneath the shot.** | `Editor/WriteFieldShot.cs` | Entering play mode runs `Boot`, the studio card, the curtain and the mixer alongside the probe's own stage. | Harmless and left alone: `Boot`'s canvas is `ScreenSpaceOverlay`, which never renders into a camera's target texture, so the PNGs contain only the probe's world-space canvas. The driver is `DontDestroyOnLoad` so a scene change cannot take it. |
+
+## D-POLISH-3. Verified, not guessed — `Editor/PolishProbe.cs`, `Editor/WriteFieldShot.cs`
+
+```
+RUNWAY_POLISH_OUT=<dir> Unity -batchmode -quit -projectPath unity \
+  -executeMethod Runway.EditorTools.PolishProbe.Run
+RUNWAY_POLISH_OUT=<dir> Unity -batchmode        -projectPath unity \
+  -executeMethod Runway.EditorTools.WriteFieldShot.Run
+```
+
+Neither takes `-nographics`; the second must not take `-quit`. Output is one
+`measurements.txt` and seven PNGs.
+
+- **The street's drift is real, and it is now zero.** On the PIVOTFLOW fixture the
+  binder_7 shot is taken of, measured against Godot's `_wrap_h` block by block:
+  a 3-line block at 26px was **+4.2px** long, a 2-line block **+1.2**, a 2-line
+  block at 25px **+1.9**. Every one now reads **0.0**. The page's last `y` moved
+  from 734.1 to 725.0 — **9.1px of accumulated drift removed**, and the investor
+  rows alone had picked up 7.3px of it by the second one, which is the `dy 0 → +7`
+  the shot measured.
+- **`Height` is called by reflection**, not re-implemented in the probe, so the
+  number in the table is the shipped method's own. Godot's figure beside it is
+  derived independently from `faceInfo`.
+- **The select cone now holds fourteen.** Before: **live 30.7, drawn 20.9**, quads
+  8.0..19.3px. After: **live 14.0, drawn 12.9**, quads 6.8..13.4px, which reads as
+  a 2.3..4.5px speck against the original's `randf_range(2.0, 4.5)`. The motes
+  also RISE now (9..18px/s) where they were settling at about 5px/s downward.
+- **The caret exists, is inside the mask, and is masked BY it.** In play mode the
+  caret object's parent is `viewport` — the object carrying the stencil `Mask` —
+  and its material reads `_StencilComp 3` (Equal) with `_Stencil 1`. Not 8
+  (Always), which is what "drawing straight through the mask" would have looked
+  like. The RectMask2D → stencil Mask move did not break it.
+- **It is visible on the first frame the field holds focus.** `m_CaretVisible` is
+  True at the first capture, one frame after `WriteField` calls
+  `ActivateInputField`. `caretBlinkRate` 0.85/s, `caretWidth` 2.
+- **Double click selects the word, on a field it did not already own.** Two
+  pointer-downs at the `s` of "customer", one frame apart, through TMP's own
+  `OnPointerDown` both times: the selection comes back as exactly `"customer"`.
+  This is the behaviour `onFocusSelectAll` was eating — the whole caret-and-word
+  pass sits behind `hadFocusBefore || !m_OnFocusSelectAll` (`:2021`).
+- **Triple click selects the entry.** Dispatched through
+  `ExecuteEvents.pointerClickHandler` with `clickCount = 3`, which is the counter
+  the input module itself maintains, and answered by `TripleClickSelectsAll`.
+- **Both washes render inside the stencil mask and lean with the paper** —
+  `selection_zoom.png` and `selectall_zoom.png`. A synthetic pointer event has to
+  carry a filled-in `pointerPressRaycast` with the canvas's `GraphicRaycaster` as
+  its `module`, or `pressEventCamera` is null and TMP maps the click through no
+  camera and lands on the wrong character.
+
+## D-POLISH-4. What the probe did NOT confirm
+
+- **The live tab's pen ring is not tilted.** The theory was a stray rotation on the
+  mount. There is none: `DrawnChart.PenEllipse` walks `cos(t) * 68, sin(t) * 26`
+  axis-aligned, `DrawnChart.Mount` adds no transform, `GameUi.PaperSheet`'s `lean`
+  argument is a seed offset and not an angle (`GameUi.DraftPaper`, `Seed = 17 +
+  lean`), and nothing else in `BinderScreen` rotates anything. Measured from the
+  second moment of the ring's own ink, the shipped seed 5 sits at **-0.18°**, and
+  the nine seeds a mount could pass span **-0.80° to +0.58°** — the jitter's own
+  noise, not a lean. **Nothing was changed.** Chasing 0.00° by picking a seed would
+  move a wobble that is meant to be a wobble.
+- **The ring is 5px shorter than Godot's**, not rotated: 140x54 of ink against the
+  ~143x59 the Godot shot measured, both inside what `±2` of jitter on `ry = 26`
+  plus a 3.5px stroke allows. If the ring is ever revisited, that is the number to
+  revisit, and it is a seed, not a geometry, question.
+- **The first typed line sits about 20px above the first write rule.** Visible in
+  `caret_zoom.png`: the caret's baseline is at the font's ascent below the field
+  top (35.4px at size 34) while the first ruled line is a full pitch down (about
+  55px). Not this batch's to fix — it is the write field's rule geometry, not its
+  editing feel — but it is the next thing a person looking at that picture will
+  see.
+
+## D-POLISH-5. The seam
+
+**What the rest of the game needs from this lane: nothing.** No new fields on any
+screen, no Boot branch, no manifest entry. `PaperInput.Editable(field, pen)` is one
+public call and both fields in the game already make it.
+
+**What this lane changed outside its own four files:** one line of
+`Editor/ParticleShots.cs`. Its `motes/draft` budget was `20..Ceiling`, written when
+the select stage ran the general form; the select stage now runs the original's
+fourteen, and the budget reads `DraftMotes..DraftMotes`. Left unchanged it would
+have failed the D5 evidence run on the first frame.
+
+**What a future lane should know:** `PaperInput.Editable` is the one place the feel
+of a text field is decided. Anything that builds a `TMP_InputField` from code should
+call it rather than setting `caretColor` and `selectionColor` by hand, or TMP's two
+wrong defaults come back one field at a time.

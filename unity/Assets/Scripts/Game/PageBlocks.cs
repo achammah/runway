@@ -252,6 +252,17 @@ namespace Runway.Game
             vpMask.showMaskGraphic = false;
             var textRt = DrawnUI.FullRect(viewport, "text");
             var text = textRt.gameObject.AddComponent<TextMeshProUGUI>();
+            // the first BASELINE rides the first coral rule (D-POLISH-4: typed
+            // ink floated ~20px above the line it was supposed to sit on) —
+            // inset the top by (rule pitch − the font's real ascent)
+            {
+                float asc = DrawnUI.Hand != null
+                    ? DrawnUI.Hand.faceInfo.ascentLine / DrawnUI.Hand.faceInfo.pointSize
+                        * JournalPage.SizeBody
+                    : JournalPage.SizeBody * 1.042f;
+                float inset = Mathf.Max(pitch + 1f - asc, 0f);
+                textRt.offsetMax = new Vector2(textRt.offsetMax.x, -inset);
+            }
             if (DrawnUI.Hand != null) text.font = DrawnUI.Hand;
             text.fontSize = JournalPage.SizeBody;
             text.color = DrawnUI.Ink;
@@ -262,6 +273,7 @@ namespace Runway.Game
 
             // ghost handwriting says "this is yours to fill" before the first keystroke
             var phRt = DrawnUI.FullRect(viewport, "placeholder");
+            phRt.offsetMax = textRt.offsetMax;   // the ghost rides the same rule
             var ph = phRt.gameObject.AddComponent<TextMeshProUGUI>();
             if (DrawnUI.Hand != null) ph.font = DrawnUI.Hand;
             ph.fontSize = JournalPage.SizeBody;
@@ -281,12 +293,12 @@ namespace Runway.Game
             // raises onSubmit instead of inserting a newline, which is the Godot
             // `KEY_ENTER and not shift` contract without a key handler of our own.
             input.lineType = TMP_InputField.LineType.MultiLineSubmit;
-            input.customCaretColor = true;
-            input.caretColor = DrawnUI.Pen;
-            input.caretWidth = 2;
-            input.selectionColor = DrawnUI.WithAlpha(DrawnUI.Pen, 0.22f);
             input.richText = false;
             input.restoreOriginalTextOnEscape = false;
+            // the caret, the selection wash and the click behaviour a person expects
+            // of a text field — see PaperInput.Editable, which states why two of TMP's
+            // defaults are wrong here and where the third click comes from
+            PaperInput.Editable(input, DrawnUI.Pen);
             fieldGo.SetActive(true);
             p.SetInput(input);
 

@@ -677,11 +677,50 @@ namespace Runway.Game
             }
         }
 
+        /// `_wrap_h`, WHICH IS NOT preferredHeight. binder.gd advances the street by
+        /// `_font.get_multiline_string_size(...).y`, and that number is a LEADING-FREE
+        /// INTEGER SUM: FreeType hands Godot a whole-pixel ascent and a whole-pixel
+        /// descent, every line box is worth exactly their sum, N lines are worth N of
+        /// them, and the theme's 3px gap never enters because a raw Font call goes
+        /// through no theme at all.
+        ///
+        /// TMP's preferredHeight is a different shape: `1.354 x size` of FRACTIONAL
+        /// first line plus `N - 1` pitches that DO carry the leading. At 26px that is
+        /// 35.2 + 40(N-1) against Godot's 37N — 1.8px SHORT on a one-line block, 1.2
+        /// LONG on two, 4.2 long on three — and the street's `y` carries every one of
+        /// those errors down the page, so the rivals and the money below them drifted
+        /// further the more of them there were.
         static float Height(TextMeshProUGUI t)
         {
             if (t == null) return 0f;
             t.ForceMeshUpdate();
-            return Mathf.Max(t.preferredHeight, t.fontSize * 1.3f);
+            // the lines TMP actually LAID OUT, so the advance can never disagree with
+            // what is on the sheet even where its wrap point differs from Godot's
+            int lines = Mathf.Max(1, t.textInfo.lineCount);
+            return lines * GodotLineBox(t.font, t.fontSize);
+        }
+
+        /// One Godot line box in pixels — ceil(ascent) + ceil(descent) at that size.
+        /// The rounding lives in DrawnUI.GodotLineSpacing, which hands the difference
+        /// between Godot's box and TMP's over as hundredths of the size, so this adds
+        /// TMP's own pitch back rather than keeping a second copy of the font ratios.
+        /// StringLeading, not LabelLeading: `get_multiline_string_size` has no theme.
+        static float GodotLineBox(TMP_FontAsset f, float size)
+        {
+            if (size <= 0f) return 0f;
+            float tmp = size * 1.354f;                  // Patrick Hand's hhea, if asked
+            if (f != null && f.faceInfo.pointSize > 0f)
+            {
+                float ps = f.faceInfo.pointSize;
+                tmp = (f.faceInfo.lineHeight > 0f
+                       ? f.faceInfo.lineHeight
+                       : f.faceInfo.ascentLine - f.faceInfo.descentLine) / ps * size;
+            }
+            float godot = tmp + DrawnUI.GodotLineSpacing(f, size, DrawnUI.StringLeading)
+                                * size * 0.01f;
+            // two ceilings summed is a whole number of pixels; rounding here clears the
+            // float dust the trip through hundredths-of-the-size leaves behind
+            return Mathf.Max(Mathf.Round(godot), 1f);
         }
 
         // ── tab 8: threats & promises ──────────────────────────────────────────

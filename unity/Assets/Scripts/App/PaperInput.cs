@@ -1,6 +1,7 @@
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Runway.App
@@ -44,7 +45,12 @@ namespace Runway.App
 
         public void GrabWriteFocus()
         {
-            if (_edit != null) _edit.ActivateInputField();
+            if (_edit == null) return;
+            _edit.ActivateInputField();
+            // the pen goes to the END of what is already written, never in front of
+            // it: TMP leaves the caret at string position 0 when focus arrives from
+            // code, so a re-prompted key would have been typed backwards
+            _edit.stringPosition = (_edit.text ?? "").Length;
         }
 
         /// Re-issue the lead-in above the line — the keys screen scolds with it.
@@ -145,17 +151,51 @@ namespace Runway.App
             _edit.textComponent = text;
             _edit.placeholder = ph;
             _edit.lineType = TMP_InputField.LineType.SingleLine;
-            _edit.customCaretColor = true;
-            _edit.caretColor = DrawnUI.Pen;
-            _edit.caretWidth = 2;
-            _edit.selectionColor = DrawnUI.WithAlpha(DrawnUI.Pen, 0.22f);
             _edit.richText = false;
             _edit.restoreOriginalTextOnEscape = false;
+            Editable(_edit, DrawnUI.Pen);
 
             fieldGo.SetActive(true);
 
             _edit.onValueChanged.AddListener(t => { var c = Changed; if (c != null) c(t); });
             _edit.onSubmit.AddListener(t => { var s = Submitted; if (s != null) s(t); });
+        }
+
+        // ══ the feel of writing in it ══════════════════════════════════════════
+
+        /// EVERY FIELD IN THIS GAME IS BUILT FROM CODE, so the feel of editing in one
+        /// is built from code too. TMP's defaults are close to native and two of them
+        /// are not, in exactly this construction:
+        ///
+        /// ONE — `onFocusSelectAll` ships ON, and TMP_InputField.OnPointerDown gates
+        /// its ENTIRE caret block behind `hadFocusBefore || !m_OnFocusSelectAll`. So a
+        /// click into a field that does not already hold the keyboard selects the whole
+        /// entry instead of landing the pen where it was pointed, and the next
+        /// character typed wipes a week of writing. It also means the FIRST double
+        /// click on a cold field cannot select a word, because the pass that would have
+        /// done it never runs. Off.
+        ///
+        /// TWO — TRIPLE CLICK DOES NOT EXIST in TMP_InputField. OnPointerDown counts to
+        /// two and stops; there is no select-the-line and no select-the-lot. Cmd-A does
+        /// work (KeyPressed reads EventModifiers.Command on Apple platforms, off
+        /// SystemInfo, not a #define), and the third click is added here.
+        ///
+        /// The caret is TMP's own: 0.85 blinks a second, stated rather than inherited,
+        /// and CaretBlink() opens with `m_CaretVisible = true` so ActivateInputField
+        /// shows a caret on the first frame the field holds focus rather than up to
+        /// half a blink later.
+        public static TMP_InputField Editable(TMP_InputField f, Color pen)
+        {
+            if (f == null) return null;
+            f.customCaretColor = true;
+            f.caretColor = pen;
+            f.caretWidth = 2;
+            f.selectionColor = DrawnUI.WithAlpha(pen, 0.22f);
+            f.caretBlinkRate = 0.85f;
+            f.onFocusSelectAll = false;
+            if (f.GetComponent<TripleClickSelectsAll>() == null)
+                f.gameObject.AddComponent<TripleClickSelectsAll>();
+            return f;
         }
 
         /// The rule under the writing thickens on focus, the way a pen presses harder.
@@ -169,6 +209,43 @@ namespace Runway.App
             _wasFocused = focused;
             _rule.sprite = focused ? _ruleThick : _ruleThin;
             _rule.color = focused ? DrawnUI.Pen : DrawnUI.WithAlpha(DrawnUI.Sage, 0.75f);
+        }
+    }
+
+    /// THE THIRD CLICK, which TMP_InputField does not have. It rides on the SAME
+    /// GameObject as the field: ExecuteEvents hands a pointer-click to every component
+    /// on the target that implements the interface, so the field still gets its own
+    /// click and this only adds to it.
+    ///
+    /// `clickCount` is the input module's own run-of-clicks counter (a click inside
+    /// 0.3s of the last one raises it), so nothing here has to time anything. Two
+    /// clicks have already selected the word by the time the third lands; this widens
+    /// the same selection to the whole entry, which is what every text field on this
+    /// machine does.
+    [RequireComponent(typeof(TMP_InputField))]
+    public sealed class TripleClickSelectsAll : MonoBehaviour, IPointerClickHandler
+    {
+        public void OnPointerClick(PointerEventData e)
+        {
+            if (e == null || e.button != PointerEventData.InputButton.Left) return;
+            if (e.clickCount < 3) return;
+            var f = GetComponent<TMP_InputField>();
+            if (f == null) return;
+            int n = (f.text ?? "").Length;
+            if (n == 0) return;
+            // TMP's own SelectAll(), in its public spelling: RAW STRING indices, so
+            // nothing here can be off by one against the caret's own index space
+            f.selectionStringAnchorPosition = n;
+            f.selectionStringFocusPosition = 0;
+            // AND THE WASH HAS TO BE ASKED FOR. Those two setters only raise a dirty
+            // FLAG; the string indices are turned into caret indices, and the highlight
+            // drawn, inside OnFillVBO — which runs on a geometry rebuild that nothing
+            // here has caused. The field's own pointer-down for this very click has
+            // already been and gone, and the blink coroutine stops marking the geometry
+            // the moment a selection exists, so without this the third click selects
+            // the entry silently and the player sees no wash at all. (Measured: the
+            // first cut of this handler shipped exactly that.)
+            f.ForceLabelUpdate();
         }
     }
 }

@@ -133,7 +133,9 @@ namespace Runway.EditorTools
 
             Motes m = Motes.DraftSpotlight(_stage);
             if (m == null) { Fail("motes: DraftSpotlight returned null with the switch on"); return; }
-            Report("motes/draft", m.Live, 20, Motes.Ceiling);
+            // the select stage runs the ORIGINAL'S count, not the general form's:
+            // founder_draft_screen.gd builds fourteen and the pool is capped there
+            Report("motes/draft", m.Live, Motes.DraftMotes, Motes.DraftMotes);
             Measure("motes/draft", m.View);
             Save(path);
         }
