@@ -354,6 +354,13 @@ namespace Runway.Llm
         public void RequestJson(string systemPrompt, string userPrompt, JObject schema,
                                 Action<JObject> cb, LlmOptions opts)
         {
+            // THE LOCAL SEAM (RUNWAY_LOCAL_LLM=1). It sits ABOVE the Enabled gate on
+            // purpose: a local backend's whole point is a run with no key, and this
+            // request is the one it is allowed to take. It returns false for every tier
+            // and every flag state it does not own — with the flag unset that is one
+            // string compare — so an ordinary run falls straight through into the
+            // network path below, unchanged.
+            if (LocalLlmRouter.TryServe(this, systemPrompt, userPrompt, schema, cb, opts)) return;
             if (!Enabled)
             {
                 if (cb != null) cb(null);

@@ -285,7 +285,12 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	var churn := A / maxf(residence, 2.0) * float(th.churn_mult) * status_churn * care_mult
 	# pricing pain lands on RETENTION, never on invisible spend-shrink
 	churn *= offers_price_pain(state)
-	var net := int(round(adds - churn))
+	# a market of 0.3 adds/wk is a REAL market: int(round()) erased Enterprise
+	# forever — the seeded remainder (the R&D block's own idiom) keeps it
+	var net_f := adds - churn
+	var net := int(floor(absf(net_f))) * (1 if net_f >= 0.0 else -1)
+	if _rng(state, 91).randf() < absf(net_f) - floor(absf(net_f)):
+		net += 1 if net_f >= 0.0 else -1
 	state.traction = maxi(state.traction + net, 0)
 	rep["adds"] = int(round(adds))
 	rep["churn"] = int(round(churn))
@@ -341,7 +346,8 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	# ── UNIT ECONOMICS, computed honestly every week (the simulator SHOWS its
 	# math): CAC from what acquisition actually cost / who actually arrived;
 	# LTV from residence × margin-per-week; payback in weeks.
-	var arpu := float(th.arpu_wk) * state.price_mult * status_arpu
+	var arpu_real := offers_arpu(state)
+	var arpu := (arpu_real if arpu_real >= 0.0 else float(th.arpu_wk) * state.price_mult) * status_arpu
 	var new_adds := maxf(adds, 0.0)
 	rep["cac"] = int(round((b_mk + b_sales) / new_adds)) if new_adds >= 0.5 and (b_mk + b_sales) > 0.0 else 0
 	rep["ltv"] = int(round(residence * arpu))
@@ -541,7 +547,10 @@ static func margin_band(total: int, dc: int) -> String:
 
 # ───────────────────────────── the funding module ────────────────────────────
 static func valuation(state: GameState) -> int:
-	var arr := float(state.traction) * float(state.theta.get("arpu_wk", 4.0)) * state.price_mult * 52.0
+	var arpu_v := offers_arpu(state)
+	if arpu_v < 0.0:
+		arpu_v = float(state.theta.get("arpu_wk", 4.0)) * state.price_mult
+	var arr := float(state.traction) * arpu_v * 52.0
 	var growth := clampf(float(state.last_growth), 0.0, 0.4)
 	var mult := 8.0 + minf(12.0, growth * 60.0)
 	return maxi(state.cash, int(arr * mult * float(state.theta.get("funding_mult", 1.0))))
@@ -594,7 +603,7 @@ static func offer_demand(offer: Dictionary, price: float) -> float:
 	if price <= 0.0:
 		return 0.0   # not on sale
 	var e := float(offer.get("elasticity", 2.0))
-	return clampf(pow(price / fair, -e), 0.0, 3.0)
+	return clampf(pow(price / fair, -e), 0.0, 2.0)
 
 ## How often one customer pays for an offer, in purchases per week. The
 ## founder's mental math is "customers × price"; the cadence is the honest
@@ -700,7 +709,10 @@ static func era_spend_cap(era: String) -> int:
 
 static func runway_weeks(state: GameState) -> int:
 	var th := state.theta
-	var revenue := float(state.traction) * float(th.get("arpu_wk", 4.0)) * state.price_mult
+	var arpu_r := offers_arpu(state)
+	if arpu_r < 0.0:
+		arpu_r = float(th.get("arpu_wk", 4.0)) * state.price_mult
+	var revenue := float(state.traction) * arpu_r
 	var payroll := 0
 	for e in state.employees:
 		payroll += int(e.get("salary", 0))

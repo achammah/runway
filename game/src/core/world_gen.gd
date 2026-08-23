@@ -127,28 +127,37 @@ const RIVAL_TACTICS := [["undercut pricing", "poached a customer", "shipped a cl
 ## serves — the deterministic skeleton the LLM refines. fair_price is the
 ## street's reference; elasticity is how hard demand punishes deviation.
 static func default_offers(what: String, who: String, rng: RandomNumberGenerator) -> Array:
+	# THE AUDIENCE SCALES THE INVOICE (C5 audit D1): only Software priced by
+	# `who`, so a Consumer was billed at SMB rates across four thousand
+	# customers — a measured +$100k/wk money printer. Consumer pays a quarter,
+	# Enterprise four times, costs scale WITH price (margin holds).
+	var aud := 0.25 if who == "Consumer" else (4.0 if who == "Enterprise" else 1.0)
 	match what:
 		"Service":
 			return [
 				{"name": "standard session", "unit": "per session",
-				 "fair_price": float(rng.randi_range(45, 85)), "elasticity": 2.6,
-				 "unit_cost": 18.0, "price": 0.0, "weight": 0.7},
+				 "fair_price": float(rng.randi_range(45, 85)) * aud, "elasticity": 2.6,
+				 "unit_cost": 18.0 * aud, "price": 0.0, "weight": 0.7},
+				# the premium lane is INELASTIC (C5 audit D2): pricing above
+				# fair must be a real strategy somewhere, not a cliff
 				{"name": "premium package", "unit": "per package",
-				 "fair_price": float(rng.randi_range(140, 260)), "elasticity": 2.0,
-				 "unit_cost": 55.0, "price": 0.0, "weight": 0.3}]
+				 "fair_price": float(rng.randi_range(140, 260)) * aud, "elasticity": 0.8,
+				 "unit_cost": 55.0 * aud, "price": 0.0, "weight": 0.3}]
 		"Hardware":
 			return [
 				{"name": "the device", "unit": "per unit",
-				 "fair_price": float(rng.randi_range(120, 420)), "elasticity": 1.8,
-				 "unit_cost": float(rng.randi_range(40, 150)), "price": 0.0, "weight": 0.8},
+				 "fair_price": float(rng.randi_range(120, 420)) * aud, "elasticity": 0.9,
+				 "unit_cost": float(rng.randi_range(40, 150)) * aud, "price": 0.0, "weight": 0.8},
 				{"name": "accessories", "unit": "per kit",
-				 "fair_price": float(rng.randi_range(25, 60)), "elasticity": 2.4,
-				 "unit_cost": 9.0, "price": 0.0, "weight": 0.2}]
+				 "fair_price": float(rng.randi_range(25, 60)) * aud, "elasticity": 2.4,
+				 "unit_cost": 9.0 * aud, "price": 0.0, "weight": 0.2}]
 		"Marketplace":
 			return [
-				{"name": "take rate", "unit": "% of each order",
-				 "fair_price": float(rng.randi_range(8, 18)), "elasticity": 3.0,
-				 "unit_cost": 1.0, "price": 0.0, "weight": 1.0}]
+				# dollars per order, and SAYS so (C5 audit D7: a percent was
+				# being booked as dollars and 25% read as 3x-fair greed)
+				{"name": "platform take, per order", "unit": "per order",
+				 "fair_price": float(rng.randi_range(8, 18)) * aud, "elasticity": 3.0,
+				 "unit_cost": 1.0 * aud, "price": 0.0, "weight": 1.0}]
 		_:
 			var base := 12 if who == "Consumer" else (rng.randi_range(29, 79) if who == "SMB" else rng.randi_range(190, 590))
 			return [
@@ -156,7 +165,7 @@ static func default_offers(what: String, who: String, rng: RandomNumberGenerator
 				 "fair_price": float(base), "elasticity": 2.2 if who != "Enterprise" else 1.5,
 				 "unit_cost": 3.0, "price": 0.0, "weight": 0.8},
 				{"name": "annual plan", "unit": "per year",
-				 "fair_price": float(base) * 10.0, "elasticity": 1.9,
+				 "fair_price": float(base) * 10.0, "elasticity": 0.8,
 				 "unit_cost": 30.0, "price": 0.0, "weight": 0.2}]
 
 ## The complete deterministic bible. `seed` is the run seed.

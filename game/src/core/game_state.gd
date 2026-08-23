@@ -325,7 +325,9 @@ func advance_era_if_ready() -> Dictionary:
 			if product >= 60 and (traction >= 5 or has_flag("first_revenue")):
 				to = "coworking"; reason = "something works and someone noticed"
 		"coworking":
-			if has_flag("launched") and traction >= 25:
+			# the SAME cushion law as office→floor: promotion into 5x rent
+			# was bankrupting healthy companies at week 21 (C5 audit D5)
+			if has_flag("launched") and traction >= 25 and cash >= 6 * int(ERA_RENT["office"]):
 				to = "office"; reason = "launched, and the numbers kept moving"
 		"office":
 			# no moving into rent you can't pay — the deadly jumps need a cushion

@@ -93,6 +93,11 @@ namespace Runway.CoreTests
             Console.WriteLine();
             RunBalanceSim();
             Console.WriteLine();
+            if (Array.IndexOf(args ?? new string[0], "--economy") >= 0)
+            {
+                EconomyProbe.Run();
+                Console.WriteLine();
+            }
 
             if (_failed)
             {

@@ -552,7 +552,12 @@ namespace Runway.Core
             double churn = A / Gd.Maxf(residence, 2.0) * th.ChurnMult * statusChurn * careMult;
             // pricing pain lands on RETENTION, never on invisible spend-shrink
             churn *= OffersPricePain(state);
-            int net = Gd.RoundToInt(adds - churn);
+            // a market of 0.3 adds/wk is a REAL market: rounding erased
+            // Enterprise forever — the seeded remainder keeps it (C5 D4)
+            double netF = adds - churn;
+            int net = (int)Math.Floor(Math.Abs(netF)) * (netF >= 0.0 ? 1 : -1);
+            if (RngFor(state, 91).Randf() < Math.Abs(netF) - Math.Floor(Math.Abs(netF)))
+                net += netF >= 0.0 ? 1 : -1;
             state.Traction = Gd.Maxi(state.Traction + net, 0);
             rep.Adds = Gd.RoundToInt(adds);
             rep.Churn = Gd.RoundToInt(churn);
@@ -648,7 +653,8 @@ namespace Runway.Core
             // ── UNIT ECONOMICS, computed honestly every week (the simulator SHOWS its
             // math): CAC from what acquisition actually cost / who actually arrived;
             // LTV from residence x margin-per-week; payback in weeks.
-            double arpu = th.ArpuWk * state.PriceMult * statusArpu;
+            double arpuReal = OffersArpu(state);
+            double arpu = (arpuReal >= 0.0 ? arpuReal : th.ArpuWk * state.PriceMult) * statusArpu;
             double newAdds = Gd.Maxf(adds, 0.0);
             rep.Cac = (newAdds >= 0.5 && (bMk + bSales) > 0.0) ? Gd.RoundToInt((bMk + bSales) / newAdds) : 0;
             rep.Ltv = Gd.RoundToInt(residence * arpu);
@@ -962,7 +968,9 @@ namespace Runway.Core
         {
             double arpuWk = state.Theta != null ? state.Theta.ArpuWk : 4.0;
             double fundingMult = state.Theta != null ? state.Theta.FundingMult : 1.0;
-            double arr = state.Traction * arpuWk * state.PriceMult * 52.0;
+            double arpuV = OffersArpu(state);
+            if (arpuV < 0.0) arpuV = arpuWk * state.PriceMult;
+            double arr = state.Traction * arpuV * 52.0;
             double growth = Gd.Clampf(state.LastGrowth, 0.0, 0.4);
             double mult = 8.0 + Gd.Minf(12.0, growth * 60.0);
             return Gd.Maxi(state.Cash, Gd.ToInt(arr * mult * fundingMult));
@@ -1039,7 +1047,7 @@ namespace Runway.Core
                 return 0.0;   // not on sale
             }
             double e = offer.Elasticity;
-            return Gd.Clampf(Math.Pow(price / fair, -e), 0.0, 3.0);
+            return Gd.Clampf(Math.Pow(price / fair, -e), 0.0, 2.0);
         }
 
         /// <summary>
@@ -1104,7 +1112,7 @@ namespace Runway.Core
             foreach (Offer od in state.Offers)
             {
                 if (od.Price <= 0.0) continue;
-                double fair = Gd.Maxf(od.FairPrice, 1.0);
+                double fair = Gd.Maxf(od.FairPrice > 0.0 ? od.FairPrice : od.Price, 1.0);
                 num += od.Weight * (od.Price / fair);
                 den += od.Weight;
             }
@@ -1165,7 +1173,9 @@ namespace Runway.Core
         public static int RunwayWeeks(GameState state)
         {
             double arpuWk = state.Theta != null ? state.Theta.ArpuWk : 4.0;
-            double revenue = state.Traction * arpuWk * state.PriceMult;
+            double arpuR = OffersArpu(state);
+            if (arpuR < 0.0) arpuR = arpuWk * state.PriceMult;
+            double revenue = state.Traction * arpuR;
             int payroll = 0;
             foreach (Employee e in state.Employees)
             {

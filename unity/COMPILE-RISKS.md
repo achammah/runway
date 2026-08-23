@@ -2018,3 +2018,277 @@ the editor; `Build.cs` builds with `BuildOptions.None`.
   the flag either way.
 - **Nothing was applied.** No setting was edited, no build was run, no git command was
   issued. The two writes this lane made are `docs/config-plan.md` and this section.
+
+---
+
+# D-BAKE — THE IMPORTED ART MIRROR — `App/Build.cs` + `Editor/SheetImport.cs` + `Game/ArtCache.cs` + `App/SheetLoop.cs`
+
+The streamed art stops being streamed, for everything that can actually be
+block-compressed. `Build` mirrors those files into `Assets/Resources/Art/<the same
+relative path>`, `SheetImport` grows a branch that imports them at DXT1 or BC7 with
+no mips and no rescale, and `ArtCache.Load` probes that mirror before it touches the
+disk. The title film goes to `Resources/Sheets` instead, because
+`SheetLoop.BakedFrame` already looks a sequence frame up by basename there.
+
+**What moved, measured on the tree as it stands (374 PNGs in `Assets/Art`):**
+
+| set | files | RGBA32 today | imported | delta |
+|---|--:|--:|--:|--:|
+| the mirror (`sprites`, `sprites/gv`, `journal_icons`, `env`, `title/anim`, `title/layers`) | **149** | 119.5 MB | 25.0 MB | **-94.5 MB** |
+| the film (`title/video` → `Resources/Sheets`) | **48** | 288.0 MB | 36.0 MB | **-252.0 MB** |
+| **total** | **197** | **407.5 MB** | **61.0 MB** | **-346.5 MB (-85%)** |
+| still streamed: a dimension is not divisible by 4 | 150 | 96.9 MB | — | — |
+
+One new editor probe, `Editor/ArtBakeProbe.cs`, which stages, imports and then
+asserts every one of those numbers back out of the imported assets.
+
+## D-BAKE-1. Blocking risks — these stop a compile if they are wrong
+
+All five compiled clean against **Unity 6000.0.82f1** (`tools/unity_compile.sh`, 0
+unique errors), so these are recorded as what was uncertain, not as what is open.
+
+| # | API | Where | Why uncertain | Fallback coded |
+|---|-----|-------|---------------|----------------|
+| DB-A1 | `Runway.Build.PngHeader` named from `Runway.EditorTools` with `using UnityEditor;` in scope | `SheetImport.Mirror` | `UnityEditor.Build` is a NAMESPACE — the same trap DF-A4 records for `FlowShots`. | Written `global::Runway.Build.PngHeader`, which cannot resolve to anything but the class. `ArtBakeProbe` takes the other route and aliases: `using RunwayBuild = Runway.Build;`. |
+| DB-A2 | `Build.PngHeader` / `EnsureArtResources` / `EnsureSheets` are public, but `Build` is inside `#if UNITY_EDITOR` | `SheetImport`, `ArtBakeProbe` | A player build that could see them would not compile. | Both callers live under `Assets/Scripts/Editor/`, so they are editor-only by folder and can never be compiled into a player. Same argument as DF-A5. |
+| DB-A3 | `TextureImporter.alphaIsTransparency`, `.filterMode`, `.textureType`, `.textureCompression` | `SheetImport.Mirror` | Four importer properties set in one preprocess pass; `alphaIsTransparency` is the one `Sheets` has never set. | Every flag is re-read off the imported texture by `ArtBakeProbe` rather than trusted: format, size and mip count are asserted for all 149. |
+| DB-A4 | `TextureFormat.BC7` / `BC4` / `BC5` / `BC6H` / `DXT1Crunched` / `DXT5Crunched` in one switch | `ArtCache.Footprint` | Every member has to exist in 6000.0 or the switch does not compile. | The `default` arm is `width * height * 4`, the number the budget used before, so an unrecognised format degrades to the old estimate rather than under-counting. |
+| DB-A5 | `Application.logMessageReceived` as an editor-time hook | `ArtBakeProbe` | It is how the probe hears the editor refuse to destroy an asset. | Editor-only file; the handler is removed in the same method that adds it. |
+
+## D-BAKE-2. Runtime risks — they compile, but may not do what the migration needs
+
+| # | Thing | Where | Risk | Fallback coded |
+|---|-------|-------|------|----------------|
+| DB-B1 | **A baked texture is GIVEN BACK, never destroyed.** | `ArtCache.Sweep` | `Destroy` on an asset loaded from Resources destroys the SHARED instance: every other holder is left pointing at a dead object, the next `Resources.Load` of that path can return it dead, and in the editor the imported asset itself is at risk. This is the single highest-consequence line in the migration. | `ArtCache` keeps a `_baked` set beside `_tex`, filled in `Load` on the Resources hit and cleared in `Deliver` and in `Sweep`. Eviction branches: `Resources.UnloadAsset` for baked, `Destroy` for streamed — the same split `SheetLoop._sheetBaked` has always made. `ArtBakeProbe` forces a full eviction with the editor's "Destroying assets is not permitted" error hooked, and then reloads all ten paths: **0 errors, 10 survivors, same size, same format.** |
+| DB-B2 | **The sweep budget stopped meaning `width * height * 4`.** | `ArtCache.Footprint` | Under BC that estimate is 4x to 8x too high, so the cache would evict a whole screen to reclaim bytes nobody was holding. | `Footprint` reads the texture's own `format` and charges block formats by whole 4x4 blocks (8 bytes for DXT1/BC4, 16 for DXT5/BC7/BC5/BC6H), with a mip tail guard. Measured: `env/stage.png` 6144 KB → 768 KB, `journal_icons/cash.png` 256 KB → 64 KB. The whole mirror resident at once is **25.0 MB against a 280 MB budget**, so `Sweep` no longer fires on it at all. |
+| DB-B3 | **Only sources whose BOTH dimensions are divisible by 4 are staged.** | `Build.EnsureArtResources` | 150 of the 299 mirror-eligible files fail that test. Staging them anyway would import them as RGBA32 — the same bytes they already cost streamed, plus a second copy in the build — and `npotScale = ToNearest` would instead RESAMPLE them, which is what `Assets/Art` does today (378x378 → 256x256, silently). | The staging step reads each PNG's IHDR and skips what it cannot compress; those files keep streaming, unchanged. There is no list to maintain: the moment the art lane trims one to a multiple of 4, the next build picks it up. `npotScale = None` in the importer is the second lock, and `ArtBakeProbe` asserts every imported texture still has its source's exact width and height. |
+| DB-B4 | **`RunwayPaths.ArtExists` still decides which screen a player gets, so the PNGs CANNOT leave `StreamingAssets` yet.** | `TitleScreen`, `KeysScreen`, `FounderDraftScreen` | This is the reason this pass is **+61.0 MB of app size, not -22.6 MB**. Three screens ask "is the PNG on disk?" and take a drawn fallback when it is not. Delete the now-baked PNGs from `StreamingAssets` and the title plays its static still, the keys screen loses its mascot and the select stage loses its backdrop — with the imported texture sitting right there. | Nothing was deleted. Both copies ship this pass: 61.0 MB of block-compressed data enters `resources.assets`, and 91.9 MB of PNG stays in `StreamingAssets`. The unlock is the pattern `DiceRoll.SheetOnHand` already uses (DF-B7): ask `ArtCache.HasBaked(rel) \|\| RunwayPaths.ArtExists(rel)` instead. Three call sites, and then dropping those PNGs turns this pass into **-30.9 MB net**. |
+| DB-B5 | **The film's frames are `frame_01` … `frame_48` in a FLAT folder.** | `Build.EnsureSheets` | `Resources/Sheets` is keyed by basename, and `frame_NN` is a generic name. A second film staged there would silently become the same sheet. | `StagedSheetNames()` now returns all 74 names and `FlowShots.SheetLedger` asserts they are unique — that assertion is exactly what this list growing is guarded by. The film is NOT also mirrored under `Resources/Art`: one picture, one home, and `ArtBakeProbe` asserts `Resources/Art/title/video` does not exist. |
+| DB-B6 | **Everything under `Resources` ships, asked for or not.** | `Assets/Resources/Art` | Unity cannot strip that folder. 149 files is small, but the pattern must not be extended to optional content. | Acceptable here because the whole set is game art that ships anyway. `PruneArtResources` runs on every build so a source that is deleted (the founder loops went from 36 frames to 12) does not leave a mirror entry shipping forever. |
+| DB-B7 | **`DraftSelectProbe`'s three streamed-queue scenarios changed meaning.** | `Editor/DraftSelectProbe.cs` | All 60 `chr_loop_*` frames are 368x368 and therefore baked, so "the ask must WAIT in the queue" is no longer true of them — the gate would have failed on its own subject. | The probe now asks `ArtCache.HasBaked(path)` first and asserts the matching contract: baked means answered inside `Play` with `Pending == 0`; streamed means queued, then pumped. Scenario 5 picks the first candidate that is still streamed and says which, and says so plainly when there is none left. |
+| DB-B8 | **A baked film was about to be leaked, not released.** | `SheetLoop.Release` | The baked branch of `StreamSequence` sets `_ownsTextures = false`, and `Release` then simply cleared the list — 36 MB of DXT1 left resident behind a title screen that had already gone. | `Release` now mirrors `ReleaseSheet`: `Destroy` when owned, `Resources.UnloadAsset` when borrowed. `PlaySheet` and `PlaySequence` also reset `_ownsTextures = true` at the top, so a player that showed a baked film once cannot carry `false` into a later streamed play and leak that instead. |
+| DB-B9 | **`PruneArtResources` DELETES assets.** | `Build.EnsureArtResources` | A path bug here deletes files. | Scoped to `Assets/Resources/Art` and nothing else: it enumerates that root, skips anything not ending `.png`, and deletes only what has no live, still-compressible source. The root directory itself is never removed. Exercised live: two planted entries with no source (one of them the only file in its folder) were deleted with their `.meta` and the empty folder went with them. |
+| DB-B10 | **The bytes-off-disk harnesses are untouched.** | `FlowShots.TypeTexture`, `InkRevealFilm`, `GlowShots`, `ReadingBeat.TextFx.DieSheet` | `FlowShots` line 243 explicitly wants the PNG's true 980x267 rather than the imported asset. | It reads `Assets/Art/...` through `File.ReadAllBytes`, which the mirror does not touch, and `title/layers/type_main.png` is 980x267 — not divisible by 4, so it is not mirrored at all. `DieSheet` reads the streamed dice copy, which never moved. |
+
+## D-BAKE-3. Verified, not guessed — `Editor/ArtBakeProbe.cs`
+
+```
+RUNWAY_ARTBAKE_OUT=<dir> Unity -batchmode -quit -projectPath unity \
+      -executeMethod Runway.EditorTools.ArtBakeProbe.Run
+echo $?          # 0 = every assertion held
+```
+
+It stages the mirror, imports it, and writes `report.txt`. **98 of 98 checks passed.**
+Nothing below is read out of a plan: every size, format and dimension is read back off
+the imported texture.
+
+```
+   149 drawings mirrored, 23.8MB of PNG source, staged and imported in 7.6s
+
+   path                             source      imported    fmt     held (old→new)
+   env/stage.png                    1536x1024   1536x1024   DXT1    6144 → 768 KB
+   env/select_stage_scene.png       2048x1360   2048x1360   DXT1   10880 → 1360 KB
+   env/floor.png                    1024x1024   1024x1024   DXT1    4096 → 512 KB
+   title/layers/base.png            1536x1024   1536x1024   DXT1    6144 → 768 KB
+   journal_icons/cash.png             256x256     256x256   BC7      256 → 64 KB
+   journal_icons/runway.png           256x256     256x256   BC7      256 → 64 KB
+   sprites/chr_loop_hacker_01.png     368x368     368x368   BC7      529 → 132 KB
+   sprites/chr_loop_dropout_01.png    368x368     368x368   BC7      529 → 132 KB
+   sprites/gv/board_1.png             632x420     632x420   BC7     1036 → 259 KB
+   title/anim/bill_01.png             436x396     436x396   BC7      674 → 168 KB
+
+   whole mirror:  119.5MB as RGBA32 → 25.0MB block compressed
+   the film:      288.0MB as RGBA32 → 36.0MB DXT1, all 48 frames
+```
+
+What each block of the report settles:
+
+- **The route.** All ten sample paths were answered INSIDE the `ArtCache.Load` call —
+  no runner, no `UnityWebRequest`, no decode, `Pending == 0` — and each incremented
+  `BakedRoute` by exactly one.
+- **The picture is the picture.** Every one of the 149 imported textures has its
+  source PNG's exact width and height. `npotScale` resampled nothing.
+- **The format split holds.** RGB sources landed as DXT1 (4 bits a pixel), RGBA
+  sources as BC7 (8). Nothing fell back to RGBA32, which is what a refused block
+  compression would have looked like. No texture carries a mip chain.
+- **The budget.** 25.0 MB for the whole mirror against the shipped 280 MB bar.
+- **The film answers `SheetLoop.BakedFrame`'s own key.** All 48 of
+  `Sheets/frame_NN`, all DXT1, all mip-free, and nothing duplicated under
+  `Resources/Art`.
+- **The sweep.** A forced full eviction (`Sweep(0, 0)`) with the editor's
+  destroy-an-asset error hooked: **0 errors**, all ten paths evicted, all ten reload
+  from Resources at the same size and format, and the first one goes round again
+  through `ArtCache` still on the baked route.
+
+## D-BAKE-4. What stayed streamed, and what unlocks it
+
+**`gen_scenes`, permanently.** `RunwayPaths.GenScenesDir` is written at runtime by
+`SceneDirector`. It cannot be imported because it does not exist at build time. That
+is the structural reason `ArtCache` is Resources-FIRST and stream-second rather than
+one or the other, and why `Pump`, `PumpBlocking`, the urgent-promotion queue and the
+absent-path memo all stay exactly as they were.
+
+**150 files whose source dimensions are not a multiple of 4.** They cost 96.9 MB of
+RGBA32 and 28.1 MB of PNG, and they are the whole remaining prize:
+
+| folder | files | what they are |
+|---|--:|---|
+| `title/anim` | 73 | `run_*` (48 at 334x297), `fire_*` (8 at 737x476), `smoke_*`, `sun_*`, `paper_*`, `type_main_*` |
+| `sprites` | 51 | every `env_*` prop, the `cf_*` crew faces, the `itm_*` items, `chr_founder_*`, and `founder.png` at 1920x1449 |
+| `sprites/gv` | 20 | all four `chart_*`, three of four `board_*`, all four `money_*`, the badges, `journal.png` |
+| `title/layers` | 6 | `fire`, `founder`, `papers`, `sun`, `type_main`, `type_press` |
+
+Each needs a trim (or extend) of 1 to 3 pixels in the source, offline. **Do not pad at
+import time**: `GameUi.Fit` sizes the display rect from `tex.width / tex.height` with
+no `uvRect`, so padding would draw and the aspect would shift. There is no code change
+waiting on the other side — `EnsureArtResources` re-reads the IHDR every build and
+stages whatever now qualifies.
+
+## D-BAKE-5. The seam: what this lane needs from the others
+
+- **The art lane owns the 150-file source-dimension pass**, listed above. It is worth
+  roughly 72 MB more of VRAM and it changes pixels, which is why it is not a config
+  lever.
+- **Three `ArtExists` guards own the app-size half** (DB-B4). Until
+  `TitleScreen`, `KeysScreen` and `FounderDraftScreen` ask whether a picture is
+  AVAILABLE rather than whether its PNG is on disk, both copies must ship and this
+  pass costs +61.0 MB instead of saving 30.9 MB. `DiceRoll.SheetOnHand` is the
+  pattern; `ArtCache.HasBaked` is the predicate.
+- **The energy probe should be re-run.** The columns that should move are `tex MB`
+  (down hard) and the `01`/`05` first-visit peaks; `fps` and `frame ms` should barely
+  move, because there was never a CPU problem. The title's 48-frame cold queue —
+  14.3 s of one-decode-per-frame at 30 fps in the worst case — is simply gone.
+- **`.gitignore` grew one line**, `unity/Assets/Resources/Art/`, beside the
+  `Resources/Sheets` line it mirrors. Both trees are build output regenerated from
+  `Assets/Art`.
+- **No build was run and no git command was issued** by this lane. The writes are
+  `App/Build.cs`, `Editor/SheetImport.cs`, `Game/ArtCache.cs`, `App/SheetLoop.cs`,
+  `Editor/DraftSelectProbe.cs`, the new `Editor/ArtBakeProbe.cs`, `.gitignore` and
+  this section.
+
+---
+
+# D-LOCAL — THE LOCAL NARRATOR SEAM — `LLM/LocalLlm.cs` + `LLM/LocalLlmCanned.cs` + `LLM/LocalLlmUnityAdapter.cs` + `Editor/LocalNarratorProbe.cs`
+
+The wiring for a local GGUF backend behind `RUNWAY_LOCAL_LLM=1`, at the scope the
+dossier's pilot asks for: the clarify tier only, no package installed, no model
+downloaded. `unity/briefs/LOCAL-NARRATOR-dossier.md` holds the verdict, the API
+mapping and the packaging rules; its WIRING STATUS section holds the two activation
+steps.
+
+What actually landed in the tree:
+
+| File | State | Lines |
+|---|---|---|
+| `Assets/Scripts/LLM/LocalLlm.cs` | new — `ILocalCompletion`, `LocalLlmRouter`, `LocalJson` | 458 |
+| `Assets/Scripts/LLM/LocalLlmCanned.cs` | new — the deterministic test backend | 122 |
+| `Assets/Scripts/LLM/LocalLlmUnityAdapter.cs` | new, **entirely behind `#if RUNWAY_LLMUNITY`** | 331 |
+| `Assets/Scripts/Editor/LocalNarratorProbe.cs` | new — the gate | 461 |
+| `Assets/Scripts/LLM/LlmClient.cs` | edited — one seam call plus its comment | +7 |
+
+Nothing else was touched. `Boot.cs`, `EventGenerator.cs` and `Packages/manifest.json`
+are untouched on purpose — see DL-B1.
+
+## D-LOCAL-1. Blocking risks — these stop a compile if they are wrong
+
+| # | API | Where | Why uncertain | Fallback coded |
+|---|-----|-------|---------------|----------------|
+| DL-A1 | **Every LLMUnity symbol in the adapter** — `LLM`, `LLMAgent`, `LLMUnitySetup`, and the `LLMUnity` namespace itself | `LocalLlmUnityAdapter.cs`, all of it | This file has **never been compiled and cannot be** until the package is installed. Every name in it came from the dossier's read of LLMUnity v3.0.3 source, not from a compiler. `ProjectSettings.asset` has `scriptingDefineSymbols: {}`, so the define is unset and the file is an empty translation unit. | The `#if RUNWAY_LLMUNITY` guard wraps the file including its `using` block, so a tree with no package compiles clean — **verified, 0 errors**. Setting the define WITHOUT adding the package produces a wall of `CS0246`, which is the correct and loud failure. Treat the first compile after the package lands as the real test of this file, and budget for it: the dossier's risk sheet lists four open Unity 6 / macOS install issues on that package. |
+| DL-A2 | `agent.grammar = string` as a settable property | `BuildClarifyAgent` | The dossier maps it as a property (`Runtime/LLMClient.cs:190,425`) but the same class also exposes `SetGrammar(string)`, and only one of the two is guaranteed public. | One line. If the property is not settable, `_clarify.SetGrammar(grammar)` is the swap, and the value passed is identical either way — llama.cpp takes our `JObject.ToString()` as a `json_schema` with no conversion layer. |
+| DL-A3 | `await LLMUnitySetup.DownloadFile(url, savePath, overwrite, callback, progressCallback)` | `Bring` | Read as returning an awaitable; the argument order and the callback types are from the dossier's `Runtime/LLMUnitySetup.cs:289`. | Deliberately the **non-editor-gated** call — their `LLMManager.Download*` family is all inside `#if UNITY_EDITOR` and is stripped from players. If the signature has moved, a plain `UnityWebRequest` to the same URL into the same path is a drop-in: nothing downstream knows how the file arrived, only that `File.Exists` says yes. |
+| DL-A4 | `await agent.Chat(user, null, null, false)` — the 4-argument overload | `Run` | The dossier cites `Runtime/LLMAgent.cs:269`. The fourth argument is `addToHistory` and it is the one that must be `false`; the two nulls are the streaming and completion callbacks. | If the overload differs, name the argument (`addToHistory: false`) rather than positioning it. Getting this wrong is not a compile error but a context-ceiling walk — see DL-B7. |
+| DL-A5 | `await _llm.WaitUntilReady()`, then the `started` / `failed` fields | `Bring` | `Runtime/LLM.cs:542,286,289`. | Both are read only to decide whether to build the agent; a miss means `Ready` stays false and the router falls through to the network, which is the same behaviour as no model. |
+| DL-A6 | `_clarify.llm = _llm` — the agent's host as a public field | `BuildClarifyAgent` | The dossier establishes that each agent gets its own native handle (`Runtime/LlamaLib/LLMAgent.cs:89`) but not how the host is bound in C#. | If it is a method or a `[SerializeField]`, this is one line. Note the dossier's own standing caution: that grammar is stored **per agent handle** rather than on the shared context is inferred from the C# and unproven in the native library. It does not matter for a one-agent pilot, and it must be proven with two agents holding different grammars before a second tier is added. |
+| DL-A7 | `EditorApplication.Exit(code)` | `LocalNarratorProbe.Run` | Editor-only surface. | The file is under `Assets/Scripts/Editor/`, the A-TAIL-2 / DS-A5 pattern. With `-quit` alone the editor exits 0 whatever the assertions did, so this is what makes the probe a gate. **Verified: 0 errors, exit 0.** |
+
+## D-LOCAL-2. Runtime risks — they compile, but may not do what the pilot wants
+
+| # | Thing | Where | Risk | Fallback coded |
+|---|-------|-------|------|----------------|
+| DL-B1 | **A keyless player still cannot reach this.** | `EventGenerator.Live` | The seam sits ABOVE `LlmClient.Enabled` in `RequestJson`, so the local path is open to a keyless client — the probe drives exactly that. But `EventGenerator.Live` is `Llm != null && Llm.Enabled`, and `Clarify()` returns early on `!Live`. So today the pilot lights up on a machine that ALSO has a key, which proves the machinery and not yet the feature. | **Stated, not fixed** — it is the dossier's own section (a): extract `ILlmClient`, give `Enabled` a local answer, change two field types in `Boot` and `EventGenerator`. ~16 edited lines across two files this wiring lane was scoped out of. Doing it silently would have put experimental routing in front of every live run's `Live` gate. |
+| DL-B2 | **The watchdog needs a host that pumps coroutines.** | `LocalLlmRouter.Watch` | It runs on the `MonoBehaviour` the request came through (`LlmClient` itself). Outside play mode nothing pumps it, and a backend that never calls back would leave the request unanswered forever. | A backend that answers inside `Complete` never starts the clock at all, which is why the canned deck is synchronous and the probe needs no frames. In a player the host is live. The real bound on a runaway model is `numPredict`, capped at 64 for clarify, not the clock. |
+| DL-B3 | **Two clocks, and they must not fight.** | `LocalLlmRouter.WatchdogSeconds` = 40s vs `LlmClient`'s 50s for clarify | They never run on the same request — one guards the local path, the other the network path — but 40 is deliberately under 50 so that a local stall still dies inside the wait the beat narrates, and so the ordering stays right if a fall-through is ever added after a local failure. | If clarify's network budget is ever lowered, lower this with it. |
+| DL-B4 | **The schema check catches shape, never sense.** | `LocalJson.Fits` | A small model under a grammar returns structurally perfect and semantically empty output — the dossier calls this the worst failure mode we could ship, because it looks like it worked. This guard is blind to it by construction. | Two answers, both structural. The pilot is **clarify**, the one tier where the schema carries nearly all the quality burden (a boolean, an enum, one sentence under 90 chars). And `assess` is refused in `LocalLlmRouter.TryServe` itself, before any provider is consulted — the probe's phase 5 registers a backend that claims every tier and watches it get refused anyway. |
+| DL-B5 | **The canned deck must never ship enabled.** | `LocalLlmCanned` | With `RUNWAY_LOCAL_LLM=1` and `RUNWAY_LOCAL_LLM_CANNED=1` both exported, every clarify question in a run becomes one of five fixed sentences and nobody sees an error. `Env.Get` reads the live process environment for any key, so a stray export is enough. | It takes **two** flags, both opt-in, neither with any default. And the router announces it the moment it builds one — `LOCAL LLM: canned deck, no model — clarify is NOT being generated`, printed rather than warned, because release builds swallow warnings and that line is the only witness a shipped session gets. `LocalLlmRouter.Describe()` is the same sentence for whatever surface wants it; `Boot` does not call it yet, which is part of the DL-B1 activation. |
+| DL-B6 | **The flag is read once and cached.** | `LocalLlmRouter.Active` | A keys-screen save that reloads `Env` does not re-open this decision. | `Reset()` clears the flag, the provider and the counters together; the probe uses it between phases and a future keys-screen reload can call it. A run that never touches the keys screen reads the environment exactly once, which is the intended production behaviour. |
+| DL-B7 | **`addToHistory: false` is not optional.** | `LocalLlmUnityAdapter.Run` | Left at LLMUnity's default `true`, every clarify call accretes conversation history and walks into a 4,096-token context ceiling within a run. The symptom is a slow degradation, not an error. | Passed explicitly, and the reason is written at the call site rather than in a design note. Related: the system prompt and grammar are pinned once at agent construction, because llama.cpp caches the processed prefix and a varied system prompt throws away the 2,206-token prefill on every call. The adapter logs a line if either ever differs from what it pinned. |
+| DL-B8 | **The adapter marshals to the main thread by hand.** | `LocalLlmUnityAdapter.Update` | `Chat` bottoms out in `Task.Run`, so replies arrive on a pool thread, and callers touch Unity objects inside `cb`. Awaiting from a main-thread-started async method resumes on Unity's context *in practice*, but `RequestJson` returns void and this is started fire-and-forget. | A `Queue<Action>` drained in `Update`, rather than trusting the synchronization context — the dossier's own recommendation. Cost: if that GameObject is ever disabled, replies stop arriving and the router's watchdog answers null, which every caller handles. |
+| DL-B9 | **`Ready` is false for the whole download.** | `LocalLlmUnityAdapter` | 2.5 GB on first use. Every clarify request during it falls through. | That is the intended behaviour, not a gap: with a key it is the network, without one it is the authored path. `DownloadProgress` is exposed 0..1 for a curtain UI. The model goes to `persistentDataPath`, never StreamingAssets — writing into the .app invalidates the code signature and fails outright under quarantine translocation. |
+| DL-B10 | **There is no evict path.** | — | LLMUnity has no delete API at runtime or in the editor, and neither do we. A player who turns the feature off keeps 2.5 GB. | **Stated, not fixed.** It is a `File.Delete` on `LocalLlmUnityAdapter.ModelPath` plus our own bookkeeping, and it belongs with whatever UI offers the toggle. |
+
+## D-LOCAL-3. Verified, not guessed
+
+`bash tools/unity_compile.sh` → **0 unique compile errors, exit 0**, and
+`Runway.EditorTools.LocalNarratorProbe.Run` → **47 checks, 47 held, exit 0**, on the
+same tree, with no package installed and no model on disk.
+
+```
+Unity -batchmode -quit -nographics -projectPath unity \
+      -executeMethod Runway.EditorTools.LocalNarratorProbe.Run
+```
+
+Seven phases, and what each one settles:
+
+| # | Phase | What it proves |
+|---|---|---|
+| 1 | OFF | With the flag unset the seam is inert: the request is passed through and the keyless client answers it with the same single null it always did. This is the state every shipped build is in. |
+| 2 | NO PROVIDER | Flag on, nothing registered — still the network's. The "AND a provider is present" clause is real. |
+| 3 | THE DECK | Three clarify calls served locally, each answered exactly once, each fitting `ClarifySchema` under `LocalJson.Fits`, and `needs_clarification` alternating true / false / true by call index. |
+| 4 | NOT THE WIRE | The same routing on a client whose `Enabled` is **true** — the network path fully open to it — and the request still never reaches it. |
+| 5 | THE NO-GO | A backend that claims every tier, `assess` included, is refused `assess` by the router and never even consulted. The permanent no-go is enforced in one place, not by provider manners. |
+| 6 | THE GUARD | An out-of-schema local reply is rejected and `null` reaches game code. Also checks `LocalJson.Fits` directly on a reply breaking four keywords at once, and on the `["number","string"]` union in the real `EventSchema`. |
+| 7 | ONCE ONLY | A backend that calls its callback twice delivers once, with the first answer. This is the guard the watchdog leans on: a late reply cannot land on a turn that already moved on. |
+
+**How phase 4 proves an absence.** "The network was not called" is not directly
+observable, so it is proven by what arrives instead. The callback fires
+**synchronously, inside `RequestJson`'s own stack frame, carrying a parsed
+`JObject`** — and the network path cannot do that in any mode. `Send` is handed to
+`StartCoroutine`, and the earliest it can hold a parsed object is past
+`while (!op.isDone) yield return null`, a yield by construction. The control request
+in the same phase shows what `Send` *can* do in one frame, and it is a `null`.
+
+**A correction to a claim two other lanes in this ledger reason from.**
+`DraftSelectProbe` and P0-F4 both say StartCoroutine is inert outside play mode. It
+is more precise than that, and phase 4 caught it: **the first synchronous segment of
+a coroutine DOES run in edit mode** — the control request's callback fired once,
+from `Send`'s unknown-provider branch, without a frame ever being pumped. A
+coroutine is inert from its FIRST YIELD onward, not from the call. Nothing in those
+lanes is wrong as a result (both reason about work that happens after a yield), but
+an edit-mode probe that expects a synchronous no-op from a coroutine's opening lines
+will be surprised.
+
+The probe reaches the network path with `Provider = "probe"`, which makes
+`LlmClient.Enabled` true while `Send` recognises only `"openai"` and `"anthropic"` —
+so the fall-through is genuinely exercised and no host is ever contacted. No probe
+in this ledger makes a network call.
+
+## D-LOCAL-4. The seam
+
+**In `LlmClient.RequestJson`, one call, above the `Enabled` gate:**
+
+```csharp
+if (LocalLlmRouter.TryServe(this, systemPrompt, userPrompt, schema, cb, opts)) return;
+```
+
+`true` means the router has taken the request and will call `cb`. `false` means the
+caller keeps going into the path it already had, having lost nothing — with the flag
+unset that decision is one string compare. Above the gate on purpose: a local
+backend's whole point is a run with no key.
+
+**What the rest of the game needs from this lane: nothing.** No new field types, no
+Boot branch, no manifest entry. The adapter installs itself from a
+`[RuntimeInitializeOnLoadMethod]` when the define is set and the flag is on.
+
+**What this lane needs from others, when the owner opts in:**
+
+- **The package and the define** — `Packages/manifest.json` gains
+  `"ai.undream.llm": "https://github.com/undreamai/LLMUnity.git#v3.0.3"`, and Player
+  Settings gains `RUNWAY_LLMUNITY`. Expect the first LlamaLib pull to be 1.82 GB and
+  to land on every editor domain reload until it is cached.
+- **The keyless answer (DL-B1)** — the `ILlmClient` extraction in the dossier's
+  section (a), which is what turns this from a proven seam into a feature a keyless
+  player can feel.
+- **A curtain slot for `DownloadProgress`**, if the model is ever fetched in front of
+  a player rather than by a developer.
+- **Nothing from the art, audio or run lanes.** This lane touches one shipped file,
+  by seven lines.

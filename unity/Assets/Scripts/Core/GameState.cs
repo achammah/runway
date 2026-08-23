@@ -103,7 +103,7 @@ namespace Runway.Core
     {
         [JsonProperty("name")] public string Name = "";
         [JsonProperty("unit")] public string Unit = "";
-        [JsonProperty("fair_price")] public double FairPrice = 1.0;
+        [JsonProperty("fair_price")] public double FairPrice = 0.0;   // 0 = unknown: pain falls back to price (Godot parity)
         [JsonProperty("elasticity")] public double Elasticity = 2.0;
         [JsonProperty("unit_cost")] public double UnitCost;
         [JsonProperty("price")] public double Price;
@@ -753,7 +753,10 @@ namespace Runway.Core
                     }
                     break;
                 case "coworking":
-                    if (HasFlag("launched") && Traction >= 25)
+                    // the SAME cushion law as office→floor: promotion into 5x
+                    // rent was bankrupting healthy companies at week 21 (C5 D5)
+                    if (HasFlag("launched") && Traction >= 25
+                        && Cash >= 6 * ERA_RENT["office"])
                     {
                         to = "office";
                         reason = "launched, and the numbers kept moving";

@@ -278,17 +278,24 @@ namespace Runway.Core
         /// </summary>
         public static List<Offer> DefaultOffers(string what, string who, Rng rng)
         {
+            // THE AUDIENCE SCALES THE INVOICE (C5 audit D1): only Software
+            // priced by `who` — a Consumer was billed at SMB rates across four
+            // thousand customers, a measured +$100k/wk money printer. Costs
+            // scale WITH price so margin holds. Twin of world_gen.gd.
+            double aud = who == "Consumer" ? 0.25 : (who == "Enterprise" ? 4.0 : 1.0);
             switch (what)
             {
                 case "Service":
                     return new List<Offer>
                     {
                         new Offer { Name = "standard session", Unit = "per session",
-                            FairPrice = rng.RandiRange(45, 85), Elasticity = 2.6,
-                            UnitCost = 18.0, Price = 0.0, Weight = 0.7 },
+                            FairPrice = rng.RandiRange(45, 85) * aud, Elasticity = 2.6,
+                            UnitCost = 18.0 * aud, Price = 0.0, Weight = 0.7 },
+                        // the premium lane is INELASTIC (C5 D2): pricing above
+                        // fair must be a real strategy somewhere, not a cliff
                         new Offer { Name = "premium package", Unit = "per package",
-                            FairPrice = rng.RandiRange(140, 260), Elasticity = 2.0,
-                            UnitCost = 55.0, Price = 0.0, Weight = 0.3 },
+                            FairPrice = rng.RandiRange(140, 260) * aud, Elasticity = 0.8,
+                            UnitCost = 55.0 * aud, Price = 0.0, Weight = 0.3 },
                     };
                 case "Hardware":
                     {
@@ -300,19 +307,21 @@ namespace Runway.Core
                         return new List<Offer>
                         {
                             new Offer { Name = "the device", Unit = "per unit",
-                                FairPrice = devFair, Elasticity = 1.8,
-                                UnitCost = devCost, Price = 0.0, Weight = 0.8 },
+                                FairPrice = devFair * aud, Elasticity = 0.9,
+                                UnitCost = devCost * aud, Price = 0.0, Weight = 0.8 },
                             new Offer { Name = "accessories", Unit = "per kit",
-                                FairPrice = kitFair, Elasticity = 2.4,
-                                UnitCost = 9.0, Price = 0.0, Weight = 0.2 },
+                                FairPrice = kitFair * aud, Elasticity = 2.4,
+                                UnitCost = 9.0 * aud, Price = 0.0, Weight = 0.2 },
                         };
                     }
                 case "Marketplace":
                     return new List<Offer>
                     {
-                        new Offer { Name = "take rate", Unit = "% of each order",
-                            FairPrice = rng.RandiRange(8, 18), Elasticity = 3.0,
-                            UnitCost = 1.0, Price = 0.0, Weight = 1.0 },
+                        // dollars per order, and SAYS so (C5 D7: a percent was
+                        // booked as dollars; 25% read as 3x-fair greed)
+                        new Offer { Name = "platform take, per order", Unit = "per order",
+                            FairPrice = rng.RandiRange(8, 18) * aud, Elasticity = 3.0,
+                            UnitCost = 1.0 * aud, Price = 0.0, Weight = 1.0 },
                     };
                 default:
                     {
@@ -325,7 +334,7 @@ namespace Runway.Core
                                 FairPrice = baseP, Elasticity = who != "Enterprise" ? 2.2 : 1.5,
                                 UnitCost = 3.0, Price = 0.0, Weight = 0.8 },
                             new Offer { Name = "annual plan", Unit = "per year",
-                                FairPrice = baseP * 10.0, Elasticity = 1.9,
+                                FairPrice = baseP * 10.0, Elasticity = 0.8,
                                 UnitCost = 30.0, Price = 0.0, Weight = 0.2 },
                         };
                     }

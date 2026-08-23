@@ -669,3 +669,135 @@ cost of the second milestone.
   today, but it does bear on how much we trust their setup path.
 - Their editor toggle is labelled "Download on Start"; the README calls it
   "Download on Build". Same flag, stale docs.
+
+## WIRING STATUS
+
+The pilot's plumbing is in the tree and proven. The model is not, and will not be
+until the owner opts in — nothing was downloaded, no package was added, and
+`Packages/manifest.json` is untouched.
+
+### What exists
+
+| File | What it is |
+|---|---|
+| `Assets/Scripts/LLM/LocalLlm.cs` | `ILocalCompletion`, the backend contract. `LocalLlmRouter`, the seam. `LocalJson.Fits`, the schema check on the way out. |
+| `Assets/Scripts/LLM/LocalLlmCanned.cs` | A deterministic backend that answers clarify from a fixed deck, so the routing is testable with no model. |
+| `Assets/Scripts/LLM/LocalLlmUnityAdapter.cs` | The LLMUnity backend, written to the mapping in section (a), entirely behind `#if RUNWAY_LLMUNITY`. Compiles to nothing today. |
+| `Assets/Scripts/Editor/LocalNarratorProbe.cs` | The gate. 47 checks, 47 held, exit 0. |
+| `Assets/Scripts/LLM/LlmClient.cs` | One seam call, seven lines including its comment. The only shipped file touched. |
+
+The seam, in `RequestJson`, above the `Enabled` gate:
+
+```csharp
+if (LocalLlmRouter.TryServe(this, systemPrompt, userPrompt, schema, cb, opts)) return;
+```
+
+It answers `true` only when the flag is `1`, a provider is registered and `Ready`,
+and the tier is `clarify`. Anything else returns `false` and the caller continues
+into the network path it already had. With the flag unset that decision is one
+string compare per request, which is what makes it safe to leave wired in.
+
+Three properties the router owns, because a local backend does not come with them
+the way a hosted API does:
+
+- **`assess` is refused in `TryServe` itself**, before any provider is consulted.
+  Probe phase 5 registers a backend that claims every tier and watches it get
+  refused anyway. The permanent no-go is enforced in one place, not by manners.
+- **A once-only answer.** The backend and the watchdog race for the same cell;
+  whichever arrives first is the only one game code ever sees, so a late reply
+  cannot land on a turn that already moved on.
+- **A schema check before the object reaches game code.** A grammar guarantees shape
+  only while the grammar actually held, and every step between the sampler and our
+  `JObject` is ours. A reply that does not fit becomes `cb(null)`, which is the
+  authored path every caller already has.
+
+**What is deliberately NOT wired: the keyless run.** The seam sits above
+`LlmClient.Enabled`, so the local path is open to a keyless client and the probe
+drives exactly that. But `EventGenerator.Live` is `Llm != null && Llm.Enabled`, and
+`Clarify()` returns early on `!Live`. So today the pilot lights up on a machine that
+also has a key — it proves the machinery, not yet the feature. Closing that is
+section (a) verbatim: extract `ILlmClient`, give `Enabled` a local answer, change two
+field types in `Boot` and `EventGenerator`. About 16 edited lines across two files,
+and the right moment for it is the same commit that adds the package, so that
+experimental routing never sits in front of a live run's `Live` gate for nothing.
+
+### Proving it today, with no model
+
+```bash
+bash tools/unity_compile.sh          # 0 errors
+
+RUNWAY_LOCAL_OUT=/tmp/d-local \
+Unity -batchmode -quit -nographics -projectPath unity \
+      -executeMethod Runway.EditorTools.LocalNarratorProbe.Run
+```
+
+Or in a real run, where every clarify question comes from the deck rather than the
+wire:
+
+```bash
+RUNWAY_LOCAL_LLM=1 RUNWAY_LOCAL_LLM_CANNED=1 ...
+```
+
+`RUNWAY_LOCAL_LLM_CANNED=poison` serves a deliberately out-of-schema reply, so the
+guard above can be watched catching it rather than assumed to.
+
+### The two activation steps
+
+1. **The package.** Add to `Packages/manifest.json`:
+
+   ```json
+   "ai.undream.llm": "https://github.com/undreamai/LLMUnity.git#v3.0.3"
+   ```
+
+   Its one dependency, `com.unity.nuget.newtonsoft-json`, is already at 3.2.1. There
+   are no asmdefs in this project, so its types land in Assembly-CSharp with no
+   assembly wiring. Budget for the first pull: `LlamaLib-v2.0.5.zip` is 1.82 GB and
+   arrives on editor domain reload, and the risk sheet lists four open Unity 6 /
+   macOS issues on that package. An install that does not work first try is expected.
+
+2. **The define.** Player Settings ▸ Other Settings ▸ Scripting Define Symbols, add
+   `RUNWAY_LLMUNITY`. `scriptingDefineSymbols` is `{}` today.
+
+Then run with `RUNWAY_LOCAL_LLM=1`. The adapter installs itself from a
+`[RuntimeInitializeOnLoadMethod]` — no edit to `Boot` — and fetches the model on
+first use. Two optional overrides: `RUNWAY_LOCAL_LLM_MODEL` (file name) and
+`RUNWAY_LOCAL_LLM_URL`.
+
+The default is **Qwen3-4B-Instruct-2507 Q4_K_M**, 2.50 GB, Apache 2.0, non-reasoning
+by construction. Do not swap it for anything in LLMUnity's curated list without
+re-reading section (b) first: every Qwen 3.5 entry there is a hybrid reasoning
+checkpoint, and constrained decoding is currently broken on that whole family.
+
+### The packaging rules, restated
+
+These are the ones that cost days if they are discovered late rather than read here.
+
+- **The model never enters the bundle, and never enters StreamingAssets.** LLMUnity's
+  own runtime download target on macOS desktop is
+  `<App>.app/Contents/Resources/Data/StreamingAssets`. Writing 2.5 GB there
+  invalidates the code signature, and an app still under quarantine runs from a
+  read-only translocated mount where the write simply fails. The adapter downloads
+  into `Application.persistentDataPath/models/` itself and hands `SetModel` the
+  absolute path, which `GetLLMManagerAssetRuntime` passes straight through.
+- **Their model list is frozen at build time**, and every `LLMManager.Download*` and
+  `SetDownloadOnStart` method is inside `#if UNITY_EDITOR`. A player has no supported
+  way to name a model at all. Rolling our own download sidesteps this too.
+- **The `LLM` GameObject stays disabled until the file is on disk.** `Awake` bails on
+  `!enabled`, and `SetModel` asserts the service has not started.
+- **There is no delete or evict API**, at runtime or in the editor. If players can
+  ever turn this off, we owe them a `File.Delete` and our own bookkeeping.
+- **Ship an Apple Silicon or Universal player.** A macOS build bundles both `osx-x64`
+  and `osx-arm64` and the loader picks by process architecture, so an Intel player
+  under Rosetta loads the x64 dylib, which has Metal compiled out, and silently runs
+  on CPU. Treat "why is it so slow on my M2" as a Rosetta question first.
+- **We sign and notarize; they have no signing step anywhere.** Four bundled dylibs
+  become ours to sign. Nothing in either repository mentions `codesign`, `notarize`,
+  Gatekeeper or quarantine. That is untested, not fine.
+- **Two defaults must be changed or every throughput number above is wrong.**
+  `numGPULayers` is 0 (Metal off) and `flashAttention` is false (LlamaLib emits
+  `-fa off`, it is not on auto). The adapter sets 999 and true.
+- **`numPredict` and `numThreads` both default to -1.** Unlimited generation on a
+  background thread reads as a multi-second freeze with no error, and -1 threads
+  starves the render thread. The adapter caps both.
+
+Full risk ledger for what landed: `unity/COMPILE-RISKS.md`, section **D-LOCAL**.

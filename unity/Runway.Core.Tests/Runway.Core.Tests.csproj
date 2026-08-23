@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="EconomyProbe.cs" />
     <Compile Include="../Assets/Scripts/Core/*.cs" />
   </ItemGroup>
 
