@@ -75,7 +75,8 @@ end tell
 APPLESCRIPT
 done
 sync
-hdiutil detach "$DEV" >/dev/null
+osascript -e 'tell application "Finder" to close every window' >/dev/null 2>&1 || true
+hdiutil detach "$DEV" >/dev/null 2>&1 || (sleep 3; hdiutil detach "$DEV" -force >/dev/null)
 hdiutil convert "$DIST/runway_unity_rw.dmg" -format UDZO -o "$DMG" >/dev/null
 rm -f "$DIST/runway_unity_rw.dmg"
 rm -rf "$STAGE"
