@@ -9,7 +9,7 @@ DIST="$ROOT/dist"
 STAGE="$DIST/dmg_stage"
 APP="$DIST/RUNWAY!.app"
 DMG="$DIST/RUNWAY.dmg"
-BG="$DIST/dmg_bg.png"
+BG="$DIST/dmg_bg.tiff"   # hidpi 1x+2x pack: Finder draws backgrounds at NATIVE pixels
 
 mkdir -p "$DIST"
 rm -rf "$APP" "$STAGE" "$DMG"
@@ -26,7 +26,7 @@ echo "── staging the DMG ──"
 mkdir -p "$STAGE/.background"
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
-[ -f "$BG" ] && cp "$BG" "$STAGE/.background/bg.png"
+[ -f "$BG" ] && cp "$BG" "$STAGE/.background/bg.tiff"
 
 echo "── building the DMG ──"
 hdiutil create -volname "RUNWAY!" -srcfolder "$STAGE" -ov -format UDRW "$DIST/runway_rw.dmg" >/dev/null
@@ -46,7 +46,7 @@ tell application "Finder"
     set arrangement of viewOptions to not arranged
     set icon size of viewOptions to 128
     try
-      set background picture of viewOptions to file ".background:bg.png"
+      set background picture of viewOptions to file ".background:bg.tiff"
     end try
     set position of item "RUNWAY!.app" of container window to {224, 360}
     set position of item "Applications" of container window to {672, 360}
