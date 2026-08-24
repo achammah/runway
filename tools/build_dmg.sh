@@ -35,7 +35,7 @@ done
 
 echo "── building the DMG ──"
 hdiutil create -volname "RUNWAY!" -srcfolder "$STAGE" -ov -format UDRW "$DIST/runway_rw.dmg" >/dev/null
-DEV=$(hdiutil attach -readwrite -noverify -noautoopen "$DIST/runway_rw.dmg" | awk '/\/Volumes\//{print $1; exit}')
+DEV=$(hdiutil attach -readwrite -noverify -noautoopen -nobrowse "$DIST/runway_rw.dmg" | awk '/\/Volumes\//{print $1; exit}')
 VOL="/Volumes/RUNWAY!"
 sleep 1
 # window layout: icon view, background, app left, Applications right
@@ -53,8 +53,8 @@ tell application "Finder"
     try
       set background picture of viewOptions to file ".background:bg.tiff"
     end try
-    set position of item "RUNWAY!.app" of container window to {268, 368}
-    set position of item "Applications" of container window to {628, 368}
+    set position of item "RUNWAY!.app" of container window to {268, 244}
+    set position of item "Applications" of container window to {628, 244}
     repeat with h in {".background", ".fseventsd", ".Spotlight-V100", ".Trashes"}
       try
         set position of item h of container window to {1400, 1400}
@@ -70,7 +70,6 @@ APPLESCRIPT
 VOLPATH=$(df | awk -v d="$DEV" '$1==d {print substr($0, index($0,"/Volumes/"))}')
 [ -n "$VOLPATH" ] && {
   chflags hidden "$VOLPATH/.background" 2>/dev/null || true
-  mdutil -i off "$VOLPATH" >/dev/null 2>&1 || true
   rm -rf "$VOLPATH/.fseventsd" "$VOLPATH/.Spotlight-V100" \
          "$VOLPATH/.Trashes" "$VOLPATH/.TemporaryItems" 2>/dev/null || true
 }
