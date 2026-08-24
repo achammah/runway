@@ -55,6 +55,11 @@ tell application "Finder"
     end try
     set position of item "RUNWAY!.app" of container window to {268, 368}
     set position of item "Applications" of container window to {628, 368}
+    repeat with h in {".background", ".fseventsd", ".Spotlight-V100", ".Trashes"}
+      try
+        set position of item h of container window to {1400, 1400}
+      end try
+    end repeat
     close
     open
     delay 1
@@ -65,8 +70,9 @@ APPLESCRIPT
 VOLPATH=$(df | awk -v d="$DEV" '$1==d {print substr($0, index($0,"/Volumes/"))}')
 [ -n "$VOLPATH" ] && {
   chflags hidden "$VOLPATH/.background" 2>/dev/null || true
-  rm -rf "$VOLPATH/.fseventsd" 2>/dev/null || true
   mdutil -i off "$VOLPATH" >/dev/null 2>&1 || true
+  rm -rf "$VOLPATH/.fseventsd" "$VOLPATH/.Spotlight-V100" \
+         "$VOLPATH/.Trashes" "$VOLPATH/.TemporaryItems" 2>/dev/null || true
 }
 sync
 osascript -e 'tell application "Finder" to close every window' >/dev/null 2>&1 || true
