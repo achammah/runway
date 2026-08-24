@@ -240,7 +240,9 @@ namespace Runway.App
                 if (frame == _lineFrame) return;
                 _lineFrame = frame;
                 float qt = frame / LoopFps;   // the quantized clock drives the same curves
-                if (_line.text != ConsideringLine) _line.text = ConsideringLine;
+                string want = Runway.Llm.LlmClient.Struggling
+                    ? ConsideringLine + "  (network trouble — retrying)" : ConsideringLine;
+                if (_line.text != want) _line.text = want;
                 float a = Mathf.Clamp01((qt - 0.9f) * 2f)
                           * (0.75f + 0.25f * Mathf.Sin(qt * 2.2f));
                 if (_plaqueGroup != null) _plaqueGroup.alpha = a;

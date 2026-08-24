@@ -53,8 +53,8 @@ tell application "Finder"
     try
       set background picture of viewOptions to file ".background:bg.tiff"
     end try
-    set position of item "RUNWAY!.app" of container window to {224, 360}
-    set position of item "Applications" of container window to {672, 360}
+    set position of item "RUNWAY!.app" of container window to {268, 368}
+    set position of item "Applications" of container window to {628, 368}
     close
     open
     delay 1
@@ -62,6 +62,12 @@ tell application "Finder"
   end tell
 end tell
 APPLESCRIPT
+VOLPATH=$(df | awk -v d="$DEV" '$1==d {print substr($0, index($0,"/Volumes/"))}')
+[ -n "$VOLPATH" ] && {
+  chflags hidden "$VOLPATH/.background" 2>/dev/null || true
+  rm -rf "$VOLPATH/.fseventsd" 2>/dev/null || true
+  mdutil -i off "$VOLPATH" >/dev/null 2>&1 || true
+}
 sync
 osascript -e 'tell application "Finder" to close every window' >/dev/null 2>&1 || true
 hdiutil detach "$DEV" >/dev/null 2>&1 || (sleep 3; hdiutil detach "$DEV" -force >/dev/null)

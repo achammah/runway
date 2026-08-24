@@ -325,6 +325,9 @@ namespace Runway.App
                 }
                 // live if it landed during the wait; the engine's own plain
                 // true entry if every attempt died (or there is no key)
+                if (!Driver.FoundingReady && birthScreen != null
+                    && Runway.Llm.LlmClient.Struggling)
+                    birthScreen.StatusLine = "the network is down — writing day one myself";
                 entry = Driver.AdoptAuthoredFounding();
             }
             if (birthScreen != null) birthScreen.StatusLine = "painting the room";

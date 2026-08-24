@@ -183,7 +183,9 @@ namespace Runway.Game
             if (_line != null)
             {
                 int dots = 1 + Mathf.FloorToInt(Mathf.Repeat(_t * 1.6f, 3f));
-                _line.text = StatusLine + new string('.', dots);
+                string net = Runway.Llm.LlmClient.Struggling
+                    ? "  (network trouble — retrying)" : "";
+                _line.text = StatusLine + new string('.', dots) + net;
                 float a = 0.82f + 0.18f * Mathf.Sin(_t * 2.4f);   // breathes, never unreadable
                 _line.color = DrawnUI.WithAlpha(_hasArt ? DrawnUI.Ink : DrawnUI.Cream, a);
             }

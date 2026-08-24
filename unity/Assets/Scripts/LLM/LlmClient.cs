@@ -49,6 +49,12 @@ namespace Runway.Llm
         /// beat/curtain narrate the wait.
         public const int TimeoutSeconds = 90;
 
+        /// THE NETWORK SPEAKS (owner, x4: "it should tell us if there are
+        /// network issues"): consecutive transport failures are a public
+        /// fact the loading lines read — silence while retrying is a lie.
+        public static int ConsecutiveFailures;
+        public static bool Struggling { get { return ConsecutiveFailures >= 2; } }
+
         // ══ SCHEMAS — ported verbatim from llm_client.gd ═══════════════════════
 
         /// Schema for generated event cards (shared shape with authored cards).
@@ -462,6 +468,7 @@ namespace Runway.Llm
                     wedged = true;
                     Debug.Log(string.Format(
                         "LLM WATCHDOG fired after {0:0}s — aborting the wedged request", wd));
+                ConsecutiveFailures++;
                     req.Abort();
                     break;
                 }
@@ -490,10 +497,12 @@ namespace Runway.Llm
                 // the only witness a shipped session gets
                 Debug.Log(string.Format("LLM request FAILED (result={0} http={1}): {2}",
                     err, code, Left(text, 300)));
+                ConsecutiveFailures++;
                 if (cb != null) cb(null);
                 yield break;
             }
 
+            ConsecutiveFailures = 0;
             JObject parsed = TryParse(text);
             if (parsed == null)
             {
