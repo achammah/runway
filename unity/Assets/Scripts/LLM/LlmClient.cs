@@ -159,12 +159,12 @@ namespace Runway.Llm
                 ""properties"": {
                   ""op"": {""type"": ""string"", ""enum"": [""cash_delta"", ""product_delta"",
                     ""traction_delta"", ""morale_delta"", ""hype_delta"", ""set_flag"",
-                    ""status"", ""clock"", ""set_price"", ""set_marketing"", ""hire"", ""take_loan"",
+                    ""status"", ""clock"", ""set_price"", ""price_offer"", ""set_marketing"", ""hire"", ""take_loan"",
                     ""spend"", ""set_budget""]},
                   ""v"": {""type"": [""number"", ""string""]},
                   ""why"": {""type"": ""string"", ""maxLength"": 90},
                   ""weeks"": {""type"": ""integer"", ""minimum"": 1, ""maximum"": 12},
-                  ""cat"": {""type"": ""string"", ""enum"": ["""", ""marketing"", ""sales"", ""care"", ""rnd"", ""one_off""]}
+                  ""cat"": {""type"": ""string"", ""enum"": ["""", ""marketing"", ""sales"", ""care"", ""rnd"", ""office"", ""one_off""]}
                 }
               }
             }

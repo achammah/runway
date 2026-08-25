@@ -38,6 +38,26 @@ namespace Runway.Core
         [JsonProperty("consequence")] public string Consequence = "";
     }
 
+    /// <summary>The week's honest P&L — one record the binder reads whole.</summary>
+    public sealed class Pnl
+    {
+        [JsonProperty("revenue")] public int Revenue;
+        [JsonProperty("cogs")] public int Cogs;
+        [JsonProperty("rent")] public int Rent;
+        [JsonProperty("payroll")] public int Payroll;
+        [JsonProperty("infra")] public int Infra;
+        [JsonProperty("marketing")] public int Marketing;
+        [JsonProperty("sales")] public int Sales;
+        [JsonProperty("care")] public int Care;
+        [JsonProperty("rnd")] public int Rnd;
+        [JsonProperty("office")] public int Office;
+        [JsonProperty("incident")] public int Incident;
+        [JsonProperty("liabilities_wk")] public int LiabilitiesWk;
+        [JsonProperty("burn")] public int Burn;
+        [JsonProperty("net")] public int Net;
+        [JsonProperty("learning")] public double Learning = 1.0;
+    }
+
     public sealed class Commitment
     {
         [JsonProperty("name")] public string Name = "";
@@ -107,6 +127,7 @@ namespace Runway.Core
         [JsonProperty("elasticity")] public double Elasticity = 2.0;
         [JsonProperty("unit_cost")] public double UnitCost;
         [JsonProperty("price")] public double Price;
+        [JsonProperty("price_set")] public bool PriceSet;   // a CONSCIOUS price choice, $0 included
         [JsonProperty("weight")] public double Weight = 1.0;
 
         public Offer Duplicate()
@@ -176,10 +197,11 @@ namespace Runway.Core
         [JsonProperty("sales")] public int Sales;
         [JsonProperty("care")] public int Care;
         [JsonProperty("rnd")] public int Rnd;
+        [JsonProperty("office")] public int Office;   // food, perks, benefits
 
         public int Sum()
         {
-            return Marketing + Sales + Care + Rnd;
+            return Marketing + Sales + Care + Rnd + Office;
         }
     }
 
@@ -259,6 +281,7 @@ namespace Runway.Core
         [JsonProperty("statuses")] public List<Status> Statuses = new List<Status>();
         [JsonProperty("clocks")] public List<Clock> Clocks = new List<Clock>();
         [JsonProperty("commitments")] public List<Commitment> Commitments = new List<Commitment>();
+        [JsonProperty("last_pnl")] public Pnl LastPnl;   // the binder reads the week whole
         [JsonProperty("pipeline")] public List<PipelineHire> Pipeline = new List<PipelineHire>();
         [JsonProperty("price_mult")] public double PriceMult = 1.0;
         [JsonProperty("marketing_budget")] public int MarketingBudget;

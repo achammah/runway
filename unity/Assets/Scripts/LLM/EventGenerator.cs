@@ -267,17 +267,22 @@ namespace Runway.Llm
             if (s.TechDebt >= 70f)
                 outLines.Add(string.Format("- Tech debt is {0}. The cracks are visible to customers.",
                     (int)s.TechDebt));
-            if (s.Launched && s.Offers != null)
+            // THE CATALOG IS ALWAYS ON THE DESK (owner: the world must know
+            // what we sell and at how much): every offer, one line each.
+            if (s.Offers != null)
             {
                 foreach (RunSnapshot.OfferRow o in s.Offers)
                 {
-                    if (o.Price <= 0f)
-                    {
-                        outLines.Add(string.Format(
-                            "- '{0}' has NO PRICE: it is not on sale and earns $0 however many sign up. If the plan sells, the week must confront this.",
-                            string.IsNullOrEmpty(o.Name) ? "an offer" : o.Name));
-                        break;
-                    }
+                    string onm = string.IsNullOrEmpty(o.Name) ? "an offer" : o.Name;
+                    string ounit = string.IsNullOrEmpty(o.Unit) ? "per order" : o.Unit;
+                    if (o.Price > 0f)
+                        outLines.Add(string.Format("- On sale: '{0}' at ${1} {2}.", onm, (int)o.Price, ounit));
+                    else if (o.PriceSet)
+                        outLines.Add(string.Format("- '{0}' is FREE ON PURPOSE (the founder chose $0) — it pays in users, not dollars.", onm));
+                    else if (o.FairPrice > 0f)
+                        outLines.Add(string.Format("- '{0}' has no set price: it bills at the going rate (~${1} {2}) until the founder names one. Use price_offer when the move prices it.", onm, (int)o.FairPrice, ounit));
+                    else
+                        outLines.Add(string.Format("- '{0}' has NO PRICE and no going rate: it earns $0. If the plan sells, the week must confront this.", onm));
                 }
             }
             return string.Join("\n", outLines.ToArray());
@@ -438,7 +443,9 @@ namespace Runway.Llm
             if (s.Offers != null)
             {
                 foreach (RunSnapshot.OfferRow o in s.Offers)
-                    offers.Add(new JObject { ["name"] = o.Name ?? "", ["priced"] = o.Price > 0f });
+                    offers.Add(new JObject { ["name"] = o.Name ?? "",
+                        ["priced"] = o.Price > 0f || o.PriceSet,
+                        ["price"] = o.Price, ["unit"] = o.Unit ?? "" });
             }
             var user = new JObject
             {

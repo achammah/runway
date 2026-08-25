@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -34,6 +35,7 @@ namespace Runway.Game
             new[] { "sales", "closing — every $600/wk closes like one more part-time seller" },
             new[] { "care", "retention — up to 30% less churn as care approaches $3k" },
             new[] { "rnd", "product — ships ~+1 quality per $1,200/wk and pays down debt" },
+            new[] { "office", "the office — food, perks, benefits; morale climbs toward +3/wk by ~$2k" },
         };
         static readonly int[] LeverSteps = { 0, 250, 500, 1000, 2000, 4000, 8000 };
 
@@ -56,6 +58,8 @@ namespace Runway.Game
         RectTransform _sheet;
         RectTransform _content;
         Image _tabRing;
+        readonly Dictionary<string, TextMeshProUGUI> _bangs =
+            new Dictionary<string, TextMeshProUGUI>();
         int _tab;
 
         /// TAB AND B TOGGLE, THEY DO NOT FIGHT. Both the room and the binder listen for
@@ -118,6 +122,16 @@ namespace Runway.Game
                 int idx = i;
                 GameUi.InkWord(_sheet, Tabs[i], 24f + i * 133f, 54f, 130f, 44f, 23f,
                     DrawnUI.Ink, () => { _tab = idx; Refresh(); });
+                // THE WARNING BANGS (owner: "! warnings on tab where things
+                // are unset"): pricing = something bills at the going rate ·
+                // the ledger = losing money · cap table = term sheets waiting.
+                if (Tabs[i] == "pricing" || Tabs[i] == "the ledger" || Tabs[i] == "cap table")
+                {
+                    var bang = DrawnUI.HandLabel(_sheet, "!", 24f + i * 133f + 103f,
+                        42f, 30f, DrawnUI.Coral, 30f);
+                    bang.gameObject.SetActive(false);
+                    _bangs[Tabs[i]] = bang;
+                }
             }
 
             GameUi.InkWord(_sheet, "×", 1180f, 8f, 52f, 52f, 46f, DrawnUI.Coral, Dismiss);
@@ -152,6 +166,13 @@ namespace Runway.Game
 
         void Refresh()
         {
+            TextMeshProUGUI bang2;
+            if (_bangs.TryGetValue("pricing", out bang2))
+                bang2.gameObject.SetActive(SimEngine.OffersAnyUnpriced(_st));
+            if (_bangs.TryGetValue("the ledger", out bang2))
+                bang2.gameObject.SetActive(_st.LastPnl != null && _st.LastPnl.Net < 0);
+            if (_bangs.TryGetValue("cap table", out bang2))
+                bang2.gameObject.SetActive(_st.HasFlag("fundraising_open"));
             for (int i = _content.childCount - 1; i >= 0; i--)
                 Destroy(_content.GetChild(i).gameObject);
             if (_tabRing != null)
@@ -287,7 +308,29 @@ namespace Runway.Game
                 10f, y + 40f, 25f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.75f));
             L(string.Format("levers total ${0}/wk · runway {1}", GameUi.Money(leverSum),
                 rw < 999 ? rw + " weeks" : "gaining money"), 10f, y + 108f, 28f);
+            // THE WEEK, HONESTLY (owner: a real business sim knows its running
+            // cost): the engine's own P&L record, every lane, the bottom line.
+            Pnl pnl = _st.LastPnl;
             float ry = y + 148f;
+            if (pnl != null)
+            {
+                L("last week, honestly:", 10f, ry, 28f, DrawnUI.Blue);
+                L(string.Format("in ${0}   ·   serving cost ${1}{2}",
+                    GameUi.Money(pnl.Revenue), GameUi.Money(pnl.Cogs),
+                    pnl.Learning < 0.995
+                        ? string.Format("  (learning curve ×{0:0.00})", pnl.Learning) : ""),
+                    10f, ry + 40f, 25f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.8f));
+                L(string.Format("out: rent ${0} · payroll ${1} · infra ${2} · levers ${3}{4}{5}",
+                    GameUi.Money(pnl.Rent), GameUi.Money(pnl.Payroll), GameUi.Money(pnl.Infra),
+                    GameUi.Money(pnl.Marketing + pnl.Sales + pnl.Care + pnl.Rnd + pnl.Office),
+                    pnl.Incident > 0 ? " · unforeseen $" + GameUi.Money(pnl.Incident) : "",
+                    pnl.LiabilitiesWk > 0 ? " · standing costs $" + GameUi.Money(pnl.LiabilitiesWk) + "/wk" : ""),
+                    10f, ry + 76f, 25f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.8f), 1100f);
+                L(string.Format("THE BOTTOM LINE: {0}${1} a week",
+                    pnl.Net >= 0 ? "+" : "−", GameUi.Money(Math.Abs(pnl.Net))),
+                    10f, ry + 116f, 30f, pnl.Net >= 0 ? DrawnUI.Sage : DrawnUI.Coral);
+                ry += 164f;
+            }
             if (rw <= 4 && rw < 999)
             {
                 L(string.Format("⚠ this spend kills the company in {0} weeks — cut it or earn it", rw),
@@ -334,6 +377,7 @@ namespace Runway.Game
                 case "sales": return _st.Budgets.Sales;
                 case "care": return _st.Budgets.Care;
                 case "rnd": return _st.Budgets.Rnd;
+                case "office": return _st.Budgets.Office;
             }
             return 0;
         }
@@ -346,6 +390,7 @@ namespace Runway.Game
                 case "sales": _st.Budgets.Sales = v; break;
                 case "care": _st.Budgets.Care = v; break;
                 case "rnd": _st.Budgets.Rnd = v; break;
+                case "office": _st.Budgets.Office = v; break;
             }
         }
 
@@ -377,6 +422,9 @@ namespace Runway.Game
                 case "rnd":
                     return v > 0 ? string.Format("+{0:0.0} product/wk, debt melts", v / 1200f)
                                  : "no extra shipping";
+                case "office":
+                    return v > 0 ? string.Format("+{0:0.0} morale/wk",
+                        3.0 * (1.0 - Mathf.Exp(-v / 800f))) : "instant coffee, cold room";
             }
             return "";
         }
@@ -397,11 +445,16 @@ namespace Runway.Game
             {
                 Offer o = _st.Offers[i];
                 L((o.Name ?? "?").ToUpper() + "  ·  " + (o.Unit ?? ""), 10f, y, 30f);
-                L("the street charges ≈ $" + GameUi.Money(Gd.ToInt(o.FairPrice)), 10f, y + 38f,
-                  23f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f));
-                if (o.Price <= 0.0)
-                    L("NOT ON SALE — set a price or it earns nothing", 430f, y + 6f, 27f,
-                      DrawnUI.Coral, 540f);
+                double ucEff = o.UnitCost * SimEngine.LearningCurve(_st);
+                L(string.Format("the street charges ≈ ${0}  ·  costs you ≈ ${1} to serve",
+                    GameUi.Money(Gd.ToInt(o.FairPrice)), GameUi.Money(Gd.RoundToInt(ucEff))),
+                    10f, y + 38f, 23f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), 600f);
+                if (o.Price <= 0.0 && o.PriceSet)
+                    L("FREE ON PURPOSE — pays in users, not dollars", 430f, y + 6f, 27f,
+                      DrawnUI.Blue, 540f);
+                else if (o.Price <= 0.0)
+                    L("! no price set — billing at the going rate $" + GameUi.Money(Gd.ToInt(o.FairPrice)),
+                      430f, y + 6f, 27f, DrawnUI.Coral, 540f);
                 else
                 {
                     double dem = SimEngine.OfferDemand(o, o.Price);
@@ -409,7 +462,8 @@ namespace Runway.Game
                         : (dem >= 1.15 ? string.Format("a deal — demand ×{0:0.0}", dem)
                         : (dem > 0.25 ? string.Format("pricey — {0}% of fair demand", (int)(dem * 100.0))
                         : "absurd — ~nobody buys"));
-                    L(string.Format("${0}   ·   {1}", GameUi.Money(Gd.ToInt(o.Price)), verdict),
+                    L(string.Format("${0}  ·  margin ${1}/unit  ·  {2}", GameUi.Money(Gd.ToInt(o.Price)),
+                        GameUi.Money(Gd.RoundToInt(o.Price - ucEff)), verdict),
                       430f, y + 6f, 28f, dem > 0.25 ? DrawnUI.Ink : DrawnUI.Coral, 540f);
                 }
                 Offer captured = o;
@@ -427,10 +481,14 @@ namespace Runway.Game
             }
             double arpu2 = SimEngine.OffersArpu(_st);
             if (arpu2 >= 0.0)
+            {
+                double cpc = SimEngine.OffersCogsPerCustomer(_st);
                 L(string.Format(
-                    "all offers together: ≈ ${0:0.0} per customer per week  →  ≈ ${1}/wk at {2} customers",
-                    arpu2, GameUi.Money(Gd.ToInt(arpu2 * _st.Traction)), _st.Traction),
-                    10f, y + 10f, 27f, DrawnUI.Blue);
+                    "all offers together: ≈ ${0:0.0} in − ${1:0.0} serving = ${2:0.0} margin per customer per week  →  ≈ ${3}/wk at {4} customers",
+                    arpu2, cpc, arpu2 - cpc,
+                    GameUi.Money(Gd.ToInt((arpu2 - cpc) * _st.Traction)), _st.Traction),
+                    10f, y + 10f, 26f, DrawnUI.Blue, 1100f);
+            }
             L("the curve: price at the street's level and demand is fair · discount and demand "
               + "grows · overprice and it dies fast", 10f, y + 56f, 22f,
               DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f));
@@ -448,6 +506,7 @@ namespace Runway.Game
             for (int i = 0; i < steps.Count; i++) if (steps[i] <= o.Price) idx = i;
             idx = Gd.Clampi(idx + dir, 0, steps.Count - 1);
             o.Price = steps[idx];
+            o.PriceSet = true;   // the founder chose this — $0 included (a conscious giveaway)
         }
 
         // ── tab 3: customers (fog of war) ──────────────────────────────────────
@@ -619,6 +678,24 @@ namespace Runway.Game
             L("your slice today: $" + GameUi.Money(
                 Gd.ToInt(SimEngine.Valuation(_st) * _st.FounderPct / 100.0)),
                 540f, y + 128f, 30f, DrawnUI.Coral, 560f);
+            // what the NEXT round would cost, so dilution is never a surprise
+            int val = SimEngine.Valuation(_st);
+            if (val > 0)
+            {
+                int ask = (int)(val * 0.10);
+                double fairPct = (double)ask / (val + ask) * 100.0;
+                double warm = SimEngine.WarmthPct(_st);
+                double asked = fairPct * 1.3 * (1.0 - warm / 100.0);
+                L(string.Format(
+                    "raise ~${0} now → investors ask ≈ {1:0}%{2} · your {3:0}% would become ≈ {4:0}%",
+                    GameUi.Money(ask), asked,
+                    warm > 0.0 ? string.Format(" ({0:0}% off — they know you)", warm) : "",
+                    _st.FounderPct, _st.FounderPct * (1.0 - asked / 100.0)),
+                    540f, y + 186f, 24f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f), 620f);
+            }
+            if (_st.HasFlag("fundraising_open"))
+                L("! TERM SHEETS ARE ON THE TABLE — sign in the journal before they expire",
+                  40f, 480f, 27f, DrawnUI.Coral, 1100f);
         }
 
         const int PieSide = 430;      // `pie.set_deferred("size", Vector2(430, 430))`

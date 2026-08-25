@@ -492,6 +492,14 @@ namespace Runway.Game
             }, null, "founding");   // NO DICE ON DAY ONE; the founding tier gets the fast 50s watchdog
         }
 
+        /// THE ROOM NEVER STAYS BARREN (owner #208): a failed founding paint
+        /// gets re-kicked by the garage — the retained verdict re-enters the
+        /// director, which paints or fails honestly a second time.
+        public void RewarmFounding()
+        {
+            if (_foundingRes != null) WarmScene(_foundingRes);
+        }
+
         void WarmScene(JObject dm)
         {
             var director = Boot.Instance != null ? Boot.Instance.Director : null;

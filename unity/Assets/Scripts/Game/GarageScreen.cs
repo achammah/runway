@@ -84,6 +84,11 @@ namespace Runway.Game
         RectTransform _openBtn;
         TextMeshProUGUI _openWord;
         TextMeshProUGUI _paintRibbon;
+        TextMeshProUGUI _binderBang;
+        int _rewarmsLeft = 1;   // one extra volley for a failed founding paint
+        float _warmWatchT;
+        RectTransform _coach;
+        int _coachStep;
         readonly Dictionary<string, RawImage> _spots = new Dictionary<string, RawImage>();
         /// what the STATE wants shown, kept apart from what is actually on screen — a
         /// painting hides the whole drawn room without the state forgetting its own room
@@ -166,6 +171,7 @@ namespace Runway.Game
             _spreads = new JournalSpreads(this, _journal);
 
             SyncRoom(true);
+            BuildCoach();
             StartWeek();
         }
 
@@ -350,6 +356,10 @@ namespace Runway.Game
             bbtn.transition = Selectable.Transition.None;
             bbtn.targetGraphic = bh;
             bbtn.onClick.AddListener(OpenBinder);
+            // THE WARNING BANG (owner): the binder doorway wears a coral !
+            // while any offer still bills at the going rate.
+            _binderBang = DrawnUI.HandLabel(Rect, "!", 1500f, 916f, 40f, DrawnUI.Coral, 40f);
+            _binderBang.gameObject.SetActive(false);
         }
 
         // ══ the painted room ═══════════════════════════════════════════════════
@@ -426,6 +436,58 @@ namespace Runway.Game
             }
         }
 
+        // ══ the live tutorial ══════════════════════════════════════════════════
+
+        const string CoachMark = "seen_coach_v1.unity";
+
+        /// THE LIVE TUTORIAL (owner: a first start walks the player through the
+        /// real screen): three pen chips in sequence — the room, the journal,
+        /// the binder — each advanced by a click, once per install.
+        void BuildCoach()
+        {
+            if (State == null || State.Week > 1) return;
+            if (System.IO.File.Exists(Runway.App.RunwayPaths.User(CoachMark))) return;
+            if (Runway.App.Env.Get("RUNWAY_USHOTS", "").Length > 0
+                || Runway.App.Env.Get("RUNWAY_UFLOW", "").Length > 0
+                || Runway.App.Env.Get("RUNWAY_UPERF", "").Length > 0) return;
+            _coachStep = 0;
+            ShowCoachStep();
+        }
+
+        void ShowCoachStep()
+        {
+            if (_coach != null) { Destroy(_coach.gameObject); _coach = null; }
+            string text; float x, y, w;
+            switch (_coachStep)
+            {
+                case 0:
+                    text = "your startup lives in this room. every week you write ONE move and the world answers with a die.\n\n(click to continue)";
+                    x = 500f; y = 380f; w = 540f;
+                    break;
+                case 1:
+                    text = "the journal is the week: open it, write what the company does, then LOCK IN. if the world needs a number or a price, it asks before the die rolls.\n\n(click to continue)";
+                    x = 420f; y = 700f; w = 560f;
+                    break;
+                case 2:
+                    text = "THE BINDER holds your prices, levers and ledger. a coral ! means something has no price yet \u2014 set one or the market bills the going rate.\n\n(click to start week 1)";
+                    x = 900f; y = 700f; w = 560f;
+                    break;
+                default:
+                    try { System.IO.File.WriteAllText(Runway.App.RunwayPaths.User(CoachMark), "1"); }
+                    catch (System.Exception) { }
+                    return;
+            }
+            _coach = GameUi.PaperSheet(Rect, x, y, w, 190f, 2, 4f, null, "coach");
+            DrawnUI.HandLabel(_coach, text, 26f, 24f, 26f, DrawnUI.Ink, w - 52f);
+            var hit = _coach.gameObject.AddComponent<Image>();
+            hit.color = new Color(0f, 0f, 0f, 0f);
+            hit.raycastTarget = true;
+            var btn = _coach.gameObject.AddComponent<Button>();
+            btn.transition = Selectable.Transition.None;
+            btn.targetGraphic = hit;
+            btn.onClick.AddListener(() => { _coachStep++; ShowCoachStep(); });
+        }
+
         // ══ the room reflects the state ════════════════════════════════════════
 
         public void SyncRoom(bool instant = false)
@@ -490,6 +552,55 @@ namespace Runway.Game
             if (State == null) return;
             _t += Time.unscaledDeltaTime;
             if (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.B)) OpenBinder();
+            if (_binderBang != null)
+                _binderBang.gameObject.SetActive(SimEngine.OffersAnyUnpriced(State)
+                    || (State.LastPnl != null && State.LastPnl.Net < 0)
+                    || State.HasFlag("fundraising_open"));
+
+            // THE ROOM NEVER STAYS BARREN (owner #208): while the founding room
+            // is unpainted, watch the warm render — say so while it paints,
+            // re-kick one volley when it failed, mount it the moment it lands.
+            if (!_painted && State.Week <= 1)
+            {
+                _warmWatchT += Time.unscaledDeltaTime;
+                if (_warmWatchT >= 1f)
+                {
+                    _warmWatchT = 0f;
+                    var d = Boot.Instance != null ? Boot.Instance.Director : null;
+                    var drv = RunDriver.Current;
+                    bool live = Boot.Instance != null && Boot.Instance.Llm != null
+                                && Boot.Instance.Llm.Enabled;
+                    if (d != null)
+                    {
+                        if (d.WarmStatus == Runway.Llm.PaintStatus.Painting)
+                        {
+                            SetPainting(true);
+                        }
+                        else if (d.WarmStatus == Runway.Llm.PaintStatus.Done && d.WarmName.Length > 0)
+                        {
+                            string done = System.IO.Path.Combine(
+                                Runway.App.RunwayPaths.GenScenesDir, d.WarmName + ".png");
+                            if (System.IO.File.Exists(done)) AdoptComposed(done, true);
+                            SetPainting(false);
+                        }
+                        else if (d.WarmStatus == Runway.Llm.PaintStatus.Failed
+                                 && _rewarmsLeft > 0 && drv != null && live)
+                        {
+                            _rewarmsLeft--;
+                            drv.RewarmFounding();
+                            SetPainting(true);
+                        }
+                        else
+                        {
+                            SetPainting(false);
+                        }
+                    }
+                }
+                if (_paintRibbon != null)
+                    _paintRibbon.text = Runway.Llm.LlmClient.Struggling
+                        ? "\u270e your room is being painted\u2026 (network trouble \u2014 retrying)"
+                        : "\u270e your room is being painted\u2026";
+            }
 
             // THE ROOM BREATHES ON THE ROOM'S OWN CLOCK — 12fps, like everything drawn.
             float t = Mathf.Floor(_t * BreathFps) / BreathFps;

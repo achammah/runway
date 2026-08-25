@@ -66,6 +66,9 @@ namespace Runway.Llm
                     {
                         Name = o.Name ?? "",
                         Price = (float)o.Price,
+                        Unit = o.Unit ?? "",
+                        FairPrice = (float)o.FairPrice,
+                        PriceSet = o.PriceSet,
                     });
             }
             s.Offers = offers.ToArray();

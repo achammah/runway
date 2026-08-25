@@ -182,11 +182,23 @@ func _directives(state: GameState) -> String:
 				int((c as Dictionary).get("weeks_left", 0)), String((c as Dictionary).get("consequence", ""))])
 	if state.tech_debt >= 70.0:
 		out.append("- Tech debt is %d. The cracks are visible to customers." % int(state.tech_debt))
-	if state.has_flag("launched"):
-		for o in state.offers:
-			if float((o as Dictionary).get("price", 0.0)) <= 0.0:
-				out.append("- '%s' has NO PRICE: it is not on sale and earns $0 however many sign up. If the plan sells, the week must confront this." % String((o as Dictionary).get("name", "an offer")))
-				break
+	# THE CATALOG IS ALWAYS ON THE DESK (owner: the world must know what we
+	# sell and at how much): every offer, its price and unit, in one line each.
+	for o in state.offers:
+		var od: Dictionary = o
+		var onm := String(od.get("name", "an offer"))
+		var oprice := float(od.get("price", 0.0))
+		var ounit := String(od.get("unit", "per order"))
+		if oprice > 0.0:
+			out.append("- On sale: '%s' at $%d %s." % [onm, int(oprice), ounit])
+		elif bool(od.get("price_set", false)):
+			out.append("- '%s' is FREE ON PURPOSE (the founder chose $0) — it pays in users, not dollars." % onm)
+		else:
+			var ofair := float(od.get("fair_price", 0.0))
+			if ofair > 0.0:
+				out.append("- '%s' has no set price: it bills at the going rate (~$%d %s) until the founder names one. Use price_offer when the move prices it." % [onm, int(ofair), ounit])
+			else:
+				out.append("- '%s' has NO PRICE and no going rate: it earns $0. If the plan sells, the week must confront this." % onm)
 	return "\n".join(out)
 
 ## Background prefetch of generated event cards.
@@ -277,7 +289,8 @@ func clarify(state: GameState, ev: Dictionary, move: String, cb: Callable) -> vo
 			"customers": state.traction, "crew": _crew_names(state),
 			"items": state.items, "budgets": state.budgets,
 			"offers": state.offers.map(func(o): return {
-				"name": o.get("name", ""), "priced": float(o.get("price", 0.0)) > 0.0})},
+				"name": o.get("name", ""), "priced": float(o.get("price", 0.0)) > 0.0 or bool(o.get("price_set", false)),
+				"price": float(o.get("price", 0.0)), "unit": String(o.get("unit", ""))})},
 		"event_card": {"title": String(ev.get("title", "")), "body": String(ev.get("body", "")).left(160)},
 		"move": move.substr(0, 300)})
 	llm.request_json(_clarify_prompt, user, LlmClient.CLARIFY_SCHEMA, func(res: Dictionary):

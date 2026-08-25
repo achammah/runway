@@ -1009,6 +1009,7 @@ var _worldgen_key := ""
 var _worldgen_inflight := false
 # day one's warm painting: "idle" | "painting" | "done" | "failed"
 var _warm_status := "idle"
+var _rewarms_left := 1   # one extra volley for a failed founding paint (owner #208)
 var _warm_name := ""
 var _book_showed_entry := false   # the reader actually saw the founding text
 
@@ -1830,6 +1831,15 @@ func _on_scene_ready(path: String) -> void:
 ## and the only trace is a line in the log for whoever is watching.
 func _on_scene_failed(reason: String) -> void:
 	if _warm_status == "painting":
+		# THE ROOM NEVER STAYS BARREN (owner #208): the first exhausted volley
+		# earns exactly one re-kick from the retained founding verdict before
+		# the reader is released to the drawn room.
+		if _rewarms_left > 0 and not _founding_res.is_empty() \
+				and generator != null and generator.llm.enabled():
+			_rewarms_left -= 1
+			print("TURN art WARM re-kick after failure: %s" % reason)
+			_warm_scene(_founding_res)
+			return
 		_warm_status = "failed"
 		if _screen is BookIntroScreen:
 			(_screen as BookIntroScreen).set_paint_done()   # release the reader

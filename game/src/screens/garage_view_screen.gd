@@ -46,6 +46,12 @@ var _world_busy := false           # main holds this true from beat-open to beat
 # move is missing the number/name/resource that changes the week)
 var _clarify := {}                 # {q, kind, base} while a question is on the page
 var _clarify_checked := false      # this commit already passed the pre-pass
+# THE ROUNDS (owner: "multiple rounds of questions/answers until no
+# ambiguity"): each answer re-runs the pre-pass on the merged move, up to 3
+# questions per commit, until it goes silent.
+var _clarify_rounds := 0
+var _price_asked := false
+var _binder_bang: Label = null
 var _seen_spreads := {}            # "week:page:sheet" -> the ink is already dry
 var _week_told := 0                # how much of the story sheet one got through
 ## The capture harness in main.gd reaches for the old two-page frames; both now
@@ -328,6 +334,17 @@ func _ready() -> void:
 	_style_button(bb, PALETTE["sage"], 24)
 	bb.pressed.connect(_open_binder)
 	add_child(bb)
+	# THE WARNING BANG (owner): the binder doorway wears a coral ! while any
+	# offer still bills at the going rate — set a price or make it consciously free.
+	_binder_bang = Label.new()
+	_binder_bang.text = "!"
+	_binder_bang.add_theme_font_override("font", _font)
+	_binder_bang.add_theme_font_size_override("font_size", 40)
+	_binder_bang.add_theme_color_override("font_color", PALETTE["coral"])
+	_binder_bang.position = Vector2(1500, 916)
+	_binder_bang.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_binder_bang.visible = false
+	add_child(_binder_bang)
 
 	_red_vignette = ColorRect.new()
 	_red_vignette.color = Color(0.85, 0.3, 0.25, 0.0)
@@ -363,6 +380,10 @@ func _process(_delta: float) -> void:
 	if _open_btn and _open_btn.visible:
 		var p := 1.0 + sin(t * 3.2) * 0.03
 		_open_btn.scale = Vector2(p, p)
+	if _binder_bang != null and state != null:
+		var pnl_g: Dictionary = state.get_meta("pnl", {})
+		_binder_bang.visible = SimEngine.offers_any_unpriced(state) \
+				or int(pnl_g.get("net", 0)) < 0 or state.has_flag("fundraising_open")
 	# the room itself panics about money: pulsing red edges when starving
 	if _red_vignette:
 		if state.weeks_in_red > 0:
@@ -2340,17 +2361,44 @@ func _commit_from_text() -> void:
 	if t == "":
 		_lock_week()
 		return
+	# ── THE PRICING LAW IS ENGINE-OWNED (owner #192): a selling company with
+	# not one price on the wall IS the clarification — it cannot depend on
+	# the model noticing. Fires once per commit; a conscious $0 (price_set)
+	# counts as priced.
+	if not _clarify_checked and not _price_asked and _clarify.is_empty() \
+			and (state.traction > 0 or state.has_flag("launched")) and not state.offers.is_empty():
+		var any_priced := false
+		var first_name := "the offer"
+		for i in range(state.offers.size()):
+			var od: Dictionary = state.offers[i]
+			if i == 0 and String(od.get("name", "")) != "":
+				first_name = String(od.get("name", ""))
+			if float(od.get("price", 0.0)) > 0.0 or bool(od.get("price_set", false)):
+				any_priced = true
+				break
+		if not any_priced:
+			_price_asked = true
+			var base_txt := _jp.written_text() if _jp != null and is_instance_valid(_jp) else String(_free_text.get(1, ""))
+			if OS.get_environment("RUNWAY_FULLRUN") != "" or OS.get_environment("RUNWAY_FIRSTFLOW") != "":
+				_free_text[1] = base_txt + " — we charge $100 for " + first_name
+				_commit_from_text()
+				return
+			_clarify = {"q": "customers are coming and nothing has a price — what does %s cost?" % first_name,
+				"kind": "price", "base": base_txt}
+			_show_spread()
+			return
+
 	# ── THE PRE-PASS: one luna question when the move hides its number ──
-	if not _clarify_checked and generator != null and generator.llm.enabled():
+	if not _clarify_checked and _clarify_rounds < 3 and generator != null and generator.llm.enabled():
 		_adjudicating = true
 		_lock_button()
 		generator.clarify(state, _current_event, t, func(cq: Dictionary) -> void:
 			_adjudicating = false
-			_clarify_checked = true
 			print("CLARIFY %s%s" % ["asks: " + String(cq.get("question", ""))
 					if bool(cq.get("needs_clarification", false)) else "silent",
 					" [" + String(cq.get("kind", "")) + "]" if bool(cq.get("needs_clarification", false)) else ""])
 			if bool(cq.get("needs_clarification", false)) and String(cq.get("question", "")) != "":
+				_clarify_rounds += 1
 				var auto := OS.get_environment("RUNWAY_FULLRUN") != "" \
 						or OS.get_environment("RUNWAY_FIRSTFLOW") != ""
 				if auto:
@@ -2370,9 +2418,12 @@ func _commit_from_text() -> void:
 					"kind": String(cq.get("kind", "other")), "base": t}
 				_show_spread()
 				return
+			_clarify_checked = true   # silence ends the rounds
 			_commit_from_text())
 		return
 	_clarify_checked = false
+	_clarify_rounds = 0
+	_price_asked = false
 	_adjudicating = true
 	_lock_button()   # the button itself answers: "the dice are out..."
 	state.log_action("wrote: %s" % t.left(80))
@@ -2424,7 +2475,9 @@ func _answer_clarify(ans: String) -> void:
 	var base := String(_clarify.get("base", ""))
 	_clarify = {}
 	_free_text[1] = base + " — " + ans
-	_clarify_checked = true
+	# the merged move goes back through the pre-pass (owner: rounds until no
+	# ambiguity); the round cap keeps the pace playable
+	_clarify_checked = _clarify_rounds >= 3
 	_commit_from_text()
 
 func _wire_clarify(te: TextEdit) -> void:
@@ -2618,6 +2671,36 @@ func _apply_dm_effects(effects: Array) -> Array:
 			"set_price":
 				state.price_mult = clampf(float(d.get("v", 1.0)), 0.5, 2.0)
 				out.append("price set to ×%.2f — %s" % [state.price_mult, why])
+			"price_offer":
+				# THE PRICE LANDS IN THE OFFER (owner: the world must know what
+				# we sell and at how much). cat = offer name, v = $ per unit;
+				# v=0 is a CONSCIOUS free choice (price_set), never a default.
+				var pv := clampf(float(d.get("v", 0.0)), 0.0, 50_000.0)
+				var pname := String(d.get("cat", "")).strip_edges()
+				var hit: Dictionary = {}
+				for po in state.offers:
+					var od2: Dictionary = po
+					var onm := String(od2.get("name", "")).to_lower()
+					if pname != "" and (onm.contains(pname.to_lower()) or pname.to_lower().contains(onm)):
+						hit = od2
+						break
+				if hit.is_empty():
+					for po2 in state.offers:
+						var od3: Dictionary = po2
+						if float(od3.get("price", 0.0)) <= 0.0 and not bool(od3.get("price_set", false)):
+							hit = od3
+							break
+				if hit.is_empty() and pname != "":
+					hit = {"name": pname, "unit": "per order", "fair_price": pv,
+						"elasticity": 2.0, "unit_cost": 0.0, "weight": 1.0}
+					state.offers.append(hit)
+				elif hit.is_empty() and not state.offers.is_empty():
+					hit = state.offers[0]   # everything priced: it's a reprice
+				if not hit.is_empty():
+					hit["price"] = pv
+					hit["price_set"] = true
+					out.append("%s priced at $%d — %s" % [String(hit.get("name", "the offer")), int(pv), why]
+						if pv > 0.0 else "%s is free on purpose — %s" % [String(hit.get("name", "the offer")), why])
 			"set_marketing":
 				state.marketing_budget = clampi(int(d.get("v", 0)), 0, 50_000)
 				out.append("marketing $%d/wk — %s" % [state.marketing_budget, why])
@@ -2648,7 +2731,7 @@ func _apply_dm_effects(effects: Array) -> Array:
 					out.append("the bank stopped it at $%d (wanted $%d) — money you don't have doesn't spend" % [can, want_amt])
 			"set_budget":
 				var cat := String(d.get("cat", "marketing"))
-				if not state.budgets.has(cat):
+				if not cat in ["marketing", "sales", "care", "rnd", "office"]:
 					cat = "marketing"
 				var wk_amt := clampi(int(d.get("v", 0)), 0, SimEngine.era_spend_cap(state.era))
 				state.budgets[cat] = wk_amt

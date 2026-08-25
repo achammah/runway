@@ -327,7 +327,9 @@ func _go() -> void:
 	ps.set_flag("launched")
 	ps.offers = [mo.duplicate()]
 	var r_unp := SimEngine.weekly_tick(ps)
-	_ok(int(r_unp.revenue) == 0, "unpriced offers earn ZERO with 100 customers")
+	# LAW OVERRULED by the owner ("10 customers but no money... IMPOSSIBLE"):
+	# unpriced no longer earns zero — it bills at the going (fair) rate.
+	_ok(int(r_unp.revenue) > 800, "unpriced offers bill at the going rate (%d)" % int(r_unp.revenue))
 	var ps2 := _state()
 	ps2.traction = 100
 	ps2.set_flag("launched")
@@ -364,6 +366,43 @@ func _go() -> void:
 	var r_own := SimEngine.weekly_tick(own)
 	_ok(int(r_own.revenue) >= 900 and int(r_own.revenue) <= 1300,
 		"16 x $70 session reads like founder math (%d/wk)" % int(r_own.revenue))
+	# THE BACKSTOP, PINNED (owner: "10 customers but no money... IMPOSSIBLE"):
+	# an unpriced offer bills at the going rate. Zero revenue with customers
+	# on the books cannot happen by algorithm.
+	var np := _state()
+	np.traction = 10
+	np.offers = [{"name": "consulting session", "unit": "per session",
+		"price": 0.0, "fair_price": 70.0, "unit_cost": 18.0, "weight": 1.0}]
+	var r_np := SimEngine.weekly_tick(np)
+	_ok(int(r_np.revenue) >= 550 and int(r_np.revenue) <= 850,
+		"10 unpriced customers pay the going rate (%d/wk)" % int(r_np.revenue))
+	_ok(SimEngine.offers_price_pain(np) == 1.0 and SimEngine.offers_demand_mult(np) >= 0.99,
+		"fair billing carries no pain and fair demand")
+	# THE OFFICE LANE: perks money buys morale, and it costs real burn.
+	var of_a := _state(); of_a.cash = 100_000
+	var of_b := _state(); of_b.cash = 100_000
+	of_b.budgets["office"] = 2000
+	for wk2 in range(8):
+		SimEngine.weekly_tick(of_a)
+		SimEngine.weekly_tick(of_b)
+	_ok(of_b.morale > of_a.morale,
+		"the office lane buys morale (%d vs %d)" % [of_b.morale, of_a.morale])
+	_ok(of_a.cash - of_b.cash >= 8 * 1500,
+		"office money is real burn (Δ$%d over 8 wks)" % (of_a.cash - of_b.cash))
+	# THE LEARNING CURVE: serving 1000 customers cheapens serving ~34%.
+	var lcs := _state()
+	lcs.set_meta("served_total", 1000)
+	_ok(SimEngine.learning_curve(lcs) > 0.6 and SimEngine.learning_curve(lcs) < 0.7,
+		"the learning curve pays at scale (×%.2f)" % SimEngine.learning_curve(lcs))
+	# THE P&L IDENTITY: the binder's record balances to the ledger.
+	var pns := _state(); pns.traction = 10
+	pns.offers = [{"name": "s", "unit": "per session", "price": 70.0,
+		"fair_price": 45.0, "unit_cost": 18.0, "weight": 1.0}]
+	SimEngine.weekly_tick(pns)
+	var pnl: Dictionary = pns.get_meta("pnl", {})
+	_ok(not pnl.is_empty() and int(pnl.net) == int(pnl.revenue) - int(pnl.burn) - int(pnl.liabilities_wk),
+		"the P&L balances (net %d = rev %d − burn %d − standing %d)" % [
+		int(pnl.get("net", 0)), int(pnl.get("revenue", 0)), int(pnl.get("burn", 0)), int(pnl.get("liabilities_wk", 0))])
 
 	# ── loan compounding punishes
 	var ln := _state()

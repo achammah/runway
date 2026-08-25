@@ -166,6 +166,7 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	# morale drifts toward a lived-in 50 (up when battered, down when coasting);
 	# statuses, red ink and events push around that baseline
 	var morale_wk := (50.0 - float(state.morale)) / 6.0
+	morale_wk += 3.0 * (1.0 - exp(-float(state.budgets.get("office", 0)) / 800.0))
 	for s2 in state.statuses:
 		morale_wk += float(STATUS.get(String((s2 as Dictionary).get("name", "")), {}).get("morale_wk", 0.0))
 	if state.cash < 0:
@@ -238,6 +239,10 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	var b_sales := float(bud.get("sales", 0))
 	var b_care := float(bud.get("care", 0))
 	var b_rnd := float(bud.get("rnd", 0))
+	# THE OFFICE LANE (owner: running a business is also salaries, benefits,
+	# rent, food — Bonopoly's training/retention molecule): a weekly budget
+	# for food, perks and benefits that buys morale and keeps people whole.
+	var b_office := float(bud.get("office", 0))
 	var mk_budget := b_mk
 	var mk_mult := 1.0 + 1.4 * (1.0 - exp(-mk_budget / float(th.cac_sat)))
 	var status_adopt := 1.0
@@ -261,9 +266,10 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	var price_demand := pow(maxf(state.price_mult, 0.1), -1.5)
 	var offer_mult := offers_demand_mult(state)
 	if offer_mult >= 0.0:
-		# offers exist: THEY are the price signal. Nothing on sale still lets
-		# people sign up out of interest (half rate) — but nobody pays.
-		price_demand = 0.5 if offer_mult == 0.0 else offer_mult
+		# offers exist: THEY are the price signal. Unpriced offers bill at
+		# fair (demand 1.0); a mult of ~0 now only means priced-to-the-moon,
+		# and the 0.1 clamp below is lifeline enough.
+		price_demand = offer_mult
 	var adds := (p_eff * P + wom) * clampf(price_demand, 0.1, 3.0)
 	# THE GTM CAPACITY CLAMP (tycoon's staffingBalance): demand is not closing.
 	# A tiny team can only land what its go-to-market can actually handle —
@@ -304,7 +310,11 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	var revenue := 0.0
 	if arpu_off >= 0.0:
 		revenue = float(state.traction) * arpu_off * status_arpu
-		if arpu_off == 0.0 and state.traction > 0:
+		if state.traction > 0 and offers_any_unpriced(state):
+			rep["lines"].append("no price on the wall — the market paid the going rate (~$%d/customer/wk). Name yours in THE BINDER." % int(round(arpu_off)))
+		elif state.traction > 0 and offers_any_free(state):
+			rep["lines"].append("free on purpose — the giveaway pays in users, not dollars.")
+		elif arpu_off == 0.0 and state.traction > 0:
 			rep["lines"].append("NOTHING IS ON SALE — %d customers, $0 revenue. Set prices in THE BINDER." % state.traction)
 	else:
 		revenue = float(state.traction) * float(th.arpu_wk) * state.price_mult * status_arpu
@@ -331,16 +341,60 @@ static func weekly_tick(state: GameState) -> Dictionary:
 		cogs = float(state.traction) * offers_cogs_per_customer(state)
 		if cogs >= 1.0:
 			rep["lines"].append("cost of serving customers: $%d" % int(round(cogs)))
-	var burn := int((float(rent + payroll + infra) + mk_budget + b_sales + b_care + b_rnd) * float(th.burn_mult) + cogs)
+	# the more you have served, the cheaper serving gets (Bonopoly's learning
+	# curve): the discount lives in offers_cogs_per_customer via served_total
+	state.set_meta("served_total", int(state.get_meta("served_total", 0)) + state.traction)
+	var burn := int((float(rent + payroll + infra) + mk_budget + b_sales + b_care + b_rnd + b_office) * float(th.burn_mult) + cogs)
+	# THE UNFORESEEN (owner: running a business includes what nobody planned):
+	# some weeks a small real cost lands — seeded, receipted, never a mystery.
+	var inc_r := _rng(state, 93)
+	var incident_cost := 0
+	if inc_r.randf() < 0.30:
+		incident_cost = int(float(rent + payroll + infra) * inc_r.randf_range(0.01, 0.04)) + inc_r.randi_range(20, 90)
+		var inc_what: Array = ["the printer died mid-invoice", "the fridge gave up",
+			"a parking fine found the van", "the wifi needed a new router",
+			"someone broke the good chair", "the same invoice arrived twice",
+			"a deposit nobody remembered came due", "the door lock jammed after hours"]
+		burn += incident_cost
+		rep["lines"].append("the unforeseen: −$%d (%s)" % [incident_cost,
+			String(inc_what[inc_r.randi_range(0, inc_what.size() - 1)])])
+	elif inc_r.randf() < 0.06 and state.week >= 4:
+		# THE STANDING LIABILITY (rare): some surprises do not leave — a rent
+		# bump, an insurance premium, a machine on a payment plan. It becomes a
+		# commitment the ledger pays and prints every week until it runs out.
+		var liab_pick: Array = [
+			{"name": "the landlord adjusts the rent", "wk": 8, "frac": 0.06},
+			{"name": "liability insurance, overdue", "wk": 6, "frac": 0.05},
+			{"name": "the compliance letter means a lawyer", "wk": 4, "frac": 0.08},
+			{"name": "the broken machine went on a payment plan", "wk": 6, "frac": 0.06},
+		]
+		var lb: Dictionary = liab_pick[inc_r.randi_range(0, liab_pick.size() - 1)]
+		var wkcost := -maxi(int(float(rent + payroll) * float(lb.get("frac", 0.06))), 40)
+		state.commitments.append({"name": String(lb.get("name", "a standing cost")),
+			"cash_wk": wkcost, "weeks_left": int(lb.get("wk", 6))})
+		rep["lines"].append("NEW STANDING COST: %s — $%d/wk for %d weeks" % [
+			String(lb.get("name", "a standing cost")), -wkcost, int(lb.get("wk", 6))])
 	state.cash += int(round(revenue)) - burn
+	var liab_wk := 0
+	for cm0 in state.commitments:
+		liab_wk += mini(int((cm0 as Dictionary).get("cash_wk", 0)), 0)
+	state.set_meta("pnl", {
+		"revenue": int(round(revenue)), "cogs": int(round(cogs)),
+		"rent": rent, "payroll": payroll, "infra": infra,
+		"marketing": int(mk_budget), "sales": int(b_sales), "care": int(b_care),
+		"rnd": int(b_rnd), "office": int(b_office), "incident": incident_cost,
+		"liabilities_wk": -liab_wk, "burn": burn,
+		"net": int(round(revenue)) - burn + liab_wk,
+		"learning": learning_curve(state),
+	})
 	if state.get_meta("prev_revenue", 0.0) > 1.0:
 		state.last_growth = clampf((revenue - float(state.get_meta("prev_revenue"))) / float(state.get_meta("prev_revenue")), -0.5, 0.5)
 	state.set_meta("prev_revenue", revenue)
 	rep["revenue"] = int(round(revenue))
 	rep["burn"] = burn
 	var lever_txt := ""
-	if b_sales + b_care + b_rnd > 0.0:
-		lever_txt = " · sales %d · care %d · rnd %d" % [int(b_sales), int(b_care), int(b_rnd)]
+	if b_sales + b_care + b_rnd + b_office > 0.0:
+		lever_txt = " · sales %d · care %d · rnd %d · office %d" % [int(b_sales), int(b_care), int(b_rnd), int(b_office)]
 	rep["lines"].append("$%d in · $%d out (rent %d · payroll %d · infra %d · marketing %d%s)" % [
 		int(round(revenue)), burn, rent, payroll, infra, int(mk_budget), lever_txt])
 	# ── UNIT ECONOMICS, computed honestly every week (the simulator SHOWS its
@@ -620,26 +674,58 @@ static func offer_cadence(unit: String) -> float:
 		return 0.2
 	return 0.5
 
-## REAL weekly revenue per customer across PRICED offers (0 when nothing is
-## on sale — an unpriced product earns nothing, however many sign up).
-## THE OWNER'S LAW (#196: "16 customers, $70 product, $200 revenue — the
-## math is not mathing"): the old form taxed EXISTING customers' spend by
-## price-demand and a hidden 0.25 cadence and quietly subtracted unit cost —
-## three silent multipliers between a founder's mental math and the number.
+## REAL weekly revenue per customer across offers. THE OWNER'S LAW (#196:
+## "16 customers, $70 product, $200 revenue — the math is not mathing"):
+## the old form taxed EXISTING customers' spend by price-demand and a
+## hidden 0.25 cadence and quietly subtracted unit cost — three silent
+## multipliers between a founder's mental math and the number.
 ## Now: demand gates ACQUISITION (adds) and pushes CHURN above fair price;
 ## existing customers simply pay their offer's price at its cadence, and
 ## the cost of serving them is a VISIBLE cogs line in burn.
+## THE BACKSTOP (owner: customers paying $0 "is IMPOSSIBLE"): an offer the
+## founder never priced bills at its FAIR price — the market pays the going
+## rate until a price is named. Zero revenue with customers on the books
+## cannot happen by algorithm, whatever the narrator missed.
 static func offers_arpu(state: GameState) -> float:
 	if state.offers.is_empty():
 		return -1.0   # legacy runs: fall back to theta arpu
 	var total := 0.0
 	for o in state.offers:
 		var od: Dictionary = o
-		var price := float(od.get("price", 0.0))
+		var price := offer_billed_price(od)
 		if price <= 0.0:
 			continue
 		total += float(od.get("weight", 1.0)) * price * offer_cadence(String(od.get("unit", "")))
 	return total
+
+## What an offer actually bills at: the founder's price, or the fair (going)
+## rate while unpriced. 0 only when the offer has neither.
+static func offer_billed_price(od: Dictionary) -> float:
+	var price := float(od.get("price", 0.0))
+	if price <= 0.0:
+		# a CONSCIOUS $0 (price_set) stays free — the founder overruled the
+		# backstop on purpose; only a never-priced offer bills at fair.
+		if bool(od.get("price_set", false)):
+			return 0.0
+		price = maxf(float(od.get("fair_price", 0.0)), 0.0)
+	return price
+
+## True when any offer is billing at the going rate instead of a named price.
+static func offers_any_unpriced(state: GameState) -> bool:
+	for o in state.offers:
+		var od: Dictionary = o
+		if float(od.get("price", 0.0)) <= 0.0 and float(od.get("fair_price", 0.0)) > 0.0 \
+				and not bool(od.get("price_set", false)):
+			return true
+	return false
+
+## True when any offer is consciously free (price_set at $0).
+static func offers_any_free(state: GameState) -> bool:
+	for o in state.offers:
+		var od: Dictionary = o
+		if bool(od.get("price_set", false)) and float(od.get("price", 0.0)) <= 0.0:
+			return true
+	return false
 
 ## The weekly cost of serving one customer's purchases (unit costs at the
 ## same cadence) — lands in burn where the ledger can show it.
@@ -647,13 +733,22 @@ static func offers_cogs_per_customer(state: GameState) -> float:
 	if state.offers.is_empty():
 		return 0.0
 	var total := 0.0
+	var lc := learning_curve(state)
 	for o in state.offers:
 		var od: Dictionary = o
-		if float(od.get("price", 0.0)) <= 0.0:
+		if offer_billed_price(od) <= 0.0 and not bool(od.get("price_set", false)):
 			continue
-		total += float(od.get("weight", 1.0)) * float(od.get("unit_cost", 0.0)) \
+		total += float(od.get("weight", 1.0)) * float(od.get("unit_cost", 0.0)) * lc \
 				* offer_cadence(String(od.get("unit", "")))
 	return total
+
+## THE LEARNING CURVE (Bonopoly): each 10× of customers ever served takes
+## ~11% off the unit serving cost, floored at 65% — scale earns its margin.
+static func learning_curve(state: GameState) -> float:
+	var served := int(state.get_meta("served_total", 0))
+	if served <= 1:
+		return 1.0
+	return maxf(1.0 - 0.115 * (log(float(served)) / log(10.0)), 0.65)
 
 ## Above fair price the invoice reminds people to leave: retention pain,
 ## 1.0 at or below fair, rising 0.4 per 100% over fair, capped at 1.6.
@@ -664,7 +759,7 @@ static func offers_price_pain(state: GameState) -> float:
 	var den := 0.0
 	for o in state.offers:
 		var od: Dictionary = o
-		var price := float(od.get("price", 0.0))
+		var price := offer_billed_price(od)   # fair-billed = no pain (ratio 1)
 		if price <= 0.0:
 			continue
 		var fair := maxf(float(od.get("fair_price", price)), 1.0)
@@ -688,8 +783,11 @@ static func offers_demand_mult(state: GameState) -> float:
 		var od: Dictionary = o
 		var wgt := float(od.get("weight", 1.0))
 		den += wgt
-		var price := float(od.get("price", 0.0))
-		num += wgt * (offer_demand(od, price) if price > 0.0 else 0.0)
+		var price := offer_billed_price(od)   # fair-billed = fair demand (1.0)
+		if price <= 0.0 and bool(od.get("price_set", false)):
+			num += wgt * 2.0   # free on purpose: the giveaway cap, not zero
+		else:
+			num += wgt * (offer_demand(od, price) if price > 0.0 else 0.0)
 	return clampf(num / maxf(den, 0.01), 0.0, 3.0) if den > 0.0 else 0.0
 
 ## What one week may plausibly spend at this stage — the DM's inputs are

@@ -49,11 +49,19 @@ signature closes a round.
   dropped, so never invent one.
 - `clock` — set a ticking deadline: v = the consequence sentence, weeks = when
   it FIRES (the engine fires it deterministically; you will be told).
+- `price_offer` — the founder NAMES A PRICE for what they sell ("we charge
+  $120 per session", the answer to a price question, a launch that states its
+  price): v = the dollar amount per unit. Lands on the first unpriced offer,
+  or reprices the first offer when all are priced. v=0 only when the move
+  EXPLICITLY makes it free on purpose. The state lines show the catalog and
+  which offers still bill at the going rate — a selling move that names its
+  price MUST carry this op, or the going rate keeps billing.
 - `set_price` (v = multiplier 0.5-2.0), `set_marketing` (v = $/week),
   `hire` (v = role: engineer/sales/support/designer/ops — onboards for 2 weeks,
   paid immediately), `take_loan` (v = $, 18%/week compounds).
 - `spend` — a ONE-OFF outlay the plan implies: v = dollars, cat = where it goes
-  (marketing/sales/care/rnd/one_off). The engine clamps to the era and to the
+  (marketing/sales/care/rnd/office/one_off — office is food, perks and
+  benefits; it buys morale). The engine clamps to the era and to the
   cash that actually exists — you name the number, the engine does the math.
 - `set_budget` — a RECURRING weekly spend the plan sets ("put 250/week behind
   ads"): v = dollars per week, cat as above. Replaces that lever's old value.
@@ -62,6 +70,10 @@ set_price 1.3). Use meter deltas only for what no lever expresses.
 
 ## THE MONEY LAW — money math is deterministic and engine-owned
 Money leaving the company is arithmetic, and arithmetic belongs to the engine.
+The engine already bills the ordinary friction of existing every week — rent,
+payroll, infra, serving costs, small unforeseen incidents, standing costs from
+past events. Never invent a cash_delta for routine overhead; your effects are
+for what THIS week's move and event add on top.
 You do not narrate a spend and then hand-price it into cash_delta; you emit the
 STRUCTURED INPUT (`spend` or `set_budget`) and the engine does the math.
 
@@ -226,7 +238,10 @@ set it — withholding an earned milestone stalls the run forever:
 Rules: at most ONE milestone flag per week; the move and your narration must
 actually earn it (writing "we launch" with v0.2 and zero users can still launch —
 badly — but a launch it is); a raise needs a believable path in the state
-(meetings taken, traction, a lead). Pair a closed round with its cash_delta.
+(meetings taken, traction, a lead). `seed_raised`/`series_a` are set by the
+ENGINE when a term sheet is signed — never set them yourself, and NEVER
+cash_delta round money: a raise move earns `fundraising_open` and nothing else.
+The cap table only moves at the signature, where dilution is priced.
 
 **Hard rules:**
 - effects[] has 0 to 3 entries. Empty `[]` is legal ('nothing much happens').

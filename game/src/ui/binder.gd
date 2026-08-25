@@ -25,6 +25,7 @@ const HAND := "res://assets/fonts/PatrickHand-Regular.ttf"
 const TABS := ["vitals", "the ledger", "pricing", "customers", "product", "crew", "cap table", "the street", "threats"]
 
 var state: GameState
+var _bangs := {}   # tab name → the coral ! while that desk needs attention
 var _font: Font
 var _tab := 0
 var _sheet: Control
@@ -73,6 +74,19 @@ func _ready() -> void:
 			_tab = idx
 			_refresh())
 		_sheet.add_child(b)
+		# THE WARNING BANGS (owner: "! warnings on tab where things are unset"):
+		# pricing = something bills at the going rate · the ledger = losing
+		# money · cap table = term sheets waiting.
+		if TABS[i] in ["pricing", "the ledger", "cap table"]:
+			var bang := Label.new()
+			bang.text = "!"
+			bang.add_theme_font_override("font", _font)
+			bang.add_theme_font_size_override("font_size", 30)
+			bang.add_theme_color_override("font_color", PEN)
+			bang.position = b.position + Vector2(103.0, -12.0)
+			bang.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_sheet.add_child(bang)
+			_bangs[TABS[i]] = bang
 
 	var close := Button.new()
 	close.flat = true
@@ -103,6 +117,13 @@ func _dismiss() -> void:
 
 # ─────────────────────────────── composition ────────────────────────────────
 func _refresh() -> void:
+	if _bangs.has("pricing"):
+		(_bangs["pricing"] as Label).visible = SimEngine.offers_any_unpriced(state)
+	if _bangs.has("the ledger"):
+		var pnl_b: Dictionary = state.get_meta("pnl", {})
+		(_bangs["the ledger"] as Label).visible = int(pnl_b.get("net", 0)) < 0
+	if _bangs.has("cap table"):
+		(_bangs["cap table"] as Label).visible = state.has_flag("fundraising_open")
 	for c in _content.get_children():
 		c.queue_free()
 	(_sheet as _Clipboard).active_tab = _tab
@@ -197,6 +218,7 @@ const LEVERS := [
 	["sales", "closing — every $600/wk closes like one more part-time seller"],
 	["care", "retention — up to 30% less churn as care approaches $3k"],
 	["rnd", "product — ships ~+1 quality per $1,200/wk and pays down debt"],
+	["office", "the office — food, perks, benefits; morale climbs toward +3/wk by ~$2k"],
 ]
 const LEVER_STEPS := [0, 250, 500, 1000, 2000, 4000, 8000]
 
@@ -248,6 +270,30 @@ func _tab_ledger() -> void:
 		("%d wks" % pb) if pb > 0 else "—"], Vector2(10, y + 40), 25, Color(INK, 0.75), 1100.0)
 	_label("levers total $%s/wk · runway %s" % [_fmt(lever_sum),
 		("%d weeks" % rw) if rw < 999 else "gaining money"], Vector2(10, y + 108), 28)
+	# THE WEEK, HONESTLY (owner: a real business sim knows its running cost):
+	# the engine's own P&L record, every lane, and the bottom line in ink.
+	var pnl: Dictionary = state.get_meta("pnl", {})
+	if not pnl.is_empty():
+		var py := y + 156.0
+		_label("last week, honestly:", Vector2(10, py), 28, BLUE)
+		_label("in $%s   ·   serving cost $%s%s" % [_fmt(int(pnl.get("revenue", 0))),
+			_fmt(int(pnl.get("cogs", 0))),
+			("  (learning curve ×%.2f)" % float(pnl.get("learning", 1.0))) if float(pnl.get("learning", 1.0)) < 0.995 else ""],
+			Vector2(10, py + 40), 25, Color(INK, 0.8))
+		_label("out: rent $%s · payroll $%s · infra $%s · levers $%s%s%s" % [
+			_fmt(int(pnl.get("rent", 0))), _fmt(int(pnl.get("payroll", 0))),
+			_fmt(int(pnl.get("infra", 0))),
+			_fmt(int(pnl.get("marketing", 0)) + int(pnl.get("sales", 0)) + int(pnl.get("care", 0)) + int(pnl.get("rnd", 0)) + int(pnl.get("office", 0))),
+			(" · unforeseen $%s" % _fmt(int(pnl.get("incident", 0)))) if int(pnl.get("incident", 0)) > 0 else "",
+			(" · standing costs $%s/wk" % _fmt(int(pnl.get("liabilities_wk", 0)))) if int(pnl.get("liabilities_wk", 0)) > 0 else ""],
+			Vector2(10, py + 76), 25, Color(INK, 0.8), 1100.0)
+		var net := int(pnl.get("net", 0))
+		_label("THE BOTTOM LINE: %s$%s a week" % ["+" if net >= 0 else "−", _fmt(absi(net))],
+			Vector2(10, py + 116), 30, (SAGE if net >= 0 else PEN))
+	for cm in state.commitments:
+		var cmd: Dictionary = cm
+		if int(cmd.get("cash_wk", 0)) < 0:
+			y += 0.0   # standing costs listed above; names print in the journal
 	if rw <= 4 and rw < 999:
 		_label("⚠ this spend kills the company in %d weeks — cut it or earn it" % rw,
 			Vector2(10, y + 148.0), 28, PEN)
@@ -275,6 +321,9 @@ func _lever_effect(cat: String, v: int) -> String:
 			return "churn −%d%%" % int(round(cut)) if v > 0 else "nobody picks up"
 		"rnd":
 			return "+%.1f product/wk, debt melts" % (float(v) / 1200.0) if v > 0 else "no extra shipping"
+		"office":
+			var mg := 3.0 * (1.0 - exp(-float(v) / 800.0))
+			return "+%.1f morale/wk" % mg if v > 0 else "instant coffee, cold room"
 	return ""
 
 func _lever_step(cur: int, dir: int) -> int:
@@ -308,15 +357,20 @@ func _tab_pricing() -> void:
 		var fair := float(o.get("fair_price", 1.0))
 		_label("%s  ·  %s" % [String(o.get("name", "?")).to_upper(), String(o.get("unit", ""))],
 			Vector2(10, y), 30)
-		_label("the street charges ≈ $%s" % _fmt(int(fair)), Vector2(10, y + 38), 23, Color(INK, 0.55))
-		if price <= 0.0:
-			_label("NOT ON SALE — set a price or it earns nothing", Vector2(430, y + 6), 27, PEN)
+		var uc_eff := float(o.get("unit_cost", 0.0)) * SimEngine.learning_curve(state)
+		_label("the street charges ≈ $%s  ·  costs you ≈ $%s to serve" % [
+			_fmt(int(fair)), _fmt(int(round(uc_eff)))], Vector2(10, y + 38), 23, Color(INK, 0.55))
+		if price <= 0.0 and bool(o.get("price_set", false)):
+			_label("FREE ON PURPOSE — pays in users, not dollars", Vector2(430, y + 6), 27, BLUE)
+		elif price <= 0.0:
+			_label("! no price set — billing at the going rate $%s" % _fmt(int(fair)), Vector2(430, y + 6), 27, PEN)
 		else:
 			var dem := SimEngine.offer_demand(o, price)
 			var verdict := "about fair" if dem > 0.85 and dem < 1.15 else \
 					("a deal — demand ×%.1f" % dem if dem >= 1.15 else \
 					("pricey — %d%% of fair demand" % int(dem * 100.0) if dem > 0.25 else "absurd — ~nobody buys"))
-			_label("$%s   ·   %s" % [_fmt(int(price)), verdict], Vector2(430, y + 6), 28,
+			_label("$%s  ·  margin $%s/unit  ·  %s" % [_fmt(int(price)),
+				_fmt(int(round(price - uc_eff))), verdict], Vector2(430, y + 6), 28,
 				INK if dem > 0.25 else PEN)
 		var minus := Button.new()
 		minus.text = "−"
@@ -340,9 +394,10 @@ func _tab_pricing() -> void:
 		y += 104.0
 	var arpu := SimEngine.offers_arpu(state)
 	if arpu >= 0.0:
-		_label("all offers together: ≈ $%.1f per customer per week  →  ≈ $%s/wk at %d customers" % [
-			arpu, _fmt(int(arpu * float(state.traction))), state.traction],
-			Vector2(10, y + 10), 27, BLUE)
+		var cpc := SimEngine.offers_cogs_per_customer(state)
+		_label("all offers together: ≈ $%.1f in − $%.1f serving = $%.1f margin per customer per week  →  ≈ $%s/wk at %d customers" % [
+			arpu, cpc, arpu - cpc, _fmt(int((arpu - cpc) * float(state.traction))), state.traction],
+			Vector2(10, y + 10), 26, BLUE, 1100.0)
 	_label("the curve: price at the street's level and demand is fair · discount and demand grows · overprice and it dies fast",
 		Vector2(10, y + 56), 22, Color(INK, 0.5), 1100.0)
 
@@ -360,6 +415,7 @@ func _price_step(oi: int, dir: int) -> void:
 			idx = i
 	idx = clampi(idx + dir, 0, steps.size() - 1)
 	o["price"] = float(steps[idx])
+	o["price_set"] = true   # the founder chose this — $0 included (a conscious giveaway)
 
 # ── tab 3: customers (fog of war) ────────────────────────────────────────────
 func _tab_customers() -> void:
@@ -478,6 +534,20 @@ func _tab_cap() -> void:
 	_label("valuation $%s" % _fmt(SimEngine.valuation(state)), Vector2(540, y + 80), 30)
 	_label("your slice today: $%s" % _fmt(int(SimEngine.valuation(state) * state.founder_pct / 100.0)),
 		Vector2(540, y + 128), 30, PEN)
+	# what the NEXT round would cost, so dilution is never a surprise
+	var val := SimEngine.valuation(state)
+	if val > 0:
+		var ask := int(float(val) * 0.10)
+		var fair_pct := float(ask) / float(val + ask) * 100.0
+		var warm := SimEngine.warmth_pct(state)
+		_label("raise ~$%s now → investors ask ≈ %.0f%%%s · your %.0f%% would become ≈ %.0f%%" % [
+			_fmt(ask), fair_pct * 1.3 * (1.0 - warm / 100.0),
+			(" (%.0f%% off — they know you)" % warm) if warm > 0.0 else "",
+			state.founder_pct, state.founder_pct * (1.0 - fair_pct * 1.3 * (1.0 - warm / 100.0) / 100.0)],
+			Vector2(540, y + 186), 24, Color(INK, 0.7), 620.0)
+	if state.has_flag("fundraising_open"):
+		_label("! TERM SHEETS ARE ON THE TABLE — sign in the journal before they expire",
+			Vector2(40, 480), 27, PEN, 1100.0)
 
 # ── tab 5: the street ────────────────────────────────────────────────────────
 ## Wrapped text is MEASURED, never assumed one line — fixed steps stacked the

@@ -451,7 +451,10 @@ namespace Runway.CoreTests
             ps.SetFlag("launched");
             ps.Offers = new List<Offer> { mo.Duplicate() };
             WeeklyReport rUnp = SimEngine.WeeklyTick(ps);
-            Ok(rUnp.Revenue == 0, "unpriced offers earn ZERO with 100 customers");
+            // LAW OVERRULED by the owner ("10 customers but no money...
+            // IMPOSSIBLE"): unpriced no longer earns zero — it bills at the
+            // going (fair) rate.
+            Ok(rUnp.Revenue > 800, "unpriced offers bill at the going rate (" + S(rUnp.Revenue) + ")");
             GameState ps2 = NewState();
             ps2.Traction = 100;
             ps2.SetFlag("launched");
@@ -488,6 +491,40 @@ namespace Runway.CoreTests
             WeeklyReport rOwn = SimEngine.WeeklyTick(own);
             Ok(rOwn.Revenue >= 900 && rOwn.Revenue <= 1300,
                 "16 x $70 session reads like founder math (" + S(rOwn.Revenue) + "/wk)");
+            // THE BACKSTOP, PINNED (owner: "10 customers but no money...
+            // IMPOSSIBLE"): an unpriced offer bills at the going rate. Zero
+            // revenue with customers on the books cannot happen by algorithm.
+            GameState np = NewState();
+            np.Traction = 10;
+            np.Offers = new List<Offer> { new Offer { Name = "consulting session",
+                Unit = "per session", Price = 0.0, FairPrice = 70.0,
+                UnitCost = 18.0, Weight = 1.0 } };
+            WeeklyReport rNp = SimEngine.WeeklyTick(np);
+            Ok(rNp.Revenue >= 550 && rNp.Revenue <= 850,
+                "10 unpriced customers pay the going rate (" + S(rNp.Revenue) + "/wk)");
+            Ok(SimEngine.OffersPricePain(np) == 1.0 && SimEngine.OffersDemandMult(np) >= 0.99,
+                "fair billing carries no pain and fair demand");
+            // THE OFFICE LANE: perks money buys morale, and it costs real burn.
+            GameState ofA = NewState(); ofA.Cash = 100000;
+            GameState ofB = NewState(); ofB.Cash = 100000;
+            ofB.Budgets.Office = 2000;
+            for (int wk2 = 0; wk2 < 8; wk2++) { SimEngine.WeeklyTick(ofA); SimEngine.WeeklyTick(ofB); }
+            Ok(ofB.Morale > ofA.Morale,
+                "the office lane buys morale (" + S(ofB.Morale) + " vs " + S(ofA.Morale) + ")");
+            Ok(ofA.Cash - ofB.Cash >= 8 * 1500,
+                "office money is real burn (Δ$" + S(ofA.Cash - ofB.Cash) + " over 8 wks)");
+            // THE LEARNING CURVE: serving 1000 customers cheapens serving ~34%.
+            GameState lcs = NewState();
+            lcs.SetMeta("served_total", 1000);
+            Ok(SimEngine.LearningCurve(lcs) > 0.6 && SimEngine.LearningCurve(lcs) < 0.7,
+                "the learning curve pays at scale (×" + S2(SimEngine.LearningCurve(lcs)) + ")");
+            // THE P&L IDENTITY: the binder's record balances to the ledger.
+            GameState pns = NewState(); pns.Traction = 10;
+            pns.Offers = new List<Offer> { new Offer { Name = "s", Unit = "per session",
+                Price = 70.0, FairPrice = 45.0, UnitCost = 18.0, Weight = 1.0 } };
+            SimEngine.WeeklyTick(pns);
+            Ok(pns.LastPnl != null && pns.LastPnl.Net == pns.LastPnl.Revenue - pns.LastPnl.Burn - pns.LastPnl.LiabilitiesWk,
+                "the P&L balances (net " + S(pns.LastPnl != null ? pns.LastPnl.Net : -1) + ")");
 
             // ── loan compounding punishes
             GameState ln = NewState();

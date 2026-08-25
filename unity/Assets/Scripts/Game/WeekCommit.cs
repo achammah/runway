@@ -53,6 +53,11 @@ namespace Runway.Game
         /// The question on the page, while there is one. The spread draws it.
         public JObject Clarify { get; private set; }
         public bool ClarifyChecked;
+        /// THE ROUNDS (owner: "multiple rounds of questions/answers until no
+        /// ambiguity"): each answer re-runs the pre-pass on the merged move,
+        /// up to 3 questions per commit, until it goes silent.
+        int _clarifyRounds;
+        bool _priceAsked;
         /// What the founder has written this week, kept across page turns.
         public string Written = "";
 
@@ -71,6 +76,8 @@ namespace Runway.Game
             _pendingDice = null;
             Clarify = null;
             ClarifyChecked = false;
+            _clarifyRounds = 0;
+            _priceAsked = false;
             Written = "";
         }
 
@@ -204,7 +211,8 @@ namespace Runway.Game
             // ── THE PRICING LAW IS ENGINE-OWNED (owner #192): customers on
             // the books with not one price on the wall IS the clarification —
             // it cannot depend on the model noticing.
-            if (!ClarifyChecked && Clarify == null && St.Traction > 0 && St.Offers != null)
+            if (!ClarifyChecked && !_priceAsked && Clarify == null
+                && (St.Traction > 0 || St.HasFlag("launched")) && St.Offers != null)
             {
                 bool anyPriced = false;
                 string firstName = "the offer";
@@ -213,11 +221,11 @@ namespace Runway.Game
                     {
                         if (i == 0 && St.Offers[i].Name != null && St.Offers[i].Name.Length > 0)
                             firstName = St.Offers[i].Name;
-                        if (St.Offers[i].Price > 0.0) { anyPriced = true; break; }
+                        if (St.Offers[i].Price > 0.0 || St.Offers[i].PriceSet) { anyPriced = true; break; }
                     }
                 if (!anyPriced)
                 {
-                    ClarifyChecked = true;
+                    _priceAsked = true;
                     Clarify = new JObject
                     {
                         ["q"] = "customers are here and nothing has a price — what does "
@@ -231,19 +239,19 @@ namespace Runway.Game
             }
 
             // ── THE PRE-PASS: one question when the move hides its number ──
-            if (!ClarifyChecked && gen != null && live)
+            if (!ClarifyChecked && _clarifyRounds < 3 && gen != null && live)
             {
                 Adjudicating = true;
                 RefreshLock();
                 gen.Clarify(CoreSnapshot.From(St), _g.CurrentEvent, t, cq =>
                 {
                     Adjudicating = false;
-                    ClarifyChecked = true;
                     bool needs = ContentDb.Flag(cq, "needs_clarification");
                     string q = ContentDb.Str(cq, "question");
                     Debug.Log("CLARIFY " + (needs ? "asks: " + q : "silent"));
                     if (needs && q.Length > 0)
                     {
+                        _clarifyRounds++;
                         // ONE CLEAN LATIN LINE: the model once leaked a stray Cyrillic
                         // token onto the page — one line, ≤90, printable Latin-1 only
                         string raw = q.Split('\n')[0].Trim();
@@ -259,12 +267,15 @@ namespace Runway.Game
                         _book.Redraw();
                         return;
                     }
+                    ClarifyChecked = true;   // silence ends the rounds
                     CommitFromText();
                 });
                 return;
             }
 
             ClarifyChecked = false;
+            _clarifyRounds = 0;
+            _priceAsked = false;
             Adjudicating = true;
             RefreshLock();
             St.LogAction("wrote: " + (t.Length > 80 ? t.Substring(0, 80) : t));
@@ -340,7 +351,9 @@ namespace Runway.Game
             string bas = ContentDb.Str(Clarify, "base");
             Clarify = null;
             Written = bas + " — " + answer;
-            ClarifyChecked = true;
+            // the merged move goes back through the pre-pass (owner: rounds
+            // until no ambiguity); the round cap keeps the pace playable
+            ClarifyChecked = _clarifyRounds >= 3;
             CommitFromText();
         }
 
@@ -383,6 +396,50 @@ namespace Runway.Game
                         St.PriceMult = Gd.Clampf(ContentDb.Num(d, "v", 1.0), 0.5, 2.0);
                         outp.Add(string.Format("price set to ×{0:0.00} — {1}", St.PriceMult, why));
                         break;
+                    case "price_offer":
+                    {
+                        // THE PRICE LANDS IN THE OFFER (owner: the world must
+                        // know what we sell and at how much). cat = offer name,
+                        // v = $ per unit; v=0 is a CONSCIOUS free choice.
+                        double pv = Gd.Clampf(ContentDb.Num(d, "v", 0.0), 0.0, 50000.0);
+                        string pname = ContentDb.Str(d, "cat").Trim();
+                        Offer hit = null;
+                        if (St.Offers != null)
+                        {
+                            foreach (Offer po in St.Offers)
+                            {
+                                string onm = (po.Name ?? "").ToLowerInvariant();
+                                string pl = pname.ToLowerInvariant();
+                                if (pname.Length > 0 && (onm.Contains(pl) || (onm.Length > 0 && pl.Contains(onm))))
+                                {
+                                    hit = po; break;
+                                }
+                            }
+                            if (hit == null)
+                                foreach (Offer po in St.Offers)
+                                    if (po.Price <= 0.0 && !po.PriceSet) { hit = po; break; }
+                        }
+                        if (hit == null && pname.Length > 0)
+                        {
+                            hit = new Offer { Name = pname, Unit = "per order", FairPrice = pv,
+                                              Elasticity = 2.0, UnitCost = 0.0, Weight = 1.0 };
+                            if (St.Offers == null) St.Offers = new List<Offer>();
+                            St.Offers.Add(hit);
+                        }
+                        else if (hit == null && St.Offers != null && St.Offers.Count > 0)
+                        {
+                            hit = St.Offers[0];   // everything priced: it's a reprice
+                        }
+                        if (hit != null)
+                        {
+                            hit.Price = pv;
+                            hit.PriceSet = true;
+                            outp.Add(pv > 0.0
+                                ? string.Format("{0} priced at ${1} — {2}", hit.Name, (int)pv, why)
+                                : string.Format("{0} is free on purpose — {1}", hit.Name, why));
+                        }
+                        break;
+                    }
                     case "set_marketing":
                         St.MarketingBudget = Gd.Clampi(ContentDb.Int(d, "v", 0), 0, 50000);
                         outp.Add(string.Format("marketing ${0}/wk — {1}", St.MarketingBudget, why));
@@ -462,6 +519,7 @@ namespace Runway.Game
                 case "sales": St.Budgets.Sales = amt; return true;
                 case "care": St.Budgets.Care = amt; return true;
                 case "rnd": St.Budgets.Rnd = amt; return true;
+                case "office": St.Budgets.Office = amt; return true;
             }
             return false;
         }

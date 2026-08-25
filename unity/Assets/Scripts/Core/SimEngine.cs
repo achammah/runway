@@ -386,6 +386,7 @@ namespace Runway.Core
             // morale drifts toward a lived-in 50 (up when battered, down when coasting);
             // statuses, red ink and events push around that baseline
             double moraleWk = (50.0 - state.Morale) / 6.0;
+            moraleWk += 3.0 * (1.0 - Math.Exp(-(double)state.Budgets.Office / 800.0));
             foreach (Status s2 in state.Statuses)
             {
                 moraleWk += StatusEffect(s2.Name).MoraleWk;
@@ -494,6 +495,10 @@ namespace Runway.Core
             double bSales = bud.Sales;
             double bCare = bud.Care;
             double bRnd = bud.Rnd;
+            // THE OFFICE LANE (owner: running a business is also salaries,
+            // benefits, rent, food): a weekly budget for food, perks and
+            // benefits that buys morale and keeps people whole.
+            double bOffice = bud.Office;
             double mkBudget = bMk;
             double mkMult = 1.0 + 1.4 * (1.0 - Math.Exp(-mkBudget / th.CacSat));
             double statusAdopt = 1.0;
@@ -520,9 +525,10 @@ namespace Runway.Core
             double offerMult = OffersDemandMult(state);
             if (offerMult >= 0.0)
             {
-                // offers exist: THEY are the price signal. Nothing on sale still lets
-                // people sign up out of interest (half rate) — but nobody pays.
-                priceDemand = offerMult == 0.0 ? 0.5 : offerMult;
+                // offers exist: THEY are the price signal. Unpriced offers bill
+                // at fair (demand 1.0); a mult of ~0 now only means priced-to-
+                // the-moon, and the 0.1 clamp below is lifeline enough.
+                priceDemand = offerMult;
             }
             double adds = (pEff * P + wom) * Gd.Clampf(priceDemand, 0.1, 3.0);
             // THE GTM CAPACITY CLAMP: demand is not closing. A tiny team can only land
@@ -580,7 +586,16 @@ namespace Runway.Core
             if (arpuOff >= 0.0)
             {
                 revenue = state.Traction * arpuOff * statusArpu;
-                if (arpuOff == 0.0 && state.Traction > 0)
+                if (state.Traction > 0 && OffersAnyUnpriced(state))
+                {
+                    rep.Lines.Add(string.Format(CultureInfo.InvariantCulture,
+                        "no price on the wall — the market paid the going rate (~${0}/customer/wk). Name yours in THE BINDER.", Gd.RoundToInt(arpuOff)));
+                }
+                else if (state.Traction > 0 && OffersAnyFree(state))
+                {
+                    rep.Lines.Add("free on purpose — the giveaway pays in users, not dollars.");
+                }
+                else if (arpuOff == 0.0 && state.Traction > 0)
                 {
                     rep.Lines.Add(string.Format(CultureInfo.InvariantCulture,
                         "NOTHING IS ON SALE — {0} customers, $0 revenue. Set prices in THE BINDER.", state.Traction));
@@ -631,8 +646,59 @@ namespace Runway.Core
                     rep.Lines.Add(string.Format(CultureInfo.InvariantCulture,
                         "cost of serving customers: ${0}", Gd.RoundToInt(cogs)));
             }
-            int burn = Gd.ToInt(((double)(rent + payroll + infra) + mkBudget + bSales + bCare + bRnd) * th.BurnMult + cogs);
+            // the more you have served, the cheaper serving gets (Bonopoly's
+            // learning curve): the discount lives in OffersCogsPerCustomer
+            state.SetMeta("served_total",
+                (int)state.GetMetaF("served_total", 0.0) + state.Traction);
+            int burn = Gd.ToInt(((double)(rent + payroll + infra) + mkBudget + bSales + bCare + bRnd + bOffice) * th.BurnMult + cogs);
+            // THE UNFORESEEN (owner: running a business includes what nobody
+            // planned): some weeks a small real cost lands — seeded, receipted.
+            Rng incR = RngFor(state, 93);
+            int incidentCost = 0;
+            if (incR.Randf() < 0.30)
+            {
+                incidentCost = (int)((rent + payroll + infra) * incR.RandfRange(0.01, 0.04))
+                               + incR.RandiRange(20, 90);
+                string[] incWhat = { "the printer died mid-invoice", "the fridge gave up",
+                    "a parking fine found the van", "the wifi needed a new router",
+                    "someone broke the good chair", "the same invoice arrived twice",
+                    "a deposit nobody remembered came due", "the door lock jammed after hours" };
+                burn += incidentCost;
+                rep.Lines.Add(string.Format(CultureInfo.InvariantCulture,
+                    "the unforeseen: −${0} ({1})", incidentCost,
+                    incWhat[incR.RandiRange(0, incWhat.Length - 1)]));
+            }
+            else if (incR.Randf() < 0.06 && state.Week >= 4)
+            {
+                // THE STANDING LIABILITY (rare): some surprises do not leave —
+                // it becomes a commitment the ledger pays and prints weekly.
+                var liabPick = new[]
+                {
+                    new { name = "the landlord adjusts the rent", wk = 8, frac = 0.06 },
+                    new { name = "liability insurance, overdue", wk = 6, frac = 0.05 },
+                    new { name = "the compliance letter means a lawyer", wk = 4, frac = 0.08 },
+                    new { name = "the broken machine went on a payment plan", wk = 6, frac = 0.06 },
+                };
+                var lb = liabPick[incR.RandiRange(0, liabPick.Length - 1)];
+                int wkcost = -Gd.Maxi((int)((rent + payroll) * lb.frac), 40);
+                state.Commitments.Add(new Commitment { Name = lb.name, CashWk = wkcost, WeeksLeft = lb.wk });
+                rep.Lines.Add(string.Format(CultureInfo.InvariantCulture,
+                    "NEW STANDING COST: {0} — ${1}/wk for {2} weeks", lb.name, -wkcost, lb.wk));
+            }
             state.Cash += Gd.RoundToInt(revenue) - burn;
+            int liabWk = 0;
+            foreach (Commitment cm0 in state.Commitments)
+                liabWk += Gd.Mini(cm0.CashWk, 0);
+            state.LastPnl = new Pnl
+            {
+                Revenue = Gd.RoundToInt(revenue), Cogs = Gd.RoundToInt(cogs),
+                Rent = rent, Payroll = payroll, Infra = infra,
+                Marketing = Gd.ToInt(mkBudget), Sales = Gd.ToInt(bSales),
+                Care = Gd.ToInt(bCare), Rnd = Gd.ToInt(bRnd), Office = Gd.ToInt(bOffice),
+                Incident = incidentCost, LiabilitiesWk = -liabWk, Burn = burn,
+                Net = Gd.RoundToInt(revenue) - burn + liabWk,
+                Learning = LearningCurve(state),
+            };
             if (state.GetMetaF("prev_revenue", 0.0) > 1.0)
             {
                 double prev = state.GetMetaF("prev_revenue", 0.0);
@@ -642,10 +708,10 @@ namespace Runway.Core
             rep.Revenue = Gd.RoundToInt(revenue);
             rep.Burn = burn;
             string leverTxt = "";
-            if (bSales + bCare + bRnd > 0.0)
+            if (bSales + bCare + bRnd + bOffice > 0.0)
             {
-                leverTxt = string.Format(CultureInfo.InvariantCulture, " · sales {0} · care {1} · rnd {2}",
-                    Gd.ToInt(bSales), Gd.ToInt(bCare), Gd.ToInt(bRnd));
+                leverTxt = string.Format(CultureInfo.InvariantCulture, " · sales {0} · care {1} · rnd {2} · office {3}",
+                    Gd.ToInt(bSales), Gd.ToInt(bCare), Gd.ToInt(bRnd), Gd.ToInt(bOffice));
             }
             rep.Lines.Add(string.Format(CultureInfo.InvariantCulture,
                 "${0} in · ${1} out (rent {2} · payroll {3} · infra {4} · marketing {5}{6})",
@@ -1064,7 +1130,7 @@ namespace Runway.Core
             double total = 0.0;
             foreach (Offer od in state.Offers)
             {
-                double price = od.Price;
+                double price = OfferBilledPrice(od);
                 if (price <= 0.0)
                 {
                     continue;
@@ -1075,6 +1141,44 @@ namespace Runway.Core
                 total += od.Weight * price * OfferCadence(od.Unit);
             }
             return total;
+        }
+
+        /// <summary>THE BACKSTOP (owner: customers paying $0 "is IMPOSSIBLE"):
+        /// what an offer actually bills at — the founder's price, or the FAIR
+        /// (going) rate while unpriced. 0 only when it has neither.</summary>
+        public static double OfferBilledPrice(Offer od)
+        {
+            double price = od.Price;
+            if (price <= 0.0)
+            {
+                // a CONSCIOUS $0 (price_set) stays free — the founder overruled
+                // the backstop on purpose; only a never-priced offer bills fair.
+                if (od.PriceSet) return 0.0;
+                price = Gd.Maxf(od.FairPrice, 0.0);
+            }
+            return price;
+        }
+
+        /// <summary>True when any offer bills at the going rate instead of a named price.</summary>
+        public static bool OffersAnyUnpriced(GameState state)
+        {
+            if (state.Offers == null) return false;
+            foreach (Offer od in state.Offers)
+            {
+                if (od.Price <= 0.0 && od.FairPrice > 0.0 && !od.PriceSet) return true;
+            }
+            return false;
+        }
+
+        /// <summary>True when any offer is consciously free (price_set at $0).</summary>
+        public static bool OffersAnyFree(GameState state)
+        {
+            if (state.Offers == null) return false;
+            foreach (Offer od in state.Offers)
+            {
+                if (od.PriceSet && od.Price <= 0.0) return true;
+            }
+            return false;
         }
 
         /// <summary>Purchases per week for one customer of this offer — the honest
@@ -1097,10 +1201,19 @@ namespace Runway.Core
             double total = 0.0;
             foreach (Offer od in state.Offers)
             {
-                if (od.Price <= 0.0) continue;
-                total += od.Weight * od.UnitCost * OfferCadence(od.Unit);
+                if (OfferBilledPrice(od) <= 0.0 && !od.PriceSet) continue;
+                total += od.Weight * od.UnitCost * LearningCurve(state) * OfferCadence(od.Unit);
             }
             return total;
+        }
+
+        /// <summary>THE LEARNING CURVE (Bonopoly): each 10× of customers ever
+        /// served takes ~11% off the unit serving cost, floored at 65%.</summary>
+        public static double LearningCurve(GameState state)
+        {
+            int served = (int)state.GetMetaF("served_total", 0.0);
+            if (served <= 1) return 1.0;
+            return Gd.Maxf(1.0 - 0.115 * Math.Log10(served), 0.65);
         }
 
         /// <summary>Above fair price the invoice reminds people to leave: 1.0 at or
@@ -1111,9 +1224,10 @@ namespace Runway.Core
             double num = 0.0, den = 0.0;
             foreach (Offer od in state.Offers)
             {
-                if (od.Price <= 0.0) continue;
-                double fair = Gd.Maxf(od.FairPrice > 0.0 ? od.FairPrice : od.Price, 1.0);
-                num += od.Weight * (od.Price / fair);
+                double billed = OfferBilledPrice(od);   // fair-billed = no pain (ratio 1)
+                if (billed <= 0.0) continue;
+                double fair = Gd.Maxf(od.FairPrice > 0.0 ? od.FairPrice : billed, 1.0);
+                num += od.Weight * (billed / fair);
                 den += od.Weight;
             }
             if (den <= 0.0) return 1.0;
@@ -1135,8 +1249,11 @@ namespace Runway.Core
             {
                 double wgt = od.Weight;
                 den += wgt;
-                double price = od.Price;
-                num += wgt * (price > 0.0 ? OfferDemand(od, price) : 0.0);
+                double price = OfferBilledPrice(od);   // fair-billed = fair demand (1.0)
+                if (price <= 0.0 && od.PriceSet)
+                    num += wgt * 2.0;   // free on purpose: the giveaway cap, not zero
+                else
+                    num += wgt * (price > 0.0 ? OfferDemand(od, price) : 0.0);
             }
             return den > 0.0 ? Gd.Clampf(num / Gd.Maxf(den, 0.01), 0.0, 3.0) : 0.0;
         }

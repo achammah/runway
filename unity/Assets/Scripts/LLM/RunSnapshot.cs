@@ -84,6 +84,9 @@ namespace Runway.Llm
         {
             public string Name;
             public float Price;
+            public string Unit;
+            public float FairPrice;
+            public bool PriceSet;
         }
     }
 }
