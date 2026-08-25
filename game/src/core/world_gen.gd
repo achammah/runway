@@ -202,6 +202,26 @@ static func build(state: GameState) -> void:
 	state.rivals = rivals
 	if state.offers.is_empty():
 		state.offers = default_offers(state.biz_what, state.biz_who, rng)
+	seed_rival_conduct(state, rng)
+
+## THE RIVALS' CONDUCT (docs/design/03-rivals-macro.md §1): a war chest, a
+## strategic bent, a price posture and a share of voice — what turns a strength
+## number into a company that DOES things.
+##
+## Drawn at the very END of build, after the offers, and never in the middle:
+## inserting draws earlier would shift every later investor and offer draw and
+## silently break worldgen determinism for every existing seed.
+static func seed_rival_conduct(state: GameState, rng: RandomNumberGenerator) -> void:
+	for rv in state.rivals:
+		var rd: Dictionary = rv
+		rd["vigor"] = rng.randf_range(40.0, 70.0)
+		rd["hype"] = rng.randf_range(10.0, 40.0)
+		rd["focus"] = ["price", "product", "growth"][rng.randi() % 3]
+		rd["price_posture"] = 1.0
+		rd["last_action"] = ""
+		rd["log"] = []
+		rd["cooldowns"] = {}
+		rd["sniffing"] = 0
 
 ## Merge an LLM-generated world onto the deterministic skeleton: names, theses
 ## and rivals come from the model (born from the pitch); coords and tactics
@@ -245,13 +265,20 @@ static func apply_llm_world(state: GameState, gen: Dictionary) -> bool:
 			var wcut := what_txt.rfind(" ")
 			if wcut > 40:
 				what_txt = what_txt.substr(0, wcut) + "…"
+		var rname := String(r.get("name", "a rival")).left(30)
 		rivals.append({
-			"name": String(r.get("name", "a rival")).left(30),
+			"name": rname,
 			"what": what_txt,
 			"strength": float(str_map.get(String(r.get("strength", "scrappy")), 25.0)),
 			"tactics": r.get("tactics", ["shipped something loud"]),
 			"weeks_since_move": 0,
 			"secret": "",
+			# no rng in scope on the LLM path, so conduct takes its defaults and
+			# the bent comes from the name itself — twin-safe, no hash involved
+			"vigor": 55.0, "hype": 20.0,
+			"focus": ["price", "product", "growth"][rname.length() % 3],
+			"price_posture": 1.0, "last_action": "", "log": [],
+			"cooldowns": {}, "sniffing": 0,
 		})
 	if rivals.size() == 2:
 		state.rivals = rivals

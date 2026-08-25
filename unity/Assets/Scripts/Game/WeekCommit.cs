@@ -421,10 +421,13 @@ namespace Runway.Game
                         }
                         if (hit == null && pname.Length > 0)
                         {
-                            hit = new Offer { Name = pname, Unit = "per order", FairPrice = pv,
-                                              Elasticity = 2.0, UnitCost = 0.0, Weight = 1.0 };
-                            if (St.Offers == null) St.Offers = new List<Offer>();
-                            St.Offers.Add(hit);
+                            // A NAME NOBODY SELLS YET is a new offer — and a new
+                            // offer goes through AddOffer like every other, so
+                            // the world's clamps (fair price, marginal cost,
+                            // elasticity, shelf weight) apply to it too.
+                            // Appending the object raw was a hole straight past
+                            // every one of them (DECISIONS.md Wave A #4).
+                            hit = SimEngine.AddOffer(St, pname, "per order", pv, 0.0, 2.0, 1.0);
                         }
                         else if (hit == null && St.Offers != null && St.Offers.Count > 0)
                         {
@@ -490,6 +493,12 @@ namespace Runway.Game
                     }
                     case "set_budget":
                     {
+                        // THE LANES the DM may set. The four acquisition channels
+                        // are accepted if a move ever names one, but the narrator
+                        // keeps speaking founder-language: "marketing" is the
+                        // whole top of the funnel, and the ENGINE decides which
+                        // channels that means — a narrator must never silently
+                        // overwrite a curated mix.
                         string cat = ContentDb.Str(d, "cat", "marketing");
                         int amt = Gd.Clampi(ContentDb.Int(d, "v", 0), 0,
                                             SimEngine.EraSpendCap(St.Era));
@@ -497,6 +506,21 @@ namespace Runway.Game
                         if (cat == "marketing")
                             St.MarketingBudget = 0;   // one truth once the ledger takes over
                         outp.Add(string.Format("{0} budget set to ${1}/wk — {2}", cat, amt, why));
+                        break;
+                    }
+                    case "push_lead":
+                    {
+                        // THE FOUNDER LEANS ON A DEAL. The engine clamps the heat
+                        // swing before the pipeline ever sees it; the lane matches
+                        // the named lead and writes the receipt. No live lead by
+                        // that name is a real answer, not an error: the world says
+                        // so and moves on.
+                        int heat = Gd.Clampi(ContentDb.Int(d, "v", 0), -40, 40);
+                        string leadNm = ContentDb.Str(d, "cat").Trim();
+                        string pushed = SimPipeline.PushLead(St, leadNm, heat);
+                        outp.Add(pushed.Length > 0
+                            ? pushed
+                            : string.Format("no live deal called '{0}' — the push found nobody", leadNm));
                         break;
                     }
                     default:
@@ -515,7 +539,12 @@ namespace Runway.Game
         {
             switch (cat)
             {
-                case "marketing": St.Budgets.Marketing = amt; return true;
+                // founder-language: the whole top of the funnel, split by the lane
+                case "marketing": SimFunnel.SetMarketing(St, amt); return true;
+                case "ads": St.Budgets.Ads = amt; return true;
+                case "content": St.Budgets.Content = amt; return true;
+                case "referrals": St.Budgets.Referrals = amt; return true;
+                case "outbound": St.Budgets.Outbound = amt; return true;
                 case "sales": St.Budgets.Sales = amt; return true;
                 case "care": St.Budgets.Care = amt; return true;
                 case "rnd": St.Budgets.Rnd = amt; return true;

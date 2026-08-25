@@ -85,6 +85,7 @@ namespace Runway.Game
         TextMeshProUGUI _openWord;
         TextMeshProUGUI _paintRibbon;
         TextMeshProUGUI _binderBang;
+        TextMeshProUGUI _hudTicker;   // the attention registry's top line, verbatim
         float _warmWatchT;
         RectTransform _coach;
         int _coachStep;
@@ -365,6 +366,21 @@ namespace Runway.Game
                         DrawnUI.WithAlpha(DrawnUI.Cream, 0.95f));
             bm.SetFloat(TMPro.ShaderUtilities.ID_OutlineWidth, 0.26f);
             _binderBang.gameObject.SetActive(false);
+            // THE HUD TICKER (00-spine section 4): one hand-written line under
+            // the binder button naming the loudest problem in the company. A
+            // bang says "something is wrong"; the ticker says WHAT, in the
+            // business term the player is here to learn, so the binder is never
+            // a guessing game.
+            // right-aligned to the binder button's own right edge (1272 + 240),
+            // on the line directly below it
+            _hudTicker = DrawnUI.HandLabel(Rect, "", 1092f, 996f, 26f, DrawnUI.Ink, 26f,
+                                           TMPro.TextAlignmentOptions.TopRight);
+            var tm = _hudTicker.fontMaterial;
+            tm.SetColor(TMPro.ShaderUtilities.ID_OutlineColor,
+                        DrawnUI.WithAlpha(DrawnUI.Cream, 0.95f));
+            tm.SetFloat(TMPro.ShaderUtilities.ID_OutlineWidth, 0.18f);
+            _hudTicker.rectTransform.sizeDelta = new Vector2(420f, 34f);
+            _hudTicker.gameObject.SetActive(false);
         }
 
         // ══ the painted room ═══════════════════════════════════════════════════
@@ -557,10 +573,30 @@ namespace Runway.Game
             if (State == null) return;
             _t += Time.unscaledDeltaTime;
             if (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.B)) OpenBinder();
-            if (_binderBang != null)
-                _binderBang.gameObject.SetActive(SimEngine.OffersAnyUnpriced(State)
-                    || (State.LastPnl != null && State.LastPnl.Net < 0)
-                    || State.HasFlag("fundraising_open"));
+            // THE BADGE AND THE TICKER read ONE list (00-spine section 4): the
+            // engine's attention registry. The old hardcoded OR-chain could only
+            // ever know about three conditions; every desk can raise a hand now.
+            if (_binderBang != null || _hudTicker != null)
+            {
+                List<AttentionItem> items = SimEngine.AttentionItems(State);
+                if (_binderBang != null)
+                    _binderBang.gameObject.SetActive(items.Count > 0);
+                if (_hudTicker != null)
+                {
+                    // the single loudest thing in the company, in the engine's
+                    // own words: warn-and-above only, so the line means
+                    // "handle this".
+                    string top = "";
+                    int topSev = 0;
+                    foreach (AttentionItem it in items)
+                    {
+                        if (it.Severity >= 2) { top = it.Label ?? ""; topSev = it.Severity; break; }
+                    }
+                    _hudTicker.text = top;
+                    _hudTicker.gameObject.SetActive(top.Length > 0);
+                    _hudTicker.color = topSev >= 3 ? DrawnUI.Coral : DrawnUI.Ink;
+                }
+            }
 
             // THE ROOM NEVER STAYS BARREN (owner #208): while the founding room
             // is unpainted, watch the warm render — say so while it paints,

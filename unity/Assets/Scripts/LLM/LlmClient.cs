@@ -94,6 +94,17 @@ namespace Runway.Llm
         /// Schema for adjudicating a player's free-form move. ONE CALL RETURNS THE WHOLE
         /// TURN: the text the player reads while the art renders, AND everything needed
         /// to build the scene.
+        /// <remarks>
+        /// `cat` is a FREE STRING, not an enum, because four ops now share the
+        /// field and only one of them has a closed vocabulary (00-spine
+        /// section 7):
+        ///   spend       a short label for the outlay
+        ///   set_budget  a lever: marketing, sales, care, rnd, office
+        ///   price_offer the offer's name, matched fuzzily
+        ///   push_lead   the lead's name, matched fuzzily
+        /// "" for every other op. The executor guards each case, so an
+        /// unrecognised value degrades to a sane lane and never a crash.
+        /// </remarks>
         public static readonly JObject AdjudicateSchema = JObject.Parse(@"{
           ""type"": ""object"",
           ""additionalProperties"": false,
@@ -160,11 +171,11 @@ namespace Runway.Llm
                   ""op"": {""type"": ""string"", ""enum"": [""cash_delta"", ""product_delta"",
                     ""traction_delta"", ""morale_delta"", ""hype_delta"", ""set_flag"",
                     ""status"", ""clock"", ""set_price"", ""price_offer"", ""set_marketing"", ""hire"", ""take_loan"",
-                    ""spend"", ""set_budget""]},
+                    ""spend"", ""set_budget"", ""push_lead""]},
                   ""v"": {""type"": [""number"", ""string""]},
                   ""why"": {""type"": ""string"", ""maxLength"": 90},
                   ""weeks"": {""type"": ""integer"", ""minimum"": 1, ""maximum"": 12},
-                  ""cat"": {""type"": ""string"", ""enum"": ["""", ""marketing"", ""sales"", ""care"", ""rnd"", ""office"", ""one_off""]}
+                  ""cat"": {""type"": ""string"", ""maxLength"": 40}
                 }
               }
             }

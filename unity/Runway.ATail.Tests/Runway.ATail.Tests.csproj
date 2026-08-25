@@ -17,8 +17,9 @@
   <ItemGroup>
     <Compile Include="UnityShim.cs" />
     <Compile Include="ATail.cs" />
-    <!-- the shipped engine -->
+    <!-- the shipped engine, and the nine lane modules the tick calls into -->
     <Compile Include="../Assets/Scripts/Core/*.cs" />
+    <Compile Include="../Assets/Scripts/Core/Lanes/*.cs" />
     <!-- the shipped save/slot/env layer, verbatim -->
     <Compile Include="../Assets/Scripts/App/RunwayPaths.cs" />
     <Compile Include="../Assets/Scripts/App/SaveSlots.cs" />

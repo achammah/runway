@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using Newtonsoft.Json.Linq;
 using Runway.Core;
 
 namespace Runway.CoreTests
@@ -515,7 +516,7 @@ namespace Runway.CoreTests
                 "office money is real burn (Δ$" + S(ofA.Cash - ofB.Cash) + " over 8 wks)");
             // THE LEARNING CURVE: serving 1000 customers cheapens serving ~34%.
             GameState lcs = NewState();
-            lcs.SetMeta("served_total", 1000);
+            lcs.ServedTotal = 1000;          // a saved FIELD now, not an Object meta
             Ok(SimEngine.LearningCurve(lcs) > 0.6 && SimEngine.LearningCurve(lcs) < 0.7,
                 "the learning curve pays at scale (×" + S2(SimEngine.LearningCurve(lcs)) + ")");
             // THE P&L IDENTITY: the binder's record balances to the ledger.
@@ -533,6 +534,256 @@ namespace Runway.CoreTests
             ln.LoanPrincipal = 10000;
             SimEngine.WeeklyTick(ln);
             Ok(ln.LoanPrincipal >= 11800, "18%/wk compounds (owe " + S(ln.LoanPrincipal) + ")");
+
+            // ── WAVE A: the four bugs the design corpus found (DECISIONS.md)
+            // 1 — price_offer was in the schema and the executor but not the
+            // validator, so every DM reply that priced an offer was thrown away.
+            Ok(Array.IndexOf(SimEngine.OP_REGISTRY, "price_offer") >= 0,
+                "price_offer survives the ops validator");
+            Ok(Array.IndexOf(SimEngine.OP_REGISTRY, "push_lead") >= 0,
+                "push_lead is a live op");
+            Ok(SimEngine.OP_REGISTRY.Length == 16,
+                "the op registry carries " + S(SimEngine.OP_REGISTRY.Length) + " ops");
+            // 2 — the catalog cost-lines engine half existed only in Godot
+            GameState cl = NewState();
+            Offer withLines = SimEngine.AddOffer(cl, "workshop", "per session", 200.0, 0.0, 2.0, 1.0,
+                new List<CostLine>
+                {
+                    new CostLine { Label = "materials", Amount = 30.0 },
+                    new CostLine { Label = "room hire", Amount = 20.0 },
+                },
+                new List<CostLine> { new CostLine { Label = "insurance", Amount = 45.0 } });
+            Ok(Gd.Absf(withLines.UnitCost - 50.0) < 0.01,
+                "unit cost is the sum of its variable lines (" + S2(withLines.UnitCost) + ")");
+            Ok(Gd.Absf(withLines.FixedWk - 45.0) < 0.01,
+                "fixed_wk is the sum of its weekly lines (" + S2(withLines.FixedWk) + ")");
+            Ok(Gd.Absf(SimEngine.OffersFixedWk(cl) - 45.0) < 0.01,
+                "the catalog's weekly overhead reaches the engine");
+            // a line above half of fair is clamped, and the total follows it down
+            withLines.CostLines[0].Amount = 5000.0;
+            SimEngine.SyncOfferCosts(withLines);
+            Ok(withLines.UnitCost <= 200.0 * 0.9 + 0.01,
+                "an itemised cost sheet still cannot exceed 90% of fair");
+            // the deep copy: two offers must never share one line object
+            Offer copy = withLines.Duplicate();
+            copy.CostLines[0].Amount = 1.0;
+            SimEngine.SyncOfferCosts(copy);
+            Ok(withLines.CostLines[0].Amount != 1.0, "duplicating an offer deep-copies its cost sheet");
+            // the catalog overhead is a real P&L lane, not a silent cost
+            GameState fx2 = NewState();
+            fx2.Traction = 10;
+            SimEngine.AddOffer(fx2, "kit", "per order", 100.0, 20.0, 2.0, 1.0, null,
+                new List<CostLine> { new CostLine { Label = "storage", Amount = 120.0 } });
+            SimEngine.WeeklyTick(fx2);
+            Ok(fx2.LastPnl.OfferFixed == 120, "catalog overheads land in the P&L (" + S(fx2.LastPnl.OfferFixed) + ")");
+            // 3 — served_total is a FIELD: the learning curve used to reset on load
+            GameState svd = NewState();
+            svd.Traction = 25;
+            SimEngine.WeeklyTick(svd);
+            Ok(svd.ServedTotal >= 25, "served_total accumulates on a real field (" + S(svd.ServedTotal) + ")");
+
+            // ── THE SALT REGISTRY: names, never numbers, and 95 stays burned
+            Ok(SimEngine.SALT_LABOR_ARRIVALS == 20 && SimEngine.SALT_RIVAL_ACTION == 30
+               && SimEngine.SALT_PIPELINE == 50 && SimEngine.SALT_ROADMAP_SHIP == 70
+               && SimEngine.SALT_MACRO_SHOCK == 80 && SimEngine.SALT_MNA == 100
+               && SimEngine.SALT_HW_BREAKDOWN == 110,
+                "the salt registry matches the spine's table");
+            Ok(SimEngine.SALT_BURNED == 95, "salt 95 is burned, not assigned");
+
+            // ── THE STATUS CATALOG's wave additions: installable by name,
+            // magnitudes in one place, and the new effect keys stay out of the
+            // adoption loop.
+            GameState stc = NewState();
+            Ok(SimEngine.AddStatus(stc, "price_war", 4) && SimEngine.AddStatus(stc, "board_delight", 3),
+                "the wave's statuses install by name");
+            Ok(!SimEngine.AddStatus(stc, "made_up_buff", 3), "the catalog still refuses inventions");
+            Ok(Gd.Absf(SimEngine.StreetFairMult(stc) - 0.92) < 0.001,
+                "a price war drops the going rate (x" + S2(SimEngine.StreetFairMult(stc)) + ")");
+            Ok(SimEngine.RollContext(stc, "raise").Advantage,
+                "board_delight warms the room for a raise");
+            GameState plainc = NewState();
+            Ok(SimEngine.StreetFairMult(plainc) == 1.0, "no war, no discount on the street");
+            // the price war is DEMAND-side: it never edits the founder's numbers
+            GameState warp = NewState();
+            warp.Offers = new List<Offer> { new Offer { Name = "s", Unit = "per session",
+                Price = 70.0, FairPrice = 70.0, UnitCost = 18.0, Weight = 1.0 } };
+            double fairBefore = SimEngine.OffersPricePain(warp);
+            SimEngine.AddStatus(warp, "price_war", 4);
+            Ok(SimEngine.OffersPricePain(warp) > fairBefore,
+                "holding your price through a war reads as expensive ("
+                + S2(SimEngine.OffersPricePain(warp)) + " > " + S2(fairBefore) + ")");
+            Ok(warp.Offers[0].FairPrice == 70.0,
+                "a rival never mutates the founder's own fair price");
+
+            // ── THE P&L IDENTITY v2, both lines, on a week with every lane present
+            GameState idn = NewState();
+            idn.SetFlag("launched");
+            idn.Traction = 120;
+            idn.LoanPrincipal = 5000;
+            idn.Budgets = new Budgets { Ads = 800, Content = 200, Sales = 400,
+                                        Care = 300, Rnd = 600, Office = 250 };
+            idn.Offers = new List<Offer> { new Offer { Name = "s", Unit = "per session",
+                Price = 40.0, FairPrice = 38.0, UnitCost = 12.0, Weight = 1.0,
+                FixedLines = new List<CostLine> { new CostLine { Label = "tools", Amount = 60.0 } },
+                FixedWk = 60.0 } };
+            idn.Commitments.Add(new Commitment { Name = "the van", CashWk = -150, WeeksLeft = 6 });
+            bool sawInterest = false;
+            bool sawStanding = false;
+            for (int w = 0; w < 8; w++)
+            {
+                idn.Week += 1;
+                SimEngine.WeeklyTick(idn);
+                Pnl p = idn.LastPnl;
+                int lanesSum = p.Cogs + p.Rent + p.Payroll + p.Infra + p.Marketing
+                    + p.Sales + p.Care + p.Rnd + p.Office + p.OfferFixed
+                    + p.Severance + p.Recruiting + p.Production + p.Subcontract
+                    + p.EquipUpkeep + p.Carrying + p.Incident;
+                Ok(Gd.Absi(p.Burn - lanesSum) <= 1,
+                    "wk" + S(idn.Week) + " burn is the sum of its operating lanes ("
+                    + S(p.Burn) + " vs " + S(lanesSum) + ")");
+                Ok(p.Net == p.Revenue - p.Burn - p.LiabilitiesWk - p.Interest - p.Tax,
+                    "wk" + S(idn.Week) + " net = revenue - burn - standing - interest - tax");
+                if (p.Interest > 0)
+                {
+                    sawInterest = true;
+                    // the whole point of moving interest before the record: burn
+                    // is OPERATING spend, and the cost of debt sits outside it
+                    Ok(p.Burn < p.Revenue - p.Net,
+                        "wk" + S(idn.Week) + " burn excludes the interest that also hit the week");
+                }
+                if (p.LiabilitiesWk > 0) sawStanding = true;
+            }
+            Ok(sawInterest, "the loan's interest reaches the ledger instead of vanishing");
+            Ok(sawStanding, "the standing-commitments lane reaches the ledger");
+
+            // ── THE ATTENTION REGISTRY: one function behind every bang
+            GameState at0 = NewState();
+            at0.Offers = new List<Offer>();
+            at0.LastPnl = new Pnl { Net = 500 };
+            Ok(SimEngine.AttentionItems(at0).Count == 0, "a calm company raises no hands");
+            GameState at1 = NewState();
+            at1.Offers = new List<Offer> { new Offer { Name = "consulting", Unit = "per session",
+                Price = 0.0, FairPrice = 70.0, UnitCost = 18.0, Weight = 1.0 } };
+            bool sawUnpriced = false;
+            foreach (AttentionItem r in SimEngine.AttentionItems(at1))
+            {
+                if (r.Key == "unpriced")
+                {
+                    sawUnpriced = true;
+                    Ok(r.Desk == "pricing", "the unpriced row points at the pricing desk");
+                    Ok(r.Label.Length <= 40,
+                        "a ticker label fits the garage HUD (" + S(r.Label.Length) + " chars)");
+                }
+            }
+            Ok(sawUnpriced, "an offer billing at the going rate raises its hand");
+            GameState at2 = NewState();
+            at2.SetFlag("fundraising_open");
+            at2.LastPnl = new Pnl { Net = -900 };
+            List<AttentionItem> rows2 = SimEngine.AttentionItems(at2);
+            Ok(rows2.Count >= 2, "losing money and open term sheets both register");
+            Ok(rows2[0].Severity >= rows2[rows2.Count - 1].Severity, "the loudest item sorts first");
+            Ok(SimEngine.AttentionSeverity(at2, "cap table") == 3, "term sheets are an alarm");
+            Ok(SimEngine.AttentionSeverity(at2, "product") == 0, "a quiet desk wears no bang");
+            // THE PRE-ROLL REVIEW: the engine half — what stops a roll
+            Ok(SimEngine.PrerollItems(at0).Count == 0, "nothing outstanding = no review card");
+            List<AttentionItem> pr = SimEngine.PrerollItems(at2);
+            Ok(pr.Count > 0, "the review card has something to say before the dice");
+            int prMinSev = 3;
+            foreach (AttentionItem r2 in pr) prMinSev = Gd.Mini(prMinSev, r2.Severity);
+            Ok(prMinSev >= 2, "the review card never stops a roll over a mere note");
+
+            // ── THE DIRECTIVE CAP: the composer truncates, subsystems never do
+            var many = new List<string>();
+            for (int i = 0; i < 40; i++)
+                many.Add("- line " + S(i) + " that runs on for a while to eat the character budget");
+            List<string> capped = SimEngine.CapDirectives(many);
+            Ok(capped.Count <= SimEngine.DIRECTIVE_MAX_LINES, "the directive block caps at 24 lines");
+            int capChars = 0;
+            foreach (string l in capped) capChars += l.Length + 1;
+            Ok(capChars <= SimEngine.DIRECTIVE_MAX_CHARS, "the directive block caps at 1200 chars");
+            Ok(capped[0] == many[0], "priority is the order — line 1 is never dropped");
+
+            // ── THE BUDGET MIGRATION: idempotent, old saves spend identically
+            GameState mig = NewState();
+            mig.Budgets = new Budgets { Marketing = 900, Sales = 100 };
+            SimEngine.MigrateBudgets(mig);
+            Ok(mig.Budgets.Ads == 900 && mig.Budgets.Marketing == 0,
+                "legacy marketing money becomes paid ads");
+            SimEngine.MigrateBudgets(mig);
+            Ok(mig.Budgets.Ads == 900, "migrating twice does not double the money");
+            Ok(mig.Budgets.Acquisition() == 900, "acquisition spend reads the channels");
+
+            // ── OLD SAVES MUST LOAD (00-spine section 8). The frozen pre-wave
+            // fixture: deserialize it, prove every new field sits at its
+            // default, then tick four weeks and come out finite and alive.
+            string fxTxt = ReadFixture("save_v2_prewave.json");
+            Ok(fxTxt.Length > 0, "the frozen fixture is on disk");
+            JObject fxDoc = JObject.Parse(fxTxt);
+            Ok((int)fxDoc["version"] == 2, "the frozen fixture is a version-2 save");
+            GameState oldState = fxDoc["state"].ToObject<GameState>();
+            SimEngine.MigrateBudgets(oldState);
+            Ok(oldState.Week == 5 && oldState.CompanyName == "Fernwood Supply",
+                "the pre-wave run loads (wk " + S(oldState.Week) + ")");
+            Ok(oldState.ServedTotal == 0 && oldState.OpenRoles.Count == 0
+               && oldState.Applicants.Count == 0 && oldState.Recruiters == 0
+               && oldState.Leads.Count == 0 && oldState.Logos.Count == 0
+               && oldState.PipeUnits == 0.0 && oldState.Loans.Count == 0
+               && oldState.Bets.Count == 0 && oldState.PlatformLevel == 0
+               && oldState.Board == null && oldState.Mna == null
+               && oldState.Hardware == null && oldState.ContentEquity == 0.0
+               && oldState.OptionPoolPct == 0.0 && oldState.FounderBanked == 0
+               && oldState.TaxLossCarry == 0 && oldState.MacroSeason == "steady",
+                "every new subsystem field loads at its default");
+            Ok(oldState.Budgets.Ads == 500 && oldState.Budgets.Marketing == 0,
+                "the old save's marketing budget migrated on load");
+            for (int wk = 0; wk < 4; wk++)
+            {
+                oldState.Week += 1;
+                WeeklyReport orep = SimEngine.WeeklyTick(oldState);
+                Ok(orep != null && orep.Lines != null,
+                    "wk" + S(oldState.Week) + " ticks a pre-wave save without error");
+            }
+            Ok(!double.IsNaN(oldState.Cash) && Gd.Absi(oldState.Cash) < 100000000,
+                "four weeks on, the pre-wave run's cash is still a number ($" + S(oldState.Cash) + ")");
+            Ok(oldState.LastPnl != null, "a migrated run writes a full P&L record");
+
+            // ── THE NINE LANES: each suite runs its own pins after the engine's
+            Action<bool, string> ok = Ok;
+            CatalogTests.Run(ok);
+            LaborTests.Run(ok);
+            StreetTests.Run(ok);
+            FunnelTests.Run(ok);
+            PipelineTests.Run(ok);
+            BankTests.Run(ok);
+            RoadmapTests.Run(ok);
+            BoardTests.Run(ok);
+            FactoryTests.Run(ok);
+        }
+
+        /// <summary>
+        /// The frozen save fixture, found the same way StreamingAssets is: walk
+        /// up from the binary and from the working directory until it turns up,
+        /// so the suite runs from anywhere.
+        /// </summary>
+        private static string ReadFixture(string name)
+        {
+            var probes = new List<string>();
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (dir != null)
+            {
+                probes.Add(Path.Combine(dir.FullName, "Fixtures", name));
+                dir = dir.Parent;
+            }
+            var cwd = new DirectoryInfo(Directory.GetCurrentDirectory());
+            while (cwd != null)
+            {
+                probes.Add(Path.Combine(cwd.FullName, "Fixtures", name));
+                probes.Add(Path.Combine(cwd.FullName, "unity", "Runway.Core.Tests", "Fixtures", name));
+                cwd = cwd.Parent;
+            }
+            foreach (string p in probes)
+                if (File.Exists(p)) return File.ReadAllText(p);
+            return "";
         }
 
         static string S2(double v) { return v.ToString("0.00", CultureInfo.InvariantCulture); }

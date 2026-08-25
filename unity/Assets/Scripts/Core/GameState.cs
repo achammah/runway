@@ -38,7 +38,22 @@ namespace Runway.Core
         [JsonProperty("consequence")] public string Consequence = "";
     }
 
-    /// <summary>The week's honest P&L — one record the binder reads whole.</summary>
+    /// <summary>
+    /// The week's honest P&L — one record the binder reads whole, written once
+    /// in tick section 9 (docs/design/00-spine.md section 2). Every lane is
+    /// present every week; an inactive subsystem simply reports 0, so a reader
+    /// never has to ask whether a key exists.
+    ///
+    /// THE IDENTITY, pinned by a twin test on every week of a mixed run:
+    ///   burn = cogs + rent + payroll + infra + marketing + sales + care + rnd
+    ///        + office + offer_fixed + severance + recruiting + production
+    ///        + subcontract + equip_upkeep + carrying + incident
+    ///   net  = revenue - burn - liabilities_wk - interest - tax
+    ///
+    /// Burn is OPERATING spend only. Interest and tax sit OUTSIDE it because
+    /// that is the real income-statement shape — operating profit, then the
+    /// cost of debt, then the state, then what is actually yours.
+    /// </summary>
     public sealed class Pnl
     {
         [JsonProperty("revenue")] public int Revenue;
@@ -46,16 +61,76 @@ namespace Runway.Core
         [JsonProperty("rent")] public int Rent;
         [JsonProperty("payroll")] public int Payroll;
         [JsonProperty("infra")] public int Infra;
+        // the levers; marketing is the sum of the four channel budgets
         [JsonProperty("marketing")] public int Marketing;
         [JsonProperty("sales")] public int Sales;
         [JsonProperty("care")] public int Care;
         [JsonProperty("rnd")] public int Rnd;
         [JsonProperty("office")] public int Office;
+        [JsonProperty("offer_fixed")] public int OfferFixed;      // catalog weekly overheads (01)
+        [JsonProperty("severance")] public int Severance;         // the firing invoice (02)
+        [JsonProperty("recruiting")] public int Recruiting;       // recruiter retainer (02)
+        [JsonProperty("production")] public int Production;       // in-house build cost (09)
+        [JsonProperty("subcontract")] public int Subcontract;     // contract-mfr premium (09)
+        [JsonProperty("equip_upkeep")] public int EquipUpkeep;    // machine upkeep (09)
+        [JsonProperty("carrying")] public int Carrying;           // stock carrying cost (09)
         [JsonProperty("incident")] public int Incident;
         [JsonProperty("liabilities_wk")] public int LiabilitiesWk;
+        [JsonProperty("interest")] public int Interest;           // the bank — OUTSIDE burn (06)
+        [JsonProperty("tax")] public int Tax;                     // the state — OUTSIDE burn (06)
         [JsonProperty("burn")] public int Burn;
         [JsonProperty("net")] public int Net;
-        [JsonProperty("learning")] public double Learning = 1.0;
+        [JsonProperty("learning")] public double Learning = 1.0;  // meta: a multiplier, not money
+    }
+
+    /// <summary>
+    /// THE WORKING MONEY RECORD the tick's money section passes to every lane
+    /// (docs/design/HOOKS.md). One field per P&L lane; the engine fills its own,
+    /// each subsystem writes ONLY the lanes it owns, and the engine then sums
+    /// burn and copies the whole thing into the Pnl record above.
+    ///
+    /// Doubles, not ints: rounding once at the record keeps a lane's cents from
+    /// being lost twice.
+    /// </summary>
+    public sealed class MoneyWork
+    {
+        public double Revenue;
+        public double Cogs;
+        public int Rent;
+        public int Payroll;
+        public int Infra;
+        public double Marketing;
+        public double Sales;
+        public double Care;
+        public double Rnd;
+        public double Office;
+        public double OfferFixed;
+        public double Severance;
+        public double Recruiting;
+        public double Production;
+        public double Subcontract;
+        public double EquipUpkeep;
+        public double Carrying;
+        public double Incident;
+        public int LiabilitiesWk;
+        public double Interest;
+        public double Tax;
+        public int Burn;
+    }
+
+    /// <summary>
+    /// One row of the attention registry (docs/design/00-spine.md section 4) —
+    /// the single list behind every bang in the game: binder tab marks, the
+    /// garage badge, the garage ticker, the threats desk, the pre-roll review.
+    /// `Label` is pedagogy in 40 characters or less: the ticker prints it
+    /// verbatim, so it must name the problem in the term the player is learning.
+    /// </summary>
+    public sealed class AttentionItem
+    {
+        [JsonProperty("desk")] public string Desk = "";
+        [JsonProperty("key")] public string Key = "";
+        [JsonProperty("severity")] public int Severity = 1;   // 1 note, 2 warn, 3 alarm
+        [JsonProperty("label")] public string Label = "";
     }
 
     public sealed class Commitment
@@ -73,6 +148,9 @@ namespace Runway.Core
         [JsonProperty("salary")] public int Salary = 1200;
         [JsonProperty("weeks_in")] public int WeeksIn;
         [JsonProperty("quirk")] public string Quirk = "";
+        // 02-labor: skill 3 is exact legacy parity — every pre-wave hire was
+        // implicitly average, so an old save behaves identically.
+        [JsonProperty("skill")] public int Skill = 3;
     }
 
     public sealed class Employee
@@ -82,6 +160,147 @@ namespace Runway.Core
         [JsonProperty("salary")] public int Salary;
         [JsonProperty("burnout")] public int Burnout;
         [JsonProperty("quirk")] public string Quirk = "";
+        // ── 02-labor, all additive: an old save loads at exact legacy parity
+        [JsonProperty("skill")] public int Skill = 3;
+        [JsonProperty("hired_week")] public int HiredWeek = -1;      // -1 = tenure unknown
+        [JsonProperty("wants_raise")] public bool WantsRaise;
+        [JsonProperty("asked_week")] public int AskedWeek = -1;
+        [JsonProperty("underpaid_since")] public int UnderpaidSince = -1;   // the receipt's clock
+    }
+
+    /// <summary>A seat the company is trying to fill (02-labor).</summary>
+    public sealed class OpenRole
+    {
+        [JsonProperty("role")] public string Role = "engineer";
+        [JsonProperty("offered_salary")] public int OfferedSalary = 1200;
+        [JsonProperty("opened_week")] public int OpenedWeek;
+        [JsonProperty("seats")] public int Seats = 1;      // more than 1 only at hq
+    }
+
+    /// <summary>Someone who answered the advert. Skill and ask are ENGINE-drawn;
+    /// the LLM only ever dresses the name, quirk and one-liner.</summary>
+    public sealed class Applicant
+    {
+        [JsonProperty("name")] public string Name = "";
+        [JsonProperty("role")] public string Role = "engineer";
+        [JsonProperty("skill")] public int Skill = 3;          // 1-5
+        [JsonProperty("ask")] public int Ask = 1200;           // $/wk
+        [JsonProperty("quirk")] public string Quirk = "";
+        [JsonProperty("one_liner")] public string OneLiner = "";
+        [JsonProperty("applied_week")] public int AppliedWeek;
+        [JsonProperty("source")] public string Source = "inbound";   // inbound | referral
+    }
+
+    /// <summary>A named prospect in the enterprise pipeline (05).</summary>
+    public sealed class Lead
+    {
+        [JsonProperty("name")] public string Name = "";
+        [JsonProperty("flavor")] public string Flavor = "";
+        [JsonProperty("seats")] public int Seats = 3;
+        [JsonProperty("stage")] public string Stage = "meeting";   // meeting|pilot|procurement|contract
+        [JsonProperty("age_weeks")] public int AgeWeeks;
+        [JsonProperty("heat")] public int Heat = 50;               // 0-100
+    }
+
+    /// <summary>A signed account. Its seats live inside `traction` (05).</summary>
+    public sealed class Logo
+    {
+        [JsonProperty("name")] public string Name = "";
+        [JsonProperty("seats")] public int Seats;
+        [JsonProperty("since_wk")] public int SinceWk;
+        [JsonProperty("renewal_wk")] public int RenewalWk;   // 0 until the floor era
+    }
+
+    /// <summary>Running totals the customers desk reads (05).</summary>
+    public sealed class PipeStats
+    {
+        [JsonProperty("signed")] public int Signed;
+        [JsonProperty("lost")] public int Lost;
+        [JsonProperty("cycle_sum")] public int CycleSum;
+        [JsonProperty("seats_signed")] public int SeatsSigned;
+        [JsonProperty("spend")] public double Spend;
+        [JsonProperty("first_wk")] public int FirstWk;
+    }
+
+    /// <summary>
+    /// One note on the books (06). A single principal+rate could never hold a
+    /// 4%/wk bank note and an 18%/wk shark at once, and amortization needs terms
+    /// per note — so debt is a list, and the legacy `loan_principal` migrates
+    /// into it as a shark record the first time the finance lane runs.
+    /// </summary>
+    public sealed class Loan
+    {
+        [JsonProperty("kind")] public string Kind = "shark";   // shark | bank | venture
+        [JsonProperty("principal")] public int Principal;      // original draw, for receipts
+        [JsonProperty("balance")] public int Balance;
+        [JsonProperty("rate_wk")] public double RateWk;        // frozen at signing
+        [JsonProperty("term_wk")] public int TermWk;           // 0 for shark
+        [JsonProperty("taken_week")] public int TakenWeek;
+        [JsonProperty("pay_wk")] public int PayWk;             // level payment; 0 for shark/venture
+        [JsonProperty("missed")] public int Missed;
+    }
+
+    /// <summary>One thing the team could chase, on the roadmap board (07).</summary>
+    public sealed class Bet
+    {
+        [JsonProperty("id")] public string Id = "";
+        [JsonProperty("name")] public string Name = "";
+        [JsonProperty("desc")] public string Desc = "";
+        [JsonProperty("kind")] public string Kind = "";        // quality|retention|reach|debt|platform
+        [JsonProperty("ambition")] public int Ambition = 1;    // 1-3
+        [JsonProperty("cost_rnd_weeks")] public double CostRndWeeks;
+        [JsonProperty("progress")] public double Progress;
+        [JsonProperty("committed")] public bool Committed;
+        [JsonProperty("committed_week")] public int CommittedWeek;
+        [JsonProperty("ready")] public bool Ready;
+        [JsonProperty("shipped")] public bool Shipped;
+        [JsonProperty("shipped_week")] public int ShippedWeek;
+        [JsonProperty("band")] public string Band = "";
+        [JsonProperty("era")] public string Era = "";
+    }
+
+    /// <summary>The plan of record a priced round installs (08).</summary>
+    public sealed class BoardState
+    {
+        [JsonProperty("target_growth_pct")] public double TargetGrowthPct;
+        [JsonProperty("target_revenue")] public int TargetRevenue;
+        [JsonProperty("base_revenue")] public int BaseRevenue;
+        [JsonProperty("review_week")] public int ReviewWeek;
+        [JsonProperty("strikes")] public int Strikes;      // 0-3 missed covenants on record
+        [JsonProperty("goodwill")] public int Goodwill;    // 0-3 clean quarters on record
+    }
+
+    /// <summary>An offer for the whole company, with a hard clock (08).</summary>
+    public sealed class MnaOffer
+    {
+        [JsonProperty("buyer")] public string Buyer = "";
+        [JsonProperty("price")] public int Price;
+        [JsonProperty("why")] public string Why = "";
+        [JsonProperty("premium")] public double Premium;
+        [JsonProperty("expires_week")] public int ExpiresWeek;
+    }
+
+    /// <summary>A machine on the floor. Capacity and upkeep are denormalized at
+    /// purchase so a later catalog rebalance never rewrites an owned asset (09).</summary>
+    public sealed class EquipmentItem
+    {
+        [JsonProperty("id")] public string Id = "";
+        [JsonProperty("name")] public string Name = "";
+        [JsonProperty("capacity_add")] public double CapacityAdd;
+        [JsonProperty("upkeep_wk")] public double UpkeepWk;
+        [JsonProperty("bought_week")] public int BoughtWeek;
+    }
+
+    /// <summary>The factory (09). Null on every run that is not Hardware.</summary>
+    public sealed class HardwareState
+    {
+        [JsonProperty("stock")] public int Stock;
+        [JsonProperty("capacity_base")] public double CapacityBase = 6.0;   // founder hand-assembly
+        [JsonProperty("equipment")] public List<EquipmentItem> Equipment = new List<EquipmentItem>();
+        [JsonProperty("production_target")] public int ProductionTarget = -1;   // -1 = AUTO
+        [JsonProperty("produced_total")] public int ProducedTotal;   // drives the BUILD learning curve
+        [JsonProperty("subcontract_on")] public bool SubcontractOn;
+        [JsonProperty("demand_ema")] public double DemandEma;
     }
 
     public sealed class Cofounder
@@ -103,6 +322,17 @@ namespace Runway.Core
         [JsonProperty("tactics")] public List<string> Tactics = new List<string>();
         [JsonProperty("weeks_since_move")] public int WeeksSinceMove;
         [JsonProperty("secret")] public string Secret = "";
+        // ── THEIR CONDUCT (03-rivals): what turns a strength number into a
+        // company that DOES things. All additive — an old save loads at these
+        // defaults and behaves exactly as it did.
+        [JsonProperty("vigor")] public double Vigor = 55.0;            // war chest: acting burns it, resting restores it
+        [JsonProperty("focus")] public string Focus = "growth";        // price | product | growth
+        [JsonProperty("price_posture")] public double PricePosture = 1.0;   // their price vs the street's
+        [JsonProperty("hype")] public double Hype = 20.0;              // share of voice, decays like adstock
+        [JsonProperty("last_action")] public string LastAction = "";
+        [JsonProperty("log")] public List<string> Log = new List<string>();   // the street tab's action log, cap 6
+        [JsonProperty("cooldowns")] public Dictionary<string, int> Cooldowns = new Dictionary<string, int>();
+        [JsonProperty("sniffing")] public int Sniffing;                // acquisition interest, handed to M&A
     }
 
     public sealed class Investor
@@ -118,6 +348,17 @@ namespace Runway.Core
         [JsonProperty("tactics")] public List<string> Tactics = new List<string>();
     }
 
+    /// <summary>
+    /// One line of an offer's cost sheet: what it costs, and WHAT IT IS. A
+    /// number the founder can read as "materials $12, courier $4" is a number
+    /// they can act on; a lump `unit_cost` is not (01-catalog).
+    /// </summary>
+    public sealed class CostLine
+    {
+        [JsonProperty("label")] public string Label = "";
+        [JsonProperty("amount")] public double Amount;
+    }
+
     /// <summary>What we sell. price 0 = NOT ON SALE, and an unpriced product earns nothing.</summary>
     public sealed class Offer
     {
@@ -129,10 +370,33 @@ namespace Runway.Core
         [JsonProperty("price")] public double Price;
         [JsonProperty("price_set")] public bool PriceSet;   // a CONSCIOUS price choice, $0 included
         [JsonProperty("weight")] public double Weight = 1.0;
+        // ── the itemized cost sheet (01-catalog). null = a legacy offer that
+        // only ever had the scalar UnitCost; lines are never synthesized on load.
+        [JsonProperty("cost_lines")] public List<CostLine> CostLines;    // variable, $ per unit
+        [JsonProperty("fixed_lines")] public List<CostLine> FixedLines;  // $ per week, volume-free
+        [JsonProperty("fixed_wk")] public double FixedWk;                // derived cache = sum of FixedLines
 
+        /// <summary>
+        /// A DEEP copy. MemberwiseClone alone would hand the copy the SAME line
+        /// objects, so editing one offer's cost sheet would silently edit the
+        /// other's — the exact bug a duplicate is meant to prevent.
+        /// </summary>
         public Offer Duplicate()
         {
-            return (Offer)MemberwiseClone();
+            var c = (Offer)MemberwiseClone();
+            if (CostLines != null)
+            {
+                c.CostLines = new List<CostLine>();
+                foreach (CostLine l in CostLines)
+                    c.CostLines.Add(new CostLine { Label = l.Label, Amount = l.Amount });
+            }
+            if (FixedLines != null)
+            {
+                c.FixedLines = new List<CostLine>();
+                foreach (CostLine l in FixedLines)
+                    c.FixedLines.Add(new CostLine { Label = l.Label, Amount = l.Amount });
+            }
+            return c;
         }
     }
 
@@ -146,6 +410,10 @@ namespace Runway.Core
         [JsonProperty("morale")] public int Morale;
         [JsonProperty("debt")] public int Debt;
         [JsonProperty("hype")] public int Hype;
+        // 06-finance: nullable because pre-wave rows genuinely do not have it —
+        // a reader falls back to (revenue - burn), which is close enough for
+        // history and exact from here on.
+        [JsonProperty("net")] public int? Net;
     }
 
     public sealed class HistoryEntry
@@ -190,18 +458,39 @@ namespace Runway.Core
         [JsonProperty("line")] public string Line = "";
     }
 
-    /// <summary>The ledger's four weekly levers. Every dollar leaves cash and does something.</summary>
+    /// <summary>
+    /// The ledger's weekly levers. Every dollar leaves cash and does something.
+    ///
+    /// `Marketing` is the LEGACY key, kept so an old save still deserializes:
+    /// SimEngine.MigrateBudgets folds it into `Ads` on load and at every tick
+    /// start, and it stays 0 from then on. Acquisition spend is the four
+    /// channels (04-funnel) — paid ads saturate, content compounds, referrals
+    /// amplify word of mouth, outbound is quota math.
+    /// </summary>
     public sealed class Budgets
     {
-        [JsonProperty("marketing")] public int Marketing;
+        [JsonProperty("marketing")] public int Marketing;   // legacy hook only — migrates into Ads
+        [JsonProperty("ads")] public int Ads;
+        [JsonProperty("content")] public int Content;
+        [JsonProperty("referrals")] public int Referrals;
+        [JsonProperty("outbound")] public int Outbound;
         [JsonProperty("sales")] public int Sales;
         [JsonProperty("care")] public int Care;
         [JsonProperty("rnd")] public int Rnd;
         [JsonProperty("office")] public int Office;   // food, perks, benefits
 
+        /// <summary>Every lever, including the legacy key so a pre-migration
+        /// read (runway, the desk total) is never short by the ads lane.</summary>
         public int Sum()
         {
-            return Marketing + Sales + Care + Rnd + Office;
+            return Marketing + Ads + Content + Referrals + Outbound
+                   + Sales + Care + Rnd + Office;
+        }
+
+        /// <summary>The four acquisition channels — what buys reach.</summary>
+        public int Acquisition()
+        {
+            return Marketing + Ads + Content + Referrals + Outbound;
         }
     }
 
@@ -329,6 +618,43 @@ namespace Runway.Core
         [JsonProperty("arcs")] public List<Arc> Arcs = new List<Arc>();
         [JsonProperty("dead")] public bool Dead;
         [JsonProperty("death_cause")] public string DeathCause = "";
+
+        // ── SUBSYSTEM STATE (docs/design/00-spine.md section 8) ──────────────
+        // Every field is additive with a default and a JSON name byte-identical
+        // to the Godot save key, so a pre-wave save loads at the default and
+        // RunSave.Version stays 2. Durable state is a FIELD, never Meta.
+
+        // 01 catalog — cumulative customer-weeks served; drives the learning curve
+        [JsonProperty("served_total")] public int ServedTotal;
+        // 02 labor market
+        [JsonProperty("open_roles")] public List<OpenRole> OpenRoles = new List<OpenRole>();
+        [JsonProperty("applicants")] public List<Applicant> Applicants = new List<Applicant>();
+        [JsonProperty("recruiters")] public int Recruiters;          // 0-2, floor era up
+        // 04 funnel — the content channel's compounding stock
+        [JsonProperty("content_equity")] public double ContentEquity;
+        // 05 enterprise pipeline
+        [JsonProperty("leads")] public List<Lead> Leads = new List<Lead>();
+        [JsonProperty("logos")] public List<Logo> Logos = new List<Logo>();
+        [JsonProperty("pipe_units")] public double PipeUnits;        // interest not yet attached to a name
+        [JsonProperty("pipe_churn_acc")] public double PipeChurnAcc; // fractional account-churn accumulator
+        [JsonProperty("pipe_stats")] public PipeStats PipeStats = new PipeStats();
+        // 06 finance — structured notes (the legacy shark LoanPrincipal still stands)
+        [JsonProperty("loans")] public List<Loan> Loans = new List<Loan>();
+        [JsonProperty("tax_loss_carry")] public int TaxLossCarry;    // shelters later profit
+        [JsonProperty("last_round_amount")] public int LastRoundAmount;
+        [JsonProperty("receivables")] public List<Commitment> Receivables = new List<Commitment>();
+        // 07 roadmap bets
+        [JsonProperty("bets")] public List<Bet> Bets = new List<Bet>();
+        [JsonProperty("platform_level")] public int PlatformLevel;   // 0-4, compounds velocity
+        // 08 board + M&A — null until a round closes / an offer lands
+        [JsonProperty("board")] public BoardState Board;
+        [JsonProperty("mna")] public MnaOffer Mna;
+        [JsonProperty("mna_last_week")] public int MnaLastWeek = -99;
+        [JsonProperty("option_pool_pct")] public double OptionPoolPct;
+        [JsonProperty("founder_banked")] public int FounderBanked;   // secondary proceeds, kept either way
+        [JsonProperty("macro_season")] public string MacroSeason = "steady";   // written by macro only
+        // 09 hardware production — null on every run that is not Hardware
+        [JsonProperty("hardware")] public HardwareState Hardware;
 
         /// <summary>Godot's Object metadata, which the engine uses for prev_revenue / unit_econ / market_line.</summary>
         [JsonProperty("meta")] public Dictionary<string, object> Meta = new Dictionary<string, object>();

@@ -52,6 +52,7 @@ var _clarify_checked := false      # this commit already passed the pre-pass
 var _clarify_rounds := 0
 var _price_asked := false
 var _binder_bang: Label = null
+var _hud_ticker: Label = null   # the attention registry's top line, verbatim
 var _coach: Control = null
 var _coach_step := 0
 var _seen_spreads := {}            # "week:page:sheet" -> the ink is already dry
@@ -349,6 +350,24 @@ func _ready() -> void:
 	_binder_bang.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_binder_bang.visible = false
 	add_child(_binder_bang)
+	# THE HUD TICKER (docs/design/00-spine.md §4): one hand-written line under
+	# the binder button naming the loudest problem in the company. A bang says
+	# "something is wrong"; the ticker says WHAT, in the business term the
+	# player is here to learn, so the binder is never a guessing game.
+	_hud_ticker = Label.new()
+	_hud_ticker.add_theme_font_override("font", _font)
+	_hud_ticker.add_theme_font_size_override("font_size", 26)
+	_hud_ticker.add_theme_color_override("font_color", PALETTE["ink"])
+	_hud_ticker.add_theme_color_override("font_outline_color", PALETTE["cream"])
+	_hud_ticker.add_theme_constant_override("outline_size", 10)
+	# right-aligned to the binder button's own right edge (1272 + 240), on the
+	# line directly below it
+	_hud_ticker.position = Vector2(1092, 996)
+	_hud_ticker.size = Vector2(420, 34)
+	_hud_ticker.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_hud_ticker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hud_ticker.visible = false
+	add_child(_hud_ticker)
 
 	_red_vignette = ColorRect.new()
 	_red_vignette.color = Color(0.85, 0.3, 0.25, 0.0)
@@ -445,10 +464,27 @@ func _process(_delta: float) -> void:
 	if _open_btn and _open_btn.visible:
 		var p := 1.0 + sin(t * 3.2) * 0.03
 		_open_btn.scale = Vector2(p, p)
-	if _binder_bang != null and state != null:
-		var pnl_g: Dictionary = state.get_meta("pnl", {})
-		_binder_bang.visible = SimEngine.offers_any_unpriced(state) \
-				or int(pnl_g.get("net", 0)) < 0 or state.has_flag("fundraising_open")
+	# THE BADGE AND THE TICKER read ONE list (docs/design/00-spine.md §4): the
+	# engine's attention registry. The old hardcoded OR-chain could only ever
+	# know about three conditions; every desk can raise a hand now.
+	if (_binder_bang != null or _hud_ticker != null) and state != null:
+		var items := SimEngine.attention_items(state)
+		if _binder_bang != null:
+			_binder_bang.visible = not items.is_empty()
+		if _hud_ticker != null:
+			# the single loudest thing in the company, in the engine's own
+			# words: warn-and-above only, so the line means "handle this".
+			var top := ""
+			var top_sev := 0
+			for it in items:
+				if int((it as Dictionary).get("severity", 1)) >= 2:
+					top = String((it as Dictionary).get("label", ""))
+					top_sev = int((it as Dictionary).get("severity", 2))
+					break
+			_hud_ticker.text = top
+			_hud_ticker.visible = top != ""
+			_hud_ticker.add_theme_color_override("font_color",
+				PALETTE["coral"] if top_sev >= 3 else PALETTE["ink"])
 	# the room itself panics about money: pulsing red edges when starving
 	if _red_vignette:
 		if state.weeks_in_red > 0:
@@ -2756,9 +2792,12 @@ func _apply_dm_effects(effects: Array) -> Array:
 							hit = od3
 							break
 				if hit.is_empty() and pname != "":
-					hit = {"name": pname, "unit": "per order", "fair_price": pv,
-						"elasticity": 2.0, "unit_cost": 0.0, "weight": 1.0}
-					state.offers.append(hit)
+					# A NAME NOBODY SELLS YET is a new offer — and a new offer goes
+					# through add_offer like every other, so the world's clamps
+					# (fair price, marginal cost, elasticity, shelf weight) apply
+					# to it too. Appending the dict raw was a hole straight past
+					# every one of them (docs/design/DECISIONS.md §A4).
+					hit = SimEngine.add_offer(state, pname, "per order", pv, 0.0, 2.0, 1.0)
 				elif hit.is_empty() and not state.offers.is_empty():
 					hit = state.offers[0]   # everything priced: it's a reprice
 				if not hit.is_empty():
@@ -2795,14 +2834,34 @@ func _apply_dm_effects(effects: Array) -> Array:
 				if can < want_amt:
 					out.append("the bank stopped it at $%d (wanted $%d) — money you don't have doesn't spend" % [can, want_amt])
 			"set_budget":
+				# THE LANES the DM may set. The four acquisition channels are
+				# accepted if a move ever names one, but the narrator keeps
+				# speaking founder-language: "marketing" is the whole top of the
+				# funnel, and the ENGINE decides which channels that means — a
+				# narrator must never silently overwrite a curated mix.
 				var cat := String(d.get("cat", "marketing"))
-				if not cat in ["marketing", "sales", "care", "rnd", "office"]:
+				if not cat in ["ads", "content", "referrals", "outbound",
+						"sales", "care", "rnd", "office", "marketing"]:
 					cat = "marketing"
 				var wk_amt := clampi(int(d.get("v", 0)), 0, SimEngine.era_spend_cap(state.era))
-				state.budgets[cat] = wk_amt
 				if cat == "marketing":
+					SimFunnel.set_marketing(state, wk_amt)
 					state.marketing_budget = 0   # one source of truth once the ledger takes over
+				else:
+					state.budgets[cat] = wk_amt
 				out.append("%s budget set to $%d/wk — %s" % [cat, wk_amt, why])
+			"push_lead":
+				# THE FOUNDER LEANS ON A DEAL. The engine clamps the heat swing
+				# before the pipeline ever sees it; the lane matches the named
+				# lead and writes the receipt. No live lead by that name is a
+				# real answer, not an error: the world says so and moves on.
+				var heat := clampi(int(d.get("v", 0)), -40, 40)
+				var lead_nm := String(d.get("cat", "")).strip_edges()
+				var pushed := SimPipeline.push_lead(state, lead_nm, heat)
+				if pushed != "":
+					out.append(pushed)
+				else:
+					out.append("no live deal called '%s' — the push found nobody" % lead_nm)
 			_:
 				classic.append(d)
 	var clog := EffectOps.apply_all(classic, state)

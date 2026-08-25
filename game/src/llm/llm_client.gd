@@ -137,13 +137,21 @@ const ADJUDICATE_SCHEMA := {
 					"op": {"type": "string", "enum": ["cash_delta", "product_delta",
 						"traction_delta", "morale_delta", "hype_delta", "set_flag",
 						"status", "clock", "set_price", "price_offer", "set_marketing", "hire", "take_loan",
-						"spend", "set_budget"]},
+						"spend", "set_budget", "push_lead"]},
 					"v": {"type": ["number", "string"]},
 					"why": {"type": "string", "maxLength": 90},
 					# status: duration · clock: weeks until it fires · all other ops: 1
 					"weeks": {"type": "integer", "minimum": 1, "maximum": 12},
-					# spend/set_budget only: where the money goes. "" for every other op.
-					"cat": {"type": "string", "enum": ["", "marketing", "sales", "care", "rnd", "office", "one_off"]}
+					# WHERE IT LANDS — a free string, not an enum, because four ops
+					# now share this field and only one has a closed vocabulary
+					# (docs/design/00-spine.md §7):
+					#   spend       a short label for the outlay
+					#   set_budget  a lever: marketing, sales, care, rnd, office
+					#   price_offer the offer's name, matched fuzzily
+					#   push_lead   the lead's name, matched fuzzily
+					# "" for every other op. The executor guards each case, so an
+					# unrecognised value degrades to a sane lane, never a crash.
+					"cat": {"type": "string", "maxLength": 40}
 				}
 			}
 		}

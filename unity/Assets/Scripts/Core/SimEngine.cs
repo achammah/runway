@@ -81,6 +81,13 @@ namespace Runway.Core
         [JsonProperty("churn_mult")] public double ChurnMult = 1.0;
         [JsonProperty("arpu_mult")] public double ArpuMult = 1.0;
         [JsonProperty("velocity_mult")] public double VelocityMult = 1.0;
+        // the street's price, not yours — read ONLY by StreetFairMult, so the
+        // existing adopt/churn/arpu status loop stays untouched by it (03)
+        [JsonProperty("fair_mult")] public double FairMult = 1.0;
+        // read ONLY by the funding helpers their owning specs define (03/08)
+        [JsonProperty("val_mult")] public double ValMult = 1.0;
+        [JsonProperty("amt_mult")] public double AmtMult = 1.0;
+        [JsonProperty("spread_mult")] public double SpreadMult = 1.0;
         [JsonProperty("hype_wk")] public double HypeWk;
         [JsonProperty("fatigue_wk")] public double FatigueWk;
         [JsonProperty("morale_wk")] public double MoraleWk;
@@ -273,6 +280,33 @@ namespace Runway.Core
             { "market_tailwind",   new StatusDef { AdoptMult = 1.3, Kind = "buff" } },
             { "market_headwind",   new StatusDef { AdoptMult = 0.7, Kind = "condition" } },
             { "rival_fud",         new StatusDef { AdoptMult = 0.8, Dis = "sell", Kind = "condition" } },
+            // ── THE WAVE'S ADDITIONS (00-spine section 7). Names are unique
+            // across the catalog and across lanes, checked. The DM may install
+            // any of them BY NAME through the existing `status` op — the
+            // magnitudes live HERE, once, so a narrator can never invent an
+            // untyped modifier.
+            //
+            // NOTE the four NEW effect keys (FairMult, ValMult, AmtMult,
+            // SpreadMult) are read ONLY by the helpers their owning specs
+            // define. The existing section-8 status loop (adopt/churn/arpu)
+            // never sees them, so a price war cannot double-dip on adoption.
+            // 03 — the street
+            { "price_war",         new StatusDef { FairMult = 0.92, Kind = "condition" } },
+            { "outshipped",        new StatusDef { AdoptMult = 0.85, Kind = "condition" } },
+            { "rival_stumbled",    new StatusDef { AdoptMult = 1.25, Kind = "buff" } },
+            { "winter_watch",      new StatusDef { Kind = "condition" } },   // banner + DM only
+            { "boom_watch",        new StatusDef { Kind = "buff" } },        // ditto, the other way
+            { "funding_winter",    new StatusDef { ValMult = 0.6, AmtMult = 0.7, SpreadMult = 1.25,
+                                                   Dis = "raise", Kind = "condition" } },
+            { "boom",              new StatusDef { ValMult = 1.3, AmtMult = 1.3, SpreadMult = 0.9,
+                                                   Adv = "raise", Kind = "buff" } },
+            // 06 — the bank
+            { "collections_calls", new StatusDef { MoraleWk = -1.0, Dis = "raise", Kind = "condition" } },
+            // 07 — the roadmap
+            { "sticky_release",    new StatusDef { ChurnMult = 0.75, Kind = "buff" } },
+            { "feature_buzz",      new StatusDef { AdoptMult = 1.3, Kind = "buff" } },
+            // 08 — the board
+            { "board_delight",     new StatusDef { Adv = "raise", MoraleWk = 2.0, HypeWk = 3.0, Kind = "buff" } },
         };
 
         private static readonly StatusDef NO_STATUS = new StatusDef();
@@ -285,9 +319,66 @@ namespace Runway.Core
         }
 
         // ─────────────────── seeded per-subsystem randomness ─────────────────────
+        /// <summary>
+        /// THE SALT REGISTRY (docs/design/00-spine.md section 3). Every
+        /// stochastic subsystem draws on its own stream keyed (seed, week,
+        /// salt), so a run replays exactly and one subsystem's dice never shift
+        /// another's.
+        ///
+        /// THE CONVENTION: salt = business-plan section x 10 + n (1 catalog,
+        /// 2 labor, 3 rivals, 4 funnel, 5 enterprise, 6 finance, 7 roadmap,
+        /// 8 macro, 9 board, 10 M&amp;A, 11 hardware), skipping the frozen legacy
+        /// numbers already sitting inside a decade. A frozen salt NEVER changes
+        /// meaning — replay and save compatibility both depend on it. Nothing
+        /// references a bare number: a lane cites the NAME, which is what makes
+        /// a collision impossible to write.
+        ///
+        /// NOTE the engines do NOT share PRNG internals (Rng.FromKey is not
+        /// Godot's hash + PCG32). Determinism is a PER-ENGINE guarantee: same
+        /// seed and week give the same result in THIS engine. Never write a
+        /// test expecting a draw to match across the twins.
+        /// </summary>
+        public const int SALT_MORALE_QUIT = 4;        // frozen — morale resignation roll
+        public const int SALT_OUTAGE = 5;             // frozen — outage roll
+        public const int SALT_RIVAL_RATCHET = 6;      // RETIRED — the old strength ratchet, a
+                                                      // tombstone, never reassigned
+        public const int SALT_TREND = 7;              // frozen — market-mood walk; macro
+                                                      // mean-reverts it STREAM-PRESERVED
+        public const int SALT_TERM_SHEETS = 9;        // frozen — term-sheet generation
+        public const int SALT_CATALOG_JITTER = 11;    // 01 — keyless draft jitter
+        public const int SALT_LABOR_ARRIVALS = 20;    // 02 — candidate arrivals
+        public const int SALT_LABOR_STATS = 21;       // 02 — candidate skill/ask
+        public const int SALT_LABOR_PATIENCE = 22;    // 02 — applicant patience decay
+        public const int SALT_LABOR_LADDER = 23;      // 02 — raise-ask / resignation ladder
+        public const int SALT_LABOR_POOLS = 24;       // 02 — keyless name/quirk pools
+        public const int SALT_RIVAL_ACTION = 30;      // 03 — weekly action pick
+        public const int SALT_RIVAL_POACH = 31;       // 03 — poach roll
+        public const int SALT_RIVAL_DISRUPTOR = 32;   // 03 — hq disruptor spawn
+        public const int SALT_PIPELINE = 50;          // 05 — THE pipeline stream
+        public const int SALT_PIPELINE_NAMES = 51;    // 05 — keyless lead-name pool
+        public const int SALT_ROADMAP_SHIP = 70;      // 07 — ship roll payoff spread
+        public const int SALT_ROADMAP_SLOTS = 71;     // 07 — slot refresh
+        public const int SALT_RND_REMAINDER = 77;     // frozen — R&D quality remainder
+        public const int SALT_MACRO_SHOCK = 80;       // 03-macro — shock roll
+        public const int SALT_BELIEFS = 88;           // frozen — belief seeding
+        public const int SALT_ADOPT_REMAINDER = 91;   // frozen — adoption net remainder
+        public const int SALT_INCIDENTS = 93;         // frozen — incidents + standing liabilities
+        public const int SALT_BURNED = 95;            // BURNED — four lanes claimed it at once;
+                                                      // reserved so a stale 95 fails review
+        public const int SALT_MNA = 100;              // 08 — M&A offer arrival + premium
+        public const int SALT_HW_BREAKDOWN = 110;     // 09 — machine breakdown roll
+        public const int SALT_HW_REPURCHASE = 111;    // 09 — repurchase seeded remainder
+
         private static Rng RngFor(GameState state, int salt)
         {
             return Rng.Salted(state.SimSeed, state.Week, salt);
+        }
+
+        /// <summary>Public stream accessor — the lanes cannot reach RngFor, and
+        /// every lane needs its own salted stream. Same keying, same guarantee.</summary>
+        public static Rng RngForSalt(GameState state, int salt)
+        {
+            return RngFor(state, salt);
         }
 
         // ───────────────────────── lookup curves (BSL) ───────────────────────────
@@ -303,7 +394,26 @@ namespace Runway.Core
         }
 
         // ═══════════════════════════ THE WEEKLY TICK ═════════════════════════════
-        /// <summary>The hostile world, in order.</summary>
+        /// <summary>
+        /// The hostile world, in order (THE TICK ORDER v2, docs/design/00-spine.md
+        /// section 1).
+        ///
+        /// THE LANE HOOK MAP — the only insertion points. Each subsystem is ONE
+        /// section with its number in a comment; a lane fills its own file and
+        /// never touches this one (docs/design/HOOKS.md):
+        ///
+        ///   3b   SimLabor.TickPre     roster + applicants settle before morale reads them
+        ///   6a   SimStreet.TickPre    rivals act, then macro — both before the market
+        ///   7    SimRoadmap.TickPre   a shipped bet must exist before adoption reads product
+        ///   7h   SimFactory.TickPre   produce FIRST: stock exists before adoption spends it
+        ///   8    SimCatalog / SimFunnel / SimPipeline.TickPre, then the market moves once
+        ///   9    SimBank / SimBoard.TickPre, then ALL NINE .TickMoney(state, rep, m)
+        ///   9c+  ALL NINE .TickPost — board review and M&amp;A read the finished week
+        ///
+        /// Every hook is a no-op until its lane lands, and the tick's arithmetic
+        /// is byte-identical while they are: that invariant is what lets nine
+        /// lanes ship in parallel against one engine.
+        /// </summary>
         public static WeeklyReport WeeklyTick(GameState state)
         {
             var rep = new WeeklyReport();
@@ -313,6 +423,9 @@ namespace Runway.Core
                 th = DefaultTheta(state.BizWhat, state.BizWho);
                 state.Theta = th;
             }
+            // a legacy save's single `marketing` budget becomes paid ads before
+            // any reader sees it (idempotent — safe every tick)
+            MigrateBudgets(state);
 
             // 1 ── clocks: deadlines fire deterministically
             var keptClocks = new List<Clock>();
@@ -346,7 +459,8 @@ namespace Runway.Core
             }
             state.Statuses = keptStatus;
 
-            // 3 ── the hiring pipeline advances: cohort 0 onboards, then productive
+            // 3a ── the hiring pipeline advances: cohort 0 onboards, then productive
+            // (graduates join the roster BEFORE the labor market counts open seats)
             if (state.Pipeline.Count > 0)
             {
                 var grads = new List<PipelineHire>();
@@ -378,6 +492,11 @@ namespace Runway.Core
                         "{0} finished onboarding — productive now", g.Name ?? "a hire"));
                 }
             }
+
+            // 3b ── THE LABOR MARKET: arrivals, applicant decay, the review
+            // cycle. The roster and the applicant pool must be final before
+            // morale feels them in 4 and payroll pays them in 9.
+            SimLabor.TickPre(state, rep);
 
             // 4 ── fatigue and morale drift (the slow tax)
             bool crunching = HasStatus(state, "crunch");
@@ -453,23 +572,36 @@ namespace Runway.Core
                     "OUTAGE — the debt collected (debt {0})", Gd.ToInt(state.TechDebt)));
             }
 
-            // 6 ── rivals ratchet up; occasional launch
-            Rng r6 = RngFor(state, 6);
-            foreach (Rival rd in state.Rivals)
+            // 6a ── THE STREET: rivals act (per-rival upkeep, weekly action
+            // pick, poach, disruptor), then 6b MACRO. Rivals move BEFORE the
+            // market, so a price cut or a launch shapes THIS week's demand; the
+            // poach lands after arrivals (3b) and before payroll (9).
+            SimStreet.TickPre(state, rep);
+            if (!SimStreet.OwnsRivals)
             {
-                rd.Strength = Gd.Minf(rd.Strength + r6.RandfRange(0.0, 1.2), 95.0);
-                rd.WeeksSinceMove = rd.WeeksSinceMove + 1;
-                if (rd.WeeksSinceMove >= 5 && r6.Randf() < 0.4)
+                // THE LEGACY RATCHET (salt 6, retired by 03): strength drifts up
+                // and a move lands now and then. The lane replaces this wholesale
+                // by flipping OwnsRivals; until then the old world runs exactly
+                // as it always has.
+                Rng r6 = RngFor(state, SALT_RIVAL_RATCHET);
+                foreach (Rival rd in state.Rivals)
                 {
-                    rd.WeeksSinceMove = 0;
-                    rd.Strength = Gd.Minf(rd.Strength + 4.0, 95.0);
-                    List<string> tactics = (rd.Tactics != null && rd.Tactics.Count > 0)
-                        ? rd.Tactics : new List<string> { "shipped something loud" };
-                    string move = tactics[(int)(r6.Randi() % (uint)tactics.Count)];
-                    rep.Events.Add(string.Format(CultureInfo.InvariantCulture,
-                        "{0} made a move — {1}", rd.Name ?? "a rival", move));
+                    rd.Strength = Gd.Minf(rd.Strength + r6.RandfRange(0.0, 1.2), 95.0);
+                    rd.WeeksSinceMove = rd.WeeksSinceMove + 1;
+                    if (rd.WeeksSinceMove >= 5 && r6.Randf() < 0.4)
+                    {
+                        rd.WeeksSinceMove = 0;
+                        rd.Strength = Gd.Minf(rd.Strength + 4.0, 95.0);
+                        List<string> tactics = (rd.Tactics != null && rd.Tactics.Count > 0)
+                            ? rd.Tactics : new List<string> { "shipped something loud" };
+                        string move = tactics[(int)(r6.Randi() % (uint)tactics.Count)];
+                        rep.Events.Add(string.Format(CultureInfo.InvariantCulture,
+                            "{0} made a move — {1}", rd.Name ?? "a rival", move));
+                    }
                 }
             }
+            // avg-strength pressure closes 6a whoever moved the rivals — the
+            // market reads the settled board, never the mover
             double pressure = 0.0;
             foreach (Rival rv2 in state.Rivals)
             {
@@ -477,11 +609,29 @@ namespace Runway.Core
             }
             pressure = Gd.Minf(pressure / Gd.Maxf(state.Rivals.Count, 1.0) / 100.0 * 0.5, 0.45);
 
-            // 7 ── market mood random walk
-            Rng r7 = RngFor(state, 7);
-            state.MarketTrend = Gd.Clampf(state.MarketTrend + r7.RandfRange(-1.0, 1.0) * th.TrendVol, 0.5, 1.5);
+            // 6b ── MACRO: the market-mood walk. 03-macro mean-reverts this
+            // around a season cycle using the SAME single salt-7 draw (stream
+            // preserved), so owning it never shifts another subsystem's dice.
+            if (!SimStreet.OwnsMacro)
+            {
+                Rng r7 = RngFor(state, SALT_TREND);
+                state.MarketTrend = Gd.Clampf(state.MarketTrend + r7.RandfRange(-1.0, 1.0) * th.TrendVol, 0.5, 1.5);
+            }
 
-            // 8 ── adoption and churn (Bass + quality residence)
+            // 7 ── ROADMAP BETS: rnd-routed progress, READY bets roll the house
+            // dice. A shipped bet's payoff must exist before adoption reads product.
+            SimRoadmap.TickPre(state, rep);
+
+            // 7h ── HARDWARE PRODUCTION: build target, produce, breakdown roll.
+            // PRODUCE FIRST — stock must exist before adoption can be clamped to it.
+            SimFactory.TickPre(state, rep);
+
+            // 8 ── adoption and churn (Bass + quality residence). The market
+            // moves exactly ONCE, after weather, rivals, quality and stock have
+            // all settled.
+            SimCatalog.TickPre(state, rep);
+            SimFunnel.TickPre(state, rep);
+            SimPipeline.TickPre(state, rep);
             double A = state.Traction;
             double N = th.Tam;
             double P = Gd.Maxf(N - A, 0.0);
@@ -491,7 +641,10 @@ namespace Runway.Core
             //   marketing -> reach (diminishing via cac_sat), sales -> closing capacity,
             //   care -> retention, rnd -> product quality and debt paydown.
             Budgets bud = state.Budgets;
-            double bMk = bud.Marketing + state.MarketingBudget;
+            // the acquisition spend is the FOUR channels summed (04): a legacy
+            // save's `marketing` already migrated into `ads`, and the legacy
+            // set_marketing op's budget folds in here exactly as it always did
+            double bMk = bud.Acquisition() + state.MarketingBudget;
             double bSales = bud.Sales;
             double bCare = bud.Care;
             double bRnd = bud.Rnd;
@@ -500,7 +653,11 @@ namespace Runway.Core
             // benefits that buys morale and keeps people whole.
             double bOffice = bud.Office;
             double mkBudget = bMk;
-            double mkMult = 1.0 + 1.4 * (1.0 - Math.Exp(-mkBudget / th.CacSat));
+            // REACH: one blended saturating curve today; 04 replaces it with the
+            // four-channel reach term through this seam (the stub hands back the
+            // default, so the blended lever is what runs until the lane lands).
+            double mkMult = SimFunnel.ReachMult(state, mkBudget,
+                1.0 + 1.4 * (1.0 - Math.Exp(-mkBudget / th.CacSat)));
             double statusAdopt = 1.0;
             double statusChurn = 1.0;
             double statusArpu = 1.0;
@@ -552,6 +709,10 @@ namespace Runway.Core
             double gtmCap = (1.5 + 0.8 * state.Competence("sell")
                 + 3.0 * salesHeads + mkBudget / 400.0 + bSales / 600.0) * capScale;
             adds = Gd.Minf(adds, gtmCap);
+            // HARDWARE: you cannot sell what you did not build. 09 clamps adds
+            // to the shelf and decrements it here; off Hardware the stub hands
+            // adds straight back, so demand is stock-free exactly as it is today.
+            adds = SimFactory.ClampAdds(state, rep, adds);
             double residence = th.LifetimeWk * (0.4 + state.Product / 100.0 * 1.2);
             // customer care keeps people: churn eases toward -30% as care approaches ~$3k/wk
             double careMult = 1.0 - 0.30 * (1.0 - Math.Exp(-bCare / 1500.0));
@@ -562,8 +723,12 @@ namespace Runway.Core
             // Enterprise forever — the seeded remainder keeps it (C5 D4)
             double netF = adds - churn;
             int net = (int)Math.Floor(Math.Abs(netF)) * (netF >= 0.0 ? 1 : -1);
-            if (RngFor(state, 91).Randf() < Math.Abs(netF) - Math.Floor(Math.Abs(netF)))
+            if (RngFor(state, SALT_ADOPT_REMAINDER).Randf() < Math.Abs(netF) - Math.Floor(Math.Abs(netF)))
                 net += netF >= 0.0 ? 1 : -1;
+            // ENTERPRISE: named accounts arrive through the pipeline, not the
+            // coin — 05 routes adds/churn through its own stream here and
+            // returns the week's real net. Every other run gets this back.
+            net = SimPipeline.AdoptionNet(state, rep, adds, churn, net);
             state.Traction = Gd.Maxi(state.Traction + net, 0);
             rep.Adds = Gd.RoundToInt(adds);
             rep.Churn = Gd.RoundToInt(churn);
@@ -580,7 +745,13 @@ namespace Runway.Core
                     Gd.RoundToInt(churn), Gd.RoundToInt(residence), state.Product));
             }
 
-            // 9 ── money: revenue, burn, loan
+            // 9 ── MONEY & P&L. One place computes the week's truth: revenue,
+            // cost of serving, the standing costs, every lane's spend, THEN
+            // interest, THEN tax, and only then the record. Interest and tax
+            // land BEFORE the record is written so the ledger never lies about
+            // what the week actually cost.
+            SimBank.TickPre(state, rep);
+            SimBoard.TickPre(state, rep);
             double arpuOff = OffersArpu(state);
             double revenue = 0.0;
             if (arpuOff >= 0.0)
@@ -626,7 +797,7 @@ namespace Runway.Core
             {
                 double qualityGain = bRnd / 1200.0;
                 int whole = (int)Math.Floor(qualityGain);
-                if (RngFor(state, 77).Randf() < qualityGain - whole)
+                if (RngFor(state, SALT_RND_REMAINDER).Randf() < qualityGain - whole)
                 {
                     whole += 1;
                 }
@@ -647,13 +818,40 @@ namespace Runway.Core
                         "cost of serving customers: ${0}", Gd.RoundToInt(cogs)));
             }
             // the more you have served, the cheaper serving gets (Bonopoly's
-            // learning curve): the discount lives in OffersCogsPerCustomer
-            state.SetMeta("served_total",
-                (int)state.GetMetaF("served_total", 0.0) + state.Traction);
-            int burn = Gd.ToInt(((double)(rent + payroll + infra) + mkBudget + bSales + bCare + bRnd + bOffice) * th.BurnMult + cogs);
+            // learning curve): the discount lives in OffersCogsPerCustomer.
+            // A FIELD, not a meta — the Godot twin's metas do not survive a
+            // save, so the curve silently reset on every load until this moved.
+            state.ServedTotal += state.Traction;
+            double offerFixed = OffersFixedWk(state);
+            if (offerFixed >= 1.0)
+                rep.Lines.Add(string.Format(CultureInfo.InvariantCulture,
+                    "catalog overheads: ${0}/wk (tools, licenses, storage)", Gd.RoundToInt(offerFixed)));
+
+            // THE WORKING MONEY RECORD (docs/design/00-spine.md section 2): one
+            // field per P&L lane. The engine fills its own lanes above; each
+            // subsystem writes ONLY the lanes it owns; the engine then sums burn
+            // and writes the record whole.
+            var m = new MoneyWork
+            {
+                Revenue = revenue, Cogs = cogs,
+                Rent = rent, Payroll = payroll, Infra = infra,
+                Marketing = mkBudget, Sales = bSales, Care = bCare,
+                Rnd = bRnd, Office = bOffice,
+                OfferFixed = offerFixed,
+            };
+            SimCatalog.TickMoney(state, rep, m);
+            SimLabor.TickMoney(state, rep, m);
+            SimStreet.TickMoney(state, rep, m);
+            SimFunnel.TickMoney(state, rep, m);
+            SimPipeline.TickMoney(state, rep, m);
+            SimBank.TickMoney(state, rep, m);
+            SimRoadmap.TickMoney(state, rep, m);
+            SimBoard.TickMoney(state, rep, m);
+            SimFactory.TickMoney(state, rep, m);
+
             // THE UNFORESEEN (owner: running a business includes what nobody
             // planned): some weeks a small real cost lands — seeded, receipted.
-            Rng incR = RngFor(state, 93);
+            Rng incR = RngFor(state, SALT_INCIDENTS);
             int incidentCost = 0;
             if (incR.Randf() < 0.30)
             {
@@ -663,7 +861,6 @@ namespace Runway.Core
                     "a parking fine found the van", "the wifi needed a new router",
                     "someone broke the good chair", "the same invoice arrived twice",
                     "a deposit nobody remembered came due", "the door lock jammed after hours" };
-                burn += incidentCost;
                 rep.Lines.Add(string.Format(CultureInfo.InvariantCulture,
                     "the unforeseen: −${0} ({1})", incidentCost,
                     incWhat[incR.RandiRange(0, incWhat.Length - 1)]));
@@ -685,18 +882,70 @@ namespace Runway.Core
                 rep.Lines.Add(string.Format(CultureInfo.InvariantCulture,
                     "NEW STANDING COST: {0} — ${1}/wk for {2} weeks", lb.name, -wkcost, lb.wk));
             }
+            m.Incident = incidentCost;
+
+            // BURN IS OPERATING SPEND ONLY (docs/design/00-spine.md section 2).
+            // Interest and tax sit OUTSIDE it — the real income-statement shape,
+            // which is the whole pedagogy: operating profit, cost of debt, tax,
+            // then what is actually yours.
+            double laneBurn = m.Severance + m.Recruiting + m.Production
+                              + m.Subcontract + m.EquipUpkeep + m.Carrying;
+            int burn = Gd.ToInt(((double)(rent + payroll + infra) + mkBudget + bSales + bCare + bRnd + bOffice) * th.BurnMult + cogs + offerFixed + laneBurn);
+            burn += incidentCost;
+            m.Burn = burn;
             state.Cash += Gd.RoundToInt(revenue) - burn;
+            // THE COST OF DEBT, before the record. The legacy shark note
+            // compounds here and its interest becomes a real P&L lane; 06 takes
+            // the whole step over (structured notes, honest rates, amortization)
+            // by flipping OwnsDebt.
+            if (!SimBank.OwnsDebt)
+            {
+                if (state.LoanPrincipal > 0)
+                {
+                    int interest = (int)Math.Ceiling(state.LoanPrincipal * 0.18);
+                    state.LoanPrincipal += interest;
+                    m.Interest += interest;
+                    rep.Lines.Add(string.Format(CultureInfo.InvariantCulture,
+                        "the loan compounds: +${0} interest (owe ${1})", interest, state.LoanPrincipal));
+                    if (state.Cash > 2000)
+                    {
+                        int pay = Gd.Mini(state.Cash - 1500, state.LoanPrincipal);
+                        state.Cash -= pay;
+                        state.LoanPrincipal -= pay;
+                        rep.Lines.Add(string.Format(CultureInfo.InvariantCulture, "auto-repaid ${0} of the loan", pay));
+                    }
+                }
+            }
             int liabWk = 0;
             foreach (Commitment cm0 in state.Commitments)
                 liabWk += Gd.Mini(cm0.CashWk, 0);
+            m.LiabilitiesWk = -liabWk;
+            // THE STATE, last: tax is charged on what is left after interest, so
+            // it can only be computed once every other lane has closed.
+            m.Tax = SimBank.TaxWk(state, m);
+            // THE RECORD, written whole and exactly once. The identity a twin
+            // test pins every week:
+            //   net = revenue - burn - liabilities_wk - interest - tax
             state.LastPnl = new Pnl
             {
                 Revenue = Gd.RoundToInt(revenue), Cogs = Gd.RoundToInt(cogs),
                 Rent = rent, Payroll = payroll, Infra = infra,
                 Marketing = Gd.ToInt(mkBudget), Sales = Gd.ToInt(bSales),
                 Care = Gd.ToInt(bCare), Rnd = Gd.ToInt(bRnd), Office = Gd.ToInt(bOffice),
-                Incident = incidentCost, LiabilitiesWk = -liabWk, Burn = burn,
-                Net = Gd.RoundToInt(revenue) - burn + liabWk,
+                OfferFixed = Gd.RoundToInt(offerFixed),
+                Severance = Gd.RoundToInt(m.Severance),
+                Recruiting = Gd.RoundToInt(m.Recruiting),
+                Production = Gd.RoundToInt(m.Production),
+                Subcontract = Gd.RoundToInt(m.Subcontract),
+                EquipUpkeep = Gd.RoundToInt(m.EquipUpkeep),
+                Carrying = Gd.RoundToInt(m.Carrying),
+                Incident = incidentCost,
+                LiabilitiesWk = -liabWk,
+                Interest = Gd.RoundToInt(m.Interest),
+                Tax = Gd.RoundToInt(m.Tax),
+                Burn = burn,
+                Net = Gd.RoundToInt(revenue) - burn + liabWk
+                      - Gd.RoundToInt(m.Interest) - Gd.RoundToInt(m.Tax),
                 Learning = LearningCurve(state),
             };
             if (state.GetMetaF("prev_revenue", 0.0) > 1.0)
@@ -730,20 +979,6 @@ namespace Runway.Core
                 { "arpu", arpu }, { "cac", rep.Cac }, { "ltv", rep.Ltv },
                 { "payback_wk", rep.PaybackWk }, { "residence", Gd.ToInt(residence) },
             });
-            if (state.LoanPrincipal > 0)
-            {
-                int interest = (int)Math.Ceiling(state.LoanPrincipal * 0.18);
-                state.LoanPrincipal += interest;
-                rep.Lines.Add(string.Format(CultureInfo.InvariantCulture,
-                    "the loan compounds: +${0} interest (owe ${1})", interest, state.LoanPrincipal));
-                if (state.Cash > 2000)
-                {
-                    int pay = Gd.Mini(state.Cash - 1500, state.LoanPrincipal);
-                    state.Cash -= pay;
-                    state.LoanPrincipal -= pay;
-                    rep.Lines.Add(string.Format(CultureInfo.InvariantCulture, "auto-repaid ${0} of the loan", pay));
-                }
-            }
 
             // 9b ── the founder's working assumptions converge toward the truth.
             // Rate: analytics tooling, real customers, and R&D all teach.
@@ -759,6 +994,19 @@ namespace Runway.Core
                 state.Beliefs.LifetimeWk = state.Beliefs.LifetimeWk
                     + (th.LifetimeWk - state.Beliefs.LifetimeWk) * k;
             }
+
+            // 9c/9d ── the week is closed, so the readers of a closed week run
+            // now: the board review against the covenant, M&A offers priced off
+            // this week's growth, bets that finished, catalog and factory books.
+            SimCatalog.TickPost(state, rep);
+            SimLabor.TickPost(state, rep);
+            SimStreet.TickPost(state, rep);
+            SimFunnel.TickPost(state, rep);
+            SimPipeline.TickPost(state, rep);
+            SimBank.TickPost(state, rep);
+            SimRoadmap.TickPost(state, rep);
+            SimBoard.TickPost(state, rep);
+            SimFactory.TickPost(state, rep);
 
             // 10 ── commitments (recurring deltas with duration)
             var keptComm = new List<Commitment>();
@@ -786,6 +1034,7 @@ namespace Runway.Core
                 Customers = state.Traction, Revenue = rep.Revenue,
                 Burn = rep.Burn, Morale = state.Morale,
                 Debt = Gd.ToInt(state.TechDebt), Hype = state.Hype,
+                Net = state.LastPnl != null ? state.LastPnl.Net : (int?)null,
             });
             if (state.MetricHistory.Count > 90)
             {
@@ -1105,15 +1354,37 @@ namespace Runway.Core
         /// demand survives at this price. (p/fair)^-elasticity, clamped so a
         /// giveaway can at most triple demand and an absurd price sells ~nothing.
         /// </summary>
-        public static double OfferDemand(Offer offer, double price)
+        /// <remarks>
+        /// `fairMult` is THE STREET'S price, not yours: while a rival's price war
+        /// runs, the going rate itself drops, so holding your list price reads as
+        /// expensive. 1.0 = no war, and everything behaves exactly as before.
+        /// </remarks>
+        public static double OfferDemand(Offer offer, double price, double fairMult = 1.0)
         {
-            double fair = Gd.Maxf(offer.FairPrice, 0.01);
+            double fair = Gd.Maxf(offer.FairPrice * fairMult, 0.01);
             if (price <= 0.0)
             {
                 return 0.0;   // not on sale
             }
             double e = offer.Elasticity;
             return Gd.Clampf(Math.Pow(price / fair, -e), 0.0, 2.0);
+        }
+
+        /// <summary>
+        /// THE GOING RATE, after the street has had its say: the product of every
+        /// live status' fair_mult, floored so a war can never erase the market.
+        /// Read at exactly three sites — demand, retention pain, and what an
+        /// unpriced offer bills — because those are the three places a customer
+        /// feels a price.
+        /// </summary>
+        public static double StreetFairMult(GameState state)
+        {
+            double mlt = 1.0;
+            foreach (Status s in state.Statuses)
+            {
+                mlt *= StatusEffect(s.Name).FairMult;
+            }
+            return Gd.Maxf(mlt, 0.85);
         }
 
         /// <summary>
@@ -1128,9 +1399,10 @@ namespace Runway.Core
                 return -1.0;
             }
             double total = 0.0;
+            double fm = StreetFairMult(state);
             foreach (Offer od in state.Offers)
             {
-                double price = OfferBilledPrice(od);
+                double price = OfferBilledPrice(od, fm);
                 if (price <= 0.0)
                 {
                     continue;
@@ -1146,15 +1418,16 @@ namespace Runway.Core
         /// <summary>THE BACKSTOP (owner: customers paying $0 "is IMPOSSIBLE"):
         /// what an offer actually bills at — the founder's price, or the FAIR
         /// (going) rate while unpriced. 0 only when it has neither.</summary>
-        public static double OfferBilledPrice(Offer od)
+        public static double OfferBilledPrice(Offer od, double fairMult = 1.0)
         {
             double price = od.Price;
             if (price <= 0.0)
             {
                 // a CONSCIOUS $0 (price_set) stays free — the founder overruled
-                // the backstop on purpose; only a never-priced offer bills fair.
+                // the backstop on purpose; only a never-priced offer bills fair,
+                // and the going rate follows the street down during a price war.
                 if (od.PriceSet) return 0.0;
-                price = Gd.Maxf(od.FairPrice, 0.0);
+                price = Gd.Maxf(od.FairPrice * fairMult, 0.0);
             }
             return price;
         }
@@ -1211,7 +1484,8 @@ namespace Runway.Core
         /// but the WORLD prices reality: every field passes a clamp. The new
         /// offer arrives UNPRICED: it bills at the going rate until named.</summary>
         public static Offer AddOffer(GameState state, string name, string unit,
-                                     double fair, double cost, double elasticity, double weight)
+                                     double fair, double cost, double elasticity, double weight,
+                                     List<CostLine> costLines = null, List<CostLine> fixedLines = null)
         {
             double f = Gd.Clampf(fair, 1.0, 50000.0);
             var offer = new Offer
@@ -1225,9 +1499,62 @@ namespace Runway.Core
                 Weight = Gd.Clampf(weight, 0.2, 3.0),
                 Price = 0.0,
             };
+            if (costLines != null && costLines.Count > 0) offer.CostLines = costLines;
+            if (fixedLines != null && fixedLines.Count > 0) offer.FixedLines = fixedLines;
+            SyncOfferCosts(offer);
             if (state.Offers == null) state.Offers = new List<Offer>();
             state.Offers.Add(offer);
             return offer;
+        }
+
+        /// <summary>
+        /// The itemised truth stays the truth: UnitCost is the sum of the
+        /// variable lines (clamped to 90% of fair), FixedWk the sum of the
+        /// weekly ones. Called after ANY per-line adjustment, so the totals can
+        /// never drift from the receipts that explain them.
+        /// </summary>
+        public static void SyncOfferCosts(Offer offer)
+        {
+            if (offer == null) return;
+            double fair = Gd.Maxf(offer.FairPrice, 1.0);
+            if (offer.CostLines != null)
+            {
+                double v = 0.0;
+                foreach (CostLine cl in offer.CostLines)
+                {
+                    cl.Amount = Gd.Clampf(cl.Amount, 0.0, fair * 0.5);
+                    v += cl.Amount;
+                }
+                offer.UnitCost = Gd.Clampf(v, 0.0, fair * 0.9);
+            }
+            if (offer.FixedLines != null)
+            {
+                double fx = 0.0;
+                foreach (CostLine fl in offer.FixedLines)
+                {
+                    fl.Amount = Gd.Clampf(fl.Amount, 0.0, 5000.0);
+                    fx += fl.Amount;
+                }
+                offer.FixedWk = Gd.Clampf(fx, 0.0, 10000.0);
+            }
+        }
+
+        /// <summary>
+        /// The weekly overhead the catalog itself carries — tool subscriptions,
+        /// licenses, storage — independent of how much you sell. This is the
+        /// lesson a founder learns the hard way: some costs do not care whether
+        /// anyone bought anything this week.
+        /// </summary>
+        public static double OffersFixedWk(GameState state)
+        {
+            if (state.Offers == null) return 0.0;
+            double total = 0.0;
+            foreach (Offer o in state.Offers)
+            {
+                // a hand-edited fixed_wk with no lines behind it is caught here
+                total += Gd.Clampf(o.FixedWk, 0.0, 10000.0);
+            }
+            return total;
         }
 
         public static bool RemoveOffer(GameState state, int idx)
@@ -1252,16 +1579,34 @@ namespace Runway.Core
             else if (low.Contains("year") || low.Contains("annual")) unit = "per year";
             else if (low.Contains("hour")) unit = "per hour";
             double fair = 40.0 * aud;
-            return new Offer { Name = (idea ?? "").Length > 40 ? idea.Substring(0, 40) : (idea ?? ""),
-                               Unit = unit, FairPrice = fair, UnitCost = fair * 0.35,
-                               Elasticity = 2.0, Weight = 1.0, Price = 0.0 };
+            // THE COST SHEET, itemised from the start (Godot parity: the
+            // `variable_costs` / `fixed_costs_wk` keys of draft_offer_terms).
+            // A founder can argue with "materials & delivery $8"; they cannot
+            // argue with an opaque 35%.
+            return new Offer
+            {
+                Name = (idea ?? "").Length > 40 ? idea.Substring(0, 40) : (idea ?? ""),
+                Unit = unit, FairPrice = fair, UnitCost = fair * 0.35,
+                Elasticity = 2.0, Weight = 1.0, Price = 0.0,
+                CostLines = new List<CostLine>
+                {
+                    new CostLine { Label = "materials & delivery", Amount = fair * 0.20 },
+                    new CostLine { Label = "labor share", Amount = fair * 0.15 },
+                },
+                FixedLines = new List<CostLine>
+                {
+                    new CostLine { Label = "tools & subscriptions", Amount = 15.0 * aud },
+                },
+                FixedWk = 15.0 * aud,
+            };
         }
 
         /// <summary>THE LEARNING CURVE (Bonopoly): each 10× of customers ever
-        /// served takes ~11% off the unit serving cost, floored at 65%.</summary>
+        /// served takes ~11% off the unit serving cost, floored at 65%. Reads a
+        /// saved FIELD — as a meta it reset on every load in the Godot twin.</summary>
         public static double LearningCurve(GameState state)
         {
-            int served = (int)state.GetMetaF("served_total", 0.0);
+            int served = state.ServedTotal;
             if (served <= 1) return 1.0;
             return Gd.Maxf(1.0 - 0.115 * Math.Log10(served), 0.65);
         }
@@ -1272,11 +1617,12 @@ namespace Runway.Core
         {
             if (state.Offers == null || state.Offers.Count == 0) return 1.0;
             double num = 0.0, den = 0.0;
+            double fm = StreetFairMult(state);
             foreach (Offer od in state.Offers)
             {
-                double billed = OfferBilledPrice(od);   // fair-billed = no pain (ratio 1)
+                double billed = OfferBilledPrice(od, fm);   // fair-billed = no pain (ratio 1)
                 if (billed <= 0.0) continue;
-                double fair = Gd.Maxf(od.FairPrice > 0.0 ? od.FairPrice : billed, 1.0);
+                double fair = Gd.Maxf((od.FairPrice > 0.0 ? od.FairPrice : billed) * fm, 1.0);
                 num += od.Weight * (billed / fair);
                 den += od.Weight;
             }
@@ -1295,15 +1641,16 @@ namespace Runway.Core
             }
             double num = 0.0;
             double den = 0.0;
+            double fm = StreetFairMult(state);
             foreach (Offer od in state.Offers)
             {
                 double wgt = od.Weight;
                 den += wgt;
-                double price = OfferBilledPrice(od);   // fair-billed = fair demand (1.0)
+                double price = OfferBilledPrice(od, fm);   // fair-billed = fair demand (1.0)
                 if (price <= 0.0 && od.PriceSet)
                     num += wgt * 2.0;   // free on purpose: the giveaway cap, not zero
                 else
-                    num += wgt * (price > 0.0 ? OfferDemand(od, price) : 0.0);
+                    num += wgt * (price > 0.0 ? OfferDemand(od, price, fm) : 0.0);
             }
             return den > 0.0 ? Gd.Clampf(num / Gd.Maxf(den, 0.01), 0.0, 3.0) : 0.0;
         }
@@ -1324,6 +1671,201 @@ namespace Runway.Core
         /// What one week may plausibly spend at this stage — the DM's inputs are
         /// clamped here so no narration can invent hq money in a garage.
         /// </summary>
+        /// <summary>
+        /// THE OP REGISTRY (00-spine section 7) — the canonical list of what a
+        /// DM reply may ask the world to do. It lives at SIX sites, three per
+        /// engine: the schema enum, the validator, the executor. This constant
+        /// is the source of truth the other two are checked against.
+        ///
+        /// An op exists only where a written move plausibly does the thing in
+        /// fiction AND the engine can clamp it. Everything else is a desk
+        /// action, on purpose: opening a role, signing a note, shipping a bet,
+        /// buying a machine, accepting an offer, letting someone go.
+        ///
+        /// The LLM lane keeps its own copy rather than referencing this one —
+        /// that lane deliberately holds no reference to a Core type — so the
+        /// twin suites pin the lists equal instead.
+        /// </summary>
+        public static readonly string[] OP_REGISTRY =
+        {
+            "cash_delta", "product_delta", "traction_delta", "morale_delta", "hype_delta",
+            "set_flag", "status", "clock", "set_price", "price_offer", "set_marketing",
+            "hire", "take_loan", "spend", "set_budget", "push_lead",
+        };
+
+        // ════════════════ THE SPINE'S AGGREGATORS ════════════════
+        // Four pure functions the whole game reads through: the budget
+        // migration, the attention registry, the pre-roll review, and the DM
+        // directive block. Every one merges the nine lanes so no screen ever
+        // calls a lane directly.
+
+        /// <summary>
+        /// THE BUDGET MIGRATION (04-funnel, 00-spine section 8). Idempotent by
+        /// construction — run it at every tick start and after every load. The
+        /// old single `marketing` lever becomes PAID ADS, which inherits both of
+        /// its behaviours (instant reach, the closing-capacity feed), so a
+        /// mid-run save spends identically until the player touches the mix.
+        /// </summary>
+        public static void MigrateBudgets(GameState state)
+        {
+            if (state.Budgets == null) { state.Budgets = new Budgets(); return; }
+            if (state.Budgets.Marketing != 0)
+            {
+                state.Budgets.Ads += state.Budgets.Marketing;
+                state.Budgets.Marketing = 0;
+            }
+        }
+
+        /// <summary>
+        /// THE ATTENTION REGISTRY (00-spine section 4). ONE engine-side function
+        /// behind every bang in the game: the binder's tab marks, the garage
+        /// badge, the garage ticker, the threats desk and the pre-roll review
+        /// card all read this list and nothing else.
+        ///
+        /// The label is PEDAGOGY, not decoration: it names the problem in the
+        /// business term the player must learn, in 40 characters or less,
+        /// because the garage ticker prints it verbatim with no room to explain.
+        /// </summary>
+        public static readonly string[] ATTENTION_DESKS =
+        {
+            "pricing", "the ledger", "the bank", "crew", "cap table",
+            "customers", "product", "the street", "vitals", "threats",
+        };
+
+        public static List<AttentionItem> AttentionItems(GameState state)
+        {
+            var rows = new List<AttentionItem>();
+            // ── the spine's own rows: the three conditions predating the registry
+            if (OffersAnyUnpriced(state))
+                rows.Add(new AttentionItem { Desk = "pricing", Key = "unpriced", Severity = 2,
+                    Label = "unpriced offer — billing at going rate" });
+            if (state.LastPnl != null && state.LastPnl.Net < 0)
+                rows.Add(new AttentionItem { Desk = "the ledger", Key = "losing_week", Severity = 2,
+                    Label = "losing week — burn beat revenue" });
+            if (state.HasFlag("fundraising_open"))
+                rows.Add(new AttentionItem { Desk = "cap table", Key = "term_sheets", Severity = 3,
+                    Label = "term sheets waiting — they expire" });
+            // ── the nine lanes, each owning its own predicates
+            var laneRows = new List<List<AttentionItem>>
+            {
+                SimCatalog.Attention(state), SimLabor.Attention(state),
+                SimStreet.Attention(state), SimFunnel.Attention(state),
+                SimPipeline.Attention(state), SimBank.Attention(state),
+                SimRoadmap.Attention(state), SimBoard.Attention(state),
+                SimFactory.Attention(state),
+            };
+            foreach (List<AttentionItem> lr in laneRows)
+            {
+                if (lr == null) continue;
+                foreach (AttentionItem r in lr) if (r != null) rows.Add(r);
+            }
+            // ── ONE order for every consumer: loudest first, then registry
+            // order, then the order the lanes spoke. The last key makes the sort
+            // total, so two runs of the same state can never disagree about
+            // which row the ticker shows.
+            var indexed = new List<KeyValuePair<int, AttentionItem>>();
+            for (int i = 0; i < rows.Count; i++)
+                indexed.Add(new KeyValuePair<int, AttentionItem>(i, rows[i]));
+            indexed.Sort((a, b) =>
+            {
+                if (a.Value.Severity != b.Value.Severity)
+                    return b.Value.Severity.CompareTo(a.Value.Severity);
+                int da = Array.IndexOf(ATTENTION_DESKS, a.Value.Desk ?? "");
+                int db = Array.IndexOf(ATTENTION_DESKS, b.Value.Desk ?? "");
+                if (da < 0) da = ATTENTION_DESKS.Length;
+                if (db < 0) db = ATTENTION_DESKS.Length;
+                if (da != db) return da.CompareTo(db);
+                return a.Key.CompareTo(b.Key);
+            });
+            var outp = new List<AttentionItem>();
+            foreach (KeyValuePair<int, AttentionItem> kv in indexed) outp.Add(kv.Value);
+            return outp;
+        }
+
+        /// <summary>Every attention row on one desk, loudest first — the binder
+        /// asks this for a tab's bang, the threats page for its lines.</summary>
+        public static List<AttentionItem> AttentionForDesk(GameState state, string desk)
+        {
+            var outp = new List<AttentionItem>();
+            foreach (AttentionItem r in AttentionItems(state))
+                if (r.Desk == desk) outp.Add(r);
+            return outp;
+        }
+
+        /// <summary>The severity a desk's bang wears: its loudest item, 0 for a quiet desk.</summary>
+        public static int AttentionSeverity(GameState state, string desk)
+        {
+            int worst = 0;
+            foreach (AttentionItem r in AttentionItems(state))
+                if (r.Desk == desk) worst = Gd.Maxi(worst, r.Severity);
+            return worst;
+        }
+
+        /// <summary>
+        /// THE PRE-ROLL REVIEW (docs/design/DECISIONS.md #2). Before ANY dice
+        /// roll — the weekly LOCK IN included — the game shows what is still
+        /// outstanding, so a founder never rolls past an unpriced offer or a
+        /// repayment cliff without having been told. This is the ENGINE half:
+        /// the list, filtered to what is genuinely worth stopping for (warn and
+        /// above). Zero rows = no card at all.
+        /// </summary>
+        public static List<AttentionItem> PrerollItems(GameState state)
+        {
+            var outp = new List<AttentionItem>();
+            foreach (AttentionItem r in AttentionItems(state))
+                if (r.Severity >= 2) outp.Add(r);
+            return outp;
+        }
+
+        /// <summary>
+        /// THE DIRECTIVE BLOCK's subsystem half, in the spine's fixed section
+        /// order (00-spine section 5). Lanes never touch the event generator:
+        /// they return lines, the spine orders them, the composer caps them.
+        /// </summary>
+        public static List<string> LaneDirectives(GameState state)
+        {
+            var outp = new List<string>();
+            var lanes = new List<List<string>>
+            {
+                SimCatalog.Directives(state), SimLabor.Directives(state),
+                SimStreet.Directives(state), SimFunnel.Directives(state),
+                SimPipeline.Directives(state), SimBank.Directives(state),
+                SimRoadmap.Directives(state), SimBoard.Directives(state),
+                SimFactory.Directives(state),
+            };
+            foreach (List<string> l in lanes)
+            {
+                if (l == null) continue;
+                foreach (string s in l) if (!string.IsNullOrEmpty(s)) outp.Add(s);
+            }
+            return outp;
+        }
+
+        /// <summary>
+        /// THE TOKEN BUDGET GUARD (00-spine section 5): the whole DIRECTIVES
+        /// block is hard-capped at 24 lines / 1200 chars. Priority IS the order —
+        /// the runway line is never dropped — and the composer truncates, never
+        /// the subsystems, so no lane can starve another by writing more.
+        /// </summary>
+        public const int DIRECTIVE_MAX_LINES = 24;
+        public const int DIRECTIVE_MAX_CHARS = 1200;
+
+        public static List<string> CapDirectives(List<string> lines)
+        {
+            var outp = new List<string>();
+            int chars = 0;
+            if (lines == null) return outp;
+            foreach (string s in lines)
+            {
+                if (outp.Count >= DIRECTIVE_MAX_LINES) break;
+                string v = s ?? "";
+                if (chars + v.Length + 1 > DIRECTIVE_MAX_CHARS && outp.Count > 0) break;
+                outp.Add(v);
+                chars += v.Length + 1;
+            }
+            return outp;
+        }
+
         public static int EraSpendCap(string era)
         {
             switch (era)

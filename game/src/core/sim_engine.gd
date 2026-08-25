@@ -92,13 +92,87 @@ const STATUS := {
 	"market_tailwind":  {"adopt_mult": 1.3, "kind": "buff"},
 	"market_headwind":  {"adopt_mult": 0.7, "kind": "condition"},
 	"rival_fud":        {"adopt_mult": 0.8, "dis": "sell", "kind": "condition"},
+	# ── THE WAVE'S ADDITIONS (docs/design/00-spine.md §7). Names are unique
+	# across the catalog and across lanes, checked. The DM may install any of
+	# them BY NAME through the existing `status` op — the magnitudes live HERE,
+	# once, so a narrator can never invent an untyped modifier.
+	#
+	# NOTE the four NEW effect keys (fair_mult, val_mult, amt_mult, spread_mult)
+	# are read ONLY by the helpers their owning specs define. The existing
+	# section-8 status loop (adopt/churn/arpu) never sees them, so a price war
+	# cannot accidentally double-dip on adoption.
+	# 03 — the street
+	"price_war":        {"fair_mult": 0.92, "kind": "condition"},
+	"outshipped":       {"adopt_mult": 0.85, "kind": "condition"},
+	"rival_stumbled":   {"adopt_mult": 1.25, "kind": "buff"},
+	"winter_watch":     {"kind": "condition"},   # banner + DM only: the pre-announcement
+	"boom_watch":       {"kind": "buff"},        # ditto, the other way
+	"funding_winter":   {"val_mult": 0.6, "amt_mult": 0.7, "spread_mult": 1.25,
+						 "dis": "raise", "kind": "condition"},
+	"boom":             {"val_mult": 1.3, "amt_mult": 1.3, "spread_mult": 0.9,
+						 "adv": "raise", "kind": "buff"},
+	# 06 — the bank
+	"collections_calls":{"morale_wk": -1.0, "dis": "raise", "kind": "condition"},
+	# 07 — the roadmap
+	"sticky_release":   {"churn_mult": 0.75, "kind": "buff"},
+	"feature_buzz":     {"adopt_mult": 1.3, "kind": "buff"},
+	# 08 — the board
+	"board_delight":    {"adv": "raise", "morale_wk": 2.0, "hype_wk": 3.0, "kind": "buff"},
 }
 
 # ─────────────────────── seeded per-subsystem randomness ─────────────────────
+## THE SALT REGISTRY (docs/design/00-spine.md §3). Every stochastic subsystem
+## draws on its own stream keyed (seed, week, salt), so a run replays exactly
+## and one subsystem's dice never shift another's.
+##
+## THE CONVENTION: salt = business-plan section × 10 + n (1 catalog · 2 labor ·
+## 3 rivals · 4 funnel · 5 enterprise · 6 finance · 7 roadmap · 8 macro ·
+## 9 board · 10 M&A · 11 hardware), skipping the frozen legacy numbers that
+## already sit inside a decade. A frozen salt NEVER changes meaning — replay
+## and save compatibility both depend on it. Nothing references a bare number:
+## a lane cites the NAME, which is what makes a collision impossible to write.
+const SALT_MORALE_QUIT := 4          # frozen — morale resignation roll
+const SALT_OUTAGE := 5               # frozen — outage roll
+const SALT_RIVAL_RATCHET := 6        # RETIRED — the old strength ratchet; a
+                                     # tombstone, never reassigned (03 replaces
+                                     # it with the weekly action table)
+const SALT_TREND := 7                # frozen — the market-mood walk; 03-macro
+                                     # mean-reverts it STREAM-PRESERVED
+const SALT_TERM_SHEETS := 9          # frozen — term-sheet generation
+const SALT_CATALOG_JITTER := 11      # 01 — keyless draft jitter
+const SALT_LABOR_ARRIVALS := 20      # 02 — candidate arrivals (per open role)
+const SALT_LABOR_STATS := 21         # 02 — candidate skill/ask, creation order
+const SALT_LABOR_PATIENCE := 22      # 02 — applicant patience decay
+const SALT_LABOR_LADDER := 23        # 02 — raise-ask / resignation ladder
+const SALT_LABOR_POOLS := 24         # 02 — keyless name/quirk pools
+const SALT_RIVAL_ACTION := 30        # 03 — weekly action pick (per rival)
+const SALT_RIVAL_POACH := 31         # 03 — poach roll
+const SALT_RIVAL_DISRUPTOR := 32     # 03 — hq disruptor spawn
+const SALT_PIPELINE := 50            # 05 — THE pipeline stream, fixed draw order
+const SALT_PIPELINE_NAMES := 51      # 05 — keyless lead-name pool
+const SALT_ROADMAP_SHIP := 70        # 07 — ship roll payoff spread
+const SALT_ROADMAP_SLOTS := 71       # 07 — slot refresh
+const SALT_RND_REMAINDER := 77       # frozen — R&D quality seeded remainder
+const SALT_MACRO_SHOCK := 80         # 03-macro — shock roll
+const SALT_BELIEFS := 88             # frozen — belief seeding
+const SALT_ADOPT_REMAINDER := 91     # frozen — adoption net seeded remainder
+const SALT_INCIDENTS := 93           # frozen — incidents + standing liabilities
+const SALT_BURNED := 95              # BURNED — four lanes claimed it at once;
+                                     # permanently reserved so any stale 95
+                                     # fails review on sight. Never draw on it.
+const SALT_MNA := 100                # 08 — M&A offer arrival + premium rolls
+const SALT_HW_BREAKDOWN := 110       # 09 — machine breakdown roll
+const SALT_HW_REPURCHASE := 111      # 09 — repurchase seeded remainder
+
 static func _rng(state: GameState, salt: int) -> RandomNumberGenerator:
 	var r := RandomNumberGenerator.new()
 	r.seed = hash(str(state.sim_seed) + ":" + str(state.week) + ":" + str(salt))
 	return r
+
+## Public stream accessor — the lanes cannot reach `_rng`, and every lane needs
+## its own salted stream. Same keying, same guarantee.
+static func rng_for(state: GameState, salt: int) -> RandomNumberGenerator:
+	return _rng(state, salt)
 
 # ───────────────────────────── lookup curves (BSL) ───────────────────────────
 ## Janoschek falling curve: 1.0 at x=0 down to `floor_v` as x→∞, knee at x_ref.
@@ -109,14 +183,34 @@ static func jano_down(x: float, x_ref: float, floor_v: float = 0.25) -> float:
 	return floor_v + (1.0 - floor_v) * exp(-k * x)
 
 # ═══════════════════════════ THE WEEKLY TICK ═══════════════════════════
-## The hostile world, in order. Returns the week's REPORT: every delta with its
-## why, so the journal can print receipts the DM never invented.
+## The hostile world, in order (THE TICK ORDER v2, docs/design/00-spine.md §1).
+## Returns the week's REPORT: every delta with its why, so the journal can print
+## receipts the DM never invented.
+##
+## THE LANE HOOK MAP — the only insertion points. Each subsystem is ONE section
+## with its number in a comment; a lane fills its own file and never touches
+## this one (docs/design/HOOKS.md):
+##
+##   §3b  SimLabor.tick_pre     roster + applicants settle before morale reads them
+##   §6a  SimStreet.tick_pre    rivals act, then macro — both before the market
+##   §7   SimRoadmap.tick_pre   a shipped bet must exist before adoption reads product
+##   §7h  SimFactory.tick_pre   produce FIRST: stock exists before adoption spends it
+##   §8   SimCatalog / SimFunnel / SimPipeline.tick_pre   then the market moves once
+##   §9   SimBank / SimBoard.tick_pre, then ALL NINE .tick_money(state, rep, m)
+##   §9c+ ALL NINE .tick_post — board review and M&A read the finished week
+##
+## Every hook is a no-op until its lane lands, and the tick's arithmetic is
+## byte-identical while they are: that invariant is what lets nine lanes ship
+## in parallel against one engine.
 static func weekly_tick(state: GameState) -> Dictionary:
 	var rep := {"lines": [], "fired_clocks": [], "expired": [], "events": []}
 	var th := state.theta
 	if th.is_empty():
 		th = default_theta(state.biz_what, state.biz_who)
 		state.theta = th
+	# a legacy save's single `marketing` budget becomes paid ads before any
+	# reader sees it (idempotent — safe every tick, docs/design/04 §5)
+	migrate_budgets(state)
 
 	# 1 ── clocks: deadlines fire deterministically
 	var kept_clocks: Array = []
@@ -140,7 +234,8 @@ static func weekly_tick(state: GameState) -> Dictionary:
 			kept_status.append(sd)
 	state.statuses = kept_status
 
-	# 3 ── the hiring pipeline advances: cohort 0 onboards → cohort 1 → productive
+	# 3a ── the hiring pipeline advances: cohort 0 onboards → cohort 1 → productive
+	# (graduates join the roster BEFORE the labor market counts open seats)
 	if state.pipeline.size() > 0:
 		var grads: Array = []
 		var still: Array = []
@@ -159,6 +254,11 @@ static func weekly_tick(state: GameState) -> Dictionary:
 				"quirk": String(g.get("quirk", ""))})
 			rep["lines"].append("%s finished onboarding — productive now" % g.get("name", "a hire"))
 
+	# 3b ── THE LABOR MARKET: arrivals → applicant decay → review cycle. The
+	# roster and the applicant pool must be final before morale feels them in
+	# §4 and payroll pays them in §9.
+	SimLabor.tick_pre(state, rep)
+
 	# 4 ── fatigue and morale drift (the slow tax)
 	var crunching := has_status(state, "crunch")
 	var target_fatigue := 65.0 if crunching else 20.0
@@ -174,7 +274,7 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	state.morale = clampi(int(state.morale + morale_wk), 0, 100)
 	# burnout cliff: below 30 someone may walk — best people first
 	if state.morale < 30 and state.employees.size() > 0:
-		var r4 := _rng(state, 4)
+		var r4 := _rng(state, SALT_MORALE_QUIT)
 		if r4.randf() < 0.6 * float(31 - state.morale) / 31.0:
 			var best_i := 0
 			for i in state.employees.size():
@@ -199,32 +299,57 @@ static func weekly_tick(state: GameState) -> Dictionary:
 			eng += 1
 	if eng == 0 and state.competences.get("build", 3) < 4:
 		state.tech_debt = minf(state.tech_debt + 1.5, 100.0)
-	var r5 := _rng(state, 5)
+	var r5 := _rng(state, SALT_OUTAGE)
 	if state.tech_debt > 40.0 and r5.randf() < (state.tech_debt - 40.0) / 250.0:
 		add_status(state, "outage_fallout", 2)
 		rep["events"].append("OUTAGE — the debt collected (debt %d)" % int(state.tech_debt))
 
-	# 6 ── rivals ratchet up; occasional launch
-	var r6 := _rng(state, 6)
-	for rv in state.rivals:
-		var rd: Dictionary = rv
-		rd["strength"] = minf(float(rd.get("strength", 20.0)) + r6.randf_range(0.0, 1.2), 95.0)
-		rd["weeks_since_move"] = int(rd.get("weeks_since_move", 0)) + 1
-		if int(rd["weeks_since_move"]) >= 5 and r6.randf() < 0.4:
-			rd["weeks_since_move"] = 0
-			rd["strength"] = minf(float(rd["strength"]) + 4.0, 95.0)
-			rep["events"].append("%s made a move — %s" % [rd.get("name", "a rival"),
-				String(rd.get("tactics", ["shipped something loud"])[r6.randi() % (rd.get("tactics", ["x"]) as Array).size()])])
+	# 6a ── THE STREET: rivals act (per-rival upkeep → weekly action pick →
+	# poach → disruptor), then 6b MACRO. Rivals move BEFORE the market, so a
+	# price cut or a launch shapes THIS week's demand; the poach lands after
+	# arrivals (3b) and before payroll (9).
+	SimStreet.tick_pre(state, rep)
+	if not SimStreet.OWNS_RIVALS:
+		# THE LEGACY RATCHET (salt 6, retired by 03): strength drifts up and a
+		# move lands now and then. The lane replaces this wholesale by flipping
+		# OWNS_RIVALS; until then the old world runs exactly as it always has.
+		var r6 := _rng(state, SALT_RIVAL_RATCHET)
+		for rv in state.rivals:
+			var rd: Dictionary = rv
+			rd["strength"] = minf(float(rd.get("strength", 20.0)) + r6.randf_range(0.0, 1.2), 95.0)
+			rd["weeks_since_move"] = int(rd.get("weeks_since_move", 0)) + 1
+			if int(rd["weeks_since_move"]) >= 5 and r6.randf() < 0.4:
+				rd["weeks_since_move"] = 0
+				rd["strength"] = minf(float(rd["strength"]) + 4.0, 95.0)
+				rep["events"].append("%s made a move — %s" % [rd.get("name", "a rival"),
+					String(rd.get("tactics", ["shipped something loud"])[r6.randi() % (rd.get("tactics", ["x"]) as Array).size()])])
+	# avg-strength pressure closes 6a whoever moved the rivals — the market
+	# reads the settled board, never the mover
 	var pressure := 0.0
 	for rv2 in state.rivals:
 		pressure += float((rv2 as Dictionary).get("strength", 0.0))
 	pressure = minf(pressure / maxf(float(state.rivals.size()), 1.0) / 100.0 * 0.5, 0.45)
 
-	# 7 ── market mood random walk
-	var r7 := _rng(state, 7)
-	state.market_trend = clampf(state.market_trend + r7.randf_range(-1.0, 1.0) * float(th.trend_vol), 0.5, 1.5)
+	# 6b ── MACRO: the market-mood walk. 03-macro mean-reverts this around a
+	# season cycle using the SAME single salt-7 draw (stream preserved), so
+	# owning it never shifts another subsystem's dice.
+	if not SimStreet.OWNS_MACRO:
+		var r7 := _rng(state, SALT_TREND)
+		state.market_trend = clampf(state.market_trend + r7.randf_range(-1.0, 1.0) * float(th.trend_vol), 0.5, 1.5)
 
-	# 8 ── adoption and churn (Bass + quality residence)
+	# 7 ── ROADMAP BETS: rnd-routed progress, READY bets roll the house dice.
+	# A shipped bet's payoff must exist before adoption reads product.
+	SimRoadmap.tick_pre(state, rep)
+
+	# 7h ── HARDWARE PRODUCTION: build target → produce → breakdown roll.
+	# PRODUCE FIRST — stock must exist before adoption can be clamped to it.
+	SimFactory.tick_pre(state, rep)
+
+	# 8 ── adoption and churn (Bass + quality residence). The market moves
+	# exactly ONCE, after weather, rivals, quality and stock are all settled.
+	SimCatalog.tick_pre(state, rep)
+	SimFunnel.tick_pre(state, rep)
+	SimPipeline.tick_pre(state, rep)
 	var A := float(state.traction)
 	var N := float(th.tam)
 	var P := maxf(N - A, 0.0)
@@ -235,7 +360,12 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	#   marketing -> reach (diminishing via cac_sat), sales -> closing capacity,
 	#   care -> retention, rnd -> product quality and debt paydown.
 	var bud: Dictionary = state.budgets
-	var b_mk := float(int(bud.get("marketing", 0)) + state.marketing_budget)
+	# the acquisition spend is the FOUR channels summed (04): a legacy save's
+	# `marketing` already migrated into `ads`, and the legacy `set_marketing`
+	# op's budget folds in here exactly as it always did
+	var b_mk := float(int(bud.get("ads", 0)) + int(bud.get("content", 0))
+			+ int(bud.get("referrals", 0)) + int(bud.get("outbound", 0))
+			+ state.marketing_budget)
 	var b_sales := float(bud.get("sales", 0))
 	var b_care := float(bud.get("care", 0))
 	var b_rnd := float(bud.get("rnd", 0))
@@ -244,7 +374,11 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	# for food, perks and benefits that buys morale and keeps people whole.
 	var b_office := float(bud.get("office", 0))
 	var mk_budget := b_mk
-	var mk_mult := 1.0 + 1.4 * (1.0 - exp(-mk_budget / float(th.cac_sat)))
+	# REACH: one blended saturating curve today; 04 replaces it with the
+	# four-channel reach term through this seam (the stub hands back the
+	# default, so the blended lever is what runs until the lane lands).
+	var mk_mult := SimFunnel.reach_mult(state, mk_budget,
+			1.0 + 1.4 * (1.0 - exp(-mk_budget / float(th.cac_sat))))
 	var status_adopt := 1.0
 	var status_churn := 1.0
 	var status_arpu := 1.0
@@ -285,6 +419,10 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	# a sales budget hires fractional closing power (an SDR-hour equivalent)
 	var gtm_cap := (1.5 + 0.8 * float(state.competences.get("sell", 3)) 			+ 3.0 * float(sales_heads) + mk_budget / 400.0 + b_sales / 600.0) * cap_scale
 	adds = minf(adds, gtm_cap)
+	# HARDWARE: you cannot sell what you did not build. 09 clamps adds to the
+	# shelf and decrements it here; off Hardware the stub hands adds straight
+	# back, so demand is stock-free exactly as it is today.
+	adds = SimFactory.clamp_adds(state, rep, adds)
 	var residence := float(th.lifetime_wk) * (0.4 + float(state.product) / 100.0 * 1.2)
 	# customer care keeps people: churn eases toward −30% as care approaches ~$3k/wk
 	var care_mult := 1.0 - 0.30 * (1.0 - exp(-b_care / 1500.0))
@@ -295,8 +433,12 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	# forever — the seeded remainder (the R&D block's own idiom) keeps it
 	var net_f := adds - churn
 	var net := int(floor(absf(net_f))) * (1 if net_f >= 0.0 else -1)
-	if _rng(state, 91).randf() < absf(net_f) - floor(absf(net_f)):
+	if _rng(state, SALT_ADOPT_REMAINDER).randf() < absf(net_f) - floor(absf(net_f)):
 		net += 1 if net_f >= 0.0 else -1
+	# ENTERPRISE: named accounts arrive through the pipeline, not the coin —
+	# 05 routes adds/churn through its own stream here and returns the week's
+	# real net. Every other run gets the seeded remainder back unchanged.
+	net = SimPipeline.adoption_net(state, rep, adds, churn, net)
 	state.traction = maxi(state.traction + net, 0)
 	rep["adds"] = int(round(adds))
 	rep["churn"] = int(round(churn))
@@ -305,7 +447,12 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	if churn >= 1.0:
 		rep["lines"].append("−%d churned (lifetime %d wks at v0.%d)" % [int(round(churn)), int(round(residence)), state.product])
 
-	# 9 ── money: revenue, burn, loan
+	# 9 ── MONEY & P&L. One place computes the week's truth: revenue, cost of
+	# serving, the standing costs, every lane's spend, THEN interest, THEN tax,
+	# and only then the record. Interest and tax land BEFORE the record is
+	# written so the ledger never lies about what the week actually cost.
+	SimBank.tick_pre(state, rep)
+	SimBoard.tick_pre(state, rep)
 	var arpu_off := offers_arpu(state)
 	var revenue := 0.0
 	if arpu_off >= 0.0:
@@ -330,7 +477,7 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	if b_rnd > 0.0:
 		var quality_gain := b_rnd / 1200.0
 		var whole := int(floor(quality_gain))
-		if _rng(state, 77).randf() < quality_gain - float(whole):
+		if _rng(state, SALT_RND_REMAINDER).randf() < quality_gain - float(whole):
 			whole += 1
 		if whole > 0:
 			state.product = mini(state.product + whole, 100)
@@ -342,15 +489,42 @@ static func weekly_tick(state: GameState) -> Dictionary:
 		if cogs >= 1.0:
 			rep["lines"].append("cost of serving customers: $%d" % int(round(cogs)))
 	# the more you have served, the cheaper serving gets (Bonopoly's learning
-	# curve): the discount lives in offers_cogs_per_customer via served_total
-	state.set_meta("served_total", int(state.get_meta("served_total", 0)) + state.traction)
+	# curve): the discount lives in offers_cogs_per_customer via served_total.
+	# A FIELD, not a meta — metas do not survive a save, and the curve silently
+	# reset to zero on every load until this moved (docs/design/DECISIONS.md §A3).
+	state.served_total += state.traction
 	var offer_fixed := offers_fixed_wk(state)
 	if offer_fixed >= 1.0:
 		rep["lines"].append("catalog overheads: $%d/wk (tools, licenses, storage)" % int(round(offer_fixed)))
-	var burn := int((float(rent + payroll + infra) + mk_budget + b_sales + b_care + b_rnd + b_office) * float(th.burn_mult) + cogs + offer_fixed)
+
+	# THE WORKING MONEY RECORD (docs/design/00-spine.md §2): one key per P&L
+	# lane. The engine fills its own lanes above; each subsystem writes ONLY the
+	# lanes it owns; the engine then sums burn and writes the record whole.
+	var m := {
+		"revenue": revenue, "cogs": cogs,
+		"rent": rent, "payroll": payroll, "infra": infra,
+		"marketing": mk_budget, "sales": b_sales, "care": b_care,
+		"rnd": b_rnd, "office": b_office,
+		"offer_fixed": offer_fixed,
+		"severance": 0.0, "recruiting": 0.0,
+		"production": 0.0, "subcontract": 0.0,
+		"equip_upkeep": 0.0, "carrying": 0.0,
+		"incident": 0.0, "liabilities_wk": 0,
+		"interest": 0.0, "tax": 0.0, "burn": 0,
+	}
+	SimCatalog.tick_money(state, rep, m)
+	SimLabor.tick_money(state, rep, m)
+	SimStreet.tick_money(state, rep, m)
+	SimFunnel.tick_money(state, rep, m)
+	SimPipeline.tick_money(state, rep, m)
+	SimBank.tick_money(state, rep, m)
+	SimRoadmap.tick_money(state, rep, m)
+	SimBoard.tick_money(state, rep, m)
+	SimFactory.tick_money(state, rep, m)
+
 	# THE UNFORESEEN (owner: running a business includes what nobody planned):
 	# some weeks a small real cost lands — seeded, receipted, never a mystery.
-	var inc_r := _rng(state, 93)
+	var inc_r := _rng(state, SALT_INCIDENTS)
 	var incident_cost := 0
 	if inc_r.randf() < 0.30:
 		incident_cost = int(float(rent + payroll + infra) * inc_r.randf_range(0.01, 0.04)) + inc_r.randi_range(20, 90)
@@ -358,7 +532,6 @@ static func weekly_tick(state: GameState) -> Dictionary:
 			"a parking fine found the van", "the wifi needed a new router",
 			"someone broke the good chair", "the same invoice arrived twice",
 			"a deposit nobody remembered came due", "the door lock jammed after hours"]
-		burn += incident_cost
 		rep["lines"].append("the unforeseen: −$%d (%s)" % [incident_cost,
 			String(inc_what[inc_r.randi_range(0, inc_what.size() - 1)])])
 	elif inc_r.randf() < 0.06 and state.week >= 4:
@@ -377,18 +550,60 @@ static func weekly_tick(state: GameState) -> Dictionary:
 			"cash_wk": wkcost, "weeks_left": int(lb.get("wk", 6))})
 		rep["lines"].append("NEW STANDING COST: %s — $%d/wk for %d weeks" % [
 			String(lb.get("name", "a standing cost")), -wkcost, int(lb.get("wk", 6))])
+	m["incident"] = float(incident_cost)
+
+	# BURN IS OPERATING SPEND ONLY (docs/design/00-spine.md §2). Interest and
+	# tax sit OUTSIDE it — the real income-statement shape, which is the whole
+	# pedagogy: operating profit → cost of debt → tax → net.
+	var lane_burn := float(m["severance"]) + float(m["recruiting"]) \
+			+ float(m["production"]) + float(m["subcontract"]) \
+			+ float(m["equip_upkeep"]) + float(m["carrying"])
+	var burn := int((float(rent + payroll + infra) + mk_budget + b_sales + b_care + b_rnd + b_office) * float(th.burn_mult) + cogs + offer_fixed + lane_burn)
+	burn += incident_cost
+	m["burn"] = burn
 	state.cash += int(round(revenue)) - burn
+	# THE COST OF DEBT, before the record. The legacy shark note compounds here
+	# and its interest becomes a real P&L lane; 06 takes the whole step over
+	# (structured notes, honest rates, amortization) by flipping OWNS_DEBT.
+	if not SimBank.OWNS_DEBT:
+		if state.loan_principal > 0:
+			var interest := int(ceil(float(state.loan_principal) * 0.18))
+			state.loan_principal += interest
+			m["interest"] = float(m["interest"]) + float(interest)
+			rep["lines"].append("the loan compounds: +$%d interest (owe $%d)" % [interest, state.loan_principal])
+			if state.cash > 2000:
+				var pay := mini(state.cash - 1500, state.loan_principal)
+				state.cash -= pay
+				state.loan_principal -= pay
+				rep["lines"].append("auto-repaid $%d of the loan" % pay)
 	var liab_wk := 0
 	for cm0 in state.commitments:
 		liab_wk += mini(int((cm0 as Dictionary).get("cash_wk", 0)), 0)
+	m["liabilities_wk"] = -liab_wk
+	# THE STATE, last: tax is charged on what is left after interest, so it can
+	# only be computed once every other lane has closed (06 owns the math).
+	m["tax"] = float(SimBank.tax_wk(state, m))
+	# THE RECORD, written whole and exactly once. The identity a twin test pins
+	# every week:  net = revenue − burn − liabilities_wk − interest − tax.
 	state.set_meta("pnl", {
 		"revenue": int(round(revenue)), "cogs": int(round(cogs)),
 		"rent": rent, "payroll": payroll, "infra": infra,
 		"marketing": int(mk_budget), "sales": int(b_sales), "care": int(b_care),
-		"rnd": int(b_rnd), "office": int(b_office), "incident": incident_cost,
+		"rnd": int(b_rnd), "office": int(b_office),
 		"offer_fixed": int(round(offer_fixed)),
-		"liabilities_wk": -liab_wk, "burn": burn,
-		"net": int(round(revenue)) - burn + liab_wk,
+		"severance": int(round(float(m["severance"]))),
+		"recruiting": int(round(float(m["recruiting"]))),
+		"production": int(round(float(m["production"]))),
+		"subcontract": int(round(float(m["subcontract"]))),
+		"equip_upkeep": int(round(float(m["equip_upkeep"]))),
+		"carrying": int(round(float(m["carrying"]))),
+		"incident": incident_cost,
+		"liabilities_wk": -liab_wk,
+		"interest": int(round(float(m["interest"]))),
+		"tax": int(round(float(m["tax"]))),
+		"burn": burn,
+		"net": int(round(revenue)) - burn + liab_wk
+			- int(round(float(m["interest"]))) - int(round(float(m["tax"]))),
 		"learning": learning_curve(state),
 	})
 	if state.get_meta("prev_revenue", 0.0) > 1.0:
@@ -412,15 +627,6 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	rep["payback_wk"] = int(ceil(float(rep["cac"]) / maxf(arpu, 0.01))) if int(rep["cac"]) > 0 else 0
 	state.set_meta("unit_econ", {"arpu": arpu, "cac": rep["cac"], "ltv": rep["ltv"],
 		"payback_wk": rep["payback_wk"], "residence": int(residence)})
-	if state.loan_principal > 0:
-		var interest := int(ceil(float(state.loan_principal) * 0.18))
-		state.loan_principal += interest
-		rep["lines"].append("the loan compounds: +$%d interest (owe $%d)" % [interest, state.loan_principal])
-		if state.cash > 2000:
-			var pay := mini(state.cash - 1500, state.loan_principal)
-			state.cash -= pay
-			state.loan_principal -= pay
-			rep["lines"].append("auto-repaid $%d of the loan" % pay)
 
 	# 9b ── the founder's working assumptions converge toward the truth.
 	# Rate: analytics tooling, real customers, and R&D all teach.
@@ -432,6 +638,19 @@ static func weekly_tick(state: GameState) -> Dictionary:
 		state.beliefs["tam"] = float(state.beliefs["tam"]) + (float(th.tam) - float(state.beliefs["tam"])) * k
 		state.beliefs["lifetime_wk"] = float(state.beliefs["lifetime_wk"]) \
 				+ (float(th.lifetime_wk) - float(state.beliefs["lifetime_wk"])) * k
+
+	# 9c/9d ── the week is closed, so the readers of a closed week run now:
+	# the board review against the covenant, M&A offers priced off this week's
+	# growth, bets that finished, catalog and factory bookkeeping.
+	SimCatalog.tick_post(state, rep)
+	SimLabor.tick_post(state, rep)
+	SimStreet.tick_post(state, rep)
+	SimFunnel.tick_post(state, rep)
+	SimPipeline.tick_post(state, rep)
+	SimBank.tick_post(state, rep)
+	SimRoadmap.tick_post(state, rep)
+	SimBoard.tick_post(state, rep)
+	SimFactory.tick_post(state, rep)
 
 	# 10 ── commitments (recurring deltas with duration)
 	var kept_comm: Array = []
@@ -625,7 +844,7 @@ static func warmth_pct(state: GameState) -> float:
 ## in the room warms them back.
 static func generate_offers(state: GameState, investors: Array) -> Array:
 	var pre := valuation(state)
-	var r := _rng(state, 9)
+	var r := _rng(state, SALT_TERM_SHEETS)
 	var desperate := state.cash < 0 or runway_weeks(state) <= 4
 	var warm := warmth_pct(state)
 	var out: Array = []
@@ -656,12 +875,25 @@ static func apply_round(state: GameState, amount: int, equity_pct: float) -> voi
 ## THE DEMAND CURVE (owner: nobody EVER buys a $500 massage): how much of
 ## fair demand survives at this price. (p/fair)^-elasticity, clamped so a
 ## giveaway can at most triple demand and an absurd price sells ~nothing.
-static func offer_demand(offer: Dictionary, price: float) -> float:
-	var fair := maxf(float(offer.get("fair_price", 1.0)), 0.01)
+## `fair_mult` is THE STREET'S price, not yours: while a rival's price war runs,
+## the going rate itself drops, so holding your list price reads as expensive
+## (03 §5.1). 1.0 = no war, and everything below behaves exactly as before.
+static func offer_demand(offer: Dictionary, price: float, fair_mult: float = 1.0) -> float:
+	var fair := maxf(float(offer.get("fair_price", 1.0)) * fair_mult, 0.01)
 	if price <= 0.0:
 		return 0.0   # not on sale
 	var e := float(offer.get("elasticity", 2.0))
 	return clampf(pow(price / fair, -e), 0.0, 2.0)
+
+## THE GOING RATE, after the street has had its say: the product of every live
+## status' `fair_mult`, floored so a war can never erase the market. Read at
+## exactly three sites — demand, retention pain, and what an unpriced offer
+## bills — because those are the three places a customer feels a price.
+static func street_fair_mult(state: GameState) -> float:
+	var mlt := 1.0
+	for s in state.statuses:
+		mlt *= float(STATUS.get(String((s as Dictionary).get("name", "")), {}).get("fair_mult", 1.0))
+	return maxf(mlt, 0.85)
 
 ## How often one customer pays for an offer, in purchases per week. The
 ## founder's mental math is "customers × price"; the cadence is the honest
@@ -694,24 +926,26 @@ static func offers_arpu(state: GameState) -> float:
 	if state.offers.is_empty():
 		return -1.0   # legacy runs: fall back to theta arpu
 	var total := 0.0
+	var fm := street_fair_mult(state)
 	for o in state.offers:
 		var od: Dictionary = o
-		var price := offer_billed_price(od)
+		var price := offer_billed_price(od, fm)
 		if price <= 0.0:
 			continue
 		total += float(od.get("weight", 1.0)) * price * offer_cadence(String(od.get("unit", "")))
 	return total
 
 ## What an offer actually bills at: the founder's price, or the fair (going)
-## rate while unpriced. 0 only when the offer has neither.
-static func offer_billed_price(od: Dictionary) -> float:
+## rate while unpriced. 0 only when the offer has neither. An unpriced offer
+## follows the street down during a price war — the going rate IS the street's.
+static func offer_billed_price(od: Dictionary, fair_mult: float = 1.0) -> float:
 	var price := float(od.get("price", 0.0))
 	if price <= 0.0:
 		# a CONSCIOUS $0 (price_set) stays free — the founder overruled the
 		# backstop on purpose; only a never-priced offer bills at fair.
 		if bool(od.get("price_set", false)):
 			return 0.0
-		price = maxf(float(od.get("fair_price", 0.0)), 0.0)
+		price = maxf(float(od.get("fair_price", 0.0)) * fair_mult, 0.0)
 	return price
 
 ## True when any offer is billing at the going rate instead of a named price.
@@ -797,7 +1031,8 @@ static func sync_offer_costs(offer: Dictionary) -> void:
 static func offers_fixed_wk(state: GameState) -> float:
 	var total := 0.0
 	for o in state.offers:
-		total += float((o as Dictionary).get("fixed_wk", 0.0))
+		# a hand-edited fixed_wk with no lines behind it is caught here
+		total += clampf(float((o as Dictionary).get("fixed_wk", 0.0)), 0.0, 10_000.0)
 	return total
 
 static func remove_offer(state: GameState, idx: int) -> bool:
@@ -837,7 +1072,7 @@ static func draft_offer_terms(state: GameState, idea: String) -> Dictionary:
 ## THE LEARNING CURVE (Bonopoly): each 10× of customers ever served takes
 ## ~11% off the unit serving cost, floored at 65% — scale earns its margin.
 static func learning_curve(state: GameState) -> float:
-	var served := int(state.get_meta("served_total", 0))
+	var served := state.served_total
 	if served <= 1:
 		return 1.0
 	return maxf(1.0 - 0.115 * (log(float(served)) / log(10.0)), 0.65)
@@ -849,12 +1084,13 @@ static func offers_price_pain(state: GameState) -> float:
 		return 1.0
 	var num := 0.0
 	var den := 0.0
+	var fm := street_fair_mult(state)
 	for o in state.offers:
 		var od: Dictionary = o
-		var price := offer_billed_price(od)   # fair-billed = no pain (ratio 1)
+		var price := offer_billed_price(od, fm)   # fair-billed = no pain (ratio 1)
 		if price <= 0.0:
 			continue
-		var fair := maxf(float(od.get("fair_price", price)), 1.0)
+		var fair := maxf(float(od.get("fair_price", price)) * fm, 1.0)
 		var wgt := float(od.get("weight", 1.0))
 		num += wgt * (price / fair)
 		den += wgt
@@ -871,15 +1107,16 @@ static func offers_demand_mult(state: GameState) -> float:
 		return -1.0
 	var num := 0.0
 	var den := 0.0
+	var fm := street_fair_mult(state)
 	for o in state.offers:
 		var od: Dictionary = o
 		var wgt := float(od.get("weight", 1.0))
 		den += wgt
-		var price := offer_billed_price(od)   # fair-billed = fair demand (1.0)
+		var price := offer_billed_price(od, fm)   # fair-billed = fair demand (1.0)
 		if price <= 0.0 and bool(od.get("price_set", false)):
 			num += wgt * 2.0   # free on purpose: the giveaway cap, not zero
 		else:
-			num += wgt * (offer_demand(od, price) if price > 0.0 else 0.0)
+			num += wgt * (offer_demand(od, price, fm) if price > 0.0 else 0.0)
 	return clampf(num / maxf(den, 0.01), 0.0, 3.0) if den > 0.0 else 0.0
 
 ## What one week may plausibly spend at this stage — the DM's inputs are
@@ -887,11 +1124,149 @@ static func offers_demand_mult(state: GameState) -> float:
 ## First guesses about the market — wrong on purpose, corrected by playing.
 static func seed_beliefs(state: GameState) -> void:
 	var th := state.theta
-	var br := _rng(state, 88)
+	var br := _rng(state, SALT_BELIEFS)
 	state.beliefs = {
 		"tam": float(th.get("tam", 100000.0)) * br.randf_range(0.35, 2.6),
 		"lifetime_wk": float(th.get("lifetime_wk", 40.0)) * br.randf_range(0.4, 2.2),
 	}
+
+# ════════════════════ THE SPINE'S AGGREGATORS ════════════════════
+## Four pure functions the whole game reads through: the budget migration, the
+## attention registry, the pre-roll review, and the DM directive block. Every
+## one of them merges the nine lanes so no screen ever calls a lane directly.
+
+## THE BUDGET MIGRATION (docs/design/04 §5, docs/design/00-spine.md §8).
+## Idempotent by construction — run it at every tick start and after every load.
+## The old single `marketing` lever becomes PAID ADS, which inherits both of its
+## behaviours (instant reach, the closing-capacity feed), so a mid-run save
+## spends identically until the player touches the mix.
+static func migrate_budgets(state: GameState) -> void:
+	if state.budgets.has("marketing"):
+		state.budgets["ads"] = int(state.budgets.get("ads", 0)) + int(state.budgets["marketing"])
+		state.budgets.erase("marketing")
+	for k in ["ads", "content", "referrals", "outbound", "sales", "care", "rnd", "office"]:
+		if not state.budgets.has(k):
+			state.budgets[k] = 0
+
+## THE ATTENTION REGISTRY (docs/design/00-spine.md §4). ONE engine-side function
+## behind every bang in the game: the binder's tab marks, the garage badge, the
+## garage ticker, the threats desk and the pre-roll review card all read this
+## list and nothing else. Rows are {desk, key, severity, label}; severity 1 =
+## note, 2 = warn, 3 = alarm.
+##
+## The label is PEDAGOGY, not decoration: it names the problem in the business
+## term the player must learn, in ≤40 characters, because the garage ticker
+## prints it verbatim with no room to explain itself.
+const ATTENTION_DESKS := ["pricing", "the ledger", "the bank", "crew",
+	"cap table", "customers", "product", "the street", "vitals", "threats"]
+
+static func attention_items(state: GameState) -> Array:
+	var rows: Array = []
+	# ── the spine's own rows: the three conditions that predate the registry
+	if offers_any_unpriced(state):
+		rows.append({"desk": "pricing", "key": "unpriced", "severity": 2,
+			"label": "unpriced offer — billing at going rate"})
+	var pnl: Dictionary = state.get_meta("pnl", {})
+	if not pnl.is_empty() and int(pnl.get("net", 0)) < 0:
+		rows.append({"desk": "the ledger", "key": "losing_week", "severity": 2,
+			"label": "losing week — burn beat revenue"})
+	if state.has_flag("fundraising_open"):
+		rows.append({"desk": "cap table", "key": "term_sheets", "severity": 3,
+			"label": "term sheets waiting — they expire"})
+	# ── the nine lanes, each owning its own predicates
+	for lane_rows in [SimCatalog.attention(state), SimLabor.attention(state),
+			SimStreet.attention(state), SimFunnel.attention(state),
+			SimPipeline.attention(state), SimBank.attention(state),
+			SimRoadmap.attention(state), SimBoard.attention(state),
+			SimFactory.attention(state)]:
+		for r in lane_rows:
+			if r is Dictionary:
+				rows.append(r)
+	# ── ONE order for every consumer: loudest first, then registry order, then
+	# the order the lanes spoke. The last key makes the sort total, so two runs
+	# of the same state can never disagree about which row the ticker shows.
+	var idx := 0
+	for r2 in rows:
+		(r2 as Dictionary)["_i"] = idx
+		idx += 1
+	rows.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var sa := int(a.get("severity", 1))
+		var sb := int(b.get("severity", 1))
+		if sa != sb:
+			return sa > sb
+		var da := ATTENTION_DESKS.find(String(a.get("desk", "")))
+		var db := ATTENTION_DESKS.find(String(b.get("desk", "")))
+		if da < 0: da = ATTENTION_DESKS.size()
+		if db < 0: db = ATTENTION_DESKS.size()
+		if da != db:
+			return da < db
+		return int(a.get("_i", 0)) < int(b.get("_i", 0)))
+	for r3 in rows:
+		(r3 as Dictionary).erase("_i")
+	return rows
+
+## Every attention row on one desk, highest severity first — the binder asks
+## this for a tab's bang, the threats page for its lines.
+static func attention_for_desk(state: GameState, desk: String) -> Array:
+	var out: Array = []
+	for r in attention_items(state):
+		if String((r as Dictionary).get("desk", "")) == desk:
+			out.append(r)
+	return out
+
+## The severity a desk's bang wears: its loudest item, 0 for a quiet desk.
+static func attention_severity(state: GameState, desk: String) -> int:
+	var worst := 0
+	for r in attention_items(state):
+		if String((r as Dictionary).get("desk", "")) == desk:
+			worst = maxi(worst, int((r as Dictionary).get("severity", 1)))
+	return worst
+
+## THE PRE-ROLL REVIEW (docs/design/DECISIONS.md #2). Before ANY dice roll —
+## the weekly LOCK IN included — the game shows what is still outstanding, so a
+## founder never rolls past an unpriced offer or a repayment cliff without
+## having been told. This is the ENGINE half: the list, filtered to what is
+## genuinely worth stopping for (warn and above). Zero rows = no card at all.
+static func preroll_items(state: GameState) -> Array:
+	var out: Array = []
+	for r in attention_items(state):
+		if int((r as Dictionary).get("severity", 1)) >= 2:
+			out.append(r)
+	return out
+
+## THE DIRECTIVE BLOCK's subsystem half, in the spine's fixed section order
+## (docs/design/00-spine.md §5). Lanes never touch the event generator: they
+## return lines, the spine orders them, the composer caps them.
+static func lane_directives(state: GameState) -> Array[String]:
+	var out: Array[String] = []
+	for lane_lines in [SimCatalog.directives(state), SimLabor.directives(state),
+			SimStreet.directives(state), SimFunnel.directives(state),
+			SimPipeline.directives(state), SimBank.directives(state),
+			SimRoadmap.directives(state), SimBoard.directives(state),
+			SimFactory.directives(state)]:
+		for l in lane_lines:
+			out.append(String(l))
+	return out
+
+## THE TOKEN BUDGET GUARD (docs/design/00-spine.md §5): the whole DIRECTIVES
+## block is hard-capped at 24 lines / 1200 chars. Priority IS the order — the
+## runway line is never dropped — and the composer truncates, never the
+## subsystems, so no lane can starve another by writing more.
+const DIRECTIVE_MAX_LINES := 24
+const DIRECTIVE_MAX_CHARS := 1200
+
+static func cap_directives(lines: Array) -> Array[String]:
+	var out: Array[String] = []
+	var chars := 0
+	for l in lines:
+		if out.size() >= DIRECTIVE_MAX_LINES:
+			break
+		var s := String(l)
+		if chars + s.length() + 1 > DIRECTIVE_MAX_CHARS and not out.is_empty():
+			break
+		out.append(s)
+		chars += s.length() + 1
+	return out
 
 static func era_spend_cap(era: String) -> int:
 	return int({"garage": 6_000, "coworking": 25_000, "office": 80_000,

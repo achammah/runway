@@ -74,19 +74,20 @@ func _ready() -> void:
 			_tab = idx
 			_refresh())
 		_sheet.add_child(b)
-		# THE WARNING BANGS (owner: "! warnings on tab where things are unset"):
-		# pricing = something bills at the going rate · the ledger = losing
-		# money · cap table = term sheets waiting.
-		if TABS[i] in ["pricing", "the ledger", "cap table"]:
-			var bang := Label.new()
-			bang.text = "!"
-			bang.add_theme_font_override("font", _font)
-			bang.add_theme_font_size_override("font_size", 30)
-			bang.add_theme_color_override("font_color", PEN)
-			bang.position = b.position + Vector2(103.0, -12.0)
-			bang.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			_sheet.add_child(bang)
-			_bangs[TABS[i]] = bang
+		# THE WARNING BANGS (owner: "! warnings on tab where things are unset").
+		# EVERY tab carries one now: the engine's attention registry decides
+		# which ones light up (docs/design/00-spine.md §4), so a desk that grows
+		# a new warning needs no change here — it files a registry row instead.
+		var bang := Label.new()
+		bang.text = "!"
+		bang.add_theme_font_override("font", _font)
+		bang.add_theme_font_size_override("font_size", 30)
+		bang.add_theme_color_override("font_color", PEN)
+		bang.position = b.position + Vector2(103.0, -12.0)
+		bang.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bang.visible = false
+		_sheet.add_child(bang)
+		_bangs[TABS[i]] = bang
 
 	var close := Button.new()
 	close.flat = true
@@ -117,13 +118,17 @@ func _dismiss() -> void:
 
 # ─────────────────────────────── composition ────────────────────────────────
 func _refresh() -> void:
-	if _bangs.has("pricing"):
-		(_bangs["pricing"] as Label).visible = SimEngine.offers_any_unpriced(state)
-	if _bangs.has("the ledger"):
-		var pnl_b: Dictionary = state.get_meta("pnl", {})
-		(_bangs["the ledger"] as Label).visible = int(pnl_b.get("net", 0)) < 0
-	if _bangs.has("cap table"):
-		(_bangs["cap table"] as Label).visible = state.has_flag("fundraising_open")
+	# ONE list behind every mark on this sheet: a tab wears the bang of its
+	# loudest attention item, and an alarm (3) is coral where a note (1) is ink.
+	var worst := {}
+	for it in SimEngine.attention_items(state):
+		var dsk := String((it as Dictionary).get("desk", ""))
+		worst[dsk] = maxi(int(worst.get(dsk, 0)), int((it as Dictionary).get("severity", 1)))
+	for tab_name in _bangs:
+		var sev := int(worst.get(String(tab_name), 0))
+		var lbl := _bangs[tab_name] as Label
+		lbl.visible = sev > 0
+		lbl.add_theme_color_override("font_color", INK if sev == 1 else PEN)
 	for c in _content.get_children():
 		c.queue_free()
 	(_sheet as _Clipboard).active_tab = _tab
@@ -213,12 +218,16 @@ func _tab_vitals() -> void:
 		Vector2(10, 532), 27, Color(INK, 0.8))
 
 # ── tab 1: THE LEDGER — the levers, the math, the truth about the money ─────
+## [budget key, the word on the page, what the money actually does]. The key and
+## the word part company for the top lever: the state key migrated to `ads` when
+## the four acquisition channels landed, while the founder still calls the whole
+## top of the funnel MARKETING until the channels unlock at coworking.
 const LEVERS := [
-	["marketing", "reach — more people hear of you; saturates past ~$2k"],
-	["sales", "closing — every $600/wk closes like one more part-time seller"],
-	["care", "retention — up to 30% less churn as care approaches $3k"],
-	["rnd", "product — ships ~+1 quality per $1,200/wk and pays down debt"],
-	["office", "the office — food, perks, benefits; morale climbs toward +3/wk by ~$2k"],
+	["ads", "marketing", "reach — more people hear of you; saturates past ~$2k"],
+	["sales", "sales", "closing — every $600/wk closes like one more part-time seller"],
+	["care", "care", "retention — up to 30% less churn as care approaches $3k"],
+	["rnd", "rnd", "product — ships ~+1 quality per $1,200/wk and pays down debt"],
+	["office", "office", "the office — food, perks, benefits; morale climbs toward +3/wk by ~$2k"],
 ]
 const LEVER_STEPS := [0, 250, 500, 1000, 2000, 4000, 8000]
 
@@ -228,8 +237,8 @@ func _tab_ledger() -> void:
 	for lv in LEVERS:
 		var cat := String(lv[0])
 		var cur := int(state.budgets.get(cat, 0))
-		_label(cat.to_upper(), Vector2(10, y), 28)
-		_label(String(lv[1]), Vector2(10, y + 34), 21, Color(INK, 0.6))
+		_label(String(lv[1]).to_upper(), Vector2(10, y), 28)
+		_label(String(lv[2]), Vector2(10, y + 34), 21, Color(INK, 0.6))
 		_label("$%s/wk" % _fmt(cur), Vector2(520, y + 4), 30, PEN)
 		# WHAT THIS MONEY IS DOING RIGHT NOW, from the engine's own formulas —
 		# the mechanics visible at the point of the decision
@@ -311,7 +320,7 @@ func _tab_ledger() -> void:
 func _lever_effect(cat: String, v: int) -> String:
 	var th := state.theta
 	match cat:
-		"marketing":
+		"ads", "content", "referrals", "outbound":
 			var mult := 1.0 + 1.4 * (1.0 - exp(-float(v) / float(th.get("cac_sat", 900.0))))
 			return "reach ×%.2f" % mult if v > 0 else "no reach bought"
 		"sales":

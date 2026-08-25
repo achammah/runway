@@ -391,7 +391,7 @@ func _go() -> void:
 		"office money is real burn (Δ$%d over 8 wks)" % (of_a.cash - of_b.cash))
 	# THE LEARNING CURVE: serving 1000 customers cheapens serving ~34%.
 	var lcs := _state()
-	lcs.set_meta("served_total", 1000)
+	lcs.served_total = 1000          # a saved FIELD now, not an Object meta
 	_ok(SimEngine.learning_curve(lcs) > 0.6 and SimEngine.learning_curve(lcs) < 0.7,
 		"the learning curve pays at scale (×%.2f)" % SimEngine.learning_curve(lcs))
 	# THE P&L IDENTITY: the binder's record balances to the ledger.
@@ -411,6 +411,226 @@ func _go() -> void:
 	ln.loan_principal = 10_000
 	SimEngine.weekly_tick(ln)
 	_ok(ln.loan_principal >= 11_800, "18%%/wk compounds (owe %d)" % ln.loan_principal)
+
+	# ── WAVE A: the four bugs the design corpus found (docs/design/DECISIONS.md)
+	# 1 — price_offer was in the schema and the executor but not the validator,
+	# so every DM reply that priced an offer was thrown away whole.
+	_ok(EventGenerator.ALLOWED_OPS.has("price_offer"),
+		"price_offer survives the ops validator")
+	_ok(EventGenerator.ALLOWED_OPS.has("push_lead"), "push_lead is a live op")
+	# the op list is ONE list at three sites — pin them equal, per engine
+	var schema_ops: Array = LlmClient.ADJUDICATE_SCHEMA["properties"]["effects"]["items"]["properties"]["op"]["enum"]
+	_ok(schema_ops.size() == EventGenerator.ALLOWED_OPS.size(),
+		"schema enum and validator carry the same %d ops" % schema_ops.size())
+	var ops_match := true
+	for op_name in schema_ops:
+		if not EventGenerator.ALLOWED_OPS.has(String(op_name)):
+			ops_match = false
+	_ok(ops_match, "every schema op is an allowed op")
+	# 2 — the catalog cost-lines engine half (Godot had it, the C# twin did not)
+	var cl := _state()
+	var with_lines := SimEngine.add_offer(cl, "workshop", "per session", 200.0, 0.0, 2.0, 1.0,
+		[{"label": "materials", "amount": 30.0}, {"label": "room hire", "amount": 20.0}],
+		[{"label": "insurance", "amount": 45.0}])
+	_ok(absf(float(with_lines.get("unit_cost", 0.0)) - 50.0) < 0.01,
+		"unit cost is the sum of its variable lines (%.2f)" % float(with_lines.get("unit_cost", 0.0)))
+	_ok(absf(float(with_lines.get("fixed_wk", 0.0)) - 45.0) < 0.01,
+		"fixed_wk is the sum of its weekly lines (%.2f)" % float(with_lines.get("fixed_wk", 0.0)))
+	_ok(absf(SimEngine.offers_fixed_wk(cl) - 45.0) < 0.01,
+		"the catalog's weekly overhead reaches the engine")
+	# a line above half of fair is clamped, and the total follows it down
+	(with_lines["cost_lines"][0] as Dictionary)["amount"] = 5000.0
+	SimEngine.sync_offer_costs(with_lines)
+	_ok(float(with_lines.get("unit_cost", 0.0)) <= 200.0 * 0.9 + 0.01,
+		"an itemised cost sheet still cannot exceed 90%% of fair")
+	# the deep copy: two offers must never share one line object
+	var copy: Dictionary = with_lines.duplicate(true)
+	(copy["cost_lines"][0] as Dictionary)["amount"] = 1.0
+	_ok(float((with_lines["cost_lines"][0] as Dictionary).get("amount", 0.0)) != 1.0,
+		"duplicating an offer deep-copies its cost sheet")
+	# the catalog overhead is a real P&L lane, not a silent cost
+	var fx2 := _state()
+	fx2.traction = 10
+	SimEngine.add_offer(fx2, "kit", "per order", 100.0, 20.0, 2.0, 1.0, [],
+		[{"label": "storage", "amount": 120.0}])
+	SimEngine.weekly_tick(fx2)
+	var fx2_pnl: Dictionary = fx2.get_meta("pnl", {})
+	_ok(int(fx2_pnl.get("offer_fixed", 0)) == 120,
+		"catalog overheads land in the P&L (%d)" % int(fx2_pnl.get("offer_fixed", 0)))
+	# 3 — served_total is a FIELD: the learning curve used to reset on load
+	var svd := _state()
+	svd.traction = 25
+	SimEngine.weekly_tick(svd)
+	_ok(svd.served_total >= 25, "served_total accumulates on a real field (%d)" % svd.served_total)
+
+	# ── THE SALT REGISTRY: names, never numbers, and 95 stays burned
+	_ok(SimEngine.SALT_LABOR_ARRIVALS == 20 and SimEngine.SALT_RIVAL_ACTION == 30
+		and SimEngine.SALT_PIPELINE == 50 and SimEngine.SALT_ROADMAP_SHIP == 70
+		and SimEngine.SALT_MACRO_SHOCK == 80 and SimEngine.SALT_MNA == 100
+		and SimEngine.SALT_HW_BREAKDOWN == 110,
+		"the salt registry matches the spine's table")
+	_ok(SimEngine.SALT_BURNED == 95, "salt 95 is burned, not assigned")
+
+	# ── THE STATUS CATALOG's wave additions: installable by name, magnitudes
+	# in one place, and the new effect keys stay out of the adoption loop.
+	var stc := _state()
+	_ok(SimEngine.add_status(stc, "price_war", 4) and SimEngine.add_status(stc, "board_delight", 3),
+		"the wave's statuses install by name")
+	_ok(not SimEngine.add_status(stc, "made_up_buff", 3), "the catalog still refuses inventions")
+	_ok(absf(SimEngine.street_fair_mult(stc) - 0.92) < 0.001,
+		"a price war drops the going rate (×%.2f)" % SimEngine.street_fair_mult(stc))
+	_ok(bool(SimEngine.roll_context(stc, "raise").advantage),
+		"board_delight warms the room for a raise")
+	var plainc := _state()
+	_ok(SimEngine.street_fair_mult(plainc) == 1.0, "no war, no discount on the street")
+	# the price war is DEMAND-side: it never edits the founder's own numbers
+	var warp := _state()
+	warp.offers = [{"name": "s", "unit": "per session", "price": 70.0,
+		"fair_price": 70.0, "unit_cost": 18.0, "weight": 1.0}]
+	var fair_before := SimEngine.offers_price_pain(warp)
+	SimEngine.add_status(warp, "price_war", 4)
+	_ok(SimEngine.offers_price_pain(warp) > fair_before,
+		"holding your price through a war reads as expensive (%.2f > %.2f)" % [
+		SimEngine.offers_price_pain(warp), fair_before])
+	_ok(float((warp.offers[0] as Dictionary).get("fair_price", 0.0)) == 70.0,
+		"a rival never mutates the founder's own fair price")
+
+	# ── THE P&L IDENTITY v2, both lines, on a week with every lane present
+	var idn := _state()
+	idn.set_flag("launched")
+	idn.traction = 120
+	idn.loan_principal = 5_000
+	idn.budgets = {"ads": 800, "content": 200, "sales": 400, "care": 300, "rnd": 600, "office": 250}
+	idn.offers = [{"name": "s", "unit": "per session", "price": 40.0,
+		"fair_price": 38.0, "unit_cost": 12.0, "weight": 1.0,
+		"fixed_lines": [{"label": "tools", "amount": 60.0}], "fixed_wk": 60.0}]
+	idn.commitments.append({"name": "the van", "cash_wk": -150, "weeks_left": 6})
+	var saw_interest := false
+	var saw_standing := false
+	for _w in 8:
+		idn.week += 1
+		SimEngine.weekly_tick(idn)
+		var p: Dictionary = idn.get_meta("pnl", {})
+		var lanes_sum := int(p.get("cogs", 0)) + int(p.get("rent", 0)) + int(p.get("payroll", 0)) \
+			+ int(p.get("infra", 0)) + int(p.get("marketing", 0)) + int(p.get("sales", 0)) \
+			+ int(p.get("care", 0)) + int(p.get("rnd", 0)) + int(p.get("office", 0)) \
+			+ int(p.get("offer_fixed", 0)) + int(p.get("severance", 0)) + int(p.get("recruiting", 0)) \
+			+ int(p.get("production", 0)) + int(p.get("subcontract", 0)) \
+			+ int(p.get("equip_upkeep", 0)) + int(p.get("carrying", 0)) + int(p.get("incident", 0))
+		_ok(absi(int(p.get("burn", 0)) - lanes_sum) <= 1,
+			"wk%d burn is the sum of its operating lanes (%d vs %d)" % [idn.week, int(p.get("burn", 0)), lanes_sum])
+		_ok(int(p.get("net", 0)) == int(p.get("revenue", 0)) - int(p.get("burn", 0))
+			- int(p.get("liabilities_wk", 0)) - int(p.get("interest", 0)) - int(p.get("tax", 0)),
+			"wk%d net = revenue − burn − standing − interest − tax" % idn.week)
+		if int(p.get("interest", 0)) > 0:
+			saw_interest = true
+			# the whole point of moving interest before the record: burn is
+			# OPERATING spend, and the cost of debt sits outside it
+			_ok(int(p.get("burn", 0)) < int(p.get("revenue", 0)) - int(p.get("net", 0)),
+				"wk%d burn excludes the interest that also hit the week" % idn.week)
+		if int(p.get("liabilities_wk", 0)) > 0:
+			saw_standing = true
+	_ok(saw_interest, "the loan's interest reaches the ledger instead of vanishing")
+	_ok(saw_standing, "the standing-commitments lane reaches the ledger")
+
+	# ── THE ATTENTION REGISTRY: one function behind every bang
+	var at0 := _state()
+	at0.offers = []
+	at0.set_meta("pnl", {"net": 500})
+	_ok(SimEngine.attention_items(at0).is_empty(), "a calm company raises no hands")
+	var at1 := _state()
+	at1.offers = [{"name": "consulting", "unit": "per session", "price": 0.0,
+		"fair_price": 70.0, "unit_cost": 18.0, "weight": 1.0}]
+	var rows := SimEngine.attention_items(at1)
+	var saw_unpriced := false
+	for r in rows:
+		if String((r as Dictionary).get("key", "")) == "unpriced":
+			saw_unpriced = true
+			_ok(String((r as Dictionary).get("desk", "")) == "pricing",
+				"the unpriced row points at the pricing desk")
+			_ok(String((r as Dictionary).get("label", "")).length() <= 40,
+				"a ticker label fits the garage HUD (%d chars)" % String((r as Dictionary).get("label", "")).length())
+	_ok(saw_unpriced, "an offer billing at the going rate raises its hand")
+	var at2 := _state()
+	at2.set_flag("fundraising_open")
+	at2.set_meta("pnl", {"net": -900})
+	var rows2 := SimEngine.attention_items(at2)
+	_ok(rows2.size() >= 2, "losing money and open term sheets both register")
+	_ok(int((rows2[0] as Dictionary).get("severity", 0)) >= int((rows2[rows2.size() - 1] as Dictionary).get("severity", 0)),
+		"the loudest item sorts first")
+	_ok(SimEngine.attention_severity(at2, "cap table") == 3, "term sheets are an alarm")
+	_ok(SimEngine.attention_severity(at2, "product") == 0, "a quiet desk wears no bang")
+	# THE PRE-ROLL REVIEW: the engine half — what is worth stopping a roll for
+	_ok(SimEngine.preroll_items(at0).is_empty(), "nothing outstanding = no review card")
+	var pr := SimEngine.preroll_items(at2)
+	_ok(pr.size() > 0, "the review card has something to say before the dice")
+	var pr_min_sev := 3
+	for r2 in pr:
+		pr_min_sev = mini(pr_min_sev, int((r2 as Dictionary).get("severity", 1)))
+	_ok(pr_min_sev >= 2, "the review card never stops a roll over a mere note")
+
+	# ── THE DIRECTIVE CAP: the composer truncates, the subsystems never do
+	var many: Array = []
+	for i in 40:
+		many.append("- line %d that runs on for a while to eat the character budget" % i)
+	var capped := SimEngine.cap_directives(many)
+	_ok(capped.size() <= SimEngine.DIRECTIVE_MAX_LINES, "the directive block caps at 24 lines")
+	var cap_chars := 0
+	for l in capped:
+		cap_chars += String(l).length() + 1
+	_ok(cap_chars <= SimEngine.DIRECTIVE_MAX_CHARS, "the directive block caps at 1200 chars")
+	_ok(String(capped[0]) == String(many[0]), "priority is the order — line 1 is never dropped")
+
+	# ── THE BUDGET MIGRATION: idempotent, and an old save spends identically
+	var mig := _state()
+	mig.budgets = {"marketing": 900, "sales": 100}
+	SimEngine.migrate_budgets(mig)
+	_ok(int(mig.budgets.get("ads", 0)) == 900 and not mig.budgets.has("marketing"),
+		"legacy marketing money becomes paid ads")
+	SimEngine.migrate_budgets(mig)
+	_ok(int(mig.budgets.get("ads", 0)) == 900, "migrating twice does not double the money")
+	_ok(int(mig.budgets.get("outbound", -1)) == 0, "the missing channels arrive at zero")
+
+	# ── OLD SAVES MUST LOAD (docs/design/00-spine.md §8). The frozen pre-wave
+	# fixture: load it through the REAL loader, prove every new field sits at
+	# its default, then tick four weeks and come out finite and alive.
+	var fx = JSON.parse_string(FileAccess.get_file_as_string("res://tests/fixtures/save_v2_prewave.json"))
+	_ok(fx is Dictionary and int((fx as Dictionary).get("version", 0)) == 2,
+		"the frozen fixture is a version-2 save")
+	var old_state := SaveSystem.state_from_dict((fx as Dictionary).get("state", {}))
+	_ok(old_state.week == 5 and old_state.company_name == "Fernwood Supply",
+		"the pre-wave run loads (wk %d)" % old_state.week)
+	_ok(old_state.served_total == 0 and old_state.open_roles.is_empty()
+		and old_state.applicants.is_empty() and old_state.recruiters == 0
+		and old_state.leads.is_empty() and old_state.logos.is_empty()
+		and old_state.pipe_units == 0.0 and old_state.loans.is_empty()
+		and old_state.bets.is_empty() and old_state.platform_level == 0
+		and old_state.board.is_empty() and old_state.mna.is_empty()
+		and old_state.hardware.is_empty() and old_state.content_equity == 0.0
+		and old_state.option_pool_pct == 0.0 and old_state.founder_banked == 0
+		and old_state.tax_loss_carry == 0 and old_state.macro_season == "steady",
+		"every new subsystem field loads at its default")
+	_ok(int(old_state.budgets.get("ads", 0)) == 500 and not old_state.budgets.has("marketing"),
+		"the old save's marketing budget migrated on load")
+	for _wk in 4:
+		old_state.week += 1
+		var orep := SimEngine.weekly_tick(old_state)
+		_ok(orep.has("lines"), "wk%d ticks a pre-wave save without error" % old_state.week)
+	_ok(is_finite(float(old_state.cash)) and absi(old_state.cash) < 100_000_000,
+		"four weeks on, the pre-wave run's cash is still a number ($%d)" % old_state.cash)
+	_ok(not old_state.get_meta("pnl", {}).is_empty(), "a migrated run writes a full P&L record")
+
+	# ── THE NINE LANES: each suite runs its own pins after the engine's
+	for lane_suite in [preload("res://tests/lanes/test_catalog.gd"),
+			preload("res://tests/lanes/test_labor.gd"),
+			preload("res://tests/lanes/test_street.gd"),
+			preload("res://tests/lanes/test_funnel.gd"),
+			preload("res://tests/lanes/test_pipeline.gd"),
+			preload("res://tests/lanes/test_bank.gd"),
+			preload("res://tests/lanes/test_roadmap.gd"),
+			preload("res://tests/lanes/test_board.gd"),
+			preload("res://tests/lanes/test_factory.gd")]:
+		lane_suite.run(_ok)
 
 	if _failed:
 		print("SIM ENGINE FAIL")

@@ -44,6 +44,10 @@ namespace Runway.Llm
         public bool Launched;
         public ClockRow[] Clocks;
         public OfferRow[] Offers;
+        /// The nine subsystems' directive lines, already in the spine's section
+        /// order — SimEngine.LaneDirectives(state) on the run side. Carried as
+        /// plain strings so this lane still references no Runway.Core type.
+        public string[] LaneDirectives;
 
         // ── the clarify pre-pass' small state ─────────────────────────────────
         public int Cash;

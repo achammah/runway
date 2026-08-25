@@ -36,8 +36,12 @@ var pipeline: Array = []              # hires onboarding: [{name, role, salary, 
 var price_mult: float = 1.0           # 0.5..2.0, elasticity applies
 var marketing_budget: int = 0
 # THE LEDGER (owner: manual weekly spend on the business's real levers).
-# Set in the Binder; consumed and applied by SimEngine.weekly_tick.
-var budgets: Dictionary = {"marketing": 0, "sales": 0, "care": 0, "rnd": 0}
+# Set in the Binder; consumed and applied by SimEngine.weekly_tick. The four
+# acquisition channels (ads/content/referrals/outbound) replaced the single
+# `marketing` key; SimEngine.migrate_budgets folds a legacy save's `marketing`
+# into `ads` on load and at every tick start, so an old run spends identically.
+var budgets: Dictionary = {"ads": 0, "content": 0, "referrals": 0, "outbound": 0,
+	"sales": 0, "care": 0, "rnd": 0, "office": 0}
 # WORKING ASSUMPTIONS (owner: nobody knows their LTV on day one): what the
 # founder BELIEVES about the market. Starts wrong, converges toward theta as
 # analytics, customers and R&D teach the truth. The binder shows THESE.
@@ -123,6 +127,45 @@ var future_weights: Array[String] = [] # event ids boosted by weight_future
 var arcs: Array = []                   # Tier-3 run-director storylines (empty w/o LLM key)
 var dead: bool = false
 var death_cause: String = ""
+
+# ── SUBSYSTEM STATE (docs/design/00-spine.md §8) ────────────────────────────
+## Every field below is additive with a default, so a pre-wave save loads at
+## the default and an old build ignores the key: SaveSystem.VERSION stays 2.
+## Durable state is a FIELD, never Object metadata — Godot metas are not in the
+## save whitelist, so a meta silently resets on load (that is what broke the
+## learning curve before `served_total` moved here).
+
+# 01 catalog — cumulative customer-weeks served; drives the learning curve
+var served_total: int = 0
+# 02 labor market
+var open_roles: Array = []       # [{role, offered_salary, opened_week, seats}]
+var applicants: Array = []       # [{name, role, skill, ask, quirk, one_liner, applied_week, source}]
+var recruiters: int = 0          # 0..2, floor era up
+# 04 funnel channels — the content channel's compounding stock
+var content_equity: float = 0.0
+# 05 enterprise pipeline
+var leads: Array = []            # [{name, flavor, seats, stage, age_weeks, heat}]
+var logos: Array = []            # [{name, seats, since_wk, renewal_wk}]
+var pipe_units: float = 0.0      # seats of interest not yet attached to a lead
+var pipe_churn_acc: float = 0.0  # fractional account-churn accumulator
+var pipe_stats: Dictionary = {}  # {signed, lost, cycle_sum, seats_signed, spend, first_wk}
+# 06 finance — structured notes (the legacy shark `loan_principal` still stands)
+var loans: Array = []            # [{kind, principal, balance, rate_wk, term_wk, taken_week, pay_wk, missed}]
+var tax_loss_carry: int = 0      # loss carryforward sheltering later profit
+var last_round_amount: int = 0
+var receivables: Array = []      # net-30 invoicing, floor era up
+# 07 roadmap bets
+var bets: Array = []             # [{id, name, desc, kind, ambition, cost_rnd_weeks, progress, ...}]
+var platform_level: int = 0      # 0..4 — shipped platform bets compound velocity
+# 08 board + M&A
+var board: Dictionary = {}       # {target_growth_pct, target_revenue, base_revenue, review_week, strikes, goodwill}
+var mna: Dictionary = {}         # {} or {buyer, price, why, premium, expires_week}
+var mna_last_week: int = -99     # cooldown anchor (offer generation OR lapse)
+var option_pool_pct: float = 0.0 # ESOP slice of the cap table
+var founder_banked: int = 0      # secondary proceeds — the founder's, run over or not
+var macro_season: String = "steady"   # "winter" | "steady" | "boom"; written by macro only
+# 09 hardware production ({} on every non-Hardware run; seeded lazily)
+var hardware: Dictionary = {}    # {stock, capacity_base, equipment, production_target, produced_total, subcontract_on, demand_ema}
 
 const RAMEN_PER_WEEK := 500    # founder personal burn, Dossier §10
 

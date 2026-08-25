@@ -1,0 +1,97 @@
+{
+  "_comment": "FROZEN PRE-WAVE SAVE — do not regenerate. A real week-5 run captured BEFORE the nine-subsystem wave, in the exact shape save_system.gd wrote at the time: a single `marketing` budget key, no `served_total`, and none of the subsystem collections. Both twin suites load this through the real loader, assert every new field sits at its default, and tick four weeks. It is the only proof that shipping a subsystem never orphans a player's run, so it is added once and never removed.",
+  "version": 2,
+  "meta": {"company": "Fernwood Supply", "founder": "Mara Sorel", "week": 5, "ts": 1756000000},
+  "state": {
+    "week": 5,
+    "era": "garage",
+    "archetype_id": "operator",
+    "archetype_name": "The Operator",
+    "competences": {"build": 4, "sell": 3, "raise": 2, "recruit": 3, "grit": 4},
+    "traits": {"charisma": 3, "luck": 2, "network": 3, "focus": 4, "credibility": 3, "stamina": 3},
+    "structure_id": "solo",
+    "company_name": "Fernwood Supply",
+    "company_idea": "restocking service for neighbourhood coffee bars",
+    "founder_name": "Mara Sorel",
+    "biz_what": "Service",
+    "biz_who": "SMB",
+    "funding_id": "bootstrap",
+    "pivots": 0,
+    "last_outcome": {},
+    "run_history": [
+      {"wk": 3, "said": "cold-called every bar on the high street", "verdict": "fine", "roll": 12, "fx": "+2 customers"},
+      {"wk": 4, "said": "rewrote the delivery route to cut the van time", "verdict": "brilliant", "roll": 18, "fx": "-$120/wk"}
+    ],
+    "sim_seed": 90210,
+    "theta": {
+      "tam": 60000.0, "adopt_p": 0.000375, "adopt_ic": 0.06, "lifetime_wk": 50.0,
+      "arpu_wk": 25.2, "cac_sat": 8000.0, "rival_strength": 20.0, "trend_vol": 0.02,
+      "burn_mult": 1.0, "churn_mult": 1.0, "funding_mult": 1.0
+    },
+    "statuses": [{"name": "word_of_mouth", "weeks_left": 2}],
+    "clocks": [{"weeks_left": 3, "consequence": "the van lease is up for renewal"}],
+    "commitments": [{"name": "the van, on a payment plan", "cash_wk": -180, "weeks_left": 6}],
+    "pipeline": [{"name": "Theo Bakker", "role": "ops", "salary": 900, "weeks_in": 1, "quirk": "labels everything"}],
+    "price_mult": 1.0,
+    "marketing_budget": 0,
+    "budgets": {"marketing": 500, "sales": 0, "care": 250, "rnd": 0},
+    "beliefs": {"tam": 41200.0, "lifetime_wk": 78.5},
+    "offers": [
+      {"name": "weekly restock run", "unit": "per order", "fair_price": 46.0,
+       "elasticity": 2.2, "unit_cost": 16.0, "price": 52.0, "price_set": true, "weight": 1.0},
+      {"name": "emergency top-up", "unit": "per order", "fair_price": 28.0,
+       "elasticity": 2.6, "unit_cost": 11.0, "price": 0.0, "weight": 0.4}
+    ],
+    "analytics_level": 0,
+    "tech_debt": 14.0,
+    "fatigue": 26.0,
+    "exhaustion": 1,
+    "loan_principal": 0,
+    "market_trend": 1.02,
+    "last_growth": 0.08,
+    "rivals": [
+      {"name": "Koda Provisions", "strength": 24.5, "tactics": ["undercuts on volume", "sponsors the trade night", "poaches drivers"], "weeks_since_move": 2, "secret": ""},
+      {"name": "Larkspur Depot", "strength": 31.0, "tactics": ["locks in exclusives", "ships a slicker app", "buys the shelf"], "weeks_since_move": 4, "secret": "quietly running out of money"}
+    ],
+    "investors": [
+      {"name": "Basalt Partners", "archetype": "operator", "coords": [0.4, -0.2],
+       "thesis": "Boring logistics compounds while everyone chases apps.",
+       "trait": "answers email at 6am", "bond": "ran a depot in a past life",
+       "flaw": "cannot resist rewriting your plan", "secret": "their last fund is underwater", "tactics": []}
+    ],
+    "xp": 4, "level": 1,
+    "traits_tally": {"data_driven": 2, "long_term": 1},
+    "story_so_far": "Five weeks in. The van works, the route is tighter, and two bars now expect Mara on Tuesdays.",
+    "xp_spent": 0,
+    "metric_history": [
+      {"wk": 1, "cash": 9000, "customers": 0, "revenue": 0, "burn": 700, "morale": 60, "debt": 10, "hype": 0},
+      {"wk": 2, "cash": 8400, "customers": 2, "revenue": 46, "burn": 690, "morale": 58, "debt": 11, "hype": 3},
+      {"wk": 3, "cash": 7900, "customers": 4, "revenue": 96, "burn": 720, "morale": 57, "debt": 12, "hype": 6},
+      {"wk": 4, "cash": 7550, "customers": 6, "revenue": 148, "burn": 760, "morale": 59, "debt": 13, "hype": 8}
+    ],
+    "played_events": ["The pilot customer wants a discount", "A driver calls in sick on the busiest day"],
+    "weeks_in_red": 0,
+    "history": [
+      {"week": 3, "entry": "event 'The pilot customer wants a discount' — wrote: held the price, threw in a free top-up (fine)"},
+      {"week": 4, "entry": "ops: chase"}
+    ],
+    "cofounders": [],
+    "employees": [{"name": "Ines Duval", "role": "ops", "salary": 850, "burnout": 22, "quirk": "knows every back street"}],
+    "cash": 7420,
+    "product": 38,
+    "traction": 7,
+    "morale": 61,
+    "hype": 9,
+    "founder_pct": 100.0,
+    "items": ["itm_houseplant"],
+    "flags": ["first_revenue", "posted_publicly"],
+    "timebombs": [],
+    "future_weights": [],
+    "rounds_raised": [],
+    "board_seats_founder": 2,
+    "board_seats_investor": 0,
+    "exit_value": 0,
+    "missed_payrolls": 0
+  },
+  "record": {"seed_value": 90210, "entries": []}
+}

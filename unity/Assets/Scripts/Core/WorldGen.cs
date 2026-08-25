@@ -392,6 +392,33 @@ namespace Runway.Core
             {
                 state.Offers = DefaultOffers(state.BizWhat, state.BizWho, rng);
             }
+            SeedRivalConduct(state, rng);
+        }
+
+        /// <summary>
+        /// THE RIVALS' CONDUCT (03-rivals section 1): a war chest, a strategic
+        /// bent, a price posture and a share of voice — what turns a strength
+        /// number into a company that DOES things.
+        ///
+        /// Drawn at the very END of Build, after the offers, and never in the
+        /// middle: inserting draws earlier would shift every later investor and
+        /// offer draw and silently break worldgen determinism for every seed
+        /// that already exists.
+        /// </summary>
+        public static void SeedRivalConduct(GameState state, Rng rng)
+        {
+            string[] focuses = { "price", "product", "growth" };
+            foreach (Rival rd in state.Rivals)
+            {
+                rd.Vigor = rng.RandfRange(40.0, 70.0);
+                rd.Hype = rng.RandfRange(10.0, 40.0);
+                rd.Focus = focuses[(int)(rng.Randi() % 3u)];
+                rd.PricePosture = 1.0;
+                rd.LastAction = "";
+                rd.Log = new List<string>();
+                rd.Cooldowns = new Dictionary<string, int>();
+                rd.Sniffing = 0;
+            }
         }
 
         /// <summary>
@@ -471,14 +498,27 @@ namespace Runway.Core
                     {
                         strength = 25.0;
                     }
+                    string rname = Gd.Left(r.Name ?? "a rival", 30);
+                    string[] llmFocuses = { "price", "product", "growth" };
                     rivals.Add(new Rival
                     {
-                        Name = Gd.Left(r.Name ?? "a rival", 30),
+                        Name = rname,
                         What = whatTxt,
                         Strength = strength,
                         Tactics = r.Tactics ?? new List<string> { "shipped something loud" },
                         WeeksSinceMove = 0,
                         Secret = "",
+                        // no rng in scope on the LLM path, so conduct takes its
+                        // defaults and the bent comes from the name itself —
+                        // twin-safe, no hash involved
+                        Vigor = 55.0,
+                        Hype = 20.0,
+                        Focus = llmFocuses[rname.Length % 3],
+                        PricePosture = 1.0,
+                        LastAction = "",
+                        Log = new List<string>(),
+                        Cooldowns = new Dictionary<string, int>(),
+                        Sniffing = 0,
                     });
                 }
             }

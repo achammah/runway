@@ -29,13 +29,18 @@ namespace Runway.Game
             "crew", "cap table", "the street", "threats",
         };
 
+        /// [budget key, the word on the page, what the money actually does]. The
+        /// key and the word part company for the top lever: the state key
+        /// migrated to `ads` when the four acquisition channels landed, while
+        /// the founder still calls the whole top of the funnel MARKETING until
+        /// the channels unlock at coworking.
         static readonly string[][] Levers =
         {
-            new[] { "marketing", "reach — more people hear of you; saturates past ~$2k" },
-            new[] { "sales", "closing — every $600/wk closes like one more part-time seller" },
-            new[] { "care", "retention — up to 30% less churn as care approaches $3k" },
-            new[] { "rnd", "product — ships ~+1 quality per $1,200/wk and pays down debt" },
-            new[] { "office", "the office — food, perks, benefits; morale climbs toward +3/wk by ~$2k" },
+            new[] { "ads", "marketing", "reach — more people hear of you; saturates past ~$2k" },
+            new[] { "sales", "sales", "closing — every $600/wk closes like one more part-time seller" },
+            new[] { "care", "care", "retention — up to 30% less churn as care approaches $3k" },
+            new[] { "rnd", "rnd", "product — ships ~+1 quality per $1,200/wk and pays down debt" },
+            new[] { "office", "office", "the office — food, perks, benefits; morale climbs toward +3/wk by ~$2k" },
         };
         static readonly int[] LeverSteps = { 0, 250, 500, 1000, 2000, 4000, 8000 };
 
@@ -123,15 +128,14 @@ namespace Runway.Game
                 GameUi.InkWord(_sheet, Tabs[i], 24f + i * 133f, 54f, 130f, 44f, 23f,
                     DrawnUI.Ink, () => { _tab = idx; Refresh(); });
                 // THE WARNING BANGS (owner: "! warnings on tab where things
-                // are unset"): pricing = something bills at the going rate ·
-                // the ledger = losing money · cap table = term sheets waiting.
-                if (Tabs[i] == "pricing" || Tabs[i] == "the ledger" || Tabs[i] == "cap table")
-                {
-                    var bang = DrawnUI.HandLabel(_sheet, "!", 24f + i * 133f + 103f,
-                        42f, 30f, DrawnUI.Coral, 30f);
-                    bang.gameObject.SetActive(false);
-                    _bangs[Tabs[i]] = bang;
-                }
+                // are unset"). EVERY tab carries one now: the engine's attention
+                // registry decides which ones light up (00-spine section 4), so
+                // a desk that grows a new warning needs no change here — it
+                // files a registry row instead.
+                var bang = DrawnUI.HandLabel(_sheet, "!", 24f + i * 133f + 103f,
+                    42f, 30f, DrawnUI.Coral, 30f);
+                bang.gameObject.SetActive(false);
+                _bangs[Tabs[i]] = bang;
             }
 
             GameUi.InkWord(_sheet, "×", 1180f, 8f, 52f, 52f, 46f, DrawnUI.Coral, Dismiss);
@@ -166,13 +170,23 @@ namespace Runway.Game
 
         void Refresh()
         {
-            TextMeshProUGUI bang2;
-            if (_bangs.TryGetValue("pricing", out bang2))
-                bang2.gameObject.SetActive(SimEngine.OffersAnyUnpriced(_st));
-            if (_bangs.TryGetValue("the ledger", out bang2))
-                bang2.gameObject.SetActive(_st.LastPnl != null && _st.LastPnl.Net < 0);
-            if (_bangs.TryGetValue("cap table", out bang2))
-                bang2.gameObject.SetActive(_st.HasFlag("fundraising_open"));
+            // ONE list behind every mark on this sheet: a tab wears the bang of
+            // its loudest attention item, and an alarm (3) is coral where a note
+            // (1) is ink.
+            var worst = new Dictionary<string, int>();
+            foreach (AttentionItem it in SimEngine.AttentionItems(_st))
+            {
+                int had;
+                worst.TryGetValue(it.Desk ?? "", out had);
+                worst[it.Desk ?? ""] = Gd.Maxi(had, it.Severity);
+            }
+            foreach (KeyValuePair<string, TextMeshProUGUI> kv in _bangs)
+            {
+                int sev;
+                worst.TryGetValue(kv.Key, out sev);
+                kv.Value.gameObject.SetActive(sev > 0);
+                kv.Value.color = sev == 1 ? DrawnUI.Ink : DrawnUI.Coral;
+            }
             for (int i = _content.childCount - 1; i >= 0; i--)
                 Destroy(_content.GetChild(i).gameObject);
             if (_tabRing != null)
@@ -270,8 +284,8 @@ namespace Runway.Game
             {
                 string cat = Levers[i][0];
                 int cur = Budget(cat);
-                L(cat.ToUpper(), 10f, y, 28f);
-                L(Levers[i][1], 10f, y + 34f, 21f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f));
+                L(Levers[i][1].ToUpper(), 10f, y, 28f);
+                L(Levers[i][2], 10f, y + 34f, 21f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f));
                 L("$" + GameUi.Money(cur) + "/wk", 520f, y + 4f, 30f, DrawnUI.Coral, 200f);
                 // WHAT THIS MONEY IS DOING RIGHT NOW, from the engine's own formulas
                 L(LeverEffect(cat, cur), 688f, y + 12f, 24f,
@@ -377,7 +391,10 @@ namespace Runway.Game
         {
             switch (cat)
             {
-                case "marketing": return _st.Budgets.Marketing;
+                case "ads": return _st.Budgets.Ads;
+                case "content": return _st.Budgets.Content;
+                case "referrals": return _st.Budgets.Referrals;
+                case "outbound": return _st.Budgets.Outbound;
                 case "sales": return _st.Budgets.Sales;
                 case "care": return _st.Budgets.Care;
                 case "rnd": return _st.Budgets.Rnd;
@@ -390,7 +407,10 @@ namespace Runway.Game
         {
             switch (cat)
             {
-                case "marketing": _st.Budgets.Marketing = v; break;
+                case "ads": _st.Budgets.Ads = v; break;
+                case "content": _st.Budgets.Content = v; break;
+                case "referrals": _st.Budgets.Referrals = v; break;
+                case "outbound": _st.Budgets.Outbound = v; break;
                 case "sales": _st.Budgets.Sales = v; break;
                 case "care": _st.Budgets.Care = v; break;
                 case "rnd": _st.Budgets.Rnd = v; break;
@@ -412,7 +432,10 @@ namespace Runway.Game
             double sat = _st.Theta != null ? _st.Theta.CacSat : 900.0;
             switch (cat)
             {
-                case "marketing":
+                case "ads":
+                case "content":
+                case "referrals":
+                case "outbound":
                     return v > 0
                         ? string.Format("reach ×{0:0.00}",
                             1.0 + 1.4 * (1.0 - Mathf.Exp(-(float)(v / sat))))

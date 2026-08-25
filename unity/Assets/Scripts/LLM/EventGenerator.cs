@@ -57,11 +57,18 @@ namespace Runway.Llm
             "garage", "coworking", "office", "floor", "hq",
         };
 
+        /// THE OP REGISTRY, validator half (00-spine section 7). This list, the
+        /// schema enum in LlmClient.cs and the executor in WeekCommit.cs are ONE
+        /// list at three sites; a twin test pins them equal. `price_offer` was in
+        /// the schema and the executor but missing HERE, so any DM reply that
+        /// priced an offer was rejected wholesale — the bug this pin prevents.
+        /// Mirrors SimEngine.OP_REGISTRY, copied rather than referenced because
+        /// this lane deliberately holds no reference to a Runway.Core type.
         public static readonly string[] ALLOWED_OPS =
         {
             "cash_delta", "product_delta", "traction_delta", "morale_delta", "hype_delta",
-            "set_flag", "status", "clock", "set_price", "set_marketing", "hire",
-            "take_loan", "spend", "set_budget",
+            "set_flag", "status", "clock", "set_price", "price_offer", "set_marketing",
+            "hire", "take_loan", "spend", "set_budget", "push_lead",
         };
 
         public void Setup(LlmClient llm)
@@ -285,7 +292,25 @@ namespace Runway.Llm
                         outLines.Add(string.Format("- '{0}' has NO PRICE and no going rate: it earns $0. If the plan sells, the week must confront this.", onm));
                 }
             }
-            return string.Join("\n", outLines.ToArray());
+            // ── SECTIONS 6-14: the nine subsystems, in the spine's fixed order.
+            // The run lane fills LaneDirectives from SimEngine.LaneDirectives so
+            // this file never references a Core type; lanes never touch it either.
+            if (s.LaneDirectives != null)
+                foreach (string ld in s.LaneDirectives)
+                    if (!string.IsNullOrEmpty(ld)) outLines.Add(ld);
+            // THE TOKEN BUDGET GUARD: 24 lines / 1200 chars, priority IS the
+            // order, and the COMPOSER truncates — never the subsystems, so no
+            // lane can starve another by writing more.
+            var capped = new List<string>();
+            int chars = 0;
+            foreach (string l in outLines)
+            {
+                if (capped.Count >= 24) break;
+                if (chars + l.Length + 1 > 1200 && capped.Count > 0) break;
+                capped.Add(l);
+                chars += l.Length + 1;
+            }
+            return string.Join("\n", capped.ToArray());
         }
 
         // ══ prefetch ═══════════════════════════════════════════════════════════

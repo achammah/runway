@@ -72,6 +72,9 @@ namespace Runway.Llm
                     });
             }
             s.Offers = offers.ToArray();
+            // the nine subsystems' lines, already in the spine's section order —
+            // this is the one place Core and the narrator's lane meet
+            s.LaneDirectives = SimEngine.LaneDirectives(state).ToArray();
 
             // ── the clarify pre-pass' small state ─────────────────────────────
             s.Cash = state.Cash;

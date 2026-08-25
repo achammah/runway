@@ -88,6 +88,26 @@ static func save_run(state: GameState, record: RunRecord) -> void:
 			"board_seats_investor": state.board_seats_investor,
 			"exit_value": state.exit_value,
 			"missed_payrolls": state.missed_payrolls,
+			# ── SUBSYSTEM STATE (docs/design/00-spine.md §8) — additive keys, so
+			# VERSION stays 2: an old save simply lacks them and the loader
+			# leaves each at the default declared in game_state.gd.
+			"served_total": state.served_total,
+			"open_roles": state.open_roles, "applicants": state.applicants,
+			"recruiters": state.recruiters,
+			"content_equity": state.content_equity,
+			"leads": state.leads, "logos": state.logos,
+			"pipe_units": state.pipe_units, "pipe_churn_acc": state.pipe_churn_acc,
+			"pipe_stats": state.pipe_stats,
+			"loans": state.loans, "tax_loss_carry": state.tax_loss_carry,
+			"last_round_amount": state.last_round_amount,
+			"receivables": state.receivables,
+			"bets": state.bets, "platform_level": state.platform_level,
+			"board": state.board, "mna": state.mna,
+			"mna_last_week": state.mna_last_week,
+			"option_pool_pct": state.option_pool_pct,
+			"founder_banked": state.founder_banked,
+			"macro_season": state.macro_season,
+			"hardware": state.hardware,
 		},
 		"record": {"seed_value": record.seed_value, "entries": record.entries},
 	}
@@ -106,7 +126,18 @@ static func load_run() -> Dictionary:
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string(slot_path(active_slot)))
 	if not (parsed is Dictionary) or int(parsed.get("version", 0)) != VERSION:
 		return {}
-	var sd: Dictionary = parsed.get("state", {})
+	var state := state_from_dict(parsed.get("state", {}))
+	var rd: Dictionary = parsed.get("record", {})
+	var record := RunRecord.new()
+	record.seed_value = int(rd.get("seed_value", 0))
+	record.entries = rd.get("entries", [])
+	return {"state": state, "record": record}
+
+## THE ONE LOADER. `load_run` and the frozen-save fixture test both come through
+## here, so a save-compat check exercises the code the game actually runs.
+## Unknown keys are skipped and absent keys keep their declared default, which
+## is what makes every additive subsystem field save-compatible at VERSION 2.
+static func state_from_dict(sd: Dictionary) -> GameState:
 	var state := GameState.new()
 	for k in sd:
 		if k in state:
@@ -121,11 +152,9 @@ static func load_run() -> Dictionary:
 	var fw_t: Array[String] = []
 	for v in sd.get("future_weights", []): fw_t.append(String(v))
 	state.future_weights = fw_t
-	var rd: Dictionary = parsed.get("record", {})
-	var record := RunRecord.new()
-	record.seed_value = int(rd.get("seed_value", 0))
-	record.entries = rd.get("entries", [])
-	return {"state": state, "record": record}
+	# a legacy `marketing` budget becomes paid ads before anything reads it
+	SimEngine.migrate_budgets(state)
+	return state
 
 static func clear_run() -> void:
 	if has_run():

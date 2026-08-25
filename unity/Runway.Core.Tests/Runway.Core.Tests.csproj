@@ -16,7 +16,15 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="EconomyProbe.cs" />
+    <Compile Include="Lanes/*.cs" />
     <Compile Include="../Assets/Scripts/Core/*.cs" />
+    <Compile Include="../Assets/Scripts/Core/Lanes/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- the frozen pre-wave save travels with the binary so the save-compat
+         check runs wherever the suite runs -->
+    <None Include="Fixtures/*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
