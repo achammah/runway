@@ -214,6 +214,7 @@ spec details the exact predicate — the registry row is the contract):
 | desk | key | condition (owning lane) | sev |
 |------|-----|-------------------------|-----|
 | pricing | `unpriced` | any offer billing at going rate (01) | 2 |
+| pricing | `losing_price` | a NAMED price below its own variable cost — lane-filed by 01; conscious $0 excluded (a giveaway is strategy, not a mistake) | 2 |
 | the ledger | `losing_week` | last pnl net < 0 (06, kept) | 2 |
 | the ledger | `channel_waste` | a channel burning: spend ≥ 500 with attribution < 0.05, or content rotting (04) | 2 |
 | the bank | `debt_distress` | cash < 2× weekly debt service, a missed note, or a balloon ≤2 wks unpayable (06) | 3 |
