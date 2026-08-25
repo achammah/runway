@@ -344,7 +344,10 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	# the more you have served, the cheaper serving gets (Bonopoly's learning
 	# curve): the discount lives in offers_cogs_per_customer via served_total
 	state.set_meta("served_total", int(state.get_meta("served_total", 0)) + state.traction)
-	var burn := int((float(rent + payroll + infra) + mk_budget + b_sales + b_care + b_rnd + b_office) * float(th.burn_mult) + cogs)
+	var offer_fixed := offers_fixed_wk(state)
+	if offer_fixed >= 1.0:
+		rep["lines"].append("catalog overheads: $%d/wk (tools, licenses, storage)" % int(round(offer_fixed)))
+	var burn := int((float(rent + payroll + infra) + mk_budget + b_sales + b_care + b_rnd + b_office) * float(th.burn_mult) + cogs + offer_fixed)
 	# THE UNFORESEEN (owner: running a business includes what nobody planned):
 	# some weeks a small real cost lands — seeded, receipted, never a mystery.
 	var inc_r := _rng(state, 93)
@@ -383,6 +386,7 @@ static func weekly_tick(state: GameState) -> Dictionary:
 		"rent": rent, "payroll": payroll, "infra": infra,
 		"marketing": int(mk_budget), "sales": int(b_sales), "care": int(b_care),
 		"rnd": int(b_rnd), "office": int(b_office), "incident": incident_cost,
+		"offer_fixed": int(round(offer_fixed)),
 		"liabilities_wk": -liab_wk, "burn": burn,
 		"net": int(round(revenue)) - burn + liab_wk,
 		"learning": learning_curve(state),
@@ -741,6 +745,94 @@ static func offers_cogs_per_customer(state: GameState) -> float:
 		total += float(od.get("weight", 1.0)) * float(od.get("unit_cost", 0.0)) * lc \
 				* offer_cadence(String(od.get("unit", "")))
 	return total
+
+## THE CATALOG IS THE FOUNDER'S (owner: decide what we sell) — but the
+## WORLD prices reality: every field passes a clamp, the marginal cost stays
+## a sane fraction of fair, and nothing enters the books unclamped. The new
+## offer arrives UNPRICED (price 0, not price_set): it bills at the going
+## rate until the founder names a price.
+static func add_offer(state: GameState, o_name: String, unit: String,
+		fair: float, cost: float, elasticity: float, weight: float,
+		cost_lines: Array = [], fixed_lines: Array = []) -> Dictionary:
+	var f := clampf(fair, 1.0, 50_000.0)
+	var offer := {
+		"name": o_name.substr(0, 40),
+		"unit": (unit if unit != "" else "per order").substr(0, 20),
+		"fair_price": f,
+		"unit_cost": clampf(cost, 0.0, f * 0.9),
+		"elasticity": clampf(elasticity, 0.5, 3.0),
+		"weight": clampf(weight, 0.2, 3.0),
+		"price": 0.0,
+	}
+	if not cost_lines.is_empty():
+		offer["cost_lines"] = cost_lines
+	if not fixed_lines.is_empty():
+		offer["fixed_lines"] = fixed_lines
+	sync_offer_costs(offer)
+	state.offers.append(offer)
+	return offer
+
+## The itemised truth stays the truth: unit_cost = Σ variable lines (clamped
+## to 90% of fair), fixed_wk = Σ weekly lines (clamped). Called after any
+## per-line adjustment so the totals can never drift from their receipts.
+static func sync_offer_costs(offer: Dictionary) -> void:
+	var fair := maxf(float(offer.get("fair_price", 1.0)), 1.0)
+	if offer.has("cost_lines"):
+		var v := 0.0
+		for cl in offer["cost_lines"]:
+			var cld: Dictionary = cl
+			cld["amount"] = clampf(float(cld.get("amount", 0.0)), 0.0, fair * 0.5)
+			v += float(cld["amount"])
+		offer["unit_cost"] = clampf(v, 0.0, fair * 0.9)
+	if offer.has("fixed_lines"):
+		var fx := 0.0
+		for fl in offer["fixed_lines"]:
+			var fld: Dictionary = fl
+			fld["amount"] = clampf(float(fld.get("amount", 0.0)), 0.0, 5_000.0)
+			fx += float(fld["amount"])
+		offer["fixed_wk"] = clampf(fx, 0.0, 10_000.0)
+
+## The weekly overhead the catalog itself carries (tool subscriptions,
+## licenses, storage — each offer's fixed lines), independent of volume.
+static func offers_fixed_wk(state: GameState) -> float:
+	var total := 0.0
+	for o in state.offers:
+		total += float((o as Dictionary).get("fixed_wk", 0.0))
+	return total
+
+static func remove_offer(state: GameState, idx: int) -> bool:
+	if idx < 0 or idx >= state.offers.size():
+		return false
+	state.offers.remove_at(idx)
+	return true
+
+## Keyless (or model-down) pricing for a founder-written offer: the world's
+## defaults, audience-scaled, unit sniffed from the words themselves.
+static func draft_offer_terms(state: GameState, idea: String) -> Dictionary:
+	var aud := 1.0
+	match state.biz_who:
+		"Consumer": aud = 0.25
+		"Enterprise": aud = 4.0
+	var low := idea.to_lower()
+	var unit := "per order"
+	if low.contains("month") or low.contains("subscription") or low.contains("plan"):
+		unit = "per month"
+	elif low.contains("session") or low.contains("workshop") or low.contains("class") or low.contains("consult"):
+		unit = "per session"
+	elif low.contains("kit") or low.contains("device") or low.contains("box") or low.contains("unit"):
+		unit = "per unit"
+	elif low.contains("year") or low.contains("annual"):
+		unit = "per year"
+	elif low.contains("hour"):
+		unit = "per hour"
+	var fair := 40.0 * aud
+	return {"name": idea.substr(0, 40), "unit": unit, "fair_price": fair,
+		"unit_cost": fair * 0.35, "elasticity": 2.0, "weight": 1.0,
+		"variable_costs": [
+			{"label": "materials & delivery", "amount": fair * 0.20},
+			{"label": "labor share", "amount": fair * 0.15}],
+		"fixed_costs_wk": [
+			{"label": "tools & subscriptions", "amount": 15.0 * aud}]}
 
 ## THE LEARNING CURVE (Bonopoly): each 10× of customers ever served takes
 ## ~11% off the unit serving cost, floored at 65% — scale earns its margin.

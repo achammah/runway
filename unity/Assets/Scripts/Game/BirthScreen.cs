@@ -120,7 +120,10 @@ namespace Runway.Game
             // creating your world… — ONE label on a soft dark pill (VD2: the
             // halo copies were static while the line animated its dots, so
             // the two drifted into a double-struck smear over the film).
-            float ly = _hasArt ? RunwayPaths.StageHeight * 0.90f : RunwayPaths.StageHeight * 0.66f;
+            // UNDER THE TITLE, ON THE BARE WALL (owner #187/#210): at 0.90 the
+            // ink drowned in the film's boxes and floor — 0.44 sits in the calm
+            // band between the logotype and the founder's head.
+            float ly = _hasArt ? RunwayPaths.StageHeight * 0.44f : RunwayPaths.StageHeight * 0.66f;
             _line = DrawnUI.HandLabel(Rect, StatusLine, 0f, ly, 34f,
                 _hasArt ? DrawnUI.Ink : DrawnUI.Cream, RunwayPaths.StageWidth,
                 TextAlignmentOptions.Top);

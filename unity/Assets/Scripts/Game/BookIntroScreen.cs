@@ -278,7 +278,16 @@ namespace Runway.Game
             // opens on done OR failed; only live painting holds it.
             if (_holdingPaint && Boot.Instance != null && Boot.Instance.Director != null
                 && Boot.Instance.Director.WarmStatus != Runway.Llm.PaintStatus.Painting)
+            {
+                // a FAILED first volley re-kicks and keeps the reader held —
+                // the drawn stand-in room must never show while paint can still
+                // land (owner: "the initial weird default screen"). Only a
+                // second failure (or success) opens the door.
+                if (Boot.Instance.Director.WarmStatus == Runway.Llm.PaintStatus.Failed
+                    && RunDriver.Current != null && RunDriver.Current.TryRewarmFounding())
+                    return;
                 SetPaintDone();
+            }
             if (_paintLine != null)
                 _paintLine.color = DrawnUI.WithAlpha(DrawnUI.Coral,
                     0.65f + 0.35f * Mathf.Sin(_t * 2.4f));

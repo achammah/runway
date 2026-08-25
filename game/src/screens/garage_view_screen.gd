@@ -341,9 +341,11 @@ func _ready() -> void:
 	_binder_bang = Label.new()
 	_binder_bang.text = "!"
 	_binder_bang.add_theme_font_override("font", _font)
-	_binder_bang.add_theme_font_size_override("font_size", 40)
+	_binder_bang.add_theme_font_size_override("font_size", 52)
 	_binder_bang.add_theme_color_override("font_color", PALETTE["coral"])
-	_binder_bang.position = Vector2(1500, 916)
+	_binder_bang.add_theme_color_override("font_outline_color", PALETTE["cream"])
+	_binder_bang.add_theme_constant_override("outline_size", 12)
+	_binder_bang.position = Vector2(1462, 892)
 	_binder_bang.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_binder_bang.visible = false
 	add_child(_binder_bang)

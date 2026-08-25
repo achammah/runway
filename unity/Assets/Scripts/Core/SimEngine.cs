@@ -1207,6 +1207,56 @@ namespace Runway.Core
             return total;
         }
 
+        /// <summary>THE CATALOG IS THE FOUNDER'S (owner: decide what we sell) —
+        /// but the WORLD prices reality: every field passes a clamp. The new
+        /// offer arrives UNPRICED: it bills at the going rate until named.</summary>
+        public static Offer AddOffer(GameState state, string name, string unit,
+                                     double fair, double cost, double elasticity, double weight)
+        {
+            double f = Gd.Clampf(fair, 1.0, 50000.0);
+            var offer = new Offer
+            {
+                Name = (name ?? "").Length > 40 ? name.Substring(0, 40) : (name ?? ""),
+                Unit = string.IsNullOrEmpty(unit) ? "per order"
+                       : (unit.Length > 20 ? unit.Substring(0, 20) : unit),
+                FairPrice = f,
+                UnitCost = Gd.Clampf(cost, 0.0, f * 0.9),
+                Elasticity = Gd.Clampf(elasticity, 0.5, 3.0),
+                Weight = Gd.Clampf(weight, 0.2, 3.0),
+                Price = 0.0,
+            };
+            if (state.Offers == null) state.Offers = new List<Offer>();
+            state.Offers.Add(offer);
+            return offer;
+        }
+
+        public static bool RemoveOffer(GameState state, int idx)
+        {
+            if (state.Offers == null || idx < 0 || idx >= state.Offers.Count) return false;
+            state.Offers.RemoveAt(idx);
+            return true;
+        }
+
+        /// <summary>Keyless (or model-down) pricing for a founder-written offer:
+        /// audience-scaled defaults, unit sniffed from the words.</summary>
+        public static Offer DraftOfferTerms(GameState state, string idea)
+        {
+            double aud = 1.0;
+            if (state.BizWho == "Consumer") aud = 0.25;
+            else if (state.BizWho == "Enterprise") aud = 4.0;
+            string low = (idea ?? "").ToLowerInvariant();
+            string unit = "per order";
+            if (low.Contains("month") || low.Contains("subscription") || low.Contains("plan")) unit = "per month";
+            else if (low.Contains("session") || low.Contains("workshop") || low.Contains("class") || low.Contains("consult")) unit = "per session";
+            else if (low.Contains("kit") || low.Contains("device") || low.Contains("box") || low.Contains("unit")) unit = "per unit";
+            else if (low.Contains("year") || low.Contains("annual")) unit = "per year";
+            else if (low.Contains("hour")) unit = "per hour";
+            double fair = 40.0 * aud;
+            return new Offer { Name = (idea ?? "").Length > 40 ? idea.Substring(0, 40) : (idea ?? ""),
+                               Unit = unit, FairPrice = fair, UnitCost = fair * 0.35,
+                               Elasticity = 2.0, Weight = 1.0, Price = 0.0 };
+        }
+
         /// <summary>THE LEARNING CURVE (Bonopoly): each 10× of customers ever
         /// served takes ~11% off the unit serving cost, floored at 65%.</summary>
         public static double LearningCurve(GameState state)

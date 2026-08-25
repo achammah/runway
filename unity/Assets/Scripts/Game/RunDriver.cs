@@ -493,11 +493,18 @@ namespace Runway.Game
         }
 
         /// THE ROOM NEVER STAYS BARREN (owner #208): a failed founding paint
-        /// gets re-kicked by the garage — the retained verdict re-enters the
-        /// director, which paints or fails honestly a second time.
-        public void RewarmFounding()
+        /// earns exactly one more volley — the retained verdict re-enters the
+        /// director, which paints or fails honestly a second time. The budget
+        /// lives HERE so the book's hold and the garage's watch share it.
+        int _rewarmsLeft = 1;
+        public bool TryRewarmFounding()
         {
-            if (_foundingRes != null) WarmScene(_foundingRes);
+            if (_rewarmsLeft <= 0 || _foundingRes == null) return false;
+            var boot = Boot.Instance;
+            if (boot == null || boot.Llm == null || !boot.Llm.Enabled) return false;
+            _rewarmsLeft--;
+            WarmScene(_foundingRes);
+            return true;
         }
 
         void WarmScene(JObject dm)

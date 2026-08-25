@@ -85,7 +85,6 @@ namespace Runway.Game
         TextMeshProUGUI _openWord;
         TextMeshProUGUI _paintRibbon;
         TextMeshProUGUI _binderBang;
-        int _rewarmsLeft = 1;   // one extra volley for a failed founding paint
         float _warmWatchT;
         RectTransform _coach;
         int _coachStep;
@@ -356,9 +355,15 @@ namespace Runway.Game
             bbtn.transition = Selectable.Transition.None;
             bbtn.targetGraphic = bh;
             bbtn.onClick.AddListener(OpenBinder);
-            // THE WARNING BANG (owner): the binder doorway wears a coral !
-            // while any offer still bills at the going rate.
-            _binderBang = DrawnUI.HandLabel(Rect, "!", 1500f, 916f, 40f, DrawnUI.Coral, 40f);
+            // THE WARNING BADGE (owner #211: "not clear enough there is
+            // something to check"): a big cream-outlined coral ! riding the
+            // chip's corner, fully inside the frame — unmissable on any room.
+            _binderBang = DrawnUI.HandLabel(Rect, "!", 1462f, 892f, 52f, DrawnUI.Coral, 52f,
+                                            TMPro.TextAlignmentOptions.Top);
+            var bm = _binderBang.fontMaterial;
+            bm.SetColor(TMPro.ShaderUtilities.ID_OutlineColor,
+                        DrawnUI.WithAlpha(DrawnUI.Cream, 0.95f));
+            bm.SetFloat(TMPro.ShaderUtilities.ID_OutlineWidth, 0.26f);
             _binderBang.gameObject.SetActive(false);
         }
 
@@ -584,10 +589,8 @@ namespace Runway.Game
                             SetPainting(false);
                         }
                         else if (d.WarmStatus == Runway.Llm.PaintStatus.Failed
-                                 && _rewarmsLeft > 0 && drv != null && live)
+                                 && live && drv != null && drv.TryRewarmFounding())
                         {
-                            _rewarmsLeft--;
-                            drv.RewarmFounding();
                             SetPainting(true);
                         }
                         else

@@ -161,6 +161,21 @@ const CLARIFY_SCHEMA := {
 	},
 }
 
+## Schema for pricing a founder-written offer: the street answers with terms.
+const OFFER_SCHEMA := {
+	"type": "object", "additionalProperties": false,
+	"required": ["name", "unit", "fair_price", "unit_cost", "elasticity", "weight"],
+	"properties": {
+		"name": {"type": "string", "maxLength": 40},
+		"unit": {"type": "string", "enum": ["per session", "per month", "per order",
+			"per unit", "per year", "per hour"]},
+		"fair_price": {"type": "number", "minimum": 1, "maximum": 50000},
+		"unit_cost": {"type": "number", "minimum": 0, "maximum": 45000},
+		"elasticity": {"type": "number", "minimum": 0.5, "maximum": 3.0},
+		"weight": {"type": "number", "minimum": 0.2, "maximum": 3.0},
+	},
+}
+
 ## Schema for run-start world generation: the bible born from the pitch.
 const WORLD_SCHEMA := {
 	"type": "object", "additionalProperties": false,
