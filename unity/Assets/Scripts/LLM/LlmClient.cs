@@ -207,6 +207,24 @@ namespace Runway.Llm
               }}}}
         }");
 
+        /// Schema for pricing a founder-written offer: the street answers with terms.
+        public static readonly JObject OfferSchema = JObject.Parse(@"{
+          ""type"":""object"",""additionalProperties"":false,
+          ""required"":[""name"",""unit"",""fair_price"",""elasticity"",""weight"",""variable_costs"",""fixed_costs_wk""],
+          ""properties"":{
+            ""name"":{""type"":""string"",""maxLength"":40},
+            ""unit"":{""type"":""string"",""enum"":[""per session"",""per month"",""per order"",""per unit"",""per year"",""per hour"",""per package"",""per kit""]},
+            ""fair_price"":{""type"":""number"",""minimum"":1,""maximum"":50000},
+            ""elasticity"":{""type"":""number"",""minimum"":0.5,""maximum"":3.0},
+            ""weight"":{""type"":""number"",""minimum"":0.2,""maximum"":3.0},
+            ""variable_costs"":{""type"":""array"",""minItems"":1,""maxItems"":4,
+              ""items"":{""type"":""object"",""additionalProperties"":false,""required"":[""label"",""amount""],
+                ""properties"":{""label"":{""type"":""string"",""maxLength"":24},""amount"":{""type"":""number"",""minimum"":0,""maximum"":25000}}}},
+            ""fixed_costs_wk"":{""type"":""array"",""minItems"":0,""maxItems"":3,
+              ""items"":{""type"":""object"",""additionalProperties"":false,""required"":[""label"",""amount""],
+                ""properties"":{""label"":{""type"":""string"",""maxLength"":24},""amount"":{""type"":""number"",""minimum"":0,""maximum"":5000}}}}
+          }}");
+
         /// Schema for the one batch lead-naming call (05 §10): the engine
         /// already decided every number; the model only names companies.
         public static readonly JObject LeadSchema = JObject.Parse(@"{

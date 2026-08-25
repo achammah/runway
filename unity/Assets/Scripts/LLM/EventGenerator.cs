@@ -507,6 +507,24 @@ namespace Runway.Llm
                 new LlmOptions { Tier = "clarify" });
         }
 
+        const string OFFER_PROMPT = "You itemize and price a new product or service for a startup-survival business simulator. You receive the company (what kind, for whom, its idea, its stage) and the founder's plain-words description of something new they want to sell. Output realistic market terms as strict JSON:\n- name: a short clean name for the offer, taken from the founder's words (<=40 chars)\n- unit: the billing unit — one of \"per session\", \"per month\", \"per order\", \"per unit\", \"per year\", \"per hour\", \"per package\", \"per kit\"\n- fair_price: what this audience typically pays per unit at the going market rate, in USD (Consumer offers are cheap, Enterprise expensive)\n- elasticity: how hard demand punishes overpricing — 0.8 luxury/inelastic, ~2.0 typical, 2.6 commodity\n- weight: how much of an average customer's weekly spend lands on this offer (1.0 typical, 0.5 side item, 2.0 flagship)\n- variable_costs: 1-4 itemized costs paid EVERY TIME one unit is sold or served (materials, packaging, compute, payment fees, a worker's hour). Concrete labels (<=24 chars) in this business's own vocabulary, never generic. Amounts in USD per unit; their SUM should land at 15-60% of fair_price — a plausible gross margin for this kind of business.\n- fixed_costs_wk: 0-3 weekly standing costs this offer adds whether or not anything sells (a tool subscription, a license, storage, a rented machine). USD per week, scaled to the company's stage.\nNever invent revenue, discounts, or advice. Strict JSON only. No prose.";
+
+        /// ONE pricing call on a founder write-in (01 §8 L1): pure transport —
+        /// the caller builds the payload from the desk and lands the reply on
+        /// the review card. Nothing here decides a number; add_offer's clamps do.
+        public void PriceOfferIdea(JObject payload, Action<JObject> cb)
+        {
+            if (payload == null || payload.Count == 0 || Llm == null || !Llm.Enabled)
+            {
+                if (cb != null) cb(null);
+                return;
+            }
+            Llm.RequestJson(OFFER_PROMPT,
+                payload.ToString(Newtonsoft.Json.Formatting.None) + "\nPrice it.",
+                LlmClient.OfferSchema, res => { if (cb != null) cb(res); },
+                new LlmOptions { Tier = "clarify" });
+        }
+
         public void Clarify(RunSnapshot s, JObject ev, string move, Action<JObject> cb)
         {
             if (!Live)
