@@ -38,6 +38,14 @@ extends RefCounted
 static func active(state: GameState) -> bool:
 	return String(state.biz_who) == "Enterprise"
 
+## THE SECOND GATE, read by the tick itself (§2.1). Demand generation and closing
+## capacity are two different jobs in every real B2B org — marketing books the
+## meetings, an AE moves them through gates. On Enterprise runs the gtm ceiling
+## moves OUT of §8's adds and INTO `capacity_factor` on the stage advance, so the
+## tick steps its own min() aside and the motion is taxed once instead of twice.
+static func skips_gtm_cap(state: GameState) -> bool:
+	return active(state)
+
 # ── caps and constants (spec §1.3; all engine-side, all clamped) ─────────────
 const LEAD_CAP := 8            ## live leads max — a real AE runs 10-15 open
                                ## opportunities; a founder juggling everything, fewer
@@ -48,7 +56,13 @@ const HEAT_SPAWN_LO := 50
 const HEAT_SPAWN_HI := 65
 const HEAT_DECAY := 8          ## per week; −1 per sales head at floor/hq, max −3
 const HEAT_DECAY_FLOOR := 4    ## account teams slow the rot, they never stop it
-const HEAT_ADVANCE := 25       ## momentum on a stage advance
+const HEAT_ADVANCE := 12       ## momentum on a stage advance — worth ~1.5 weeks at
+                               ## HEAT_DECAY, not three. A gate cleared is real
+                               ## momentum, but it must not be a full refill: at 25
+                               ## every advance bought back most of the deal's
+                               ## lifespan, so a deal that was moving at all could
+                               ## never die, and no-decision — the thing this
+                               ## subsystem exists to teach — stopped happening.
 const PUSH_CLAMP := 40         ## push_lead v clamp
 const BASE_ADV := {"meeting": 0.45, "pilot": 0.35, "procurement": 0.35, "contract": 0.40}
 const P_ADV_MIN := 0.05
@@ -56,10 +70,6 @@ const P_ADV_MAX := 0.85
 const PROCUREMENT_SEATS := 20  ## the seat count that wakes a buyer's IT department
 const RENEW_EVERY := 26        ## weeks (floor/hq): the annual-contract cliff
 const MAX_LINES := 6           ## pipeline receipts per week, then "…and N more moved"
-
-## THE STAGE LADDER. `procurement` is conditional (office+, deals ≥ 20 seats), so
-## an early-game save can never contain it.
-const STAGES := ["meeting", "pilot", "procurement", "contract"]
 
 ## THE ERA LADDER (spec §8) — the same math everywhere, the CONSTANTS climb, so
 ## depth arrives as the company earns it. Startups sell design-partner pilots
@@ -159,7 +169,13 @@ static func lead_advance_p(state: GameState, lead: Dictionary, live: int) -> flo
 static func advance_factors(state: GameState, lead: Dictionary, live: int) -> Dictionary:
 	var dm := SimEngine.offers_demand_mult(state)
 	return {
-		"capacity": clampf(capacity(state) / (1.5 * float(maxi(live, 1))), 0.5, 1.5),
+		# CAPACITY ONLY EVER SLOWS A DEAL. The ceiling is 1.0, not 1.5: a motion
+		# with room to spare does not push a buyer through their own stage gate
+		# faster than the gate opens — it just stops being the bottleneck. Letting
+		# it accelerate made a starved board (0.6-1.6 live deals is normal at
+		# Enterprise's demand rate) a permanent ×1.5 on every BASE_ADV, which won
+		# 93% of deals even untended.
+		"capacity": clampf(capacity(state) / (1.5 * float(maxi(live, 1))), 0.5, 1.0),
 		"quality": 0.6 + float(state.product) / 100.0 * 0.8,
 		"price": clampf(1.0 if dm < 0.0 else dm, 0.5, 1.3),
 		"heat": 0.5 + float(int(lead.get("heat", 0))) / 100.0,
@@ -240,10 +256,48 @@ static func tick_money(state: GameState, _rep: Dictionary, m: Dictionary) -> voi
 
 ## After the record is written. Every signed-contract fact — traction, the logo,
 ## the cycle, the signed-this-week marker — is booked at the close itself, inside
-## the single salt-50 pass, so a replay lands on the same week. Nothing is left
-## to do here, and doing it here would move it out of that pass.
-static func tick_post(_state: GameState, _rep: Dictionary) -> void:
-	pass
+## the single salt-50 pass, so a replay lands on the same week.
+##
+## What is left is ONE line for another desk. The board (08) plans around the
+## renewal calendar, so the finished week publishes it to `cap_renewal_line` and
+## the cap table prints whatever it finds there — blank hides the line, so a run
+## that is not on annual contracts simply never shows one. A published string,
+## not a cross-desk call: neither lane has to know the other exists.
+static func tick_post(state: GameState, _rep: Dictionary) -> void:
+	if not active(state):
+		return
+	state.set_meta("cap_renewal_line", renewal_line(state))
+
+## THE RENEWAL CALENDAR, in one line. The next three contracts up for renewal,
+## soonest first — the board's whole question about enterprise revenue is "what
+## has to be re-won, and when". "" before `floor`, where there are no annual
+## contracts to lose yet, and the reading desk hides the line on "".
+static func renewal_line(state: GameState) -> String:
+	if not active(state) or state.era_index() < 3:
+		return ""
+	var due: Array = []
+	for lg in state.logos:
+		var lgd: Dictionary = lg
+		var wk := int(lgd.get("renewal_wk", 0))
+		if wk > 0 and wk - state.week <= 52:
+			due.append(lgd)
+	if due.is_empty():
+		return "none inside a year"
+	due.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var wa := int(a.get("renewal_wk", 0))
+		var wb := int(b.get("renewal_wk", 0))
+		if wa != wb:
+			return wa < wb
+		return String(a.get("name", "")) < String(b.get("name", "")))
+	var parts: Array[String] = []
+	for i in mini(due.size(), 3):
+		var lg2: Dictionary = due[i]
+		parts.append("%s (%d seats, wk %d)" % [String(lg2.get("name", "?")),
+			int(lg2.get("seats", 0)), int(lg2.get("renewal_wk", 0))])
+	var out := " · ".join(PackedStringArray(parts))
+	if due.size() > 3:
+		out += " · +%d more" % (due.size() - 3)
+	return out
 
 # ── THE ADOPTION SEAM — where the whole week resolves ────────────────────────
 ## `dflt` is the engine's seeded-remainder net; hand it back and every
@@ -480,10 +534,19 @@ static func _expand_pass(state: GameState, rep: Dictionary, ctx: Dictionary,
 			String(lgd.get("name", "an account")), grow])
 
 # ── §3 — spawning named leads out of the pool ───────────────────────────────
-## The pool-gate is the honest version of "whales appear when the machine can
-## feed them": a 60-seat draw at week 6 with 4.1 pool units becomes a 4-seat
-## design partner instead. Deal sizes are log-normal in the real world; the era
-## tier table approximates it, and pipeline coverage precedes bookings.
+## A BIG DEAL TAKES TIME TO MATERIALIZE. When the era's tier table draws a deal
+## the pool cannot fund, the week does NOT shrink it into a design partner — it
+## HOLDS, and the demand banks. Interest keeps arriving; a few quiet weeks later
+## the pool is deep enough and the whale walks in whole.
+##
+## That is the honest dynamic and it is what makes the era ladder mean anything:
+## at hq, where a third of draws are 21-60 seats, the board goes quiet for a
+## stretch and then lands something that changes the company. Shrinking every
+## draw to fit would have made SEAT_TIERS and SIZE_REF decorative — every deal
+## would spawn at the floor of the smallest band forever.
+##
+## Deal sizes are log-normal in the real world; the era tier table approximates
+## it, and pipeline coverage precedes bookings.
 static func _spawn_pass(state: GameState, rep: Dictionary, ctx: Dictionary,
 		st: Dictionary, r: RandomNumberGenerator) -> void:
 	var rn: RandomNumberGenerator = null
@@ -491,9 +554,12 @@ static func _spawn_pass(state: GameState, rep: Dictionary, ctx: Dictionary,
 	while spawned < SPAWNS_PER_WK and state.leads.size() < LEAD_CAP \
 			and state.pipe_units >= float(MIN_SEATS):
 		var band: Array = _tier_draw(state, r)
-		var seats := r.randi_range(int(band[0]), int(band[1]))
-		# a big logo only spawns once the demand to fill it exists
-		seats = clampi(seats, MIN_SEATS, maxi(MIN_SEATS, int(floor(state.pipe_units))))
+		var seats := maxi(r.randi_range(int(band[0]), int(band[1])), MIN_SEATS)
+		# THE HOLD: the demand to fill this deal does not exist yet. Bank the pool
+		# and stop the week here — a shrunken whale is a lie about the market, and
+		# retrying the draw in-loop would spin until something small came up.
+		if float(seats) > floor(state.pipe_units):
+			break
 		state.pipe_units = maxf(state.pipe_units - float(seats), 0.0)
 		var heat := r.randi_range(HEAT_SPAWN_LO, HEAT_SPAWN_HI)
 		if rn == null:
@@ -753,6 +819,24 @@ static func seats_in_motion(state: GameState) -> int:
 		n += int((ld as Dictionary).get("seats", 0))
 	return n
 
+## THE DIGEST'S TWO ENTRIES (§11), so tier-2 event cards see the same board the
+## adjudicator does and can write follow-ups about a real deal by name. Empty
+## dictionary off Enterprise — the digest simply gains nothing.
+static func digest_rows(state: GameState) -> Dictionary:
+	if not active(state):
+		return {}
+	var board: Array[String] = []
+	for i in leads_by_heat(state):
+		var lead: Dictionary = state.leads[i]
+		board.append("%s — %s, %d seats, %s" % [String(lead.get("name", "")),
+			String(lead.get("stage", "meeting")), int(lead.get("seats", 0)),
+			heat_word(int(lead.get("heat", 0)))])
+	var seated := 0
+	for lg in state.logos:
+		seated += int((lg as Dictionary).get("seats", 0))
+	return {"pipeline": board,
+		"signed_logos": "%d logos, %d seats" % [state.logos.size(), seated]}
+
 ## One line for the signals block: the board at a glance.
 static func signal_line(state: GameState) -> String:
 	if not active(state):
@@ -811,9 +895,3 @@ static func _grp(n: int) -> String:
 		if c % 3 == 0 and i > 0:
 			out = "," + out
 	return ("−" if n < 0 else "") + out
-
-
-## COORDINATOR SEAM (05 C2): Enterprise routes closing capacity into the
-## stage advance, so the Bass gtm min() steps aside. Stub false = legacy.
-static func skips_gtm_cap(state: GameState) -> bool:
-	return active(state)

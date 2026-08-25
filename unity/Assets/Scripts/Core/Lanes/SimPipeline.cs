@@ -53,6 +53,19 @@ namespace Runway.Core
             return state != null && state.BizWho == "Enterprise";
         }
 
+        /// <summary>
+        /// THE SECOND GATE, read by the tick itself (section 2.1). Demand
+        /// generation and closing capacity are two different jobs in every real
+        /// B2B org — marketing books the meetings, an AE moves them through gates.
+        /// On Enterprise runs the gtm ceiling moves OUT of section 8's adds and
+        /// INTO `capacity` on the stage advance, so the tick steps its own min()
+        /// aside and the motion is taxed once instead of twice.
+        /// </summary>
+        public static bool SkipsGtmCap(GameState state)
+        {
+            return Active(state);
+        }
+
         // ── caps and constants (spec 1.3; all engine-side, all clamped) ───
         public const int LEAD_CAP = 8;           // live leads max — a real AE runs 10-15 open
                                                  // opportunities; a founder juggling everything, fewer
@@ -63,7 +76,15 @@ namespace Runway.Core
         public const int HEAT_SPAWN_HI = 65;
         public const int HEAT_DECAY = 8;         // per week; -1 per sales head at floor/hq, max -3
         public const int HEAT_DECAY_FLOOR = 4;   // account teams slow the rot, they never stop it
-        public const int HEAT_ADVANCE = 25;      // momentum on a stage advance
+        public const int HEAT_ADVANCE = 12;      // momentum on a stage advance — worth
+                                                 // ~1.5 weeks at HEAT_DECAY, not three.
+                                                 // A gate cleared is real momentum, but it
+                                                 // must not be a full refill: at 25 every
+                                                 // advance bought back most of the deal's
+                                                 // lifespan, so a deal that was moving at
+                                                 // all could never die, and no-decision —
+                                                 // the thing this subsystem exists to
+                                                 // teach — stopped happening.
         public const int PUSH_CLAMP = 40;        // PushLead v clamp
         public const double P_ADV_MIN = 0.05;
         public const double P_ADV_MAX = 0.85;
@@ -210,7 +231,14 @@ namespace Runway.Core
             if (!SIZE_REF.TryGetValue(state.Era ?? "garage", out sizeRef)) { sizeRef = 10.0; }
             return new Dictionary<string, double>
             {
-                { "capacity", Gd.Clampf(Capacity(state) / (1.5 * Gd.Maxi(live, 1)), 0.5, 1.5) },
+                // CAPACITY ONLY EVER SLOWS A DEAL. The ceiling is 1.0, not 1.5: a
+                // motion with room to spare does not push a buyer through their
+                // own stage gate faster than the gate opens — it just stops being
+                // the bottleneck. Letting it accelerate made a starved board
+                // (0.6-1.6 live deals is normal at Enterprise's demand rate) a
+                // permanent x1.5 on every BASE_ADV, which won 93% of deals even
+                // untended.
+                { "capacity", Gd.Clampf(Capacity(state) / (1.5 * Gd.Maxi(live, 1)), 0.5, 1.0) },
                 { "quality", 0.6 + state.Product / 100.0 * 0.8 },
                 { "price", Gd.Clampf(dm < 0.0 ? 1.0 : dm, 0.5, 1.3) },
                 { "heat", 0.5 + lead.Heat / 100.0 },
@@ -312,11 +340,54 @@ namespace Runway.Core
         /// After the record is written. Every signed-contract fact — traction,
         /// the logo, the cycle, the signed-this-week marker — is booked at the
         /// close itself, inside the single salt-50 pass, so a replay lands on the
-        /// same week. Nothing is left to do here, and doing it here would move it
-        /// out of that pass.
+        /// same week.
+        ///
+        /// What is left is ONE line for another desk. The board (08) plans around
+        /// the renewal calendar, so the finished week publishes it to
+        /// `cap_renewal_line` and the cap table prints whatever it finds there —
+        /// blank hides the line, so a run that is not on annual contracts simply
+        /// never shows one. A published string, not a cross-desk call: neither
+        /// lane has to know the other exists.
         /// </summary>
         public static void TickPost(GameState state, WeeklyReport rep)
         {
+            if (!Active(state)) { return; }
+            state.SetMeta("cap_renewal_line", RenewalLine(state));
+        }
+
+        /// <summary>
+        /// THE RENEWAL CALENDAR, in one line. The next three contracts up for
+        /// renewal, soonest first — the board's whole question about enterprise
+        /// revenue is "what has to be re-won, and when". "" before `floor`, where
+        /// there are no annual contracts to lose yet, and the reading desk hides
+        /// the line on "".
+        /// </summary>
+        public static string RenewalLine(GameState state)
+        {
+            if (!Active(state) || state.EraIndex() < 3) { return ""; }
+            var due = new List<Logo>();
+            foreach (Logo lg in state.Logos)
+            {
+                if (lg.RenewalWk > 0 && lg.RenewalWk - state.Week <= 52) { due.Add(lg); }
+            }
+            if (due.Count == 0) { return "none inside a year"; }
+            due.Sort((a, b) =>
+            {
+                if (a.RenewalWk != b.RenewalWk) { return a.RenewalWk.CompareTo(b.RenewalWk); }
+                return string.CompareOrdinal(a.Name ?? "", b.Name ?? "");
+            });
+            var parts = new List<string>();
+            for (int i = 0; i < Gd.Mini(due.Count, 3); i++)
+            {
+                parts.Add(string.Format(CultureInfo.InvariantCulture, "{0} ({1} seats, wk {2})",
+                    due[i].Name, due[i].Seats, due[i].RenewalWk));
+            }
+            string outp = string.Join(" · ", parts.ToArray());
+            if (due.Count > 3)
+            {
+                outp += string.Format(CultureInfo.InvariantCulture, " · +{0} more", due.Count - 3);
+            }
+            return outp;
         }
 
         // ── THE ADOPTION SEAM — where the whole week resolves ─────────────
@@ -585,11 +656,21 @@ namespace Runway.Core
 
         // ── section 3 — spawning named leads out of the pool ──────────────
         /// <summary>
-        /// The pool-gate is the honest version of "whales appear when the machine
-        /// can feed them": a 60-seat draw at week 6 with 4.1 pool units becomes a
-        /// 4-seat design partner instead. Deal sizes are log-normal in the real
-        /// world; the era tier table approximates it, and pipeline coverage
-        /// precedes bookings.
+        /// A BIG DEAL TAKES TIME TO MATERIALIZE. When the era's tier table draws a
+        /// deal the pool cannot fund, the week does NOT shrink it into a design
+        /// partner — it HOLDS, and the demand banks. Interest keeps arriving; a
+        /// few quiet weeks later the pool is deep enough and the whale walks in
+        /// whole.
+        ///
+        /// That is the honest dynamic and it is what makes the era ladder mean
+        /// anything: at hq, where a third of draws are 21-60 seats, the board goes
+        /// quiet for a stretch and then lands something that changes the company.
+        /// Shrinking every draw to fit would have made SEAT_TIERS and SIZE_REF
+        /// decorative — every deal would spawn at the floor of the smallest band
+        /// forever.
+        ///
+        /// Deal sizes are log-normal in the real world; the era tier table
+        /// approximates it, and pipeline coverage precedes bookings.
         /// </summary>
         private static void SpawnPass(GameState state, WeeklyReport rep, Say ctx,
                                       PipeStats st, Rng r)
@@ -600,10 +681,12 @@ namespace Runway.Core
                    && state.PipeUnits >= MIN_SEATS)
             {
                 int[] band = TierDraw(state, r);
-                int seats = r.RandiRange(band[0], band[1]);
-                // a big logo only spawns once the demand to fill it exists
-                seats = Gd.Clampi(seats, MIN_SEATS,
-                    Gd.Maxi(MIN_SEATS, (int)Math.Floor(state.PipeUnits)));
+                int seats = Gd.Maxi(r.RandiRange(band[0], band[1]), MIN_SEATS);
+                // THE HOLD: the demand to fill this deal does not exist yet. Bank
+                // the pool and stop the week here — a shrunken whale is a lie
+                // about the market, and retrying the draw in-loop would spin until
+                // something small came up.
+                if (seats > Math.Floor(state.PipeUnits)) { break; }
                 state.PipeUnits = Gd.Maxf(state.PipeUnits - seats, 0.0);
                 int heat = r.RandiRange(HEAT_SPAWN_LO, HEAT_SPAWN_HI);
                 if (rn == null) { rn = SimEngine.RngForSalt(state, SimEngine.SALT_PIPELINE_NAMES); }
@@ -945,6 +1028,30 @@ namespace Runway.Core
             return n;
         }
 
+        /// <summary>
+        /// THE DIGEST'S TWO ENTRIES (section 11), so tier-2 event cards see the
+        /// same board the adjudicator does and can write follow-ups about a real
+        /// deal by name. Empty off Enterprise — the digest simply gains nothing.
+        /// </summary>
+        public static Dictionary<string, object> DigestRows(GameState state)
+        {
+            var outp = new Dictionary<string, object>();
+            if (!Active(state)) { return outp; }
+            var board = new List<string>();
+            foreach (int i in LeadsByHeat(state))
+            {
+                Lead lead = state.Leads[i];
+                board.Add(string.Format(CultureInfo.InvariantCulture, "{0} — {1}, {2} seats, {3}",
+                    lead.Name, lead.Stage, lead.Seats, HeatWord(lead.Heat)));
+            }
+            int seated = 0;
+            foreach (Logo lg in state.Logos) { seated += lg.Seats; }
+            outp["pipeline"] = board;
+            outp["signed_logos"] = string.Format(CultureInfo.InvariantCulture,
+                "{0} logos, {1} seats", state.Logos.Count, seated);
+            return outp;
+        }
+
         /// <summary>One line for the signals block: the board at a glance.</summary>
         public static string SignalLine(GameState state)
         {
@@ -1019,13 +1126,5 @@ namespace Runway.Core
             }
             return (n < 0 ? "−" : "") + outp;
         }
-
-        /// <summary>COORDINATOR SEAM (05 C2): Enterprise routes closing capacity
-        /// into the stage advance, so the Bass gtm min() steps aside.</summary>
-        public static bool SkipsGtmCap(GameState state)
-        {
-            return Active(state);
-        }
-
     }
 }

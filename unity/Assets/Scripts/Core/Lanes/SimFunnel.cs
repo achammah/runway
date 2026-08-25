@@ -254,7 +254,8 @@ namespace Runway.Core
             double bSales = state.Budgets != null ? state.Budgets.Sales : 0;
             return (1.5 + 0.8 * state.Competence("sell")
                     + SimLabor.SalesCapacity(state, 3.0 * salesHeads)
-                    + CapReach(state, 0.0) + bSales / 600.0) * capScale;
+                    + CapReach(state, 0.0) + SimRoadmap.GtmCapBonus(state)
+                    + bSales / 600.0) * capScale;
         }
 
         /// <summary>
@@ -414,9 +415,10 @@ namespace Runway.Core
             double demand = organic + womAll + leadsPaid * pd;
             // ONE CEILING. GtmCap mirrors the spine's own clamp term for term (its
             // reach half IS this lane's CapReach), so the funnel reads the same
-            // ceiling the tick will apply and the clamp lands exactly once.
+            // ceiling the tick will apply and the clamp lands exactly once — and
+            // where the pipeline signs its own way, neither of them applies it.
             double cap = GtmCap(state);
-            double adds = Gd.Minf(demand, cap);
+            double adds = SimPipeline.SkipsGtmCap(state) ? demand : Gd.Minf(demand, cap);
             double closeRate = adds / Gd.Maxf(demand, 0.001);
 
             // ── THE SEAM'S ANSWER. The spine computes (organicBase x mult +
