@@ -53,7 +53,20 @@ static func save_run(state: GameState, record: RunRecord) -> void:
 		"version": VERSION,
 		"meta": {"company": state.company_name, "founder": state.founder_name,
 			"week": state.week, "ts": int(Time.get_unix_time_from_system())},
-		"state": {
+		"state": state_to_dict(state),
+		"record": {"seed_value": record.seed_value, "entries": record.entries},
+	}
+	var f := FileAccess.open(slot_path(active_slot), FileAccess.WRITE)
+	f.store_string(JSON.stringify(doc))
+	f.close()
+
+## THE ONE WRITER, pure and file-free — the mirror of state_from_dict. Keeping
+## it a plain function means the twin suite can pin a full save/load round-trip
+## without touching a real slot: a field left out of this dict is a field that
+## silently stops being saved, which is exactly the class of bug that cost the
+## learning curve its memory.
+static func state_to_dict(state: GameState) -> Dictionary:
+	return {
 			"week": state.week, "era": state.era,
 			"archetype_id": state.archetype_id, "archetype_name": state.archetype_name,
 			"competences": state.competences, "traits": state.traits,
@@ -108,12 +121,7 @@ static func save_run(state: GameState, record: RunRecord) -> void:
 			"founder_banked": state.founder_banked,
 			"macro_season": state.macro_season,
 			"hardware": state.hardware,
-		},
-		"record": {"seed_value": record.seed_value, "entries": record.entries},
 	}
-	var f := FileAccess.open(slot_path(active_slot), FileAccess.WRITE)
-	f.store_string(JSON.stringify(doc))
-	f.close()
 
 static func has_run() -> bool:
 	_migrate_legacy()

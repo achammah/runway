@@ -667,10 +667,15 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	state.commitments = kept_comm
 
 	# the binder's memory: one snapshot per week, capped
+	# `net` joins the row (06): revenue − burn was only ever an approximation
+	# once interest and tax exist. A pre-wave row has no `net` key at all, so a
+	# reader falls back to (revenue − burn) for history and is exact from here.
+	var snap_pnl: Dictionary = state.get_meta("pnl", {})
 	state.metric_history.append({"wk": state.week, "cash": state.cash,
 		"customers": state.traction, "revenue": int(rep.get("revenue", 0)),
 		"burn": int(rep.get("burn", 0)), "morale": state.morale,
-		"debt": int(state.tech_debt), "hype": state.hype})
+		"debt": int(state.tech_debt), "hype": state.hype,
+		"net": int(snap_pnl.get("net", 0))})
 	if state.metric_history.size() > 90:
 		state.metric_history = state.metric_history.slice(state.metric_history.size() - 90)
 	state.clampi_meters()

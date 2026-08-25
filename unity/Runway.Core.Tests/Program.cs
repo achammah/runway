@@ -747,6 +747,81 @@ namespace Runway.CoreTests
                 "four weeks on, the pre-wave run's cash is still a number ($" + S(oldState.Cash) + ")");
             Ok(oldState.LastPnl != null, "a migrated run writes a full P&L record");
 
+            // ── THE ROUND TRIP: a field the serializer forgets is a field that
+            // silently stops persisting. The fixture above proves an OLD save
+            // still loads; this proves a NEW one survives being written and read
+            // back. Both directions or the save format is only half-checked.
+            GameState rt = NewState();
+            rt.ServedTotal = 4321;
+            rt.OpenRoles = new List<OpenRole> { new OpenRole { Role = "engineer",
+                OfferedSalary = 1600, OpenedWeek = 3, Seats = 1 } };
+            rt.Applicants = new List<Applicant> { new Applicant { Name = "Ade Okafor",
+                Role = "engineer", Skill = 4, Ask = 1750 } };
+            rt.Recruiters = 1;
+            rt.ContentEquity = 12.5;
+            rt.Leads = new List<Lead> { new Lead { Name = "Meridian Foods", Seats = 40,
+                Stage = "pilot", Heat = 62 } };
+            rt.Logos = new List<Logo> { new Logo { Name = "Harbor Group", Seats = 25,
+                SinceWk = 9, RenewalWk = 35 } };
+            rt.PipeUnits = 17.25;
+            rt.PipeChurnAcc = 0.4;
+            rt.PipeStats = new PipeStats { Signed = 2, Lost = 1, SeatsSigned = 65 };
+            rt.Loans = new List<Loan> { new Loan { Kind = "bank", Principal = 40000,
+                Balance = 33500, RateWk = 0.004, TermWk = 52, TakenWeek = 6,
+                PayWk = 820, Missed = 0 } };
+            rt.TaxLossCarry = 9100;
+            rt.LastRoundAmount = 250000;
+            rt.Receivables = new List<Commitment> { new Commitment { Name = "Harbor invoice",
+                CashWk = 4000, WeeksLeft = 1 } };
+            rt.Bets = new List<Bet> { new Bet { Id = "bet_w7_1", Name = "the mobile app",
+                Kind = "reach", Ambition = 2, CostRndWeeks = 6.0, Progress = 2.5,
+                Committed = true } };
+            rt.PlatformLevel = 2;
+            rt.Board = new BoardState { TargetRevenue = 8000, ReviewWeek = 24,
+                Strikes = 1, Goodwill = 2 };
+            rt.Mna = new MnaOffer { Buyer = "Larkspur Depot", Price = 2400000, ExpiresWeek = 30 };
+            rt.MnaLastWeek = 22;
+            rt.OptionPoolPct = 10.0;
+            rt.FounderBanked = 180000;
+            rt.MacroSeason = "winter";
+            rt.Hardware = new HardwareState { Stock = 48, CapacityBase = 6.0,
+                ProductionTarget = 12, ProducedTotal = 310, SubcontractOn = true,
+                DemandEma = 9.5 };
+            // JSON is the wire the real save travels on — round-trip through it,
+            // exactly as RunSave does, not through a live object reference that
+            // would pass no matter what
+            JObject rtDoc = JObject.FromObject(rt);
+            // the JSON keys are the GODOT save keys, byte-for-byte — that is
+            // what makes the two engines' saves the same format and not two
+            // formats that happen to agree today
+            Ok(rtDoc["served_total"] != null && rtDoc["open_roles"] != null
+               && rtDoc["pipe_units"] != null && rtDoc["tax_loss_carry"] != null
+               && rtDoc["platform_level"] != null && rtDoc["option_pool_pct"] != null
+               && rtDoc["macro_season"] != null && rtDoc["hardware"] != null,
+                "the save dict survives JSON under the Godot key names");
+            GameState rt2 = rtDoc.ToObject<GameState>();
+            Ok(rt2.ServedTotal == 4321, "served_total persists (the learning curve remembers)");
+            Ok(rt2.OpenRoles.Count == 1 && rt2.Applicants.Count == 1 && rt2.Recruiters == 1,
+                "the labor market persists");
+            Ok(Gd.Absf(rt2.ContentEquity - 12.5) < 0.001, "content equity persists");
+            Ok(rt2.Leads.Count == 1 && rt2.Logos.Count == 1
+               && Gd.Absf(rt2.PipeUnits - 17.25) < 0.001 && rt2.PipeStats.Signed == 2,
+                "the pipeline persists");
+            Ok(rt2.Loans.Count == 1 && rt2.Loans[0].Balance == 33500
+               && rt2.TaxLossCarry == 9100 && rt2.Receivables.Count == 1,
+                "the notes, the carryforward and the receivables persist");
+            Ok(rt2.Bets.Count == 1 && rt2.PlatformLevel == 2, "the roadmap persists");
+            Ok(rt2.Board.ReviewWeek == 24 && rt2.Mna.Buyer == "Larkspur Depot"
+               && rt2.MnaLastWeek == 22 && rt2.FounderBanked == 180000
+               && Gd.Absf(rt2.OptionPoolPct - 10.0) < 0.001 && rt2.MacroSeason == "winter",
+                "the board, the offer and the banked cash persist");
+            Ok(rt2.Hardware.Stock == 48 && rt2.Hardware.ProducedTotal == 310,
+                "the factory persists");
+            // and the saved run still ticks — a round-tripped state is a LIVE state
+            rt2.Week += 1;
+            WeeklyReport rtRep = SimEngine.WeeklyTick(rt2);
+            Ok(rtRep != null && rtRep.Lines != null, "a round-tripped run ticks without error");
+
             // ── THE NINE LANES: each suite runs its own pins after the engine's
             Action<bool, string> ok = Ok;
             CatalogTests.Run(ok);

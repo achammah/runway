@@ -620,6 +620,65 @@ func _go() -> void:
 		"four weeks on, the pre-wave run's cash is still a number ($%d)" % old_state.cash)
 	_ok(not old_state.get_meta("pnl", {}).is_empty(), "a migrated run writes a full P&L record")
 
+	# ── THE ROUND TRIP: a field the save dict forgets is a field that silently
+	# stops persisting. The fixture above proves an OLD save still loads; this
+	# proves a NEW one survives being written and read back. Both directions or
+	# the save format is only half-checked.
+	var rt := _state()
+	rt.served_total = 4_321
+	rt.open_roles = [{"role": "engineer", "offered_salary": 1600, "opened_week": 3, "seats": 1}]
+	rt.applicants = [{"name": "Ade Okafor", "role": "engineer", "skill": 4, "ask": 1750}]
+	rt.recruiters = 1
+	rt.content_equity = 12.5
+	rt.leads = [{"name": "Meridian Foods", "seats": 40, "stage": "pilot", "heat": 62}]
+	rt.logos = [{"name": "Harbor Group", "seats": 25, "since_wk": 9, "renewal_wk": 35}]
+	rt.pipe_units = 17.25
+	rt.pipe_churn_acc = 0.4
+	rt.pipe_stats = {"signed": 2, "lost": 1, "seats_signed": 65}
+	rt.loans = [{"kind": "bank", "principal": 40_000, "balance": 33_500,
+		"rate_wk": 0.004, "term_wk": 52, "taken_week": 6, "pay_wk": 820, "missed": 0}]
+	rt.tax_loss_carry = 9_100
+	rt.last_round_amount = 250_000
+	rt.receivables = [{"name": "Harbor invoice", "cash_wk": 4_000, "weeks_left": 1}]
+	rt.bets = [{"id": "bet_w7_1", "name": "the mobile app", "kind": "reach",
+		"ambition": 2, "cost_rnd_weeks": 6.0, "progress": 2.5, "committed": true}]
+	rt.platform_level = 2
+	rt.board = {"target_revenue": 8_000, "review_week": 24, "strikes": 1, "goodwill": 2}
+	rt.mna = {"buyer": "Larkspur Depot", "price": 2_400_000, "expires_week": 30}
+	rt.mna_last_week = 22
+	rt.option_pool_pct = 10.0
+	rt.founder_banked = 180_000
+	rt.macro_season = "winter"
+	rt.hardware = {"stock": 48, "capacity_base": 6.0, "equipment": [],
+		"production_target": 12, "produced_total": 310, "subcontract_on": true,
+		"demand_ema": 9.5}
+	# JSON is the wire the real save travels on — round-trip through it, not
+	# through a live object reference that would pass no matter what
+	var rt_doc = JSON.parse_string(JSON.stringify(SaveSystem.state_to_dict(rt)))
+	_ok(rt_doc is Dictionary, "the save dict survives JSON")
+	var rt2 := SaveSystem.state_from_dict(rt_doc as Dictionary)
+	_ok(rt2.served_total == 4_321, "served_total persists (the learning curve remembers)")
+	_ok(rt2.open_roles.size() == 1 and rt2.applicants.size() == 1 and rt2.recruiters == 1,
+		"the labor market persists")
+	_ok(absf(rt2.content_equity - 12.5) < 0.001, "content equity persists")
+	_ok(rt2.leads.size() == 1 and rt2.logos.size() == 1
+		and absf(rt2.pipe_units - 17.25) < 0.001 and int(rt2.pipe_stats.get("signed", 0)) == 2,
+		"the pipeline persists")
+	_ok(rt2.loans.size() == 1 and int((rt2.loans[0] as Dictionary).get("balance", 0)) == 33_500
+		and rt2.tax_loss_carry == 9_100 and rt2.receivables.size() == 1,
+		"the notes, the carryforward and the receivables persist")
+	_ok(rt2.bets.size() == 1 and rt2.platform_level == 2, "the roadmap persists")
+	_ok(int(rt2.board.get("review_week", 0)) == 24 and String(rt2.mna.get("buyer", "")) == "Larkspur Depot"
+		and rt2.mna_last_week == 22 and rt2.founder_banked == 180_000
+		and absf(rt2.option_pool_pct - 10.0) < 0.001 and rt2.macro_season == "winter",
+		"the board, the offer and the banked cash persist")
+	_ok(int(rt2.hardware.get("stock", 0)) == 48 and int(rt2.hardware.get("produced_total", 0)) == 310,
+		"the factory persists")
+	# and the saved run still ticks — a round-tripped state is a LIVE state
+	rt2.week += 1
+	var rt_rep := SimEngine.weekly_tick(rt2)
+	_ok(rt_rep.has("lines"), "a round-tripped run ticks without error")
+
 	# ── THE NINE LANES: each suite runs its own pins after the engine's
 	for lane_suite in [preload("res://tests/lanes/test_catalog.gd"),
 			preload("res://tests/lanes/test_labor.gd"),
