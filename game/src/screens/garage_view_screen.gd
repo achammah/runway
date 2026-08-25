@@ -52,6 +52,8 @@ var _clarify_checked := false      # this commit already passed the pre-pass
 var _clarify_rounds := 0
 var _price_asked := false
 var _binder_bang: Label = null
+var _coach: Control = null
+var _coach_step := 0
 var _seen_spreads := {}            # "week:page:sheet" -> the ink is already dry
 var _week_told := 0                # how much of the story sheet one got through
 ## The capture harness in main.gd reaches for the old two-page frames; both now
@@ -364,6 +366,7 @@ func _ready() -> void:
 	var stub := OS.get_environment(ROOM_STUB_ENV)
 	if stub != "":
 		adopt_composed(stub, false)
+	_build_coach()
 	_start_week()
 
 ## THE ROOM BREATHES ON THE ROOM'S OWN CLOCK. Both lines below hand Godot a
@@ -374,6 +377,66 @@ func _ready() -> void:
 ## this game is drawn at leaves the same motion and lets Godot's own "same
 ## value, nothing to do" check swallow the other four frames in five.
 const BREATH_FPS := 12.0
+const COACH_MARK := "user://seen_coach_v1"
+
+## THE LIVE TUTORIAL (owner: a first start walks the player through the real
+## screen): three pen chips in sequence — the room, the journal, the binder —
+## each advanced by a click, once per install.
+func _build_coach() -> void:
+	if state == null or state.week > 1:
+		return
+	if FileAccess.file_exists(COACH_MARK):
+		return
+	if OS.get_environment("RUNWAY_FULLRUN") != "" or OS.get_environment("RUNWAY_FIRSTFLOW") != "" \
+			or OS.get_environment("RUNWAY_SHOTS") != "":
+		return
+	_coach_step = 0
+	_show_coach_step()
+
+func _show_coach_step() -> void:
+	if _coach != null and is_instance_valid(_coach):
+		_coach.queue_free()
+		_coach = null
+	var text := ""
+	var pos := Vector2.ZERO
+	var w := 540.0
+	match _coach_step:
+		0:
+			text = "your startup lives in this room. every week you write ONE move and the world answers with a die.\n\n(click to continue)"
+			pos = Vector2(500, 380)
+		1:
+			text = "the journal is the week: open it, write what the company does, then LOCK IN. if the world needs a number or a price, it asks before the die rolls.\n\n(click to continue)"
+			pos = Vector2(420, 690)
+			w = 560.0
+		2:
+			text = "THE BINDER holds your prices, levers and ledger. a coral ! means something has no price yet — set one or the market bills the going rate.\n\n(click to start week 1)"
+			pos = Vector2(880, 690)
+			w = 560.0
+		_:
+			var f := FileAccess.open(COACH_MARK, FileAccess.WRITE)
+			if f != null:
+				f.store_string("1")
+			return
+	var card := Button.new()
+	card.position = pos
+	card.size = Vector2(w, 190)
+	_style_button(card, PALETTE["cream"], 24)
+	card.text = ""
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_override("font", _font)
+	lbl.add_theme_font_size_override("font_size", 24)
+	lbl.add_theme_color_override("font_color", PALETTE["ink"])
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.position = Vector2(24, 20)
+	lbl.size = Vector2(w - 48, 150)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(lbl)
+	card.pressed.connect(func() -> void:
+		_coach_step += 1
+		_show_coach_step())
+	add_child(card)
+	_coach = card
 
 func _process(_delta: float) -> void:
 	var t := floorf(Time.get_ticks_msec() / 1000.0 * BREATH_FPS) / BREATH_FPS
