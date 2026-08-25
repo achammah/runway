@@ -430,3 +430,13 @@ turn-based business simulation." One wave, both engines, twin suites 82/82:
 
 Gates: Godot suite 82/82 · C# twin 82/82 · unity_compile 0 errors · all
 edited GDScripts parse-checked. Prompt twins synced byte-for-byte.
+
+## 2026-08-25 — wave 2 ships in both boxes
+
+Unity app rebuilt at dddf050 (stamp 2026-08-25 10:58), RUNWAY-Unity.dmg
+432M — all six installer checks pass (no index folders, bg, arrow-line
+icons, fresh stamp). Godot exported at dddf050 (stamp 2026-08-25 12:15),
+RUNWAY.dmg 2.2G — polish checks pass, both stamp halves verified inside
+the pck. Batch-build truth for the record: the success marker is
+`RUNWAY! build Succeeded` — an earlier grep for "Build succeeded"
+mislabeled seven good builds as UPM flakes.
