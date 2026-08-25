@@ -436,7 +436,7 @@ func to_digest() -> Dictionary:
 	for e in employees:
 		staff.append("%s (%s, burnout: %s)" % [e.get("name", "?"), e.get("role", "?"),
 			burnout_state(int(e.get("burnout", 0)))])
-	return {
+	var d := {
 		"week": week,
 		"era": era,
 		"era_name": era_display_name(),
@@ -463,6 +463,16 @@ func to_digest() -> Dictionary:
 		"weekly_revenue": revenue_per_week(),
 		"valuation": valuation(),
 		"board": "%d founder seats, %d investor seats" % [board_seats_founder, board_seats_investor],
+		# 08 — present only when live, so the DM never narrates a board that
+		# does not exist or a deal that is not on the table.
+		"board_review": ("covenant $%d/wk by wk %d · now $%d/wk · strikes %d · goodwill %d" % [
+			int(board.get("target_revenue", 0)), int(board.get("review_week", 0)),
+			int((get_meta("pnl", {}) as Dictionary).get("revenue", 0)),
+			int(board.get("strikes", 0)), int(board.get("goodwill", 0))]) if not board.is_empty() else "",
+		"acquisition_offer": ("%s at $%d — the no-shop ends wk %d" % [
+			String(mna.get("buyer", "")), int(mna.get("price", 0)),
+			int(mna.get("expires_week", 0))]) if not mna.is_empty() else "",
+		"ipo_window": has_flag("ipo_window"),
 		"product": product,
 		"traction": traction,
 		"morale": morale,
@@ -471,3 +481,8 @@ func to_digest() -> Dictionary:
 		"items": items.duplicate(),
 		"flags": flags.duplicate(),
 	}
+	# 05 — the named pipeline rides the digest (empty off Enterprise)
+	var pipe := SimPipeline.digest_rows(self)
+	for pk in pipe:
+		d[pk] = pipe[pk]
+	return d

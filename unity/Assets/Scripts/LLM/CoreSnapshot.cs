@@ -96,6 +96,14 @@ namespace Runway.Llm
             if (state.Rivals != null)
                 foreach (Rival rv in state.Rivals) rivals.Add(rv.Name ?? "");
             s.RivalNames = rivals.ToArray();
+            var leadNames = new List<string>();
+            if (state.Leads != null)
+                foreach (Lead ld in state.Leads) leadNames.Add(ld.Name ?? "");
+            s.LeadNames = leadNames.ToArray();
+            var logoNames = new List<string>();
+            if (state.Logos != null)
+                foreach (Logo lg in state.Logos) logoNames.Add(lg.Name ?? "");
+            s.LogoNames = logoNames.ToArray();
 
             var statuses = new List<string>(SimEngine.STATUS.Keys);
             s.StatusCatalog = statuses.ToArray();

@@ -579,6 +579,8 @@ namespace Runway.Llm
             var known = new List<string>();
             if (s.InvestorNames != null) known.AddRange(s.InvestorNames);
             if (s.RivalNames != null) known.AddRange(s.RivalNames);
+            if (s.LeadNames != null) known.AddRange(s.LeadNames);
+            if (s.LogoNames != null) known.AddRange(s.LogoNames);
             string narration = Str(res, "narration");
 
             // premise guard: money the narration spends must exist (order-of-magnitude)

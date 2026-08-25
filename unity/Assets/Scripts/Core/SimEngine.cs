@@ -1945,7 +1945,9 @@ namespace Runway.Core
                 rent = 150;
             }
             double burn = (double)(rent + payroll + 50)
-                + (double)(state.MarketingBudget + leverSum) - revenue;
+                + (double)(state.MarketingBudget + leverSum) + 1500.0 * state.Recruiters
+                + OffersFixedWk(state) + state.Traction * OffersCogsPerCustomer(state)
+                - revenue;
             if (burn <= 0.0)
             {
                 return 999;
@@ -2025,6 +2027,9 @@ namespace Runway.Core
                 { "valuation", Valuation(state) },
                 { "rivals", rivals },
                 { "pipeline", SimPipeline.SignalLine(state) },
+                { "board", SimBoard.SignalLine(state) },
+                { "mna", SimBoard.MnaLine(state) },
+                { "ipo_window", state.HasFlag("ipo_window") },
                 { "roadmap", RoadmapSignal(state) },
             };
         }

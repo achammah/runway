@@ -458,6 +458,99 @@ namespace Runway.Game
             }
         }
 
+        // ══ the coach-chip pool (07/03/09; polish-pass build) ═════════════════
+
+        const string ChipMark = "seen_chips.unity.txt";
+        int _chipWeek = -1;
+        RectTransform _chipCard;
+
+        System.Collections.Generic.HashSet<string> SeenChips()
+        {
+            var seen = new System.Collections.Generic.HashSet<string>();
+            string p = Runway.App.RunwayPaths.User(ChipMark);
+            if (System.IO.File.Exists(p))
+                foreach (string line in System.IO.File.ReadAllLines(p))
+                    if (line.Trim().Length > 0) seen.Add(line.Trim());
+            return seen;
+        }
+
+        void MarkChip(string id)
+        {
+            try { System.IO.File.AppendAllText(Runway.App.RunwayPaths.User(ChipMark), id + "\n"); }
+            catch (System.Exception) { }
+        }
+
+        /// One-time teaching cards, one per week at most, once per install.
+        /// A lane ships its own via coach_chip; spine entries hang on the
+        /// attention registry and lane state.
+        void MaybeCoachChip()
+        {
+            if (State == null || _chipCard != null) return;
+            if (Runway.App.Env.Get("RUNWAY_USHOTS", "").Length > 0
+                || Runway.App.Env.Get("RUNWAY_UFLOW", "").Length > 0
+                || Runway.App.Env.Get("RUNWAY_UPERF", "").Length > 0) return;
+            if (!System.IO.File.Exists(Runway.App.RunwayPaths.User(CoachMark)))
+                return;   // the tour comes first
+            var seen = SeenChips();
+            var cands = new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<string, string>>();
+            var rc = SimRoadmap.CoachChip(State);
+            if (rc != null && rc.ContainsKey("id"))
+                cands.Add(new System.Collections.Generic.KeyValuePair<string, string>(rc["id"], rc["text"]));
+            if (State.Era != "garage" && State.Rivals != null)
+                foreach (var rv in State.Rivals)
+                    if (rv.Log != null && rv.Log.Count > 0)
+                    {
+                        cands.Add(new System.Collections.Generic.KeyValuePair<string, string>("street_live",
+                            "the street is alive — rivals move every week now. their log lives on THE STREET tab."));
+                        break;
+                    }
+            foreach (var r in SimEngine.AttentionItems(State))
+            {
+                switch (r.Key)
+                {
+                    case "stockout":
+                        cands.Add(new System.Collections.Generic.KeyValuePair<string, string>("chip_stockout",
+                            "empty shelves are a pricing and capacity problem, not bad luck — build more, buy overflow, or charge more."));
+                        break;
+                    case "overstock":
+                        cands.Add(new System.Collections.Generic.KeyValuePair<string, string>("chip_overstock",
+                            "stock is cash sleeping on a shelf — the carrying cost bills every week it sits."));
+                        break;
+                    case "machine_down":
+                        cands.Add(new System.Collections.Generic.KeyValuePair<string, string>("chip_machine",
+                            "a downed machine builds nothing and the repair costs 4× its upkeep — reliability is a line item."));
+                        break;
+                }
+            }
+            foreach (var c in cands)
+            {
+                if (c.Key.Length > 0 && !seen.Contains(c.Key))
+                {
+                    ShowChipCard(c.Key, c.Value);
+                    return;
+                }
+            }
+        }
+
+        void ShowChipCard(string id, string text)
+        {
+            var card = GameUi.PaperSheet(Rect, 420f, 700f, 700f, 150f, 2, 4f, null, "chip");
+            DrawnUI.HandLabel(card, text + "\n\n(click — noted)", 24f, 16f, 22f, DrawnUI.Ink, 652f);
+            var hit = card.gameObject.AddComponent<Image>();
+            hit.color = new Color(0f, 0f, 0f, 0f);
+            hit.raycastTarget = true;
+            var btn = card.gameObject.AddComponent<Button>();
+            btn.transition = Selectable.Transition.None;
+            btn.targetGraphic = hit;
+            btn.onClick.AddListener(() =>
+            {
+                MarkChip(id);
+                Destroy(card.gameObject);
+                _chipCard = null;
+            });
+            _chipCard = card;
+        }
+
         // ══ the live tutorial ══════════════════════════════════════════════════
 
         /// The mark is versioned: the tour teaches the CURRENT game, so a tour that
@@ -494,7 +587,7 @@ namespace Runway.Game
                     x = 420f; y = 700f; w = 560f;
                     break;
                 case 2:
-                    text = "THE BINDER holds your prices, levers and ledger. a coral ! means something has no price yet \u2014 set one or the market bills the going rate.\n\n(click to continue)";
+                    text = "THE BINDER holds your prices, levers and ledger. a coral ! means something has no price yet \u2014 set one or the market bills the going rate. when people apply, the CREW tab is where you hire.\n\n(click to continue)";
                     x = 900f; y = 700f; w = 560f;
                     break;
                 case 3:
@@ -599,7 +692,12 @@ namespace Runway.Game
             {
                 _attFrame = attFrame;
                 List<AttentionItem> items = SimEngine.AttentionItems(State);
-                if (_binderBang != null)
+                if (State.Week != _chipWeek)
+            {
+                _chipWeek = State.Week;
+                MaybeCoachChip();
+            }
+            if (_binderBang != null)
                     _binderBang.gameObject.SetActive(items.Count > 0);
                 if (_hudTicker != null)
                 {

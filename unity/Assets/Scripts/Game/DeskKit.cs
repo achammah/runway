@@ -150,12 +150,49 @@ namespace Runway.Game
                                   TextAlignmentOptions.Center);
                 return;
             }
-            GameUi.InkWord(b.Content, text, x, y, BtnW, BtnH, 40f, DrawnUI.Ink, () =>
+            Action fire = () =>
             {
                 b.Desk.Remove("armed");   // any other control disarms the armed one
                 if (onPress != null) onPress();
                 b.Refresh();
-            });
+            };
+            var word = GameUi.InkWord(b.Content, text, x, y, BtnW, BtnH, 40f, DrawnUI.Ink, fire);
+            // HOLD TO REPEAT (09's bench spec, kit-owned so every desk gets it):
+            // after 0.45s held, the glyph re-fires 5×/s. Refresh rebuilds the
+            // pane, so the repeater dies with the button — no ghost press.
+            var rep = word.gameObject.AddComponent<GlyphRepeater>();
+            rep.Fire = fire;
+        }
+
+        /// <summary>The hold-to-repeat engine for a stepper glyph.</summary>
+        sealed class GlyphRepeater : MonoBehaviour,
+            UnityEngine.EventSystems.IPointerDownHandler,
+            UnityEngine.EventSystems.IPointerUpHandler,
+            UnityEngine.EventSystems.IPointerExitHandler
+        {
+            public Action Fire;
+            bool _down;
+            float _t;
+
+            public void OnPointerDown(UnityEngine.EventSystems.PointerEventData e)
+            {
+                _down = true;
+                _t = 0f;
+            }
+
+            public void OnPointerUp(UnityEngine.EventSystems.PointerEventData e) { _down = false; }
+            public void OnPointerExit(UnityEngine.EventSystems.PointerEventData e) { _down = false; }
+
+            void Update()
+            {
+                if (!_down || Fire == null) return;
+                _t += Time.unscaledDeltaTime;
+                if (_t >= 0.45f)
+                {
+                    _t -= 0.2f;
+                    Fire();
+                }
+            }
         }
 
         /// <summary>
@@ -397,6 +434,7 @@ namespace Runway.Game
         {
             public string Name = "";
             public string Facts = "";
+            public string Heat = "";      // the heat WORD wears its color (10-interface §1.1)
             public string Note = "";      // the coral clock, when one is running
             public string Flavor = "";
         }
@@ -438,6 +476,12 @@ namespace Runway.Game
                     if (!string.IsNullOrEmpty(ch.Facts))
                     {
                         b.L(ch.Facts, cx, cy, Detail, Ink(0.7f), colW - 20f);
+                        cy += 28f;
+                    }
+                    if (!string.IsNullOrEmpty(ch.Heat))
+                    {
+                        // the heat WORD wears its color (10-interface §1.1; 05 §12)
+                        b.L(ch.Heat, cx, cy, Detail, HeatCol(ch.Heat), colW - 20f);
                         cy += 28f;
                     }
                     if (!string.IsNullOrEmpty(ch.Note))

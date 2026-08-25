@@ -399,6 +399,10 @@ func _sentinel(state: GameState, res: Dictionary) -> Array:
 		known.append(String((inv as Dictionary).get("name", "")))
 	for rv in state.rivals:
 		known.append(String((rv as Dictionary).get("name", "")))
+	for ld in state.leads:
+		known.append(String((ld as Dictionary).get("name", "")))
+	for lg in state.logos:
+		known.append(String((lg as Dictionary).get("name", "")))
 	var narration := String(res.get("narration", ""))
 	# premise guard: money the narration spends must exist (order-of-magnitude)
 	var spend_guess := 0

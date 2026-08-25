@@ -1212,7 +1212,7 @@ namespace Runway.Core
                 staff.Add(string.Format(CultureInfo.InvariantCulture, "{0} ({1}, burnout: {2})",
                     e.Name, e.Role, BurnoutState(e.Burnout)));
             }
-            return new Dictionary<string, object>
+            var d = new Dictionary<string, object>
             {
                 { "week", Week },
                 { "era", Era },
@@ -1241,6 +1241,14 @@ namespace Runway.Core
                 { "valuation", Valuation() },
                 { "board", string.Format(CultureInfo.InvariantCulture, "{0} founder seats, {1} investor seats",
                     BoardSeatsFounder, BoardSeatsInvestor) },
+                // 08 — present only when live.
+                { "board_review", Board == null ? "" : string.Format(
+                    "covenant ${0}/wk by wk {1} · now ${2}/wk · strikes {3} · goodwill {4}",
+                    Board.TargetRevenue, Board.ReviewWeek,
+                    LastPnl != null ? LastPnl.Revenue : 0, Board.Strikes, Board.Goodwill) },
+                { "acquisition_offer", Mna == null ? "" : string.Format(
+                    "{0} at ${1} — the no-shop ends wk {2}", Mna.Buyer, Mna.Price, Mna.ExpiresWeek) },
+                { "ipo_window", HasFlag("ipo_window") },
                 { "product", Product },
                 { "traction", Traction },
                 { "morale", Morale },
@@ -1249,6 +1257,9 @@ namespace Runway.Core
                 { "items", new List<string>(Items) },
                 { "flags", new List<string>(Flags) },
             };
+            // 05 — the named pipeline rides the digest (empty off Enterprise)
+            foreach (var kv in SimPipeline.DigestRows(this)) { d[kv.Key] = kv.Value; }
+            return d;
         }
     }
 }

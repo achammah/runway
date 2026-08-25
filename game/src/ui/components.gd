@@ -132,6 +132,23 @@ static func _glyph(b, text: String, pos: Vector2, dead: bool, on_press) -> void:
 			b.desk.erase("armed")   # any other control disarms the armed one
 			cb.call()
 			b.refresh())
+		# HOLD TO REPEAT (09's bench spec, kit-owned so every desk gets it):
+		# after 0.45s held, the glyph re-fires 5×/s. The refresh rebuilds the
+		# pane, so the timer dies with the button — no leak, no ghost press.
+		var rt := Timer.new()
+		rt.wait_time = 0.2
+		rt.one_shot = false
+		btn.add_child(rt)
+		var held := {"t": 0.0}
+		btn.button_down.connect(func() -> void:
+			held["t"] = Time.get_ticks_msec()
+			rt.start(0.45))
+		btn.button_up.connect(func() -> void: rt.stop())
+		rt.timeout.connect(func() -> void:
+			rt.wait_time = 0.2
+			b.desk.erase("armed")
+			cb.call()
+			b.refresh())
 	b.pane().add_child(btn)
 
 ## THE NAMED LADDER every stepper walks. `steps` is the world's own list (lever
@@ -346,6 +363,11 @@ static func board(b, y: float, columns: Array, empty_line: String = "") -> float
 			var facts := String(chd.get("facts", ""))
 			if facts != "":
 				b.label(facts, Vector2(cx, cy), DETAIL, Color(INK, 0.7), col_w - 20.0)
+				cy += 28.0
+			var heat := String(chd.get("heat", ""))
+			if heat != "":
+				# the heat WORD wears its color (10-interface §1.1; 05 §12)
+				b.label(heat, Vector2(cx, cy), DETAIL, heat_col(heat), col_w - 20.0)
 				cy += 28.0
 			var note := String(chd.get("note", ""))
 			if note != "":

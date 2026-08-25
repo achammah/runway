@@ -1331,7 +1331,7 @@ static func runway_weeks(state: GameState) -> int:
 	for k in state.budgets:
 		lever_sum += int(state.budgets[k])
 	var burn := float(int(GameState.ERA_RENT.get(state.era, 150)) + payroll + 50) \
-			+ float(state.marketing_budget + lever_sum) \
+			+ float(state.marketing_budget + lever_sum) + float(1500 * state.recruiters) \
 			+ offers_fixed_wk(state) + float(state.traction) * offers_cogs_per_customer(state) \
 			- revenue
 	if burn <= 0.0:
@@ -1375,6 +1375,9 @@ static func signals(state: GameState) -> Dictionary:
 		"exhaustion": state.exhaustion, "statuses": conds, "clocks": clocks_out,
 		"loan_owed": SimBank.debt_total(state), "valuation": valuation(state),
 		"pipeline": SimPipeline.signal_line(state),
+		"board": SimBoard.signal_line(state),
+		"mna": SimBoard.mna_line(state),
+		"ipo_window": state.has_flag("ipo_window"),
 		"roadmap": {
 			"committed": SimRoadmap.committed_bets(state).map(func(b): return String((b as Dictionary).get("name", ""))),
 			"ready": String((SimRoadmap.ready_bets(state)[0] as Dictionary).get("name", "")) if not SimRoadmap.ready_bets(state).is_empty() else "",

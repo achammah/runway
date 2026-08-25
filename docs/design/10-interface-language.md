@@ -527,7 +527,7 @@ drop this offer × →   sure? it disappears ×          →  remove_offer
   control. Armed state is a desk-local bool (`_drop_armed`, `_mna_armed`),
   reset each build, never saved.
 - **What arms**: fire someone · drop an offer · sell the company · ring
-  the bell · stand down a committed bet? — NO: stand-down is reversible
+  the bell · stand down a committed bet? — YES, it ARMS: DECISIONS priced abandonment at −25% of the build, so destroying paid work meets the arm test (amended by owner ruling, wave N2)
   (recommit next week), one tap. The test: **arm iff the act destroys
   something a later week cannot rebuild** (a person, an offer's history,
   the run) **or books an immediate real cost** (severance).

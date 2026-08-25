@@ -61,6 +61,8 @@ namespace Runway.Llm
         // ── the sentinel's ground truth ───────────────────────────────────────
         public string[] InvestorNames;
         public string[] RivalNames;
+        public string[] LeadNames;
+        public string[] LogoNames;
         public string[] StatusCatalog;
 
         // ── the pitch ─────────────────────────────────────────────────────────

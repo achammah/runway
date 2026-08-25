@@ -423,6 +423,85 @@ const COACH_MARK := "user://seen_coach_v2"
 ## screen): four pen chips in sequence — the room, the journal, the binder, and
 ## the two things that arrived with the bank — each advanced by a click, once
 ## per install.
+## THE COACH-CHIP POOL (07/03/09 asked; polish-pass build): one-time teaching
+## cards, one per week at most, each shown once per install. A lane ships its
+## own chip via coach_chip(state); spine-side entries hang on the attention
+## registry and lane state. Marked in user:// so veterans are never nagged.
+const CHIP_MARK := "user://seen_chips.txt"
+var _chip_week := -1
+var _chip_card: Control = null
+
+func _seen_chips() -> PackedStringArray:
+	if not FileAccess.file_exists(CHIP_MARK):
+		return PackedStringArray()
+	return FileAccess.get_file_as_string(CHIP_MARK).split("\n", false)
+
+func _mark_chip(id: String) -> void:
+	var f := FileAccess.open(CHIP_MARK, FileAccess.READ_WRITE if FileAccess.file_exists(CHIP_MARK) else FileAccess.WRITE)
+	if f == null:
+		return
+	f.seek_end()
+	f.store_string(id + "\n")
+
+func _maybe_coach_chip() -> void:
+	if state == null or _chip_card != null:
+		return
+	if OS.get_environment("RUNWAY_FULLRUN") != "" or OS.get_environment("RUNWAY_FIRSTFLOW") != "" \
+			or OS.get_environment("RUNWAY_SHOTS") != "":
+		return
+	if not FileAccess.file_exists(COACH_MARK):
+		return   # the tour comes first; chips start once it has been walked
+	var seen := _seen_chips()
+	var cands: Array = []
+	var rc := SimRoadmap.coach_chip(state)
+	if not rc.is_empty():
+		cands.append(rc)
+	if state.era != "garage":
+		for rv in state.rivals:
+			if not ((rv as Dictionary).get("log", []) as Array).is_empty():
+				cands.append({"id": "street_live",
+					"text": "the street is alive — rivals move every week now. their log lives on THE STREET tab."})
+				break
+	for r in SimEngine.attention_items(state):
+		match String((r as Dictionary).get("key", "")):
+			"stockout":
+				cands.append({"id": "chip_stockout",
+					"text": "empty shelves are a pricing and capacity problem, not bad luck — build more, buy overflow, or charge more."})
+			"overstock":
+				cands.append({"id": "chip_overstock",
+					"text": "stock is cash sleeping on a shelf — the carrying cost bills every week it sits."})
+			"machine_down":
+				cands.append({"id": "chip_machine",
+					"text": "a downed machine builds nothing and the repair costs 4× its upkeep — reliability is a line item."})
+	for c in cands:
+		var cid := String((c as Dictionary).get("id", ""))
+		if cid != "" and not cid in seen:
+			_show_chip_card(cid, String((c as Dictionary).get("text", "")))
+			return
+
+func _show_chip_card(id: String, text: String) -> void:
+	var card := Button.new()
+	card.position = Vector2(420, 700)
+	card.size = Vector2(700, 150)
+	_style_button(card, PALETTE["cream"], 24)
+	card.text = ""
+	var lbl := Label.new()
+	lbl.text = text + "\n\n(click — noted)"
+	lbl.add_theme_font_override("font", _font)
+	lbl.add_theme_font_size_override("font_size", 22)
+	lbl.add_theme_color_override("font_color", PALETTE["ink"])
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.position = Vector2(24, 16)
+	lbl.size = Vector2(652, 120)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(lbl)
+	card.pressed.connect(func() -> void:
+		_mark_chip(id)
+		card.queue_free()
+		_chip_card = null)
+	add_child(card)
+	_chip_card = card
+
 func _build_coach() -> void:
 	if state == null or state.week > 1:
 		return
@@ -450,7 +529,7 @@ func _show_coach_step() -> void:
 			pos = Vector2(420, 690)
 			w = 560.0
 		2:
-			text = "THE BINDER holds your prices, levers and ledger. a coral ! means something has no price yet — set one or the market bills the going rate.\n\n(click to continue)"
+			text = "THE BINDER holds your prices, levers and ledger. a coral ! means something has no price yet — set one or the market bills the going rate. when people apply, the CREW tab is where you hire.\n\n(click to continue)"
 			pos = Vector2(880, 690)
 			w = 560.0
 		3:
@@ -485,6 +564,9 @@ func _show_coach_step() -> void:
 
 func _process(_delta: float) -> void:
 	var t := floorf(Time.get_ticks_msec() / 1000.0 * BREATH_FPS) / BREATH_FPS
+	if state != null and state.week != _chip_week:
+		_chip_week = state.week
+		_maybe_coach_chip()
 	if _open_btn and _open_btn.visible:
 		var p := 1.0 + sin(t * 3.2) * 0.03
 		_open_btn.scale = Vector2(p, p)
