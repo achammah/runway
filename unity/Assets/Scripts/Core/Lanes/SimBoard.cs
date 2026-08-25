@@ -38,6 +38,24 @@ namespace Runway.Core
         }
 
         /// <summary>After the record is written: 9c the board review against the covenant (deterministic — no dice, no salt), then 9d M&amp;A offers and the IPO window (salt 100), priced off the growth this week just posted.</summary>
+        /// SEAM (coordinator-planted): fires at the signature, both signing
+        /// sites. 08 fills it (pool shuffle, covenant set); no-op = today.
+        public static void OnRoundClosed(GameState state, int amount, double pct)
+        {
+        }
+
+        /// SEAM: a journal offer block mirroring the term-sheet idiom.
+        /// Null = no card. 08 returns the title + cards; picks route back.
+        public static Newtonsoft.Json.Linq.JObject JournalOffer(GameState state)
+        {
+            return null;
+        }
+
+        public static string JournalPick(GameState state, string id)
+        {
+            return "";
+        }
+
         public static void TickPost(GameState state, WeeklyReport rep)
         {
         }

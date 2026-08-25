@@ -2230,12 +2230,33 @@ func _spread_ahead() -> void:
 				return
 			var o2: Dictionary = offers[int(id.substr(3))]
 			SimEngine.apply_round(state, int(o2.amount), float(o2.equity_pct))
+			SimBoard.on_round_closed(state, int(o2.amount), float(o2.equity_pct))
 			state.flags.erase("fundraising_open")
 			var ladder_flag := "seed_raised" if state.rounds_raised.size() <= 2 else "series_a"
 			state.set_flag(ladder_flag)
 			state.log_action("signed %s: $%d for %.1f%%" % [o2.investor, int(o2.amount), float(o2.equity_pct)])
 			_sfx["win"].play()
 			_lock_button())
+	# THE OFFER ON THE TABLE (coordinator seam for lane 08): an M&A/board
+	# card block mirroring the term-sheet idiom — SimBoard owns content and
+	# consequences; the journal only draws and routes.
+	var mna_block := SimBoard.journal_offer(state)
+	if not mna_block.is_empty() and not special_used:
+		special_used = true
+		_jp.line(String(mna_block.get("title", "AN OFFER IS ON THE TABLE:")))
+		var mna_cards: Array = []
+		for mc in mna_block.get("cards", []):
+			mna_cards.append({"id": String((mc as Dictionary).get("id", "")),
+				"text": String((mc as Dictionary).get("text", ""))})
+		if not mna_cards.is_empty():
+			_jp.icon_row(mna_cards, Vector2(230, 40), "body")
+			_jp.choice_made.connect(func(id: String):
+				var receipt := SimBoard.journal_pick(state, id)
+				if receipt == "":
+					return
+				state.log_action(receipt)
+				_sfx["win"].play()
+				_lock_button())
 	# THE LEVEL-UP (plan B4): a banked milestone point is spent HERE, as a pen
 	# circle on the stat of your choice — the D&D moment, on paper.
 	if state.xp > state.xp_spent and not special_used:

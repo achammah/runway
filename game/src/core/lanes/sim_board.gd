@@ -27,6 +27,20 @@ static func tick_money(_state: GameState, _rep: Dictionary, _m: Dictionary) -> v
 ## After the record is written: §9c the board review against the covenant (deterministic — no dice, no
 ## salt), then §9d M&A offers and the IPO window (salt 100), priced off the
 ## growth this week just posted.
+## SEAM (coordinator-planted): fires at the signature, both signing sites.
+## 08 fills it (pool shuffle, covenant set); no-op keeps today's behavior.
+static func on_round_closed(_state: GameState, _amount: int, _pct: float) -> void:
+	pass
+
+## SEAM (coordinator-planted): a journal offer block mirroring the term-sheet
+## idiom. Empty dict = no card. 08 returns {"title": String, "cards":
+## [{"id","text"}], and the journal routes chosen ids to journal_pick().
+static func journal_offer(_state: GameState) -> Dictionary:
+	return {}
+
+static func journal_pick(_state: GameState, _id: String) -> String:
+	return ""   # receipt line, "" = ignored
+
 static func tick_post(_state: GameState, _rep: Dictionary) -> void:
 	pass
 

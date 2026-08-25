@@ -351,7 +351,7 @@ namespace Runway.Game
                 ? "Nothing came for you this week. The week is yours."
                 : ContentDb.Str(_g.CurrentEvent, "title") + " — " + ContentDb.Str(_g.CurrentEvent, "body");
 
-            bool specialUsed = TermSheets() || LevelUp();
+            bool specialUsed = TermSheets() || MnaOffer() || LevelUp();
 
             // the field gets FOUR rules of reserved paper plus the ASK LINE — except on
             // a term-sheet week, where the cards ARE the question and the prose yields.
@@ -424,6 +424,7 @@ namespace Runway.Game
                 if (!int.TryParse(id.Substring(3), out idx) || idx >= captured.Count) return;
                 FundingOffer o = captured[idx];
                 SimEngine.ApplyRound(St, o.Amount, o.EquityPct);
+                SimBoard.OnRoundClosed(St, o.Amount, o.EquityPct);
                 St.Flags.Remove("fundraising_open");
                 St.SetFlag(St.RoundsRaised.Count <= 2 ? "seed_raised" : "series_a");
                 St.LogAction(string.Format("signed {0}: ${1} for {2:0.0}%",
@@ -431,6 +432,38 @@ namespace Runway.Game
                 Runway.Audio.Sfx.Win();
                 _commit.RefreshLock();
             };
+            return true;
+        }
+
+        /// THE OFFER ON THE TABLE (coordinator seam for lane 08): an M&A/board
+        /// card block mirroring the term-sheet idiom — SimBoard owns content
+        /// and consequences; the journal only draws and routes.
+        bool MnaOffer()
+        {
+            var block = SimBoard.JournalOffer(St);
+            if (block == null || block.Count == 0) return false;
+            _jp.Line(Runway.Game.ContentDb.Str(block, "title", "AN OFFER IS ON THE TABLE:"));
+            var mnaCards = new List<RowItem>();
+            var arr = block["cards"] as Newtonsoft.Json.Linq.JArray;
+            if (arr != null)
+                foreach (var t in arr)
+                {
+                    var c = t as Newtonsoft.Json.Linq.JObject;
+                    mnaCards.Add(RowItem.Of(Runway.Game.ContentDb.Str(c, "id"),
+                                            Runway.Game.ContentDb.Str(c, "text")));
+                }
+            if (mnaCards.Count > 0)
+            {
+                _jp.IconRow(mnaCards, new Vector2(230f, 40f), "body");
+                _jp.ChoiceMade += id =>
+                {
+                    string receipt = SimBoard.JournalPick(St, id);
+                    if (string.IsNullOrEmpty(receipt)) return;
+                    St.LogAction(receipt);
+                    Runway.Audio.Sfx.Win();
+                    _commit.RefreshLock();
+                };
+            }
             return true;
         }
 
