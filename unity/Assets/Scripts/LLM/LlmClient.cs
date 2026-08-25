@@ -207,6 +207,34 @@ namespace Runway.Llm
               }}}}
         }");
 
+        /// Schema for the one batch lead-naming call (05 §10): the engine
+        /// already decided every number; the model only names companies.
+        public static readonly JObject LeadSchema = JObject.Parse(@"{
+          ""type"": ""object"", ""additionalProperties"": false, ""required"": [""leads""],
+          ""properties"": {""leads"": {""type"": ""array"", ""minItems"": 1, ""maxItems"": 3,
+            ""items"": {""type"": ""object"", ""additionalProperties"": false,
+              ""required"": [""name"", ""one_liner""],
+              ""properties"": {
+                ""name"": {""type"": ""string"", ""maxLength"": 30},
+                ""one_liner"": {""type"": ""string"", ""maxLength"": 90}
+              }}}}
+        }");
+
+        /// Schema for the one batch bet-dressing call (07 §10): the engine
+        /// priced every card; the model only writes words and picks a rung.
+        public static readonly JObject BetsSchema = JObject.Parse(@"{
+          ""type"": ""object"", ""additionalProperties"": false, ""required"": [""bets""],
+          ""properties"": {""bets"": {""type"": ""array"", ""minItems"": 1, ""maxItems"": 3,
+            ""items"": {""type"": ""object"", ""additionalProperties"": false,
+              ""required"": [""name"", ""desc"", ""kind"", ""ambition""],
+              ""properties"": {
+                ""name"": {""type"": ""string"", ""maxLength"": 28},
+                ""desc"": {""type"": ""string"", ""maxLength"": 90},
+                ""kind"": {""type"": ""string"", ""enum"": [""quality"", ""retention"", ""reach"", ""platform""]},
+                ""ambition"": {""type"": ""integer"", ""minimum"": 1, ""maximum"": 3}
+              }}}}
+        }");
+
         /// Schema for run-start world generation: the bible born from the pitch.
         public static readonly JObject WorldSchema = JObject.Parse(@"{
           ""type"": ""object"", ""additionalProperties"": false,

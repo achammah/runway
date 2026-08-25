@@ -96,6 +96,9 @@ func _write_body() -> void:
 	line(_fit(_compress(headline.split("\n")[0]), CAUSE_LINES))
 	line("you walked away with $%s" % _fmt(state.ceremony_payout
 			if state and state.ceremony_payout > 0 else (state.payout_today() if state else 0)))
+	# THE SECONDARY LESSON LANDS HARDEST ON A DEATH (08 §7).
+	if state != null and state.dead and state.founder_banked > 0:
+		line("you banked $%s on the way down. The company died; you didn't." % _fmt(state.founder_banked))
 	# THE ARCHETYPE EPILOGUE: who this run says you are, from every move's traits
 	if state != null and not state.traits_tally.is_empty():
 		var arch := state.founder_archetype()

@@ -202,6 +202,14 @@ static func build(state: GameState) -> void:
 	state.rivals = rivals
 	if state.offers.is_empty():
 		state.offers = default_offers(state.biz_what, state.biz_who, rng)
+		# DECISIONS.md (catalog): the flagship carries ONE starter fixed line so
+		# the catalog-overhead lane is alive from week 1 — the tools were always
+		# real; now the ledger says so.
+		if not state.offers.is_empty():
+			var aud0 := 0.25 if state.biz_who == "Consumer" else (4.0 if state.biz_who == "Enterprise" else 1.0)
+			var flag0: Dictionary = state.offers[0]
+			flag0["fixed_lines"] = [{"label": "the tools that make it", "amount": 15.0 * aud0}]
+			SimEngine.sync_offer_costs(flag0)
 	seed_rival_conduct(state, rng)
 
 ## THE RIVALS' CONDUCT (docs/design/03-rivals-macro.md §1): a war chest, a

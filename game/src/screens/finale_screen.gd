@@ -41,14 +41,22 @@ func _score() -> void:
 		bonuses.append(["STILL YOURS", "×1.25", PALETTE["sage"]])
 	if state.hype >= 60:
 		mult *= 1.15
-		bonuses.append(["SOLD AT THE TOP", "×1.15", PALETTE["yellow"]])
+		# A fire sale keeps its multipliers — only the name of the chip changes,
+		# because "sold at the top" is a lie at 0.4x standalone (08 §14 Q1).
+		bonuses.append(["THE SOFT LANDING" if state.has_flag("soft_landing") else "SOLD AT THE TOP",
+			"×1.15", PALETTE["yellow"]])
 	if state.cofounders.is_empty():
 		mult *= 1.1
 		bonuses.append(["SOLO THE WHOLE WAY", "×1.1", PALETTE["blue"]])
 	if state.pivots >= 2:
 		mult *= 1.1
 		bonuses.append(["PIVOTED AND LIVED", "×1.1", PALETTE["coral"]])
-	final_payout = int(base * mult)
+	# BANKED SECONDARY CASH IS NOT MULTIPLIED (08 §7): it already left the
+	# casino, and that IS the teaching — de-risking forgoes the upside it
+	# bought safety from. It still joins the hero count-up.
+	final_payout = int(base * mult) + state.founder_banked
+	if state.founder_banked > 0:
+		bonuses.append(["CHIPS OFF THE TABLE", "+$%s" % _fmt(state.founder_banked), PALETTE["blue"]])
 	# the number the bell promised IS the number the book records
 	state.set_flag("ceremony_payout")
 	state.ceremony_payout = final_payout

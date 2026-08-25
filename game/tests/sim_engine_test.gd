@@ -410,7 +410,8 @@ func _go() -> void:
 	ln.traction = 0
 	ln.loan_principal = 10_000
 	SimEngine.weekly_tick(ln)
-	_ok(ln.loan_principal >= 11_800, "18%%/wk compounds (owe %d)" % ln.loan_principal)
+	_ok(SimBank.debt_total(ln) >= 11_800 and ln.loan_principal == 0,
+		"18%%/wk compounds through the migrated note (owe %d)" % SimBank.debt_total(ln))
 
 	# ── WAVE A: the four bugs the design corpus found (docs/design/DECISIONS.md)
 	# 1 — price_offer was in the schema and the executor but not the validator,

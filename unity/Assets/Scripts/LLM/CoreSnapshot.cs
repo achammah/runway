@@ -69,6 +69,7 @@ namespace Runway.Llm
                         Unit = o.Unit ?? "",
                         FairPrice = (float)o.FairPrice,
                         PriceSet = o.PriceSet,
+                        ServeCost = (float)(o.UnitCost * SimEngine.LearningCurve(state)),
                     });
             }
             s.Offers = offers.ToArray();

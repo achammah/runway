@@ -283,7 +283,7 @@ namespace Runway.Llm
                     string onm = string.IsNullOrEmpty(o.Name) ? "an offer" : o.Name;
                     string ounit = string.IsNullOrEmpty(o.Unit) ? "per order" : o.Unit;
                     if (o.Price > 0f)
-                        outLines.Add(string.Format("- On sale: '{0}' at ${1} {2}.", onm, (int)o.Price, ounit));
+                        outLines.Add(string.Format("- On sale: '{0}' at ${1} {2} (costs ~${3} a sale to serve).", onm, (int)o.Price, ounit, (int)System.Math.Round(o.ServeCost)));
                     else if (o.PriceSet)
                         outLines.Add(string.Format("- '{0}' is FREE ON PURPOSE (the founder chose $0) — it pays in users, not dollars.", onm));
                     else if (o.FairPrice > 0f)
@@ -471,6 +471,40 @@ namespace Runway.Llm
                 {
                     if (cb != null) cb(res);
                 }, new LlmOptions { Tier = "clarify" });
+        }
+
+        const string LEAD_PROMPT = "You name enterprise prospects for RUNWAY!, a satirical startup survival game. You receive the player's company (name, idea, what × who) and N new prospects that just took a first meeting, each with a size band. Invent N fictional companies that would plausibly BUY from this exact business — sector-appropriate, pronounceable, never real companies or people. one_liner: who they are and why they're suddenly shopping, dry, wince-funny, a complete sentence. Return exactly N leads in the order given. Never output numbers, seat counts, or stages.";
+
+        /// ONE batch naming call on weeks with spawns (05 §10): pure transport —
+        /// the caller builds the payload from SimPipeline and lands the reply.
+        public void DressLeads(JObject payload, Action<JObject> cb)
+        {
+            if (payload == null || payload.Count == 0 || Llm == null || !Llm.Enabled)
+            {
+                if (cb != null) cb(null);
+                return;
+            }
+            Llm.RequestJson(LEAD_PROMPT,
+                payload.ToString(Newtonsoft.Json.Formatting.None) + "\nName them.",
+                LlmClient.LeadSchema, res => { if (cb != null) cb(res); },
+                new LlmOptions { Tier = "clarify" });
+        }
+
+        const string BETS_PROMPT = "You name feature bets for RUNWAY!, a satirical startup survival game. Given the company, its era, what already shipped and what sits on the board, write N candidate feature bets SPECIFIC to this exact business. name: <=28 chars, plain product-speak a PM would write on a card. desc: <=90 chars, dry and wince-funny — what it is and who it is for. kind: quality (the product gets better for everyone), retention (existing customers stay longer), reach (new people get a reason to show up), platform (infrastructure that makes all future building faster — only natural for a company with real scale). ambition: 1 small and safe, 2 a real feature, 3 the big swing. Cover at least two different kinds across the batch. Never numbers, never metric promises, never real companies or people, never a bet already on the board or recently shipped. Exactly `slots` entries. Output ONLY the schema.";
+
+        /// ONE batch dressing call on weeks the board drew fresh paper (07 §10):
+        /// pure transport — caller builds the payload and lands the reply.
+        public void DressBets(JObject payload, Action<JObject> cb)
+        {
+            if (payload == null || payload.Count == 0 || Llm == null || !Llm.Enabled)
+            {
+                if (cb != null) cb(null);
+                return;
+            }
+            Llm.RequestJson(BETS_PROMPT,
+                payload.ToString(Newtonsoft.Json.Formatting.None) + "\nName them.",
+                LlmClient.BetsSchema, res => { if (cb != null) cb(res); },
+                new LlmOptions { Tier = "clarify" });
         }
 
         public void Clarify(RunSnapshot s, JObject ev, string move, Action<JObject> cb)

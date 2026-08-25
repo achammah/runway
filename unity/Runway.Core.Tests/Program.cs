@@ -533,7 +533,8 @@ namespace Runway.CoreTests
             ln.Traction = 0;
             ln.LoanPrincipal = 10000;
             SimEngine.WeeklyTick(ln);
-            Ok(ln.LoanPrincipal >= 11800, "18%/wk compounds (owe " + S(ln.LoanPrincipal) + ")");
+            Ok(SimBank.DebtTotal(ln) >= 11800 && ln.LoanPrincipal == 0,
+               "18%/wk compounds through the migrated note (owe " + S(SimBank.DebtTotal(ln)) + ")");
 
             // ── WAVE A: the four bugs the design corpus found (DECISIONS.md)
             // 1 — price_offer was in the schema and the executor but not the

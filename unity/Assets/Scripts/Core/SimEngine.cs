@@ -111,6 +111,7 @@ namespace Runway.Core
         [JsonProperty("ltv")] public int Ltv;
         [JsonProperty("payback_wk")] public int PaybackWk;
         [JsonProperty("applicants_new")] public int ApplicantsNew;
+        [JsonProperty("spawned_leads")] public List<string> SpawnedLeads = new List<string>();
     }
 
     /// <summary>Advantage/disadvantage and the dice that came out of it.</summary>
@@ -713,8 +714,9 @@ namespace Runway.Core
             }
             // a sales budget hires fractional closing power (an SDR-hour equivalent)
             double gtmCap = (1.5 + 0.8 * state.Competence("sell")
-                + SimLabor.SalesCapacity(state, 3.0 * salesHeads) + mkBudget / 400.0 + bSales / 600.0) * capScale;
-            adds = Gd.Minf(adds, gtmCap);
+                + SimLabor.SalesCapacity(state, 3.0 * salesHeads) + SimFunnel.CapReach(state, mkBudget) + SimRoadmap.GtmCapBonus(state) + bSales / 600.0) * capScale;
+            if (!SimPipeline.SkipsGtmCap(state))
+                adds = Gd.Minf(adds, gtmCap);
             // HARDWARE: you cannot sell what you did not build. 09 clamps adds
             // to the shelf and decrements it here; off Hardware the stub hands
             // adds straight back, so demand is stock-free exactly as it is today.
@@ -1310,7 +1312,9 @@ namespace Runway.Core
         public static double WarmthPct(GameState state)
         {
             int doors = state.TraitLevel("credibility") + state.TraitLevel("network");
-            return Gd.Minf(2.0 * Gd.Maxi(doors - 6, 0), 8.0);
+            // A clean governance record IS lower perceived risk and a smaller
+            // equity ask; missed plans are a risk premium (08 section 4).
+            return Gd.Clampf(Gd.Minf(2.0 * Gd.Maxi(doors - 6, 0), 8.0) + SimBoard.WarmthDelta(state), 0.0, 12.0);
         }
 
         /// <summary>
@@ -1347,6 +1351,9 @@ namespace Runway.Core
         public static void ApplyRound(GameState state, int amount, double equityPct)
         {
             state.Cash += amount;
+            // 06 sizes venture debt at 30% of the last round, so the round has
+            // to leave its size behind. Old saves stay at 0.
+            state.LastRoundAmount = amount;
             double keep = 1.0 - equityPct / 100.0;
             state.FounderPct = Gd.Maxf(state.FounderPct * keep, 1.0);
             foreach (Cofounder cf in state.Cofounders)
@@ -1509,10 +1516,14 @@ namespace Runway.Core
         {
             if (state.Offers == null || state.Offers.Count == 0) return 0.0;
             double total = 0.0;
-            foreach (Offer od in state.Offers)
+            double lc = LearningCurve(state);
+            int flagship = SimFactory.Active(state) ? SimFactory.FlagshipIndex(state) : -1;
+            for (int i = 0; i < state.Offers.Count; i++)
             {
+                Offer od = state.Offers[i];
+                if (i == flagship) continue;   // 09 §5: flagship parts paid ONCE, at build
                 if (OfferBilledPrice(od) <= 0.0 && !od.PriceSet) continue;
-                total += od.Weight * od.UnitCost * LearningCurve(state) * OfferCadence(od.Unit);
+                total += od.Weight * od.UnitCost * lc * OfferCadence(od.Unit);
             }
             return total;
         }
@@ -1992,7 +2003,9 @@ namespace Runway.Core
             var rivals = new List<string>();
             foreach (Rival r in state.Rivals)
             {
-                rivals.Add(string.Format(CultureInfo.InvariantCulture, "{0} ({1})", r.Name ?? "?", Fuzz(r.Strength)));
+                rivals.Add(string.Format(CultureInfo.InvariantCulture, "{0} ({1}, {2}, {3}, fights on {4})",
+                    r.Name ?? "?", Fuzz(r.Strength), SimStreet.VigorWord(r.Vigor),
+                    SimStreet.PostureWord(r.PricePosture), r.Focus ?? "growth"));
             }
             return new Dictionary<string, object>
             {
@@ -2008,9 +2021,23 @@ namespace Runway.Core
                 { "exhaustion", state.Exhaustion },
                 { "statuses", conds },
                 { "clocks", clocksOut },
-                { "loan_owed", state.LoanPrincipal },
+                { "loan_owed", SimBank.DebtTotal(state) },
                 { "valuation", Valuation(state) },
                 { "rivals", rivals },
+                { "pipeline", SimPipeline.SignalLine(state) },
+                { "roadmap", RoadmapSignal(state) },
+            };
+        }
+
+        static Dictionary<string, object> RoadmapSignal(GameState state)
+        {
+            var committed = new List<string>();
+            foreach (Bet b in SimRoadmap.CommittedBets(state)) committed.Add(b.Name ?? "");
+            var ready = SimRoadmap.ReadyBets(state);
+            return new Dictionary<string, object>
+            {
+                { "committed", committed },
+                { "ready", ready.Count > 0 ? (ready[0].Name ?? "") : "" },
             };
         }
 

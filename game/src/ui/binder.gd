@@ -42,6 +42,7 @@ const TAB_W := 118.0
 const TAB_H := 44.0
 
 var state: GameState
+var generator: EventGenerator = null   # the street's pricing road (01 WAIT state)
 ## DESK-LOCAL STATE, one visit long (docs/design/10-interface-language.md §4.8):
 ## a desk's page mode, its expanded row, its armed control. Never saved, cleared
 ## on every tab change, dead with this node — so reopening the binder is always
@@ -53,7 +54,8 @@ var _tab := 0
 var _sheet: Control
 var _content: Control
 
-func setup(p_state: GameState) -> void:
+func setup(p_state: GameState, p_gen: EventGenerator = null) -> void:
+	generator = p_gen
 	state = p_state
 
 func _ready() -> void:
@@ -136,7 +138,7 @@ func _ready() -> void:
 ## ESC POPS BEFORE IT CLOSES (docs/design/10-interface-language.md §4.2): inside
 ## a desk's state machine Esc walks DETAIL/WRITE/WAIT/REVIEW back to the list and
 ## disarms an armed control; only from a tab's base state does it shut the binder.
-func _input(ev: InputEvent) -> void:
+func _unhandled_key_input(ev: InputEvent) -> void:
 	if ev is InputEventKey and ev.pressed and ev.keycode in [KEY_ESCAPE, KEY_TAB, KEY_B]:
 		accept_event()
 		if ev.keycode == KEY_ESCAPE and _desk_pop():
@@ -183,7 +185,7 @@ func _refresh() -> void:
 	# frame's own pages and stay here.
 	match _tab:
 		0: _tab_vitals()
-		1: _tab_ledger()
+		1: DeskLedger.draw(self)
 		2: DeskBank.draw(self)
 		3: DeskCatalog.draw(self)
 		4: DeskCustomers.draw(self)
@@ -341,141 +343,29 @@ func _tab_vitals() -> void:
 	var payroll := 0
 	for e in state.employees:
 		payroll += int(e.get("salary", 0))
+	# the marketing number is the CHANNEL SUM now: the single legacy field goes
+	# stale the moment the ledger's four lanes carry the spend (04 §6.2)
+	var mk_pnl: Dictionary = state.get_meta("pnl", {})
+	var mk_burn := int(mk_pnl.get("marketing", int(SimFunnel.spend_total(state))))
+	# ONE HONEST DEBT FIGURE across shark, bank and venture notes (06 §9): the
+	# single `loan_principal` field stopped being the whole story the week the
+	# structured notes landed, and a founder must never read a debt-free line
+	# with a bank note on the books.
+	var debt_owed := SimBank.debt_total(state)
+	var note_count := state.loans.size() + (1 if state.loan_principal > 0 else 0)
 	_label("burn: rent $%s · payroll $%s · marketing $%s%s" % [
 		_fmt(int(GameState.ERA_RENT.get(state.era, 150))), _fmt(payroll),
-		_fmt(state.marketing_budget),
-		("  ·  LOAN OWED $%s (18%%/wk)" % _fmt(state.loan_principal)) if state.loan_principal > 0 else ""],
+		_fmt(mk_burn),
+		("  ·  DEBT $%s across %d notes (worst %d%%/wk)" % [_fmt(debt_owed), note_count,
+			int(round(SimBank.worst_rate(state) * 100.0))]) if debt_owed > 0 else ""],
 		Vector2(10, 432), 27, Color(INK, 0.8))
 	_label("valuation, if anyone asked: $%s" % _fmt(SimEngine.valuation(state)), Vector2(10, 486), 30)
+	# the hype chart moved here when the roadmap took the product sheet (07)
+	_label("hype:", Vector2(10, 556), 24, Color(INK, 0.6))
+	_spark(_series("hype"), Vector2(10, 580), Vector2(1120, 120), YELL)
 	_label("price ×%.2f  ·  the market is %s" % [state.price_mult,
 		"warm" if state.market_trend > 1.05 else ("cold" if state.market_trend < 0.95 else "even")],
 		Vector2(10, 532), 27, Color(INK, 0.8))
-
-# ── tab 1: THE LEDGER — the levers, the math, the truth about the money ─────
-## [budget key, the word on the page, what the money actually does]. The key and
-## the word part company for the top lever: the state key migrated to `ads` when
-## the four acquisition channels landed, while the founder still calls the whole
-## top of the funnel MARKETING until the channels unlock at coworking.
-const LEVERS := [
-	["ads", "marketing", "reach — more people hear of you; saturates past ~$2k"],
-	["sales", "sales", "closing — every $600/wk closes like one more part-time seller"],
-	["care", "care", "retention — up to 30% less churn as care approaches $3k"],
-	["rnd", "rnd", "product — ships ~+1 quality per $1,200/wk and pays down debt"],
-	["office", "office", "the office — food, perks, benefits; morale climbs toward +3/wk by ~$2k"],
-]
-const LEVER_STEPS := [0, 250, 500, 1000, 2000, 4000, 8000]
-
-func _tab_ledger() -> void:
-	_label("the ledger — where this week's money goes", Vector2(10, 6), 38)
-	var y := 78.0
-	for lv in LEVERS:
-		var cat := String(lv[0])
-		var cur := int(state.budgets.get(cat, 0))
-		_label(String(lv[1]).to_upper(), Vector2(10, y), 28)
-		_label(String(lv[2]), Vector2(10, y + 34), 21, Color(INK, 0.6))
-		_label("$%s/wk" % _fmt(cur), Vector2(520, y + 4), 30, PEN)
-		# WHAT THIS MONEY IS DOING RIGHT NOW, from the engine's own formulas —
-		# the mechanics visible at the point of the decision
-		_label(_lever_effect(cat, cur), Vector2(688, y + 12), 24, Color(INK, 0.75))
-		var minus := Button.new()
-		minus.text = "−"
-		minus.position = Vector2(1000, y)
-		minus.size = Vector2(52, 46)
-		_ink_btn(minus)
-		minus.pressed.connect(func() -> void:
-			state.budgets[cat] = _lever_step(cur, -1)
-			_refresh())
-		_content.add_child(minus)
-		var plus := Button.new()
-		plus.text = "+"
-		plus.position = Vector2(1064, y)
-		plus.size = Vector2(52, 46)
-		_ink_btn(plus)
-		plus.pressed.connect(func() -> void:
-			state.budgets[cat] = _lever_step(cur, 1)
-			_refresh())
-		_content.add_child(plus)
-		y += 78.0
-	# the math, honestly — one running cursor, compact: five levers + the
-	# P&L + the warnings all live inside the 760px sheet
-	var ue: Dictionary = state.get_meta("unit_econ", {})
-	var lever_sum := 0
-	for k in state.budgets:
-		lever_sum += int(state.budgets[k])
-	var rw := SimEngine.runway_weeks(state)
-	var cy := y + 4.0
-	var arpu := float(ue.get("arpu", 0.0))
-	var cacv := int(ue.get("cac", 0))
-	var ltvv := int(ue.get("ltv", 0))
-	var pb := int(ue.get("payback_wk", 0))
-	_label("a customer pays ≈ $%.0f/wk · costs $%s to win (CAC) · is worth $%s over their stay (LTV) · pays back in %s"
-		% [arpu, (_fmt(cacv) if cacv > 0 else "?"), (_fmt(ltvv) if ltvv > 0 else "?"),
-		("%d wks" % pb) if pb > 0 else "—"], Vector2(10, cy), 23, Color(INK, 0.75), 1100.0)
-	cy += 34.0
-	# THE WEEK, HONESTLY (owner: a real business sim knows its running cost):
-	# the engine's own P&L record, every lane, and the bottom line in ink.
-	var pnl: Dictionary = state.get_meta("pnl", {})
-	if not pnl.is_empty():
-		_label("last week: in $%s · serving $%s%s" % [_fmt(int(pnl.get("revenue", 0))),
-			_fmt(int(pnl.get("cogs", 0))),
-			("  (learning ×%.2f)" % float(pnl.get("learning", 1.0))) if float(pnl.get("learning", 1.0)) < 0.995 else ""],
-			Vector2(10, cy), 24, BLUE, 1100.0)
-		cy += 34.0
-		_label("out: rent $%s · payroll $%s · infra $%s · levers $%s%s%s" % [
-			_fmt(int(pnl.get("rent", 0))), _fmt(int(pnl.get("payroll", 0))),
-			_fmt(int(pnl.get("infra", 0))),
-			_fmt(int(pnl.get("marketing", 0)) + int(pnl.get("sales", 0)) + int(pnl.get("care", 0)) + int(pnl.get("rnd", 0)) + int(pnl.get("office", 0))),
-			(" · unforeseen $%s" % _fmt(int(pnl.get("incident", 0)))) if int(pnl.get("incident", 0)) > 0 else "",
-			(" · standing $%s/wk" % _fmt(int(pnl.get("liabilities_wk", 0)))) if int(pnl.get("liabilities_wk", 0)) > 0 else ""],
-			Vector2(10, cy), 24, Color(INK, 0.8), 1100.0)
-		cy += 34.0
-		var net := int(pnl.get("net", 0))
-		_label("THE BOTTOM LINE: %s$%s a week · levers total $%s/wk · runway %s" % [
-			"+" if net >= 0 else "−", _fmt(absi(net)), _fmt(lever_sum),
-			("%d weeks" % rw) if rw < 999 else "gaining money"],
-			Vector2(10, cy), 27, (SAGE if net >= 0 else PEN), 1100.0)
-		cy += 40.0
-	else:
-		_label("levers total $%s/wk · runway %s" % [_fmt(lever_sum),
-			("%d weeks" % rw) if rw < 999 else "gaining money"], Vector2(10, cy), 27)
-		cy += 40.0
-	if rw <= 4 and rw < 999:
-		_label("⚠ this spend kills the company in %d weeks — cut it or earn it" % rw,
-			Vector2(10, cy), 26, PEN, 1100.0)
-		cy += 36.0
-	if state.cash < 0:
-		_label("THE RED: %d of 3 weeks below zero. At three, it's over." % state.weeks_in_red,
-			Vector2(10, cy), 26, PEN, 1100.0)
-		cy += 36.0
-	_label("the rules of this world: reach saturates · only capacity closes · churn is a leaky bucket · debt slows everything · three weeks below zero ends it",
-		Vector2(10, cy + 2.0), 20, Color(INK, 0.5), 1100.0)
-
-## the engine's live math for one lever, in one plain phrase
-func _lever_effect(cat: String, v: int) -> String:
-	var th := state.theta
-	match cat:
-		"ads", "content", "referrals", "outbound":
-			var mult := 1.0 + 1.4 * (1.0 - exp(-float(v) / float(th.get("cac_sat", 900.0))))
-			return "reach ×%.2f" % mult if v > 0 else "no reach bought"
-		"sales":
-			return "+%.1f closers of capacity" % (float(v) / 600.0) if v > 0 else "founder sells alone"
-		"care":
-			var cut := 30.0 * (1.0 - exp(-float(v) / 1500.0))
-			return "churn −%d%%" % int(round(cut)) if v > 0 else "nobody picks up"
-		"rnd":
-			return "+%.1f product/wk, debt melts" % (float(v) / 1200.0) if v > 0 else "no extra shipping"
-		"office":
-			var mg := 3.0 * (1.0 - exp(-float(v) / 800.0))
-			return "+%.1f morale/wk" % mg if v > 0 else "instant coffee, cold room"
-	return ""
-
-func _lever_step(cur: int, dir: int) -> int:
-	var idx := 0
-	for i in LEVER_STEPS.size():
-		if LEVER_STEPS[i] <= cur:
-			idx = i
-	idx = clampi(idx + dir, 0, LEVER_STEPS.size() - 1)
-	return mini(LEVER_STEPS[idx], SimEngine.era_spend_cap(state.era))
 
 func _ink_btn(btn: Button) -> void:
 	btn.flat = true

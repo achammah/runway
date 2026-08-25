@@ -196,7 +196,7 @@ func _unhandled_key_input(ev: InputEvent) -> void:
 
 func _open_binder(on_desk: String = "") -> void:
 	_binder = Binder.new()
-	_binder.setup(state)
+	_binder.setup(state, generator)
 	add_child(_binder)
 	if on_desk != "":
 		_binder.focus_desk(on_desk)
@@ -2928,7 +2928,7 @@ func _apply_dm_effects(effects: Array) -> Array:
 					# (fair price, marginal cost, elasticity, shelf weight) apply
 					# to it too. Appending the dict raw was a hole straight past
 					# every one of them (docs/design/DECISIONS.md §A4).
-					hit = SimEngine.add_offer(state, pname, "per order", pv, 0.0, 2.0, 1.0)
+					hit = SimCatalog.add_offer(state, pname, "per order", pv, 0.0, 2.0, 1.0)
 				elif hit.is_empty() and not state.offers.is_empty():
 					hit = state.offers[0]   # everything priced: it's a reprice
 				if not hit.is_empty():
@@ -3084,6 +3084,10 @@ func _apply_lock(work_results: Dictionary) -> void:
 	var tick := SimEngine.weekly_tick(state)
 	if int(tick.get("applicants_new", 0)) > 0:
 		generator.dress_applicants(state)   # fire-and-forget: the cards are already playable
+	if not (tick.get("spawned_leads", []) as Array).is_empty():
+		generator.dress_leads(state)        # fire-and-forget: the board already has names
+	if int(tick.get("bets_refreshed", 0)) > 0:
+		generator.dress_bets(state)         # fire-and-forget: the board is already playable
 	for tl in tick.get("lines", []):
 		outcome_log.append(String(tl))
 	for ev_l in tick.get("events", []):

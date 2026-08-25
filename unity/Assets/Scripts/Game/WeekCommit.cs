@@ -491,7 +491,7 @@ namespace Runway.Game
                             // elasticity, shelf weight) apply to it too.
                             // Appending the object raw was a hole straight past
                             // every one of them (DECISIONS.md Wave A #4).
-                            hit = SimEngine.AddOffer(St, pname, "per order", pv, 0.0, 2.0, 1.0);
+                            hit = SimCatalog.AddOffer(St, pname, "per order", pv, 0.0, 2.0, 1.0);
                         }
                         else if (hit == null && St.Offers != null && St.Offers.Count > 0)
                         {
@@ -643,6 +643,27 @@ namespace Runway.Game
                     {
                         if (res != null)
                             SimLabor.DressApplicants(St, res["candidates"] as Newtonsoft.Json.Linq.JArray);
+                    });
+            }
+            if (SimRoadmap.LastRefreshed > 0 && bootG != null && bootG.Generator != null)
+            {
+                var betPayload = SimRoadmap.DressingPayload(St);
+                if (betPayload != null && betPayload.Count > 0)
+                    bootG.Generator.DressBets(betPayload, res =>
+                    {
+                        if (res != null)
+                            SimRoadmap.DressBets(St, res["bets"] as Newtonsoft.Json.Linq.JArray);
+                    });
+            }
+            if (bootG != null && bootG.Generator != null)
+            {
+                // the lead board is playable before the reply (05 §10)
+                var leadPayload = SimPipeline.DressingPayload(St);
+                if (leadPayload != null && leadPayload.Count > 0)
+                    bootG.Generator.DressLeads(Newtonsoft.Json.Linq.JObject.FromObject(leadPayload), res =>
+                    {
+                        if (res != null)
+                            SimPipeline.DressLeadsRows(St, res["leads"] as Newtonsoft.Json.Linq.JArray);
                     });
             }
             outcomeLog.AddRange(tick.Lines);

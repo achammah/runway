@@ -91,6 +91,7 @@ namespace Runway.Llm
             public string Unit;
             public float FairPrice;
             public bool PriceSet;
+            public float ServeCost;   // unit_cost × learning, for the DM's catalog line
         }
     }
 }

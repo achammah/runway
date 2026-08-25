@@ -391,6 +391,19 @@ namespace Runway.Core
             if (state.Offers == null || state.Offers.Count == 0)
             {
                 state.Offers = DefaultOffers(state.BizWhat, state.BizWho, rng);
+                // DECISIONS.md (catalog): the flagship carries ONE starter fixed
+                // line so the catalog-overhead lane is alive from week 1.
+                if (state.Offers != null && state.Offers.Count > 0)
+                {
+                    double aud0 = state.BizWho == "Consumer" ? 0.25
+                                : state.BizWho == "Enterprise" ? 4.0 : 1.0;
+                    Offer flag0 = state.Offers[0];
+                    flag0.FixedLines = new List<CostLine>
+                    {
+                        new CostLine { Label = "the tools that make it", Amount = 15.0 * aud0 },
+                    };
+                    SimEngine.SyncOfferCosts(flag0);
+                }
             }
             SeedRivalConduct(state, rng);
         }

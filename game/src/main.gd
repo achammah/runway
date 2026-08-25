@@ -2101,7 +2101,12 @@ func _check_exit() -> void:
 		# again the moment it closes, so nothing is skipped, only sequenced.
 		return
 	var reason := ""
-	if state.era == "hq" and state.valuation() >= 25_000_000 and state.traction >= 70:
+	# THE SIGNATURE IN THE JOURNAL ENDS THE RUN (08 §7). Selling the company or
+	# ringing the bell sets exit_value at the tap; the run closes on the next
+	# week change, so the ceremony never tears a page away mid-sentence.
+	if state.exit_value > 0:
+		reason = "acquisition" if state.has_flag("acquired_exit") else "ipo"
+	elif state.era == "hq" and state.valuation() >= 25_000_000 and state.traction >= 70:
 		reason = "ipo"                     # the company is genuinely public-ready
 	elif state.week >= RUN_WEEK_CAP:
 		# no run runs forever. Whatever it has built by now IS the ending.
@@ -2117,11 +2122,11 @@ func _check_exit() -> void:
 		music.play("title")
 		music.set_stem("")
 		var fin := FinaleScreen.new()
-		fin.setup(state, "ipo")
-		fin.done.connect(func(): _to_autopsy({"victory": true}, "ipo"))
+		fin.setup(state, reason)
+		fin.done.connect(func(): _to_autopsy({"victory": true}, reason))
 		_swap(fin)
 	else:
-		_to_autopsy({"victory": true}, "ipo")
+		_to_autopsy({"victory": true}, reason)
 
 ## BUG-15 — THE HARNESSES GET THEIR OWN PROFILE.
 ## Every autopilot run used to land in the player's gallery: 39 runs and ×37 FOUNDER

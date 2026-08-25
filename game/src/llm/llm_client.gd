@@ -172,15 +172,25 @@ const CLARIFY_SCHEMA := {
 ## Schema for pricing a founder-written offer: the street answers with terms.
 const OFFER_SCHEMA := {
 	"type": "object", "additionalProperties": false,
-	"required": ["name", "unit", "fair_price", "unit_cost", "elasticity", "weight"],
+	"required": ["name", "unit", "fair_price", "elasticity", "weight",
+		"variable_costs", "fixed_costs_wk"],
 	"properties": {
 		"name": {"type": "string", "maxLength": 40},
 		"unit": {"type": "string", "enum": ["per session", "per month", "per order",
-			"per unit", "per year", "per hour"]},
+			"per unit", "per year", "per hour", "per package", "per kit"]},
 		"fair_price": {"type": "number", "minimum": 1, "maximum": 50000},
-		"unit_cost": {"type": "number", "minimum": 0, "maximum": 45000},
 		"elasticity": {"type": "number", "minimum": 0.5, "maximum": 3.0},
 		"weight": {"type": "number", "minimum": 0.2, "maximum": 3.0},
+		"variable_costs": {"type": "array", "minItems": 1, "maxItems": 4,
+			"items": {"type": "object", "additionalProperties": false,
+				"required": ["label", "amount"],
+				"properties": {"label": {"type": "string", "maxLength": 24},
+					"amount": {"type": "number", "minimum": 0, "maximum": 25000}}}},
+		"fixed_costs_wk": {"type": "array", "minItems": 0, "maxItems": 3,
+			"items": {"type": "object", "additionalProperties": false,
+				"required": ["label", "amount"],
+				"properties": {"label": {"type": "string", "maxLength": 24},
+					"amount": {"type": "number", "minimum": 0, "maximum": 5000}}}},
 	},
 }
 
@@ -195,6 +205,33 @@ const CANDIDATES_SCHEMA := {
 				"name": {"type": "string", "maxLength": 40},
 				"quirk": {"type": "string", "maxLength": 60},
 				"one_liner": {"type": "string", "maxLength": 90},
+			}}}},
+}
+
+## Schema for the one batch lead-naming call (05 §10): the engine already
+## decided seats, stages and spawn counts; the model only names companies.
+const LEAD_SCHEMA := {
+	"type": "object", "additionalProperties": false, "required": ["leads"],
+	"properties": {"leads": {"type": "array", "minItems": 1, "maxItems": 3,
+		"items": {"type": "object", "additionalProperties": false,
+			"required": ["name", "one_liner"],
+			"properties": {
+				"name": {"type": "string", "maxLength": 30},
+				"one_liner": {"type": "string", "maxLength": 90}}}}},
+}
+
+## Schema for the one batch bet-dressing call (07 §10): the engine priced
+## every card; the model only writes the words and picks a rung.
+const BETS_SCHEMA := {
+	"type": "object", "additionalProperties": false, "required": ["bets"],
+	"properties": {"bets": {"type": "array", "minItems": 1, "maxItems": 3,
+		"items": {"type": "object", "additionalProperties": false,
+			"required": ["name", "desc", "kind", "ambition"],
+			"properties": {
+				"name": {"type": "string", "maxLength": 28},
+				"desc": {"type": "string", "maxLength": 90},
+				"kind": {"type": "string", "enum": ["quality", "retention", "reach", "platform"]},
+				"ambition": {"type": "integer", "minimum": 1, "maximum": 3},
 			}}}},
 }
 

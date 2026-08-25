@@ -721,8 +721,14 @@ namespace Runway.Game
             else
                 headline = "SURVIVED: MVP shipped, first users on board. (Act 1 gate — more acts coming.)";
             if (State != null)
+            {
                 headline += string.Format("\nYour slice today: ${0}  ({1:0}% of the company)",
-                    GameUi.Money(State.PayoutToday()), State.FounderPct);
+                    GameUi.Money(State.PayoutToday() + State.FounderBanked), State.FounderPct);
+                // Banked secondary cash is real and un-multiplied (08 section 7).
+                if (State.FounderBanked > 0)
+                    headline += string.Format("\nCHIPS OFF THE TABLE: +${0} banked on the way{1}",
+                        GameUi.Money(State.FounderBanked), State.Dead ? " down" : "");
+            }
             EndRun();
             var boot = Boot.Instance;
             if (boot == null) return;
@@ -739,7 +745,10 @@ namespace Runway.Game
             TurnRunner runner = TurnRunner.Get();
             if (runner != null && runner.TurnBusy) return false;   // a week still being read
             string reason = "";
-            if (State.Era == "hq" && State.Valuation() >= 25000000 && State.Traction >= 70)
+            // THE SIGNATURE IN THE JOURNAL ENDS THE RUN (08 section 7).
+            if (State.ExitValue > 0)
+                reason = State.HasFlag("acquired_exit") ? "acquisition" : "ipo";
+            else if (State.Era == "hq" && State.Valuation() >= 25000000 && State.Traction >= 70)
                 reason = "ipo";
             else if (State.Week >= RunWeekCap)
                 reason = (State.Era == "hq" && State.Cash > 0) ? "ipo" : "timeout";

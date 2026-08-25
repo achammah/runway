@@ -421,8 +421,9 @@ static func weekly_tick(state: GameState) -> Dictionary:
 		"SMB": cap_scale = 3.0
 		"Consumer": cap_scale = 40.0
 	# a sales budget hires fractional closing power (an SDR-hour equivalent)
-	var gtm_cap := (1.5 + 0.8 * float(state.competences.get("sell", 3)) 			+ SimLabor.sales_capacity(state, 3.0 * float(sales_heads)) + mk_budget / 400.0 + b_sales / 600.0) * cap_scale
-	adds = minf(adds, gtm_cap)
+	var gtm_cap := (1.5 + 0.8 * float(state.competences.get("sell", 3)) 			+ SimLabor.sales_capacity(state, 3.0 * float(sales_heads)) + SimFunnel.cap_reach(state, mk_budget) + SimRoadmap.gtm_cap_bonus(state) + b_sales / 600.0) * cap_scale
+	if not SimPipeline.skips_gtm_cap(state):
+		adds = minf(adds, gtm_cap)
 	# HARDWARE: you cannot sell what you did not build. 09 clamps adds to the
 	# shelf and decrements it here; off Hardware the stub hands adds straight
 	# back, so demand is stock-free exactly as it is today.
@@ -851,7 +852,10 @@ static func valuation(state: GameState) -> int:
 ## same company raises on better terms because of who is asking.
 static func warmth_pct(state: GameState) -> float:
 	var doors := state.trait_level("credibility") + state.trait_level("network")
-	return minf(2.0 * float(maxi(doors - 6, 0)), 8.0)
+	# A clean governance record IS lower perceived risk and a smaller equity
+	# ask; missed plans are a risk premium (08 §4). The board's half lives in
+	# the lane, so this stays one reading with one clamp.
+	return clampf(minf(2.0 * float(maxi(doors - 6, 0)), 8.0) + SimBoard.warmth_delta(state), 0.0, 12.0)
 
 ## Three offers against fair price; desperation prices against you, standing
 ## in the room warms them back.
@@ -876,6 +880,10 @@ static func generate_offers(state: GameState, investors: Array) -> Array:
 
 static func apply_round(state: GameState, amount: int, equity_pct: float) -> void:
 	state.cash += amount
+	# 06 sizes venture debt at 30% of the last round, so the round has to
+	# leave its size behind. Old saves stay at 0 — venture debt locked until
+	# the next raise, which is the right answer for free.
+	state.last_round_amount = amount
 	var keep := 1.0 - equity_pct / 100.0
 	state.founder_pct = maxf(state.founder_pct * keep, 1.0)
 	for cf in state.cofounders:
@@ -1007,8 +1015,11 @@ static func offers_cogs_per_customer(state: GameState) -> float:
 		return 0.0
 	var total := 0.0
 	var lc := learning_curve(state)
-	for o in state.offers:
-		var od: Dictionary = o
+	var flagship := SimFactory.flagship_index(state) if SimFactory.active(state) else -1
+	for i in state.offers.size():
+		var od: Dictionary = state.offers[i]
+		if i == flagship:
+			continue   # 09 §5: the flagship's parts were paid ONCE, at build time
 		if offer_billed_price(od) <= 0.0 and not bool(od.get("price_set", false)):
 			continue
 		total += float(od.get("weight", 1.0)) * float(od.get("unit_cost", 0.0)) * lc \
@@ -1320,7 +1331,9 @@ static func runway_weeks(state: GameState) -> int:
 	for k in state.budgets:
 		lever_sum += int(state.budgets[k])
 	var burn := float(int(GameState.ERA_RENT.get(state.era, 150)) + payroll + 50) \
-			+ float(state.marketing_budget + lever_sum) - revenue
+			+ float(state.marketing_budget + lever_sum) \
+			+ offers_fixed_wk(state) + float(state.traction) * offers_cogs_per_customer(state) \
+			- revenue
 	if burn <= 0.0:
 		return 999
 	return maxi(int(floor(float(state.cash) / burn)), 0)
@@ -1360,9 +1373,17 @@ static func signals(state: GameState) -> Dictionary:
 		"price_mult": state.price_mult, "marketing_weekly": state.marketing_budget,
 		"tech_debt": int(state.tech_debt), "fatigue": int(state.fatigue),
 		"exhaustion": state.exhaustion, "statuses": conds, "clocks": clocks_out,
-		"loan_owed": state.loan_principal, "valuation": valuation(state),
-		"rivals": state.rivals.map(func(r): return "%s (%s)" % [
-			(r as Dictionary).get("name", "?"), _fuzz(float((r as Dictionary).get("strength", 20.0)))]),
+		"loan_owed": SimBank.debt_total(state), "valuation": valuation(state),
+		"pipeline": SimPipeline.signal_line(state),
+		"roadmap": {
+			"committed": SimRoadmap.committed_bets(state).map(func(b): return String((b as Dictionary).get("name", ""))),
+			"ready": String((SimRoadmap.ready_bets(state)[0] as Dictionary).get("name", "")) if not SimRoadmap.ready_bets(state).is_empty() else "",
+		},
+		"rivals": state.rivals.map(func(r): return "%s (%s, %s, %s, fights on %s)" % [
+			(r as Dictionary).get("name", "?"), _fuzz(float((r as Dictionary).get("strength", 20.0))),
+			SimStreet.vigor_word(float((r as Dictionary).get("vigor", 55.0))),
+			SimStreet.posture_word(float((r as Dictionary).get("price_posture", 1.0))),
+			String((r as Dictionary).get("focus", "growth"))]),
 	}
 
 static func _fuzz(strength: float) -> String:

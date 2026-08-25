@@ -45,15 +45,7 @@ namespace Runway.Game
         /// migrated to `ads` when the four acquisition channels landed, while
         /// the founder still calls the whole top of the funnel MARKETING until
         /// the channels unlock at coworking.
-        static readonly string[][] Levers =
-        {
-            new[] { "ads", "marketing", "reach — more people hear of you; saturates past ~$2k" },
-            new[] { "sales", "sales", "closing — every $600/wk closes like one more part-time seller" },
-            new[] { "care", "care", "retention — up to 30% less churn as care approaches $3k" },
-            new[] { "rnd", "rnd", "product — ships ~+1 quality per $1,200/wk and pays down debt" },
-            new[] { "office", "office", "the office — food, perks, benefits; morale climbs toward +3/wk by ~$2k" },
-        };
-        static readonly int[] LeverSteps = { 0, 250, 500, 1000, 2000, 4000, 8000 };
+        public static readonly int[] LeverSteps = { 0, 250, 500, 1000, 2000, 4000, 8000 };
 
         // THE PEN RING, from `_Clipboard._draw`: an ellipse centred on the tab's own
         // middle (TabX0 + tab*TabPitch + TabW/2, 76) with radii 62 and 26, wobbled ±2
@@ -216,7 +208,12 @@ namespace Runway.Game
                 Dismiss();
                 return;
             }
-            if (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.B)) Dismiss();
+            // A DESK MAY OWN A WRITE FIELD (01's write-in): while one holds the
+            // keyboard, a typed "b" is a letter, not a dismissal.
+            var sel = UnityEngine.EventSystems.EventSystem.current != null
+                ? UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject : null;
+            bool writing = sel != null && sel.GetComponent<TMPro.TMP_InputField>() != null;
+            if (!writing && (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.B))) Dismiss();
         }
 
         /// One step back inside the current desk. True = something was popped, so the
@@ -271,7 +268,7 @@ namespace Runway.Game
             switch (_tab)
             {
                 case 0: TabVitals(); break;
-                case 1: TabLedger(); break;
+                case 1: DeskLedger.Draw(this); break;
                 case 2: DeskBank.Draw(this); break;
                 case 3: DeskCatalog.Draw(this); break;
                 case 4: DeskCustomers.Draw(this); break;
@@ -378,12 +375,24 @@ namespace Runway.Game
             for (int i = 0; i < _st.Employees.Count; i++) payroll += _st.Employees[i].Salary;
             int rent;
             if (!GameState.ERA_RENT.TryGetValue(_st.Era, out rent)) rent = 150;
+            // ONE HONEST DEBT FIGURE across shark, bank and venture notes (06
+            // section 9): the single LoanPrincipal field stopped being the whole
+            // story the week the structured notes landed.
+            int debtOwed = SimBank.DebtTotal(_st);
+            int noteCount = _st.Loans.Count + (_st.LoanPrincipal > 0 ? 1 : 0);
             L(string.Format("burn: rent ${0} · payroll ${1} · marketing ${2}{3}",
-                GameUi.Money(rent), GameUi.Money(payroll), GameUi.Money(_st.MarketingBudget),
-                _st.LoanPrincipal > 0
-                    ? "  ·  LOAN OWED $" + GameUi.Money(_st.LoanPrincipal) + " (18%/wk)" : ""),
+                GameUi.Money(rent), GameUi.Money(payroll),
+                GameUi.Money(_st.LastPnl != null ? _st.LastPnl.Marketing
+                             : Gd.ToInt(SimFunnel.SpendTotal(_st))),
+                debtOwed > 0
+                    ? "  ·  DEBT $" + GameUi.Money(debtOwed) + " across " + noteCount
+                      + " notes (worst " + Gd.RoundToInt(SimBank.WorstRate(_st) * 100.0) + "%/wk)"
+                    : ""),
                 10f, 432f, 27f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.8f));
             L("valuation, if anyone asked: $" + GameUi.Money(SimEngine.Valuation(_st)), 10f, 486f);
+            // the hype chart moved here when the roadmap took the product sheet (07)
+            L("hype:", 10f, 556f, 24f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f));
+            Spark("hype", 10f, 580f, 1120f, 120f, DrawnUI.Yellow);
             L(string.Format("price ×{0:0.00}  ·  the market is {1}", _st.PriceMult,
                 _st.MarketTrend > 1.05 ? "warm" : (_st.MarketTrend < 0.95 ? "cold" : "even")),
                 10f, 532f, 27f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.8f));
@@ -391,100 +400,11 @@ namespace Runway.Game
 
         // ── tab 1: THE LEDGER — the levers, the math, the truth about the money ──
 
-        void TabLedger()
-        {
-            L("the ledger — where this week's money goes", 10f, 6f, 38f);
-            float y = 78f;
-            for (int i = 0; i < Levers.Length; i++)
-            {
-                string cat = Levers[i][0];
-                int cur = Budget(cat);
-                L(Levers[i][1].ToUpper(), 10f, y, 28f);
-                L(Levers[i][2], 10f, y + 34f, 21f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f));
-                L("$" + GameUi.Money(cur) + "/wk", 520f, y + 4f, 30f, DrawnUI.Coral, 200f);
-                // WHAT THIS MONEY IS DOING RIGHT NOW, from the engine's own formulas
-                L(LeverEffect(cat, cur), 688f, y + 12f, 24f,
-                  DrawnUI.WithAlpha(DrawnUI.Ink, 0.75f), 300f);
-                string c = cat;
-                int at = cur;
-                GameUi.InkWord(_content, "−", 1000f, y, 52f, 46f, 40f, DrawnUI.Ink, () =>
-                {
-                    SetBudget(c, Step(at, -1));
-                    Refresh();
-                });
-                GameUi.InkWord(_content, "+", 1064f, y, 52f, 46f, 40f, DrawnUI.Ink, () =>
-                {
-                    SetBudget(c, Step(at, 1));
-                    Refresh();
-                });
-                y += 78f;
-            }
-            // the math, honestly — one running cursor, compact: five levers +
-            // the P&L + the warnings all live inside the 760px sheet
-            int leverSum = _st.Budgets.Sum();
-            int rw = SimEngine.RunwayWeeks(_st);
-            float cy = y + 4f;
-            double arpu = UnitEcon("arpu");
-            int cac = Gd.ToInt(UnitEcon("cac"));
-            int ltv = Gd.ToInt(UnitEcon("ltv"));
-            int pb = Gd.ToInt(UnitEcon("payback_wk"));
-            L(string.Format(
-                "a customer pays ≈ ${0:0}/wk · costs ${1} to win (CAC) · is worth ${2} over their stay (LTV) · pays back in {3}",
-                arpu, cac > 0 ? GameUi.Money(cac) : "?",
-                ltv > 0 ? GameUi.Money(ltv) : "?", pb > 0 ? pb + " wks" : "—"),
-                10f, cy, 23f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.75f), 1100f);
-            cy += 34f;
-            // THE WEEK, HONESTLY (owner: a real business sim knows its running
-            // cost): the engine's own P&L record, every lane, the bottom line.
-            Pnl pnl = _st.LastPnl;
-            if (pnl != null)
-            {
-                L(string.Format("last week: in ${0} · serving ${1}{2}",
-                    GameUi.Money(pnl.Revenue), GameUi.Money(pnl.Cogs),
-                    pnl.Learning < 0.995
-                        ? string.Format("  (learning ×{0:0.00})", pnl.Learning) : ""),
-                    10f, cy, 24f, DrawnUI.Blue, 1100f);
-                cy += 34f;
-                L(string.Format("out: rent ${0} · payroll ${1} · infra ${2} · levers ${3}{4}{5}",
-                    GameUi.Money(pnl.Rent), GameUi.Money(pnl.Payroll), GameUi.Money(pnl.Infra),
-                    GameUi.Money(pnl.Marketing + pnl.Sales + pnl.Care + pnl.Rnd + pnl.Office),
-                    pnl.Incident > 0 ? " · unforeseen $" + GameUi.Money(pnl.Incident) : "",
-                    pnl.LiabilitiesWk > 0 ? " · standing $" + GameUi.Money(pnl.LiabilitiesWk) + "/wk" : ""),
-                    10f, cy, 24f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.8f), 1100f);
-                cy += 34f;
-                L(string.Format("THE BOTTOM LINE: {0}${1} a week · levers total ${2}/wk · runway {3}",
-                    pnl.Net >= 0 ? "+" : "−", GameUi.Money(Math.Abs(pnl.Net)),
-                    GameUi.Money(leverSum), rw < 999 ? rw + " weeks" : "gaining money"),
-                    10f, cy, 27f, pnl.Net >= 0 ? DrawnUI.Sage : DrawnUI.Coral, 1100f);
-                cy += 40f;
-            }
-            else
-            {
-                L(string.Format("levers total ${0}/wk · runway {1}", GameUi.Money(leverSum),
-                    rw < 999 ? rw + " weeks" : "gaining money"), 10f, cy, 27f);
-                cy += 40f;
-            }
-            if (rw <= 4 && rw < 999)
-            {
-                L(string.Format("⚠ this spend kills the company in {0} weeks — cut it or earn it", rw),
-                  10f, cy, 26f, DrawnUI.Coral, 1100f);
-                cy += 36f;
-            }
-            if (_st.Cash < 0)
-            {
-                L(string.Format("THE RED: {0} of 3 weeks below zero. At three, it's over.",
-                    _st.WeeksInRed), 10f, cy, 26f, DrawnUI.Coral, 1100f);
-                cy += 36f;
-            }
-            L("the rules of this world: reach saturates · only capacity closes · churn is a "
-              + "leaky bucket · debt slows everything · three weeks below zero ends it",
-              10f, cy + 2f, 20f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f));
-        }
 
         /// SimEngine parks the week's unit economics on the state as ONE nested map.
         /// Fresh from the tick it is a Dictionary; loaded back off disk Newtonsoft
         /// hands it over as a JObject — so this reads both and answers 0 for neither.
-        double UnitEcon(string key)
+        public double UnitEcon(string key)
         {
             object box = _st.GetMeta("unit_econ", null);
             if (box == null) return 0.0;
@@ -502,7 +422,7 @@ namespace Runway.Game
             return jo != null ? ContentDb.Num(jo, key, 0.0) : 0.0;
         }
 
-        int Budget(string cat)
+        public int Budget(string cat)
         {
             switch (cat)
             {
@@ -518,7 +438,7 @@ namespace Runway.Game
             return 0;
         }
 
-        void SetBudget(string cat, int v)
+        public void SetBudget(string cat, int v)
         {
             switch (cat)
             {
@@ -533,7 +453,7 @@ namespace Runway.Game
             }
         }
 
-        int Step(int cur, int dir)
+        public int Step(int cur, int dir)
         {
             int idx = 0;
             for (int i = 0; i < LeverSteps.Length; i++) if (LeverSteps[i] <= cur) idx = i;
@@ -541,35 +461,6 @@ namespace Runway.Game
             return Gd.Mini(LeverSteps[idx], SimEngine.EraSpendCap(_st.Era));
         }
 
-        /// the engine's live math for one lever, in one plain phrase
-        string LeverEffect(string cat, int v)
-        {
-            double sat = _st.Theta != null ? _st.Theta.CacSat : 900.0;
-            switch (cat)
-            {
-                case "ads":
-                case "content":
-                case "referrals":
-                case "outbound":
-                    return v > 0
-                        ? string.Format("reach ×{0:0.00}",
-                            1.0 + 1.4 * (1.0 - Mathf.Exp(-(float)(v / sat))))
-                        : "no reach bought";
-                case "sales":
-                    return v > 0 ? string.Format("+{0:0.0} closers of capacity", v / 600f)
-                                 : "founder sells alone";
-                case "care":
-                    return v > 0 ? string.Format("churn −{0}%",
-                        Mathf.RoundToInt(30f * (1f - Mathf.Exp(-v / 1500f)))) : "nobody picks up";
-                case "rnd":
-                    return v > 0 ? string.Format("+{0:0.0} product/wk, debt melts", v / 1200f)
-                                 : "no extra shipping";
-                case "office":
-                    return v > 0 ? string.Format("+{0:0.0} morale/wk",
-                        3.0 * (1.0 - Mathf.Exp(-v / 800f))) : "instant coffee, cold room";
-            }
-            return "";
-        }
 
         /// `_wrap_h`, WHICH IS NOT preferredHeight. binder.gd advances the street by
         /// `_font.get_multiline_string_size(...).y`, and that number is a LEADING-FREE
