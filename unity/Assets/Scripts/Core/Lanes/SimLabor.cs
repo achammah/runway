@@ -58,5 +58,31 @@ namespace Runway.Core
         {
             return new List<AttentionItem>();
         }
+
+        // ═══ COORDINATOR PARITY STUBS — lane 02 replaces every body ═══
+        // Each returns its exact legacy default so the tick is byte-identical
+        // until the lane lands. Signatures are the arbitrated contract.
+
+        public static double SalesCapacity(GameState state, double defaultV) { return defaultV; }
+        public static double DesignMult(GameState state) { return 1.0; }
+        public static double CareEff(GameState state, double bCare) { return bCare; }
+        public static double RndGain(GameState state, double defaultV) { return defaultV; }
+        public static double DebtPaydown(GameState state, double defaultV) { return defaultV; }
+        public static double OpsMult(GameState state) { return 1.0; }
+
+        /// <summary>The dressing payload for the batch candidate call
+        /// (null/empty = nobody arrived this week → no call fires).</summary>
+        public static Newtonsoft.Json.Linq.JObject DressingPayload(GameState state) { return null; }
+
+        /// <summary>Order-matches model rows onto this week's applicants;
+        /// returns the applied count.</summary>
+        public static int DressApplicants(GameState state, Newtonsoft.Json.Linq.JArray rows) { return 0; }
+
+        /// <summary>THE POACH TARGET (03 §5.4 calls this; 02 owns the answer).
+        /// Contract per 02's spec: skill-max employee with market/salary >= 1.25
+        /// (pay_gap = (market - salary) / market >= 0.2). Keys: index/name/
+        /// salary/market_salary/pay_gap. NULL = no target → poach weight zero.</summary>
+        public static System.Collections.Generic.Dictionary<string, object> PoachTarget(GameState state) { return null; }
+
     }
 }

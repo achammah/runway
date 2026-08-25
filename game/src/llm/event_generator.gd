@@ -231,6 +231,22 @@ func price_offer_idea(state: GameState, idea: String, cb: Callable) -> void:
 		if cb.is_valid():
 			cb.call(res), {"tier": "clarify"})
 
+const CANDIDATES_PROMPT := """You dress job applicants for RUNWAY!, a satirical startup survival game. The engine already decided every number — each candidate's role, skill 1-5 and weekly ask are FIXED and not yours. For each candidate, in the given order, invent ONLY: name (a plausible human full name, never a real person), quirk (one dry, specific habit, <=60 chars), one_liner (how they'd pitch themselves in one wince-funny sentence, <=90 chars). Match the texture to this company, its era and its business. Skill 5 reads impressive with one red flag; skill 1 reads earnest and alarming. A candidate with source "referral" knows someone on the team — let it show. Never state the numbers. No name may repeat a name in taken_names. Exactly one entry per candidate, same order. Output ONLY the schema."""
+
+## ONE batch dressing call on weeks with arrivals (02 §8.1): fire-and-forget —
+## the cards are playable before the reply, which only replaces the words.
+func dress_applicants(state: GameState, cb: Callable = Callable()) -> void:
+	var payload := SimLabor.dressing_payload(state)
+	if payload.is_empty() or not llm.enabled():
+		if cb.is_valid():
+			cb.call(0)
+		return
+	llm.request_json(CANDIDATES_PROMPT, JSON.stringify(payload) + "\nDress them.",
+		LlmClient.CANDIDATES_SCHEMA, func(res: Dictionary):
+			var n := SimLabor.dress_applicants_rows(state, res.get("candidates", []))
+			if cb.is_valid():
+				cb.call(n), {"tier": "clarify"})
+
 ## Background prefetch of generated event cards.
 var disabled := false   # daily seeded runs: authored-only determinism
 

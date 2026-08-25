@@ -40,3 +40,43 @@ static func directives(_state: GameState) -> Array[String]:
 ## ticker prints it verbatim (docs/design/00-spine.md §4).
 static func attention(_state: GameState) -> Array:
 	return []
+
+
+# ═══ COORDINATOR PARITY STUBS — lane 02 replaces every body below ═══
+# Each returns its exact legacy default so the tick is byte-identical
+# until the lane lands. Signatures are the arbitrated contract.
+
+static func sales_capacity(_state: GameState, default_v: float) -> float:
+	return default_v
+
+static func design_mult(_state: GameState) -> float:
+	return 1.0
+
+static func care_eff(_state: GameState, b_care: float) -> float:
+	return b_care
+
+static func rnd_gain(_state: GameState, default_v: float) -> float:
+	return default_v
+
+static func debt_paydown(_state: GameState, default_v: float) -> float:
+	return default_v
+
+static func ops_mult(_state: GameState) -> float:
+	return 1.0
+
+## The dressing payload for the batch candidate call ({} = nobody arrived
+## this week → no call fires).
+static func dressing_payload(_state: GameState) -> Dictionary:
+	return {}
+
+## Order-matches model rows onto this week's applicants; returns applied count.
+static func dress_applicants_rows(_state: GameState, _rows: Array) -> int:
+	return 0
+
+## THE POACH TARGET (03 §5.4 calls this; 02 owns the answer). Contract per
+## 02's spec: the skill-max employee with market/salary >= 1.25 (pay_gap =
+## (market - salary) / market >= 0.2). Keys: {index, name, salary,
+## market_salary, pay_gap}. EMPTY = no target → the street's poach weight
+## goes to zero — no shim, no fake wages.
+static func poach_target(_state: GameState) -> Dictionary:
+	return {}

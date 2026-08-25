@@ -106,7 +106,7 @@ static func state_to_dict(state: GameState) -> Dictionary:
 			# leaves each at the default declared in game_state.gd.
 			"served_total": state.served_total,
 			"open_roles": state.open_roles, "applicants": state.applicants,
-			"recruiters": state.recruiters,
+			"recruiters": state.recruiters, "severance_due": state.severance_due,
 			"content_equity": state.content_equity,
 			"leads": state.leads, "logos": state.logos,
 			"pipe_units": state.pipe_units, "pipe_churn_acc": state.pipe_churn_acc,

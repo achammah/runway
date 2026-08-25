@@ -110,6 +110,7 @@ namespace Runway.Core
         [JsonProperty("cac")] public int Cac;
         [JsonProperty("ltv")] public int Ltv;
         [JsonProperty("payback_wk")] public int PaybackWk;
+        [JsonProperty("applicants_new")] public int ApplicantsNew;
     }
 
     /// <summary>Advantage/disadvantage and the dice that came out of it.</summary>
@@ -487,6 +488,8 @@ namespace Runway.Core
                         Salary = g.Salary,
                         Burnout = 10,
                         Quirk = g.Quirk ?? "",
+                        Skill = g.Skill,
+                        HiredWeek = state.Week,
                     });
                     rep.Lines.Add(string.Format(CultureInfo.InvariantCulture,
                         "{0} finished onboarding — productive now", g.Name ?? "a hire"));
@@ -678,6 +681,9 @@ namespace Runway.Core
                 * (launched ? 1.0 : 0.0);
             double wom = th.AdoptIc * A * P / Gd.Maxf(N, 1.0) * statusAdopt
                 * (1.0 - pressure) * qualityGate * (launched ? 1.0 : 0.5);
+            double designMult = SimLabor.DesignMult(state);
+            pEff *= designMult;
+            wom *= designMult;
             double priceDemand = Math.Pow(Gd.Maxf(state.PriceMult, 0.1), -1.5);
             double offerMult = OffersDemandMult(state);
             if (offerMult >= 0.0)
@@ -707,7 +713,7 @@ namespace Runway.Core
             }
             // a sales budget hires fractional closing power (an SDR-hour equivalent)
             double gtmCap = (1.5 + 0.8 * state.Competence("sell")
-                + 3.0 * salesHeads + mkBudget / 400.0 + bSales / 600.0) * capScale;
+                + SimLabor.SalesCapacity(state, 3.0 * salesHeads) + mkBudget / 400.0 + bSales / 600.0) * capScale;
             adds = Gd.Minf(adds, gtmCap);
             // HARDWARE: you cannot sell what you did not build. 09 clamps adds
             // to the shelf and decrements it here; off Hardware the stub hands
@@ -715,7 +721,7 @@ namespace Runway.Core
             adds = SimFactory.ClampAdds(state, rep, adds);
             double residence = th.LifetimeWk * (0.4 + state.Product / 100.0 * 1.2);
             // customer care keeps people: churn eases toward -30% as care approaches ~$3k/wk
-            double careMult = 1.0 - 0.30 * (1.0 - Math.Exp(-bCare / 1500.0));
+            double careMult = 1.0 - 0.30 * (1.0 - Math.Exp(-SimLabor.CareEff(state, bCare) / 1500.0));
             double churn = A / Gd.Maxf(residence, 2.0) * th.ChurnMult * statusChurn * careMult;
             // pricing pain lands on RETENTION, never on invisible spend-shrink
             churn *= OffersPricePain(state);
@@ -793,9 +799,9 @@ namespace Runway.Core
             int infra = 50 + Gd.ToInt(state.Traction * 0.05);
             // R&D: a real budget ships real product — +1 quality per ~$1200/wk (seeded
             // remainder), and it pays down tech debt as it goes
-            if (bRnd > 0.0)
+            double qualityGain = SimLabor.RndGain(state, bRnd / 1200.0);
+            if (qualityGain > 0.0)
             {
-                double qualityGain = bRnd / 1200.0;
                 int whole = (int)Math.Floor(qualityGain);
                 if (RngFor(state, SALT_RND_REMAINDER).Randf() < qualityGain - whole)
                 {
@@ -807,8 +813,8 @@ namespace Runway.Core
                     rep.Lines.Add(string.Format(CultureInfo.InvariantCulture,
                         "R&D shipped: product v0.{0}", state.Product));
                 }
-                state.TechDebt = Gd.Maxf(state.TechDebt - bRnd / 1500.0, 0.0);
             }
+            state.TechDebt = Gd.Maxf(state.TechDebt - SimLabor.DebtPaydown(state, bRnd / 1500.0), 0.0);
             double cogs = 0.0;
             if (arpuOff >= 0.0)
             {
@@ -848,6 +854,9 @@ namespace Runway.Core
             SimRoadmap.TickMoney(state, rep, m);
             SimBoard.TickMoney(state, rep, m);
             SimFactory.TickMoney(state, rep, m);
+            // the record answers back (09: a lane may honestly reduce what got
+            // billed — no-op while every lane leaves m untouched)
+            revenue = m.Revenue;
 
             // THE UNFORESEEN (owner: running a business includes what nobody
             // planned): some weeks a small real cost lands — seeded, receipted.
@@ -857,6 +866,7 @@ namespace Runway.Core
             {
                 incidentCost = (int)((rent + payroll + infra) * incR.RandfRange(0.01, 0.04))
                                + incR.RandiRange(20, 90);
+                incidentCost = (int)(incidentCost * SimLabor.OpsMult(state));   // 02 §4: ops absorb the unplanned
                 string[] incWhat = { "the printer died mid-invoice", "the fridge gave up",
                     "a parking fine found the van", "the wifi needed a new router",
                     "someone broke the good chair", "the same invoice arrived twice",
@@ -877,7 +887,7 @@ namespace Runway.Core
                     new { name = "the broken machine went on a payment plan", wk = 6, frac = 0.06 },
                 };
                 var lb = liabPick[incR.RandiRange(0, liabPick.Length - 1)];
-                int wkcost = -Gd.Maxi((int)((rent + payroll) * lb.frac), 40);
+                int wkcost = -Gd.Maxi((int)((rent + payroll) * lb.frac * SimLabor.OpsMult(state)), 40);
                 state.Commitments.Add(new Commitment { Name = lb.name, CashWk = wkcost, WeeksLeft = lb.wk });
                 rep.Lines.Add(string.Format(CultureInfo.InvariantCulture,
                     "NEW STANDING COST: {0} — ${1}/wk for {2} weeks", lb.name, -wkcost, lb.wk));
@@ -1288,7 +1298,7 @@ namespace Runway.Core
             double arr = state.Traction * arpuV * 52.0;
             double growth = Gd.Clampf(state.LastGrowth, 0.0, 0.4);
             double mult = 8.0 + Gd.Minf(12.0, growth * 60.0);
-            return Gd.Maxi(state.Cash, Gd.ToInt(arr * mult * fundingMult));
+            return Gd.Maxi(state.Cash, Gd.ToInt(arr * mult * fundingMult * ShockValMult(state)));
         }
 
         /// <summary>
@@ -1318,9 +1328,9 @@ namespace Runway.Core
             for (int i = 0; i < 3; i++)
             {
                 Investor inv = invCount > 0 ? investors[i % Gd.Maxi(invCount, 1)] : null;
-                int amount = Gd.ToInt(pre * r.RandfRange(0.05, 0.15));
+                int amount = Gd.ToInt(pre * r.RandfRange(0.05, 0.15) * ShockAmtMult(state));
                 double fair = (double)amount / (pre + amount) * 100.0;
-                double spread = r.RandfRange(1.15, 1.6) * (desperate ? 1.35 : 1.0) * (1.0 - warm / 100.0);
+                double spread = r.RandfRange(1.15, 1.6) * (desperate ? 1.35 : 1.0) * (1.0 - warm / 100.0) * ShockSpreadMult(state);
                 outp.Add(new FundingOffer
                 {
                     Investor = inv != null ? (inv.Name ?? "?") : "an angel",
@@ -1392,6 +1402,33 @@ namespace Runway.Core
         /// sale — an unpriced product earns nothing, however many sign up).
         /// Returns -1 for legacy runs with no offers at all: fall back to theta arpu.
         /// </summary>
+        /// <summary>
+        /// THE CYCLE'S PRICE, at the three places money is raised. A funding
+        /// winter reprices the whole market at once (2022's multiple compression,
+        /// x0.6); a boom mirrors it. Each is the product of every live status'
+        /// key — 1.0 in a normal week (03 section 7.3).
+        /// </summary>
+        public static double ShockValMult(GameState state)
+        {
+            double m = 1.0;
+            foreach (Status s in state.Statuses) { m *= StatusEffect(s.Name).ValMult; }
+            return m;
+        }
+
+        public static double ShockAmtMult(GameState state)
+        {
+            double m = 1.0;
+            foreach (Status s in state.Statuses) { m *= StatusEffect(s.Name).AmtMult; }
+            return m;
+        }
+
+        public static double ShockSpreadMult(GameState state)
+        {
+            double m = 1.0;
+            foreach (Status s in state.Statuses) { m *= StatusEffect(s.Name).SpreadMult; }
+            return m;
+        }
+
         public static double OffersArpu(GameState state)
         {
             if (state.Offers == null || state.Offers.Count == 0)

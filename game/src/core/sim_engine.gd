@@ -251,7 +251,8 @@ static func weekly_tick(state: GameState) -> Dictionary:
 			state.employees.append({"name": String(g.get("name", "hire")),
 				"role": String(g.get("role", "engineer")),
 				"salary": int(g.get("salary", 1200)), "burnout": 10,
-				"quirk": String(g.get("quirk", ""))})
+				"quirk": String(g.get("quirk", "")),
+				"skill": int(g.get("skill", 3)), "hired_week": state.week})
 			rep["lines"].append("%s finished onboarding — productive now" % g.get("name", "a hire"))
 
 	# 3b ── THE LABOR MARKET: arrivals → applicant decay → review cycle. The
@@ -397,6 +398,9 @@ static func weekly_tick(state: GameState) -> Dictionary:
 			* (1.0 if launched else 0.0)
 	var wom := float(th.adopt_ic) * A * P / maxf(N, 1.0) * status_adopt \
 			* (1.0 - pressure) * quality_gate * (1.0 if launched else 0.5)
+	var design_mult := SimLabor.design_mult(state)   # 02 §4: designers polish what the funnel touches
+	p_eff *= design_mult
+	wom *= design_mult
 	var price_demand := pow(maxf(state.price_mult, 0.1), -1.5)
 	var offer_mult := offers_demand_mult(state)
 	if offer_mult >= 0.0:
@@ -417,7 +421,7 @@ static func weekly_tick(state: GameState) -> Dictionary:
 		"SMB": cap_scale = 3.0
 		"Consumer": cap_scale = 40.0
 	# a sales budget hires fractional closing power (an SDR-hour equivalent)
-	var gtm_cap := (1.5 + 0.8 * float(state.competences.get("sell", 3)) 			+ 3.0 * float(sales_heads) + mk_budget / 400.0 + b_sales / 600.0) * cap_scale
+	var gtm_cap := (1.5 + 0.8 * float(state.competences.get("sell", 3)) 			+ SimLabor.sales_capacity(state, 3.0 * float(sales_heads)) + mk_budget / 400.0 + b_sales / 600.0) * cap_scale
 	adds = minf(adds, gtm_cap)
 	# HARDWARE: you cannot sell what you did not build. 09 clamps adds to the
 	# shelf and decrements it here; off Hardware the stub hands adds straight
@@ -425,7 +429,7 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	adds = SimFactory.clamp_adds(state, rep, adds)
 	var residence := float(th.lifetime_wk) * (0.4 + float(state.product) / 100.0 * 1.2)
 	# customer care keeps people: churn eases toward −30% as care approaches ~$3k/wk
-	var care_mult := 1.0 - 0.30 * (1.0 - exp(-b_care / 1500.0))
+	var care_mult := 1.0 - 0.30 * (1.0 - exp(-SimLabor.care_eff(state, b_care) / 1500.0))
 	var churn := A / maxf(residence, 2.0) * float(th.churn_mult) * status_churn * care_mult
 	# pricing pain lands on RETENTION, never on invisible spend-shrink
 	churn *= offers_price_pain(state)
@@ -474,15 +478,15 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	var infra := 50 + int(float(state.traction) * 0.05)
 	# R&D: a real budget ships real product — +1 quality per ~$1200/wk (seeded
 	# remainder), and it pays down tech debt as it goes
-	if b_rnd > 0.0:
-		var quality_gain := b_rnd / 1200.0
+	var quality_gain := SimLabor.rnd_gain(state, b_rnd / 1200.0)
+	if quality_gain > 0.0:
 		var whole := int(floor(quality_gain))
 		if _rng(state, SALT_RND_REMAINDER).randf() < quality_gain - float(whole):
 			whole += 1
 		if whole > 0:
 			state.product = mini(state.product + whole, 100)
 			rep["lines"].append("R&D shipped: product v0.%d" % state.product)
-		state.tech_debt = maxf(state.tech_debt - b_rnd / 1500.0, 0.0)
+	state.tech_debt = maxf(state.tech_debt - SimLabor.debt_paydown(state, b_rnd / 1500.0), 0.0)
 	var cogs := 0.0
 	if arpu_off >= 0.0:
 		cogs = float(state.traction) * offers_cogs_per_customer(state)
@@ -521,6 +525,9 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	SimRoadmap.tick_money(state, rep, m)
 	SimBoard.tick_money(state, rep, m)
 	SimFactory.tick_money(state, rep, m)
+	# the record answers back (09: a lane may honestly reduce what got billed —
+	# no-op while every lane leaves m untouched)
+	revenue = float(m["revenue"])
 
 	# THE UNFORESEEN (owner: running a business includes what nobody planned):
 	# some weeks a small real cost lands — seeded, receipted, never a mystery.
@@ -528,6 +535,7 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	var incident_cost := 0
 	if inc_r.randf() < 0.30:
 		incident_cost = int(float(rent + payroll + infra) * inc_r.randf_range(0.01, 0.04)) + inc_r.randi_range(20, 90)
+		incident_cost = int(float(incident_cost) * SimLabor.ops_mult(state))   # 02 §4: ops absorb the unplanned
 		var inc_what: Array = ["the printer died mid-invoice", "the fridge gave up",
 			"a parking fine found the van", "the wifi needed a new router",
 			"someone broke the good chair", "the same invoice arrived twice",
@@ -545,7 +553,7 @@ static func weekly_tick(state: GameState) -> Dictionary:
 			{"name": "the broken machine went on a payment plan", "wk": 6, "frac": 0.06},
 		]
 		var lb: Dictionary = liab_pick[inc_r.randi_range(0, liab_pick.size() - 1)]
-		var wkcost := -maxi(int(float(rent + payroll) * float(lb.get("frac", 0.06))), 40)
+		var wkcost := -maxi(int(float(rent + payroll) * float(lb.get("frac", 0.06)) * SimLabor.ops_mult(state)), 40)
 		state.commitments.append({"name": String(lb.get("name", "a standing cost")),
 			"cash_wk": wkcost, "weeks_left": int(lb.get("wk", 6))})
 		rep["lines"].append("NEW STANDING COST: %s — $%d/wk for %d weeks" % [
@@ -835,7 +843,7 @@ static func valuation(state: GameState) -> int:
 	var arr := float(state.traction) * arpu_v * 52.0
 	var growth := clampf(float(state.last_growth), 0.0, 0.4)
 	var mult := 8.0 + minf(12.0, growth * 60.0)
-	return maxi(state.cash, int(arr * mult * float(state.theta.get("funding_mult", 1.0))))
+	return maxi(state.cash, int(arr * mult * float(state.theta.get("funding_mult", 1.0)) * shock_val_mult(state)))
 
 ## HOW WARM THE ROOM IS, in percent off the equity asked. Credibility and the
 ## phone book are read together: every point over 6 combined is worth about 2%
@@ -855,9 +863,9 @@ static func generate_offers(state: GameState, investors: Array) -> Array:
 	var out: Array = []
 	for i in 3:
 		var inv: Dictionary = investors[i % maxi(investors.size(), 1)] if investors.size() > 0 else {"name": "an angel"}
-		var amount := int(float(pre) * r.randf_range(0.05, 0.15))
+		var amount := int(float(pre) * r.randf_range(0.05, 0.15) * shock_amt_mult(state))
 		var fair := float(amount) / float(pre + amount) * 100.0
-		var spread := r.randf_range(1.15, 1.6) * (1.35 if desperate else 1.0) * (1.0 - warm / 100.0)
+		var spread := r.randf_range(1.15, 1.6) * (1.35 if desperate else 1.0) * (1.0 - warm / 100.0) * shock_spread_mult(state)
 		out.append({"investor": String(inv.get("name", "?")),
 			"amount": maxi(amount, 5_000),
 			"equity_pct": snappedf(clampf(fair * spread, 1.0, 45.0), 0.1),
@@ -899,6 +907,28 @@ static func street_fair_mult(state: GameState) -> float:
 	for s in state.statuses:
 		mlt *= float(STATUS.get(String((s as Dictionary).get("name", "")), {}).get("fair_mult", 1.0))
 	return maxf(mlt, 0.85)
+
+## THE CYCLE'S PRICE, at the three places money is raised. A funding winter
+## reprices the whole market at once (2022's multiple compression, ×0.6); a boom
+## mirrors it. Each is the product of every live status' key — 1.0 in a normal
+## week, so these are free until the street's weather turns (03 §7.3).
+static func shock_val_mult(state: GameState) -> float:
+	var m := 1.0
+	for s in state.statuses:
+		m *= float(STATUS.get(String((s as Dictionary).get("name", "")), {}).get("val_mult", 1.0))
+	return m
+
+static func shock_amt_mult(state: GameState) -> float:
+	var m := 1.0
+	for s in state.statuses:
+		m *= float(STATUS.get(String((s as Dictionary).get("name", "")), {}).get("amt_mult", 1.0))
+	return m
+
+static func shock_spread_mult(state: GameState) -> float:
+	var m := 1.0
+	for s in state.statuses:
+		m *= float(STATUS.get(String((s as Dictionary).get("name", "")), {}).get("spread_mult", 1.0))
+	return m
 
 ## How often one customer pays for an offer, in purchases per week. The
 ## founder's mental math is "customers × price"; the cadence is the honest

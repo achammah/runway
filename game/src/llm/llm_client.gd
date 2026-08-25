@@ -184,6 +184,20 @@ const OFFER_SCHEMA := {
 	},
 }
 
+## Schema for the one batch candidate-dressing call (02 §8.1): the engine
+## already decided every number; the model only writes the people.
+const CANDIDATES_SCHEMA := {
+	"type": "object", "additionalProperties": false, "required": ["candidates"],
+	"properties": {"candidates": {"type": "array", "minItems": 1, "maxItems": 10,
+		"items": {"type": "object", "additionalProperties": false,
+			"required": ["name", "quirk", "one_liner"],
+			"properties": {
+				"name": {"type": "string", "maxLength": 40},
+				"quirk": {"type": "string", "maxLength": 60},
+				"one_liner": {"type": "string", "maxLength": 90},
+			}}}},
+}
+
 ## Schema for run-start world generation: the bible born from the pitch.
 const WORLD_SCHEMA := {
 	"type": "object", "additionalProperties": false,

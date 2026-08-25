@@ -631,6 +631,9 @@ namespace Runway.Game
             // THE WORLD ACTS FIRST (plan A1): the hostile weekly tick runs before the
             // founder's move lands, and its receipts open the week's ledger.
             WeeklyReport tick = SimEngine.WeeklyTick(St);
+            var bootG = Boot.Instance;
+            if (tick.ApplicantsNew > 0 && bootG != null && bootG.Generator != null)
+                bootG.Generator.DressApplicants(St, null);   // fire-and-forget: cards already playable
             outcomeLog.AddRange(tick.Lines);
             for (int i = 0; i < tick.Events.Count; i++) outcomeLog.Add("⚡ " + tick.Events[i]);
             for (int i = 0; i < tick.FiredClocks.Count; i++)

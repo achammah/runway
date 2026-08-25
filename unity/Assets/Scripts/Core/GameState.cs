@@ -630,6 +630,7 @@ namespace Runway.Core
         [JsonProperty("open_roles")] public List<OpenRole> OpenRoles = new List<OpenRole>();
         [JsonProperty("applicants")] public List<Applicant> Applicants = new List<Applicant>();
         [JsonProperty("recruiters")] public int Recruiters;          // 0-2, floor era up
+        [JsonProperty("severance_due")] public int SeveranceDue;     // the firing invoice, booked next tick
         // 04 funnel — the content channel's compounding stock
         [JsonProperty("content_equity")] public double ContentEquity;
         // 05 enterprise pipeline

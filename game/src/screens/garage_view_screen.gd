@@ -3082,6 +3082,8 @@ func _apply_lock(work_results: Dictionary) -> void:
 	# ── THE WORLD ACTS FIRST (plan A1): the hostile weekly tick runs before the
 	# founder's move lands, and its receipts open the week's ledger.
 	var tick := SimEngine.weekly_tick(state)
+	if int(tick.get("applicants_new", 0)) > 0:
+		generator.dress_applicants(state)   # fire-and-forget: the cards are already playable
 	for tl in tick.get("lines", []):
 		outcome_log.append(String(tl))
 	for ev_l in tick.get("events", []):

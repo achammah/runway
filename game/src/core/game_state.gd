@@ -141,6 +141,7 @@ var served_total: int = 0
 var open_roles: Array = []       # [{role, offered_salary, opened_week, seats}]
 var applicants: Array = []       # [{name, role, skill, ask, quirk, one_liner, applied_week, source}]
 var recruiters: int = 0          # 0..2, floor era up
+var severance_due: int = 0       # the firing invoice, booked by the NEXT tick's money section
 # 04 funnel channels — the content channel's compounding stock
 var content_equity: float = 0.0
 # 05 enterprise pipeline

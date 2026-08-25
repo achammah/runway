@@ -453,6 +453,27 @@ namespace Runway.Llm
 
         /// THE CLARIFY PRE-PASS (owner: terra assesses, luna clarifies): one cheap call
         /// before the dice — does this move need ONE follow-up question?
+        const string CANDIDATES_PROMPT = "You dress job applicants for RUNWAY!, a satirical startup survival game. The engine already decided every number — each candidate's role, skill 1-5 and weekly ask are FIXED and not yours. For each candidate, in the given order, invent ONLY: name (a plausible human full name, never a real person), quirk (one dry, specific habit, <=60 chars), one_liner (how they'd pitch themselves in one wince-funny sentence, <=90 chars). Match the texture to this company, its era and its business. Skill 5 reads impressive with one red flag; skill 1 reads earnest and alarming. A candidate with source \"referral\" knows someone on the team — let it show. Never state the numbers. No name may repeat a name in taken_names. Exactly one entry per candidate, same order. Output ONLY the schema.";
+
+        /// ONE batch dressing call on weeks with arrivals (02 §8.1): fire-and-
+        /// forget — cards are playable before the reply, which only swaps words.
+        public void DressApplicants(GameState st, Action<int> cb)
+        {
+            var payload = SimLabor.DressingPayload(st);
+            if (payload == null || payload.Count == 0 || Llm == null || !Llm.Enabled)
+            {
+                if (cb != null) cb(0);
+                return;
+            }
+            Llm.RequestJson(CANDIDATES_PROMPT,
+                payload.ToString(Newtonsoft.Json.Formatting.None) + "\nDress them.",
+                LlmClient.CandidatesSchema, res =>
+                {
+                    int n = SimLabor.DressApplicants(st, res != null ? res["candidates"] as JArray : null);
+                    if (cb != null) cb(n);
+                }, "clarify");
+        }
+
         public void Clarify(RunSnapshot s, JObject ev, string move, Action<JObject> cb)
         {
             if (!Live)
