@@ -37,6 +37,11 @@ namespace Runway.Game
 
         public bool Adjudicating { get { return _commit.Adjudicating; } }
 
+        /// The pre-roll card is on the page, so Esc has somewhere safe to go.
+        public bool PrerollUp { get { return _commit.Preroll != null; } }
+
+        public void PrerollEscape() { _commit.PrerollFix(); }
+
         GameState St { get { return _g.State; } }
         RunDriver Driver { get { return _g.Driver; } }
 
@@ -335,6 +340,13 @@ namespace Runway.Game
             _jp.Line(string.Format("{0} · {1} · {2} cust · v0.{3}", cashS,
                 weeks < 999 ? weeks + " wks" : "cash+", St.Traction, St.Product));
 
+            // THE PRE-ROLL REVIEW OWNS THE WHOLE SHEET. The founder has already read
+            // the week and written the move; what is left is one question, and the list
+            // that asks it needs the paper the prose would have eaten. Squeezed under
+            // the situation it printed its own headline and not one of the items — a
+            // card that says something is wrong without saying what.
+            if (_commit.Preroll != null) { PrerollCard(); return; }
+
             string situation = _g.CurrentEvent == null || _g.CurrentEvent.Count == 0
                 ? "Nothing came for you this week. The week is yours."
                 : ContentDb.Str(_g.CurrentEvent, "title") + " — " + ContentDb.Str(_g.CurrentEvent, "body");
@@ -448,6 +460,45 @@ namespace Runway.Game
                 Runway.Audio.Sfx.Win();
             };
             return true;
+        }
+
+        /// THE PRE-ROLL REVIEW CARD (docs/design/DECISIONS.md #2). The world's last word
+        /// before the dice: every outstanding item, named in the business term it
+        /// belongs to, with the desk that owns it. Two exits and no third — go fix it
+        /// (the binder opens on the loudest one) or roll anyway. The engine decides what
+        /// counts as outstanding (SimEngine.PrerollItems); this page only reads it, so
+        /// every roll site in the game can show the same card.
+        public void PrerollCard()
+        {
+            var rows = _commit.Preroll["items"] as JArray ?? new JArray();
+            _jp.Line("before the die rolls:");
+            int shown = 0;
+            foreach (JToken row in rows)
+            {
+                // EVERY LINE HERE STEALS PAPER FROM THE TWO EXITS, and a card whose way
+                // out fell off the sheet is a dead end: the chips get their room first.
+                if (shown >= 4 || _jp.RoomToFence("body") < _jp.RulePitch() + 40f) break;
+                var it = row as JObject;
+                // the bang carries the alarm, the WORDS carry the meaning — read this
+                // page in grey and it still says which desk and what is wrong
+                _jp.Line(string.Format("{0}{1} — {2}",
+                    ContentDb.Int(it, "severity", 2) >= 3 ? "! " : "",
+                    ContentDb.Str(it, "desk"), ContentDb.Str(it, "label")));
+                shown += 1;
+            }
+            if (shown < rows.Count)
+                _jp.Line(string.Format("…and {0} more, on the threats page.", rows.Count - shown),
+                         true);
+            _jp.Line("fix them, or roll and live with it.", false, "ending");
+            _jp.IconRow(new List<RowItem> {
+                RowItem.Of("pre:fix", "go fix it"),
+                RowItem.Of("pre:roll", "roll anyway"),
+            }, new Vector2(240f, 42f), "ending");
+            _jp.ChoiceMade += id =>
+            {
+                if (id == "pre:fix") _commit.PrerollFix();
+                else if (id == "pre:roll") _commit.PrerollRoll();
+            };
         }
 
         /// THE WORLD ASKS FIRST: the question in coral, then chips (amounts or prices)

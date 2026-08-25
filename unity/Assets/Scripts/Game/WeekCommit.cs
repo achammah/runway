@@ -58,6 +58,14 @@ namespace Runway.Game
         /// up to 3 questions per commit, until it goes silent.
         int _clarifyRounds;
         bool _priceAsked;
+        /// THE PRE-ROLL REVIEW (docs/design/DECISIONS.md #2, owner requirement):
+        /// before ANY dice roll — the weekly lock included — the world lays out
+        /// everything still outstanding and offers two exits: go back and fix it,
+        /// or roll anyway. Zero items, no card. It asks ONCE a week: a founder who
+        /// has already read the list and chosen is not asked to read it again on
+        /// the next press.
+        public JObject Preroll { get; private set; }
+        bool _prerollDone;
         /// What the founder has written this week, kept across page turns.
         public string Written = "";
 
@@ -78,6 +86,8 @@ namespace Runway.Game
             ClarifyChecked = false;
             _clarifyRounds = 0;
             _priceAsked = false;
+            Preroll = null;
+            _prerollDone = false;
             Written = "";
         }
 
@@ -273,6 +283,36 @@ namespace Runway.Game
                 return;
             }
 
+            // ── THE PRE-ROLL REVIEW (docs/design/DECISIONS.md #2) ──────────────
+            // The world has stopped asking questions; the die has not been cast.
+            // THIS is the moment to show what is still unset — an unpriced offer,
+            // a note you cannot cover, a bet finished and unshipped — because
+            // after the roll it is a consequence and no longer a choice. Zero
+            // outstanding items, no card.
+            if (!_prerollDone)
+            {
+                _prerollDone = true;
+                List<AttentionItem> outstanding = SimEngine.PrerollItems(St);
+                // THE PROBES NEVER STALL: a headless run answers "roll anyway".
+                bool autoRoll = Env.Get("RUNWAY_UFLOW", "").Length > 0
+                    || Env.Get("RUNWAY_USHOTS", "").Length > 0
+                    || Env.Get("RUNWAY_UPERF", "").Length > 0
+                    || Env.Flag("RUNWAY_FULLRUN") || Env.Flag("RUNWAY_FIRSTFLOW")
+                    || Env.Flag("RUNWAY_SHOT");
+                if (outstanding.Count > 0 && !autoRoll)
+                {
+                    var rows = new JArray();
+                    foreach (AttentionItem it in outstanding)
+                        rows.Add(new JObject
+                        {
+                            ["desk"] = it.Desk, ["label"] = it.Label, ["severity"] = it.Severity,
+                        });
+                    Preroll = new JObject { ["items"] = rows, ["base"] = t };
+                    _book.Redraw();
+                    return;
+                }
+            }
+
             ClarifyChecked = false;
             _clarifyRounds = 0;
             _priceAsked = false;
@@ -343,6 +383,30 @@ namespace Runway.Game
                         St.SetMeta("fundraising_week", St.Week);
                 }
             ApplyLock();
+        }
+
+        /// GO FIX IT: the book closes and the binder opens ON the loudest item's desk —
+        /// the founder lands looking at the thing the world stopped them for.
+        public void PrerollFix()
+        {
+            if (Preroll == null) return;
+            var rows = Preroll["items"] as JArray;
+            string toDesk = rows != null && rows.Count > 0
+                ? ContentDb.Str(rows[0] as JObject, "desk") : "";
+            Written = ContentDb.Str(Preroll, "base");
+            Preroll = null;
+            _g.CloseJournal();
+            _g.OpenBinderOn(toDesk);
+        }
+
+        /// ROLL ANYWAY: the week goes as written, and the card does not ask twice.
+        public void PrerollRoll()
+        {
+            if (Preroll == null) return;
+            Written = ContentDb.Str(Preroll, "base");
+            Preroll = null;
+            _book.Redraw();
+            CommitFromText();
         }
 
         /// The world asked, the founder answered: the move re-commits with it bound on.

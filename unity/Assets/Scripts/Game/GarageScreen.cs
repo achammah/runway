@@ -86,6 +86,7 @@ namespace Runway.Game
         TextMeshProUGUI _paintRibbon;
         TextMeshProUGUI _binderBang;
         TextMeshProUGUI _hudTicker;   // the attention registry's top line, verbatim
+        int _attFrame = -1;           // the 12fps frame the registry was last read on
         float _warmWatchT;
         RectTransform _coach;
         int _coachStep;
@@ -459,11 +460,14 @@ namespace Runway.Game
 
         // ══ the live tutorial ══════════════════════════════════════════════════
 
-        const string CoachMark = "seen_coach_v1.unity";
+        /// The mark is versioned: the tour teaches the CURRENT game, so a tour that
+        /// grew a step is a tour nobody has seen yet.
+        const string CoachMark = "seen_coach_v2.unity";
 
         /// THE LIVE TUTORIAL (owner: a first start walks the player through the
-        /// real screen): three pen chips in sequence — the room, the journal,
-        /// the binder — each advanced by a click, once per install.
+        /// real screen): four pen chips in sequence — the room, the journal, the
+        /// binder, and the two things that arrived with the bank — each advanced
+        /// by a click, once per install.
         void BuildCoach()
         {
             if (State == null || State.Week > 1) return;
@@ -490,7 +494,11 @@ namespace Runway.Game
                     x = 420f; y = 700f; w = 560f;
                     break;
                 case 2:
-                    text = "THE BINDER holds your prices, levers and ledger. a coral ! means something has no price yet \u2014 set one or the market bills the going rate.\n\n(click to start week 1)";
+                    text = "THE BINDER holds your prices, levers and ledger. a coral ! means something has no price yet \u2014 set one or the market bills the going rate.\n\n(click to continue)";
+                    x = 900f; y = 700f; w = 560f;
+                    break;
+                case 3:
+                    text = "THE BANK is its own page in there \u2014 loans, what they cost, and the taxman. and when you lock a week, the world shows you what's still unset \u2014 fix it or roll anyway.\n\n(click to start week 1)";
                     x = 900f; y = 700f; w = 560f;
                     break;
                 default:
@@ -572,12 +580,24 @@ namespace Runway.Game
         {
             if (State == null) return;
             _t += Time.unscaledDeltaTime;
+            // ESC ON THE PRE-ROLL CARD IS "GO FIX IT" — the safe exit, never the roll.
+            // A key that could cast the dice by accident is not a key this game has.
+            if (Input.GetKeyDown(KeyCode.Escape) && _spreads != null && _spreads.PrerollUp)
+            {
+                _spreads.PrerollEscape();
+                return;
+            }
             if (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.B)) OpenBinder();
             // THE BADGE AND THE TICKER read ONE list (00-spine section 4): the
             // engine's attention registry. The old hardcoded OR-chain could only
             // ever know about three conditions; every desk can raise a hand now.
-            if (_binderBang != null || _hudTicker != null)
+            // ON THE HAND'S OWN CLOCK: the registry is walked and sorted at 12fps,
+            // not 60 — the same quantisation everything else in this room breathes
+            // on, and four frames in five of list-building nobody could have seen.
+            int attFrame = Mathf.FloorToInt(Time.unscaledTime * 12f);
+            if (attFrame != _attFrame && (_binderBang != null || _hudTicker != null))
             {
+                _attFrame = attFrame;
                 List<AttentionItem> items = SimEngine.AttentionItems(State);
                 if (_binderBang != null)
                     _binderBang.gameObject.SetActive(items.Count > 0);
@@ -668,6 +688,13 @@ namespace Runway.Game
         void OpenBinder()
         {
             Sfx.CardFlip(); BinderScreen.Open(State);
+        }
+
+        /// The pre-roll review's "go fix it" opens the binder ON the desk that owns the
+        /// loudest outstanding item, so the founder lands looking at the problem.
+        public void OpenBinderOn(string desk)
+        {
+            Sfx.CardFlip(); BinderScreen.Open(State, desk);
         }
 
         // ══ the journal ════════════════════════════════════════════════════════

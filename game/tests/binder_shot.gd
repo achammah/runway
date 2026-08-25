@@ -1,6 +1,6 @@
 extends SceneTree
 ## Photograph every Binder tab with a lively mid-game state (customers, crew,
-## debt, rivals, statuses, a loan — all seven tabs populated). Catches layout
+## debt, rivals, statuses, a loan — all ten tabs populated). Catches layout
 ## drift the moment a tab changes. Run: godot --path . --script tests/binder_shot.gd
 
 func _init() -> void:
@@ -67,11 +67,11 @@ func _go() -> void:
 	root.add_child(b)
 	b.size = Vector2(1536, 1024)
 	await create_timer(0.6).timeout
-	for i in 9:
+	for i in 10:
 		b.set("_tab", i)
 		b.call("_refresh")
 		await create_timer(0.35).timeout
 		await RenderingServer.frame_post_draw
 		root.get_viewport().get_texture().get_image().save_png("%s/binder_%d.png" % [dir, i])
-	print("BINDER SHOTS -> %s/binder_0..8.png" % dir)
+	print("BINDER SHOTS -> %s/binder_0..9.png" % dir)
 	quit(0)

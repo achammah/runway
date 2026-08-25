@@ -51,8 +51,16 @@ var _clarify_checked := false      # this commit already passed the pre-pass
 # questions per commit, until it goes silent.
 var _clarify_rounds := 0
 var _price_asked := false
+# THE PRE-ROLL REVIEW (docs/design/DECISIONS.md #2, owner requirement): before
+# ANY dice roll — the weekly lock included — the world lays out everything still
+# outstanding and offers two exits: go back and fix it, or roll anyway. Zero
+# items, no card. It asks ONCE a week: a founder who has already read the list
+# and chosen is not asked to read it again on the next press.
+var _preroll := {}                 # {items, base} while the card is on the page
+var _preroll_done := false
 var _binder_bang: Label = null
 var _hud_ticker: Label = null   # the attention registry's top line, verbatim
+var _att_frame := -1            # the 12fps frame the registry was last read on
 var _coach: Control = null
 var _coach_step := 0
 var _seen_spreads := {}            # "week:page:sheet" -> the ink is already dry
@@ -174,15 +182,24 @@ func setup(p_state: GameState, p_content: ContentDb, p_rng: SeededRng, p_record:
 		_last_outcome = state.last_outcome.duplicate(true)
 
 func _unhandled_key_input(ev: InputEvent) -> void:
+	# ESC ON THE PRE-ROLL CARD IS "GO FIX IT" — the safe exit, never the roll.
+	# A key that could cast the dice by accident is not a key this game has.
+	if ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE \
+			and not _preroll.is_empty():
+		accept_event()
+		_preroll_fix()
+		return
 	if ev is InputEventKey and ev.pressed and ev.keycode in [KEY_TAB, KEY_B]:
 		if _binder != null and is_instance_valid(_binder):
 			return   # the binder handles its own dismissal
 		_open_binder()
 
-func _open_binder() -> void:
+func _open_binder(on_desk: String = "") -> void:
 	_binder = Binder.new()
 	_binder.setup(state)
 	add_child(_binder)
+	if on_desk != "":
+		_binder.focus_desk(on_desk)
 	_binder.size = Vector2(1536, 1024)
 	_sfx["card_flip"].play()
 	# the clipboard comes UP off the desk, like everything else in this game
@@ -398,11 +415,14 @@ func _ready() -> void:
 ## this game is drawn at leaves the same motion and lets Godot's own "same
 ## value, nothing to do" check swallow the other four frames in five.
 const BREATH_FPS := 12.0
-const COACH_MARK := "user://seen_coach_v1"
+## The mark is versioned: the tour teaches the CURRENT game, so a tour that grew
+## a step is a tour nobody has seen yet.
+const COACH_MARK := "user://seen_coach_v2"
 
 ## THE LIVE TUTORIAL (owner: a first start walks the player through the real
-## screen): three pen chips in sequence — the room, the journal, the binder —
-## each advanced by a click, once per install.
+## screen): four pen chips in sequence — the room, the journal, the binder, and
+## the two things that arrived with the bank — each advanced by a click, once
+## per install.
 func _build_coach() -> void:
 	if state == null or state.week > 1:
 		return
@@ -430,7 +450,11 @@ func _show_coach_step() -> void:
 			pos = Vector2(420, 690)
 			w = 560.0
 		2:
-			text = "THE BINDER holds your prices, levers and ledger. a coral ! means something has no price yet — set one or the market bills the going rate.\n\n(click to start week 1)"
+			text = "THE BINDER holds your prices, levers and ledger. a coral ! means something has no price yet — set one or the market bills the going rate.\n\n(click to continue)"
+			pos = Vector2(880, 690)
+			w = 560.0
+		3:
+			text = "THE BANK is its own page in there — loans, what they cost, and the taxman. and when you lock a week, the world shows you what's still unset — fix it or roll anyway.\n\n(click to start week 1)"
 			pos = Vector2(880, 690)
 			w = 560.0
 		_:
@@ -467,7 +491,12 @@ func _process(_delta: float) -> void:
 	# THE BADGE AND THE TICKER read ONE list (docs/design/00-spine.md §4): the
 	# engine's attention registry. The old hardcoded OR-chain could only ever
 	# know about three conditions; every desk can raise a hand now.
-	if (_binder_bang != null or _hud_ticker != null) and state != null:
+	# ON THE HAND'S OWN CLOCK: the registry is walked and sorted at 12fps, not 60
+	# — the same quantisation everything else in this room breathes on, and four
+	# frames in five of list-building the player could never have seen.
+	var att_frame := int(t * BREATH_FPS)
+	if att_frame != _att_frame and (_binder_bang != null or _hud_ticker != null) and state != null:
+		_att_frame = att_frame
 		var items := SimEngine.attention_items(state)
 		if _binder_bang != null:
 			_binder_bang.visible = not items.is_empty()
@@ -1727,6 +1756,8 @@ func _start_week() -> void:
 	_pending_choice = {}
 	_pending_free = {}
 	_pending_people = {}
+	_preroll = {}
+	_preroll_done = false
 	_page_i = 0
 	# the people consumable: loyalty drains every week; empty = they walk
 	for cf in state.cofounders.duplicate():
@@ -2157,6 +2188,14 @@ func _spread_ahead() -> void:
 	_jp.line("%s · %s · %d cust · v0.%d" % [cash_s,
 			("%d wks" % weeks) if weeks < 999 else "cash+",
 			state.traction, state.product])
+	# THE PRE-ROLL REVIEW OWNS THE WHOLE SHEET. The founder has already read the
+	# week and written the move; what is left is one question, and the list that
+	# asks it needs the paper the prose would have eaten. Squeezed under the
+	# situation it printed its own headline and not one of the items — a card
+	# that says something is wrong without saying what.
+	if not _preroll.is_empty():
+		_preroll_card()
+		return
 	var situation := ""
 	if _current_event.is_empty():
 		situation = "Nothing came for you this week. The week is yours."
@@ -2522,6 +2561,26 @@ func _commit_from_text() -> void:
 			_clarify_checked = true   # silence ends the rounds
 			_commit_from_text())
 		return
+
+	# ── THE PRE-ROLL REVIEW (docs/design/DECISIONS.md #2) ──────────────────────
+	# The world has stopped asking questions; the die has not been cast. THIS is
+	# the moment to show what is still unset — an unpriced offer, a note you
+	# cannot cover, a bet finished and unshipped — because after the roll it is
+	# a consequence and no longer a choice. Zero outstanding items, no card.
+	if not _preroll_done:
+		_preroll_done = true
+		var outstanding := SimEngine.preroll_items(state)
+		# THE PROBES NEVER STALL: a headless run answers "roll anyway" for itself.
+		var auto_roll := OS.get_environment("RUNWAY_FULLRUN") != "" \
+				or OS.get_environment("RUNWAY_FIRSTFLOW") != "" \
+				or OS.get_environment("RUNWAY_UFLOW") != "" \
+				or OS.get_environment("RUNWAY_SHOT") != "" \
+				or OS.get_environment("RUNWAY_SHOTS") != ""
+		if not outstanding.is_empty() and not auto_roll:
+			_preroll = {"items": outstanding, "base": t}
+			_show_spread()
+			return
+
 	_clarify_checked = false
 	_clarify_rounds = 0
 	_price_asked = false
@@ -2571,6 +2630,57 @@ func _commit_from_text() -> void:
 					and String((ef as Dictionary).get("v", "")) == "fundraising_open":
 				state.set_meta("fundraising_week", state.week)
 		_lock_week(), _pending_dice)
+
+## ── THE PRE-ROLL REVIEW CARD (docs/design/DECISIONS.md #2) ────────────────────
+## The world's last word before the dice: every outstanding item, named in the
+## business term it belongs to, with the desk that owns it. Two exits and no
+## third — go fix it (the binder opens on the loudest one) or roll anyway. The
+## engine decides what counts as outstanding (SimEngine.preroll_items); this page
+## only reads it, so every roll site in the game can show the same card.
+func _preroll_card() -> void:
+	var rows: Array = _preroll.get("items", [])
+	_jp.line("before the die rolls:")
+	var shown := 0
+	for it in rows:
+		# EVERY LINE HERE STEALS PAPER FROM THE TWO EXITS, and a card whose way
+		# out fell off the sheet is a dead end: the chips get their room first.
+		if shown >= 4 or _jp.room_to_fence("body") < _jp.rule_pitch() + 40.0:
+			break
+		var itd: Dictionary = it
+		# the bang carries the alarm, the WORDS carry the meaning — read this
+		# page in grey and it still says which desk and what is wrong
+		_jp.line("%s%s — %s" % ["! " if int(itd.get("severity", 2)) >= 3 else "",
+			String(itd.get("desk", "")), String(itd.get("label", ""))])
+		shown += 1
+	if shown < rows.size():
+		_jp.line("…and %d more, on the threats page." % (rows.size() - shown), true)
+	_jp.line("fix them, or roll and live with it.", false, "ending")
+	_jp.icon_row([{"id": "pre:fix", "text": "go fix it"},
+		{"id": "pre:roll", "text": "roll anyway"}], Vector2(240, 42), "ending")
+	_jp.choice_made.connect(func(id: String) -> void:
+		if id == "pre:fix":
+			_preroll_fix()
+		elif id == "pre:roll":
+			_preroll_roll())
+
+## GO FIX IT: the book closes and the binder opens ON the loudest item's desk —
+## the founder lands looking at the thing the world stopped them for.
+func _preroll_fix() -> void:
+	var rows: Array = _preroll.get("items", [])
+	var to_desk := ""
+	if not rows.is_empty():
+		to_desk = String((rows[0] as Dictionary).get("desk", ""))
+	_free_text[1] = String(_preroll.get("base", _free_text.get(1, "")))
+	_preroll = {}
+	_close_journal()
+	_open_binder(to_desk)
+
+## ROLL ANYWAY: the week goes as written, and the card does not ask twice.
+func _preroll_roll() -> void:
+	_free_text[1] = String(_preroll.get("base", _free_text.get(1, "")))
+	_preroll = {}
+	_show_spread()
+	_commit_from_text()
 
 func _answer_clarify(ans: String) -> void:
 	var base := String(_clarify.get("base", ""))
