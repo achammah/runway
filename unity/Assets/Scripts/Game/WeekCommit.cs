@@ -633,7 +633,18 @@ namespace Runway.Game
             WeeklyReport tick = SimEngine.WeeklyTick(St);
             var bootG = Boot.Instance;
             if (tick.ApplicantsNew > 0 && bootG != null && bootG.Generator != null)
-                bootG.Generator.DressApplicants(St, null);   // fire-and-forget: cards already playable
+            {
+                // fire-and-forget: the cards are already playable; the reply
+                // only swaps words. This side owns the Core types — the LLM
+                // assembly is pure transport.
+                var dressPayload = SimLabor.DressingPayload(St);
+                if (dressPayload != null && dressPayload.Count > 0)
+                    bootG.Generator.DressApplicants(dressPayload, res =>
+                    {
+                        if (res != null)
+                            SimLabor.DressApplicants(St, res["candidates"] as Newtonsoft.Json.Linq.JArray);
+                    });
+            }
             outcomeLog.AddRange(tick.Lines);
             for (int i = 0; i < tick.Events.Count; i++) outcomeLog.Add("⚡ " + tick.Events[i]);
             for (int i = 0; i < tick.FiredClocks.Count; i++)
