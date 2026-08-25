@@ -228,9 +228,9 @@ func _tab_ledger() -> void:
 	for lv in LEVERS:
 		var cat := String(lv[0])
 		var cur := int(state.budgets.get(cat, 0))
-		_label(cat.to_upper(), Vector2(10, y), 30)
-		_label(String(lv[1]), Vector2(10, y + 38), 23, Color(INK, 0.6))
-		_label("$%s/wk" % _fmt(cur), Vector2(520, y + 6), 32, PEN)
+		_label(cat.to_upper(), Vector2(10, y), 28)
+		_label(String(lv[1]), Vector2(10, y + 34), 21, Color(INK, 0.6))
+		_label("$%s/wk" % _fmt(cur), Vector2(520, y + 4), 30, PEN)
 		# WHAT THIS MONEY IS DOING RIGHT NOW, from the engine's own formulas —
 		# the mechanics visible at the point of the decision
 		_label(_lever_effect(cat, cur), Vector2(688, y + 12), 24, Color(INK, 0.75))
@@ -252,60 +252,60 @@ func _tab_ledger() -> void:
 			state.budgets[cat] = _lever_step(cur, 1)
 			_refresh())
 		_content.add_child(plus)
-		y += 92.0
-	# the math, honestly
+		y += 78.0
+	# the math, honestly — one running cursor, compact: five levers + the
+	# P&L + the warnings all live inside the 760px sheet
 	var ue: Dictionary = state.get_meta("unit_econ", {})
 	var lever_sum := 0
 	for k in state.budgets:
 		lever_sum += int(state.budgets[k])
 	var rw := SimEngine.runway_weeks(state)
-	y += 6.0
-	_label("the math", Vector2(10, y), 30, BLUE)
+	var cy := y + 4.0
 	var arpu := float(ue.get("arpu", 0.0))
 	var cacv := int(ue.get("cac", 0))
 	var ltvv := int(ue.get("ltv", 0))
 	var pb := int(ue.get("payback_wk", 0))
 	_label("a customer pays ≈ $%.0f/wk · costs $%s to win (CAC) · is worth $%s over their stay (LTV) · pays back in %s"
 		% [arpu, (_fmt(cacv) if cacv > 0 else "?"), (_fmt(ltvv) if ltvv > 0 else "?"),
-		("%d wks" % pb) if pb > 0 else "—"], Vector2(10, y + 40), 25, Color(INK, 0.75), 1100.0)
-	_label("levers total $%s/wk · runway %s" % [_fmt(lever_sum),
-		("%d weeks" % rw) if rw < 999 else "gaining money"], Vector2(10, y + 108), 28)
+		("%d wks" % pb) if pb > 0 else "—"], Vector2(10, cy), 23, Color(INK, 0.75), 1100.0)
+	cy += 34.0
 	# THE WEEK, HONESTLY (owner: a real business sim knows its running cost):
 	# the engine's own P&L record, every lane, and the bottom line in ink.
 	var pnl: Dictionary = state.get_meta("pnl", {})
 	if not pnl.is_empty():
-		var py := y + 156.0
-		_label("last week, honestly:", Vector2(10, py), 28, BLUE)
-		_label("in $%s   ·   serving cost $%s%s" % [_fmt(int(pnl.get("revenue", 0))),
+		_label("last week: in $%s · serving $%s%s" % [_fmt(int(pnl.get("revenue", 0))),
 			_fmt(int(pnl.get("cogs", 0))),
-			("  (learning curve ×%.2f)" % float(pnl.get("learning", 1.0))) if float(pnl.get("learning", 1.0)) < 0.995 else ""],
-			Vector2(10, py + 40), 25, Color(INK, 0.8))
+			("  (learning ×%.2f)" % float(pnl.get("learning", 1.0))) if float(pnl.get("learning", 1.0)) < 0.995 else ""],
+			Vector2(10, cy), 24, BLUE, 1100.0)
+		cy += 34.0
 		_label("out: rent $%s · payroll $%s · infra $%s · levers $%s%s%s" % [
 			_fmt(int(pnl.get("rent", 0))), _fmt(int(pnl.get("payroll", 0))),
 			_fmt(int(pnl.get("infra", 0))),
 			_fmt(int(pnl.get("marketing", 0)) + int(pnl.get("sales", 0)) + int(pnl.get("care", 0)) + int(pnl.get("rnd", 0)) + int(pnl.get("office", 0))),
 			(" · unforeseen $%s" % _fmt(int(pnl.get("incident", 0)))) if int(pnl.get("incident", 0)) > 0 else "",
-			(" · standing costs $%s/wk" % _fmt(int(pnl.get("liabilities_wk", 0)))) if int(pnl.get("liabilities_wk", 0)) > 0 else ""],
-			Vector2(10, py + 76), 25, Color(INK, 0.8), 1100.0)
+			(" · standing $%s/wk" % _fmt(int(pnl.get("liabilities_wk", 0)))) if int(pnl.get("liabilities_wk", 0)) > 0 else ""],
+			Vector2(10, cy), 24, Color(INK, 0.8), 1100.0)
+		cy += 34.0
 		var net := int(pnl.get("net", 0))
-		_label("THE BOTTOM LINE: %s$%s a week" % ["+" if net >= 0 else "−", _fmt(absi(net))],
-			Vector2(10, py + 116), 30, (SAGE if net >= 0 else PEN))
-	for cm in state.commitments:
-		var cmd: Dictionary = cm
-		if int(cmd.get("cash_wk", 0)) < 0:
-			y += 0.0   # standing costs listed above; names print in the journal
+		_label("THE BOTTOM LINE: %s$%s a week · levers total $%s/wk · runway %s" % [
+			"+" if net >= 0 else "−", _fmt(absi(net)), _fmt(lever_sum),
+			("%d weeks" % rw) if rw < 999 else "gaining money"],
+			Vector2(10, cy), 27, (SAGE if net >= 0 else PEN), 1100.0)
+		cy += 40.0
+	else:
+		_label("levers total $%s/wk · runway %s" % [_fmt(lever_sum),
+			("%d weeks" % rw) if rw < 999 else "gaining money"], Vector2(10, cy), 27)
+		cy += 40.0
 	if rw <= 4 and rw < 999:
 		_label("⚠ this spend kills the company in %d weeks — cut it or earn it" % rw,
-			Vector2(10, y + 148.0), 28, PEN)
-	var ry := y + 148.0
-	if rw <= 4 and rw < 999:
-		ry += 40.0
+			Vector2(10, cy), 26, PEN, 1100.0)
+		cy += 36.0
 	if state.cash < 0:
 		_label("THE RED: %d of 3 weeks below zero. At three, it's over." % state.weeks_in_red,
-			Vector2(10, ry), 28, PEN)
-		ry += 44.0
+			Vector2(10, cy), 26, PEN, 1100.0)
+		cy += 36.0
 	_label("the rules of this world: reach saturates · only capacity closes · churn is a leaky bucket · debt slows everything · three weeks below zero ends it",
-		Vector2(10, ry + 8.0), 22, Color(INK, 0.5), 1100.0)
+		Vector2(10, cy + 2.0), 20, Color(INK, 0.5), 1100.0)
 
 ## the engine's live math for one lever, in one plain phrase
 func _lever_effect(cat: String, v: int) -> String:

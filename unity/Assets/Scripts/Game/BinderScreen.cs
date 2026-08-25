@@ -270,9 +270,9 @@ namespace Runway.Game
             {
                 string cat = Levers[i][0];
                 int cur = Budget(cat);
-                L(cat.ToUpper(), 10f, y, 30f);
-                L(Levers[i][1], 10f, y + 38f, 23f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f));
-                L("$" + GameUi.Money(cur) + "/wk", 520f, y + 6f, 32f, DrawnUI.Coral, 200f);
+                L(cat.ToUpper(), 10f, y, 28f);
+                L(Levers[i][1], 10f, y + 34f, 21f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f));
+                L("$" + GameUi.Money(cur) + "/wk", 520f, y + 4f, 30f, DrawnUI.Coral, 200f);
                 // WHAT THIS MONEY IS DOING RIGHT NOW, from the engine's own formulas
                 L(LeverEffect(cat, cur), 688f, y + 12f, 24f,
                   DrawnUI.WithAlpha(DrawnUI.Ink, 0.75f), 300f);
@@ -288,64 +288,68 @@ namespace Runway.Game
                     SetBudget(c, Step(at, 1));
                     Refresh();
                 });
-                y += 92f;
+                y += 78f;
             }
-            // the math, honestly
+            // the math, honestly — one running cursor, compact: five levers +
+            // the P&L + the warnings all live inside the 760px sheet
             int leverSum = _st.Budgets.Sum();
             int rw = SimEngine.RunwayWeeks(_st);
-            y += 6f;
-            L("the math", 10f, y, 30f, DrawnUI.Blue);
+            float cy = y + 4f;
             double arpu = UnitEcon("arpu");
             int cac = Gd.ToInt(UnitEcon("cac"));
             int ltv = Gd.ToInt(UnitEcon("ltv"));
             int pb = Gd.ToInt(UnitEcon("payback_wk"));
-            // THE DOLLAR SIGN BELONGS TO THE SENTENCE, not to the number. The ledger
-            // says "$?" when it does not know yet — a bare "?" reads as a missing word.
             L(string.Format(
                 "a customer pays ≈ ${0:0}/wk · costs ${1} to win (CAC) · is worth ${2} over their stay (LTV) · pays back in {3}",
                 arpu, cac > 0 ? GameUi.Money(cac) : "?",
                 ltv > 0 ? GameUi.Money(ltv) : "?", pb > 0 ? pb + " wks" : "—"),
-                10f, y + 40f, 25f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.75f));
-            L(string.Format("levers total ${0}/wk · runway {1}", GameUi.Money(leverSum),
-                rw < 999 ? rw + " weeks" : "gaining money"), 10f, y + 108f, 28f);
+                10f, cy, 23f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.75f), 1100f);
+            cy += 34f;
             // THE WEEK, HONESTLY (owner: a real business sim knows its running
             // cost): the engine's own P&L record, every lane, the bottom line.
             Pnl pnl = _st.LastPnl;
-            float ry = y + 148f;
             if (pnl != null)
             {
-                L("last week, honestly:", 10f, ry, 28f, DrawnUI.Blue);
-                L(string.Format("in ${0}   ·   serving cost ${1}{2}",
+                L(string.Format("last week: in ${0} · serving ${1}{2}",
                     GameUi.Money(pnl.Revenue), GameUi.Money(pnl.Cogs),
                     pnl.Learning < 0.995
-                        ? string.Format("  (learning curve ×{0:0.00})", pnl.Learning) : ""),
-                    10f, ry + 40f, 25f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.8f));
+                        ? string.Format("  (learning ×{0:0.00})", pnl.Learning) : ""),
+                    10f, cy, 24f, DrawnUI.Blue, 1100f);
+                cy += 34f;
                 L(string.Format("out: rent ${0} · payroll ${1} · infra ${2} · levers ${3}{4}{5}",
                     GameUi.Money(pnl.Rent), GameUi.Money(pnl.Payroll), GameUi.Money(pnl.Infra),
                     GameUi.Money(pnl.Marketing + pnl.Sales + pnl.Care + pnl.Rnd + pnl.Office),
                     pnl.Incident > 0 ? " · unforeseen $" + GameUi.Money(pnl.Incident) : "",
-                    pnl.LiabilitiesWk > 0 ? " · standing costs $" + GameUi.Money(pnl.LiabilitiesWk) + "/wk" : ""),
-                    10f, ry + 76f, 25f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.8f), 1100f);
-                L(string.Format("THE BOTTOM LINE: {0}${1} a week",
-                    pnl.Net >= 0 ? "+" : "−", GameUi.Money(Math.Abs(pnl.Net))),
-                    10f, ry + 116f, 30f, pnl.Net >= 0 ? DrawnUI.Sage : DrawnUI.Coral);
-                ry += 164f;
+                    pnl.LiabilitiesWk > 0 ? " · standing $" + GameUi.Money(pnl.LiabilitiesWk) + "/wk" : ""),
+                    10f, cy, 24f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.8f), 1100f);
+                cy += 34f;
+                L(string.Format("THE BOTTOM LINE: {0}${1} a week · levers total ${2}/wk · runway {3}",
+                    pnl.Net >= 0 ? "+" : "−", GameUi.Money(Math.Abs(pnl.Net)),
+                    GameUi.Money(leverSum), rw < 999 ? rw + " weeks" : "gaining money"),
+                    10f, cy, 27f, pnl.Net >= 0 ? DrawnUI.Sage : DrawnUI.Coral, 1100f);
+                cy += 40f;
+            }
+            else
+            {
+                L(string.Format("levers total ${0}/wk · runway {1}", GameUi.Money(leverSum),
+                    rw < 999 ? rw + " weeks" : "gaining money"), 10f, cy, 27f);
+                cy += 40f;
             }
             if (rw <= 4 && rw < 999)
             {
                 L(string.Format("⚠ this spend kills the company in {0} weeks — cut it or earn it", rw),
-                  10f, ry, 28f, DrawnUI.Coral);
-                ry += 40f;
+                  10f, cy, 26f, DrawnUI.Coral, 1100f);
+                cy += 36f;
             }
             if (_st.Cash < 0)
             {
                 L(string.Format("THE RED: {0} of 3 weeks below zero. At three, it's over.",
-                    _st.WeeksInRed), 10f, ry, 28f, DrawnUI.Coral);
-                ry += 44f;
+                    _st.WeeksInRed), 10f, cy, 26f, DrawnUI.Coral, 1100f);
+                cy += 36f;
             }
             L("the rules of this world: reach saturates · only capacity closes · churn is a "
               + "leaky bucket · debt slows everything · three weeks below zero ends it",
-              10f, ry + 8f, 22f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f));
+              10f, cy + 2f, 20f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f));
         }
 
         /// SimEngine parks the week's unit economics on the state as ONE nested map.
