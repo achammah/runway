@@ -11,10 +11,20 @@ N2  NINE LANES in parallel — each writes ONLY its own
       L5 pipeline · L6 finance+bank · L7 roadmap
       L8 board+M&A · L9 hardware
 N4a DM-PROMPTS agent — sole owner of prompt files, after N2
-N4b QA agent — interface-language 15-check gate per desk, after N2
+N4b QA LOOP — after N2, iterate until standard (owner mandate):
+    extend both shot harnesses to cover EVERY new surface (all 10 binder
+    tabs per era-relevant state, the pre-roll review card, review cards,
+    applicant/bet/term cards, pipeline board, bench, ticker, coach step 4,
+    empty/WAIT/keyless states) → capture screenshots → assess each
+    against docs/design/10-interface-language.md's 15-check gate + the
+    game's visual bar → fix → re-shoot → repeat until every check passes
+    on every surface, BOTH engines. Plus a live keyed probe pass
+    (RUNWAY_UFLOW class) across the new desks and a post-wave perf soak.
+    No new feature ships below the standard of the existing game.
 N5  coordinator — arbitrage, integration seams, full gates
     (parse · compile · twin suites · save fixture · full-run smoke),
-    rebuild both apps + DMGs, log, ship
+    verify N4b's screenshot verdicts myself, rebuild both apps + DMGs,
+    log, ship
 ```
 
 Rules of the DAG:
