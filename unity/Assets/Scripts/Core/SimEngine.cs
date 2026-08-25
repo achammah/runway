@@ -2017,7 +2017,7 @@ namespace Runway.Core
                 { "market_penetration_pct", Gd.Snappedf(A / N * 100.0, 0.1) },
                 { "market_mood", Gd.Snappedf(state.MarketTrend, 0.01) },
                 { "price_mult", state.PriceMult },
-                { "marketing_weekly", state.MarketingBudget },
+                { "marketing_weekly", Gd.ToInt(SimFunnel.SpendTotal(state)) + state.MarketingBudget },
                 { "tech_debt", Gd.ToInt(state.TechDebt) },
                 { "fatigue", Gd.ToInt(state.Fatigue) },
                 { "exhaustion", state.Exhaustion },

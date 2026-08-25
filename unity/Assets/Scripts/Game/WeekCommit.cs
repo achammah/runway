@@ -518,7 +518,7 @@ namespace Runway.Game
                         string nm2 = WorldGen.PersonName(hrng);   // hires are people, not brands
                         int sal = role == "engineer" ? 1500 : role == "sales" ? 1200
                             : role == "support" ? 900 : role == "designer" ? 1100
-                            : role == "ops" ? 1000 : 1200;
+                            : role == "ops" ? 1000 : role == "marketing" ? 1300 : 1200;
                         St.Pipeline.Add(new PipelineHire
                         {
                             Name = nm2, Role = role, Salary = sal, WeeksIn = 0,

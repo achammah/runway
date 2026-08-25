@@ -3027,7 +3027,7 @@ func _apply_dm_effects(effects: Array) -> Array:
 				rng_n.seed = hash(str(state.sim_seed) + str(state.week) + str(state.pipeline.size()))
 				var nm2 := WorldGen.person_name(rng_n)   # hires are people, not brands
 				var sal: int = {"engineer": 1500, "sales": 1200, "support": 900,
-					"designer": 1100, "ops": 1000}.get(role, 1200)
+					"designer": 1100, "ops": 1000, "marketing": 1300}.get(role, 1200)
 				state.pipeline.append({"name": nm2, "role": role, "salary": sal, "weeks_in": 0})
 				out.append("hired a %s ($%d/wk, onboarding) — %s" % [role, sal, why])
 			"take_loan":
