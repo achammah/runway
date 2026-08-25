@@ -392,3 +392,41 @@ art GPU-ready (−346MB) with cache provenance, POLISH gave the pen its
 feel (the caret's real enemy was onFocusSelectAll) and put typed ink
 on its rule, and the local narrator's seam is wired behind its flag.
 Triple ship: RUNWAY.dmg (Godot) + RUNWAY!.app + RUNWAY-Unity.dmg.
+
+## 2026-08-25 — the business becomes real (live-play wave 2)
+
+The owner played DAO and streamed defects + a vision upgrade: "a real
+turn-based business simulation." One wave, both engines, twin suites 82/82:
+
+- **The backstop**: unpriced offers bill at the FAIR (going) rate — zero
+  revenue with customers on the books is impossible by algorithm. A conscious
+  $0 (binder stepper or `price_offer` v=0) stays free and pays in demand
+  (giveaway cap ×2). Report line names the going rate; the old
+  "unpriced earns ZERO" pin is overruled in both suites.
+- **Clarify rounds**: the pre-pass re-runs on the merged move after every
+  answer (≤3/commit) until silent; prompt reads " — " answer segments,
+  asks amount → price → target in criticality order. The engine price gate
+  now exists in BOTH engines (was Unity-only) and fires once per commit.
+- **The DM sees the shop**: state lines carry the full catalog with prices/
+  units/going-rate status; `price_offer` op (schema + executors + prompt)
+  lands named prices deterministically (first-unpriced → reprice-first).
+- **OPEX layer** (BSL + Bonopoly): `office` lever (morale +3/wk toward $2k),
+  seeded unforeseen incidents (30%/wk, receipted), rare standing liabilities
+  (6%, week≥4 → commitments billing weekly), learning curve on serving cost
+  (−11%/10× served, floor 65%).
+- **The honest desk**: ledger prints the engine's own P&L record (in/serving/
+  every out lane/THE BOTTOM LINE ±, colored); pricing shows unit cost +
+  margin/unit + per-customer margin; cap table previews next-round dilution.
+  Coral ! bangs: pricing (going-rate billing), ledger (net<0), cap table
+  (term sheets waiting) + the garage binder chip on any of them.
+- **The raise seal**: the prompt contradiction ("pair a closed round with its
+  cash_delta") is dead — raises earn `fundraising_open` only; dilution is
+  priced at the term-sheet signature by the engine.
+- **Room recovery (#208)**: a failed founding paint re-kicks one volley
+  (engine-retained verdict), the garage watches WarmStatus, mounts late
+  paint, and voices network trouble on the ribbon.
+- **The live coach**: first install walks three chips on the real screen
+  (room → journal/LOCK IN → binder + bangs), marker `seen_coach_v1`.
+
+Gates: Godot suite 82/82 · C# twin 82/82 · unity_compile 0 errors · all
+edited GDScripts parse-checked. Prompt twins synced byte-for-byte.
