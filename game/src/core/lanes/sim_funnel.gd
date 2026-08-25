@@ -83,7 +83,9 @@ static func channel(state: GameState) -> Dictionary:
 static func spend_of(state: GameState, key: String) -> float:
 	var v := float(int(state.budgets.get(key, 0)))
 	if key == "ads":
-		v += float(state.marketing_budget)
+		# twin law: the C# side folds BOTH legacy fields here; a pre-migration
+		# save must read identically on either engine
+		v += float(state.marketing_budget) + float(int(state.budgets.get("marketing", 0)))
 	return v
 
 ## What acquisition costs this week, all four lanes — the P&L's `marketing` sum.
