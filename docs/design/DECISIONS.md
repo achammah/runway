@@ -264,5 +264,402 @@ pivot desk gets its own five-way design round with THE COMPANY group.
   BOOKS mode = the full statement on the ledger sheet.
   **Pattern promoted**: the NUMBERED DIDACTIC ZONE (badge number +
   small-caps title + one-line lesson in the header) is a reusable
-  primitive for every concept-heavy desk (the factory, cap table,
-  pivot).
+  primitive for every concept-heavy desk (the works, cap table, pivot).
+- **the factory → THE WORKS** (owner, 2026-08-26: "factory is really
+  how you have all your running cost… each massage is kinda a
+  factory/product — we need a broader term for all types of business").
+  Pick = A, the four-zone Meeting grammar, with BUSINESS-TYPE-NATIVE
+  variants — the second variation axis, beside the audience axis:
+  the desk answers the same four questions in every business, in that
+  business's own units:
+  1. CAN WE SERVE? — demand vs capacity vs overflow, in native units
+     (massages/wk, seats, units, matched orders). The cost of the gap
+     is stated honestly per type: service/hardware/marketplace lose
+     un-billed revenue ("$320 walks away"); SOFTWARE degrades instead —
+     past the ceiling, service slips and churn bites.
+  2. WHAT ONE COSTS — the UNIT TICKET is always the offer's generated
+     cost lines (the catalog engine half that already itemizes fixed +
+     variable costs): therapist minutes + oils + laundry for a massage;
+     hosting + support minutes + billing for a seat; parts + hands +
+     wear for a unit; fees + support + supply-acquisition for an order.
+     The learning curve teaches per type (practice / automation /
+     Wright / ops maturity).
+  3. WHAT MAKES THE CAPACITY — the capacity ASSETS, type-native:
+     service = people × bookable hours (+ rooms) read from the TEAM;
+     software = infra headroom + the care team's ticket bandwidth;
+     hardware = the machines (resale at half, as designed);
+     marketplace = the active-seller pool + ops staffing (with a
+     concentration warning when few sellers carry most supply).
+  4. OVERFLOW — the type's own relief valve, always priced against
+     in-house: freelancers per session; cloud burst ×price + queue
+     (churn cost); the subcontract shop; recruit supply / throttle
+     demand behind a waitlist.
+  Naming: the tab is **"the works"** in every run. No business sleeps
+  the tab — everyone has works.
+  Engine honesty: the desk UNIFIES what the engine already computes
+  (catalog cost lines, serving COGS, crew, machines, infra line);
+  deeper per-type capacity sims (bookable-hours model, ticket
+  bandwidth, seller-pool dynamics) are recorded later waves that slot
+  into zones 1/3 without changing the page.
+  **SCALE LADDER (owner: "not enough scalable — rework")**: the four
+  zones never change; their CONTENTS climb three rungs, recursing
+  exactly like team's person → function → business unit:
+  1. **THE BOUTIQUE** (few offers, named assets, one roof): as first
+     designed — named cards, one itemized ticket.
+  2. **THE HOUSE** (multiple offers, one roof): zone 1 becomes the
+     DEMAND MIX (a mini-ledger: offer · wanted · served · gap) over ONE
+     shared capacity pool bar (offers draw from the same hands/machines
+     — that is the teaching); zone 2 becomes THE TICKET BOOK on the
+     ledger sheet (offer · costs each · sells · margin · volume share;
+     pressing a row opens its full itemized ticket); zone 3 groups
+     assets with subtotals (HANDS ×9 — 216 slots ▸, ROOMS ×4,
+     MACHINES ×3), best-performer named, the crowd counted; zone 4
+     lists relief valves as stepper rows (including demand-smoothing:
+     off-peak pricing).
+  3. **THE EMPIRE** (sites: studios / plants / regions / product
+     lines): the page leads with THE SITES LEDGER — site · capacity ·
+     wanted · utilization% · unit cost · margin each · flag, TOTAL
+     double-ruled; a site row opens to its own rung-2 view (recursion).
+     Per-site unit costs teach comparative economics ("Lyon makes a
+     session for $27; Geneva for $36 — rent eats the ticket"); site
+     flags climb to the tab red. Relief at this rung: open/close a
+     site (capex card), rebalance overflow between sites.
+  Volume formatting scales with the numbers (82/wk → 8.2k/wk); bars
+  normalize; units stay native. Software climbs the same rungs as
+  tiers → products → regions; marketplace as categories → regions;
+  hardware as SKUs → plants (the deferred multi-SKU factory slots in
+  here).
+  **THE DIVISION MECHANIC (owner challenge: "how will you
+  programmatically decide on each division?")** — divisions are NEVER
+  generated; they are engine state:
+  1. **Born from decisions.** A division exists only because the player
+     built it through a real op: `open_site` (a written move → clarify
+     rounds → rent quote + capex + hire pack → a site record),
+     shipping a second product (a roadmap bet that lands creates a
+     product record; offers carry a product id), entering a segment
+     (pipeline/funnel already model audiences). `close_site` is the
+     mirror (severance owed, lease broken, resale at half).
+  2. **The axes are fixed schema, not free-form**: site · product ·
+     offer · segment. The LLM's ONLY role is naming and dressing the
+     objects (suggesting "Lyon" for the new studio, awning text) —
+     numbers never. "Sliced by ▾" lists only axes with ≥2 populated
+     divisions in state.
+  3. **Every dollar already has an address.** Division books are
+     GROUP-BYs over records the engine already keeps: employee.site,
+     machine.site, offer.product, serving COGS per offer, rent per
+     site, site wage multiplier. Roll-ups are sums — nothing invented.
+     What genuinely has no address (founder, brand marketing, HQ rent)
+     lands in an honest **SHARED / HQ row**, never smeared across
+     divisions — allocated vs direct costs IS the lesson.
+  4. **Per-site demand**: each site carries its own local demand share
+     (the funnel splits reach by site weight; a new site ramps on its
+     own curve). Site unit costs differ through rent + local wage
+     multiplier + its own learning count — which produces the
+     "Lyon $27 / Geneva $36" comparison mechanically.
+  5. **Rungs are deterministic counts**: sites ≥ 2 → empire (default
+     slice = site); else offers ≥ 3 → house (slice = offer); else
+     boutique. No judgment calls, no LLM.
+  Engine work recorded for implementation: site record + site fields
+  on employees/machines + open_site/close_site ops + per-site demand
+  weights; product id on offers (set when roadmap ships); the slicer
+  itself is pure aggregation over existing pnl lanes.
+  **ARRANGE MODE (owner, 2026-08-26: "we need an edit mode of this tab
+  to put the right element manually")** — the works' WRITE view:
+  1. The read faces (whichever rung-3 face is picked) stay pure
+     display; pressing ARRANGE flips the desk to one neutral
+     assignment layout regardless of face: divisions as labeled bins
+     (+ the SHARED/HQ bin), elements as chips — people, machines/
+     rooms, org-book spend lines. Two presses, no drag: press a chip,
+     press its new home; Esc cancels (the Esc contract holds).
+  2. **Moves are real operations, not bookkeeping**: moving a person
+     charges a one-off relocation cost and a 1-week ramp at the new
+     site; moving a machine charges shipping and a week offline. The
+     PRE-MOVE RECEIPT shows all of it before the two-tap confirm
+     ("June → Lyon: $400 now · Paris −24 slots/wk · Lyon +24 after
+     ramp"). Pure TAGS are free (offer → product; spend line →
+     division/shared) — paper is paper.
+  3. **Bound elements never move by hand**: rent belongs to its roof,
+     serving COGS to its offer, interest to its note — shown in a
+     locked strip so the player learns which costs follow which
+     objects.
+  4. **New things ask at birth**: with ≥2 sites, hiring/buying asks
+     "for which site?" in the clarify pass; DM ops carry the field.
+  Engine ops: reassign_employee{site}, move_machine{site},
+  tag_offer{product}, tag_spend_line{division|shared} — all
+  deterministic, books re-roll as sums.
+  **ARRANGE EDITS THE BINS TOO (owner follow-up: "adding/remove/edit
+  blocks like LYON — which has consequences")** — full structure
+  editing, all through the same receipt + two-tap grammar:
+  1. **ADD** — a "+ new" ghost bin sits in arrange mode; pressing it
+     enters the SAME open_site flow as the written move (lease quote,
+     capex, hire pack, priced receipt). One op, two doors.
+  2. **EDIT** — rename is free (dressing). Re-leasing / resizing a
+     roof is priced (new rent, a moving week). Demand is never
+     editable — it is earned, not set.
+  3. **CLOSE** — the teardown wizard: the closing review lists EVERY
+     element of the bin with a decision each (people: move — priced —
+     or let go — severance ALWAYS owed; machines: move or sell at
+     half; lease: broken, penalty), plus the customer consequence
+     (this roof's customers partially transfer with a churn hit, the
+     rest are lost), all composed into ONE closing receipt with the
+     payback line derived ("Geneva loses $210/wk — closing costs
+     $6,150 and pays back in 29 weeks"). Two-tap on the total.
+  4. **MERGE / SPLIT** — shortcuts that compose the same primitives
+     (close + moves / open + moves), one composite receipt.
+  5. **PAPER vs BRICK** — the teachable split: PAPER divisions
+     (products — groupings of offers) restructure FREE; BRICK
+     divisions (sites/plants) always price; SEGMENT divisions are the
+     world's, not editable. Chip moves confirm one by one; bin
+     operations stage into one composite receipt; Esc abandons the
+     whole staged change.
+  Engine ops added: open_site (shared with the written-move door),
+  close_site{decisions[]}, edit_site{lease}, rename is dressing-only.
+
+## THE MUTATION LAW — binder-wide (owner, 2026-08-26: "we need a
+## logic of what happens if things are added/removed/edited on
+## customers, bank, etc.")
+
+Every structural mutation on any desk flows through the SAME grammar:
+a receipt that prices it first, a two-tap confirm, Esc abandons. Three
+consequence classes: **ink is free** (renames, tags, groupings),
+**brick is priced** (anything physical: capex, leases, ramps,
+relocations), **obligations survive removal** (severance, penalties,
+churn — nothing is silently destroyed). Per desk:
+
+| desk | ADD | EDIT | REMOVE |
+|---|---|---|---|
+| offers | define a new offer → the DM prices its tools (fixed lines) + unit cost → receipt → on the card | price steppers free; redefining re-prices its cost lines | drop behind two-tap; its customers churn or migrate to a neighbor offer |
+| customers | never by hand — customers are EARNED (growth, in motion) | — | fire an account: contract penalty, revenue dies, the street hears it |
+| segments | entering a new customer type is a priced door — its motion ramps from zero | — | leaving loses its customers (audience-pivot-lite; the pivot desk owns the full version) |
+| the bank | borrow = the quote + SIGN | REFINANCE — swap a note for a new quote at today's standing, break fee on the old (new op) | repay early: cash out now, the interest line dies |
+| team | hire (asks "which roof?" when sites ≥ 2) | raises / role change (ramp week) / move site via arrange | let go — severance ALWAYS owed |
+| the works | open roof: lease + capex + hires, priced | re-lease/resize priced; rename free | close: the teardown wizard, one receipt, payback line |
+| product | a new product ships only from a landed bet | reprioritize bets (stand-down −25%) | retire a product: its offers retire with it, customers migrate or churn |
+| spend | add a line into a bucket — starts billing $/wk | steppers free | stop a line instantly — unless the book marked it "contract" (notice period bills through) |
+| bills | not editable — bills follow the things that create them; you change a bill by changing its source | | |
+| cap table | moves only through rounds, offers and events — never by hand | | |
+
+New engine op recorded: refinance_note{old_id, quote} with break fee.
+The rate card's "define an offer" door reuses the shipped LLM
+cost-lines flow (owner-approved wave 2 mechanic).
+
+**THE PRICE BOOK (owner, 2026-08-26: "the cost of opening etc.
+generated at the beginning of the game so the whole path is clear")**
+— at RUN START (and again only at a pivot that changes the business's
+nature), the world generation emits the complete structural price
+schedule fitted to this business, alongside offers/cost lines/topics:
+open-a-roof pack (lease deposit + capex + hire pack + ramp weeks, by
+era), relocation fee, machine shipping, lease-break formula (N weeks
+of rent), which spend-book lines are "contract" and their notice
+periods, refinance break fee, freelancer/subcontract/burst overflow
+rates, account-fire penalty. Rules:
+1. **LLM proposes inside engine bands, engine clamps** — the standing
+   law; never unclamped numbers. Stored as durable FIELDS.
+2. **The path is visible before the decision**: desks quote the price
+   book in advance ("a second roof ≈ $18,000") so expansion can be
+   planned, not discovered.
+3. **The world-generation prompt (and the PA prompt-assistant pass on
+   it) must be updated at implementation** to emit this schedule —
+   recorded as an explicit implementation task.
+
+Rung-3 read face: owner moved on without a letter — DEFAULT = B (THE
+HERO ROWS, calmest and most scalable, consistent with the ledger-
+family picks); one word swaps it to folders or quartet.
+
+## PRODUCT desk — corrected understanding (owner, 2026-08-26: first
+## round rejected — "the product tab enables you to see what the
+## product IS, the features, planning next features, the whole
+## pipeline, and cost of the product — valid for product/service/
+## software/marketplace")
+
+The desk is THE PRODUCT'S OWN PAGE, not meters about it. Content spine
+(fixed; style being picked from a 10-way round):
+1. **IDENTITY** — what the product is in plain words (name + one
+   sentence + who it's for + version), generated at birth, rename is
+   ink.
+2. **THE FEATURES** — the concrete inventory of what it's made of:
+   named features, each an ENGINE OBJECT (birth features from world
+   gen + landed bets), carrying a contribution class (fixed enums:
+   brings-them-in / keeps-them / lets-us-charge / plumbing), a
+   solidity state (solid / creaky / breaking — tech debt made visible
+   PER FEATURE, concentrated in the plumbing), and a keep-cost $/wk.
+   For a service business features are service elements (the 50-min
+   protocol, online booking, the loyalty card); for hardware,
+   capabilities/components; for a marketplace, platform pieces
+   (escrow, ratings, search).
+3. **THE PIPELINE** — the whole path visible end-to-end: THE SHELF
+   (DM-proposed candidates priced inside price-book bands: $, weeks,
+   odds, promised contribution — plus a "define your own" door) →
+   NEXT (committed queue, reorderable) → BUILDING (progress, odds,
+   $/wk, stand-down burns 25%) → READY (SHIP rolls the dice at the
+   press; self-ships in 3 weeks, red clock) → LIVE (joins the
+   inventory; promised vs measured checked).
+4. **THE COST OF THE PRODUCT** — build $/wk (committed bets) + keep
+   $/wk (sum of feature keep-costs; features are never free) + the
+   per-unit impact on the works' ticket + the creak line (debt −4%
+   build speed until refactored).
+
+**PICK (owner): style 5, THE KANBAN WALL — refined, renamed, proven**:
+1. **The tab is renamed "what we make"** — wider than "product": a
+   spa makes an experience, a device maker makes the device, a
+   marketplace makes the platform. (Alternates offered: "the craft",
+   "the thing"; owner can swap with one word.) "Offers" stays the
+   COMMERCIAL packaging (prices/units); "what we make" is the
+   substance; "the works" is the cost of delivering it.
+2. **Two-part page (clearer, cleaner, allowed to be long)**:
+   - THE PIPELINE WALL on top — four columns, each with a one-line
+     meaning under its header: THE SHELF (priced ideas — $, weeks,
+     odds, promised job; press to commit) → NEXT (the committed
+     queue, reorderable) → BUILDING (progress + $/wk + odds;
+     stand-down burns 25%) → READY (SHIP rolls the dice; self-ships
+     in 3 weeks, red clock).
+   - LIVE — THE INVENTORY as a full-width band below, grouped by job
+     (brings them in / keeps them / lets us charge / plumbing), one
+     card per feature: name, solidity dot, keep-cost, measured note
+     on recent landings ("promised +8, measured +6"). The creaky
+     card is the debt, pointable.
+   - The cost footer: build + keep + per-unit impact + creak tax.
+3. **One card anatomy everywhere** — pipeline cards carry
+   $/weeks/odds/promise; live cards carry solidity/keep/measured;
+   same shape, so the wall reads as one system.
+4. **Type-proven**: the same wall renders for SaaS, service (the
+   experience), hardware (the device), marketplace (the platform) —
+   only vocabulary changes, all generated at run start.
+5. **SCALE LADDER (owner: "how does it scale?")** — same recursion as
+   team and the works:
+   - **Rung 1 — one thing, few features** (≤ ~12 live): as rendered,
+     every feature a card.
+   - **Rung 2 — one thing, many features**: features fold into named
+     FAMILIES ("the booking suite" — count, summed keep-cost, worst
+     member's solidity; opens to members). Families are INK — free
+     tags, regroupable in arrange mode. Inside each job-group the
+     fold is attention-first: creaky/breaking cards and fresh
+     landings stay face-up, the healthy crowd folds to "the other N
+     solid — $X/wk ▸". The shelf column shows its best 4-5 ideas by
+     fit + "N more ▸"; BUILDING holds several bars at once (bigger
+     r&d = parallel builds).
+   - **Rung 3 — many things (products ≥ 2)**: the tab leads with THE
+     LINEUP — one hero-row per product (name, version, features live,
+     creak state, building count, its cost line); press a product →
+     its full wall. A **SHARED PLUMBING band** sits under the lineup
+     (billing, identity, data platform — features every product
+     stands on; a creak here taxes ALL build speed) — the mirror of
+     SHARED/HQ in the works. Red bubbles: feature → family → product
+     row → tab.
+   Engine: family = a tag field on features (ink); product id already
+   exists; nothing new but the tag.
+
+## THE OWNERSHIP CLUSTER (owner, 2026-08-26: cap table = investor
+## state + dilution + ESOP surfaced for employees + a recruitment tab
+## with offers + inbound/outbound/pitches/SAFEs + ALL instrument types)
+
+The ask splits into THREE pages + one thread. The binder is now 18
+desks: COSTS gains **recruitment** (beside team); THE COMPANY gains
+**the raise** (beside cap table).
+
+### 1. CAP TABLE — the ownership STATE
+- HERO: your slice % and its paper worth ("you own 58% ≈ $1.5M —
+  paper, not cash").
+- THE SLICES: ledger-sheet of holders — founders, each investor by
+  round/instrument, the ESOP pool (granted vs available) — columns:
+  holder · instrument/class · invested · % · preferences. Double-ruled
+  100% total.
+- THE DILUTION STORY: a shrinking-bar timeline of ownership events
+  (start 100% → SAFEs convert → pool top-up → priced round), each
+  event showing % DOWN but paper value UP — the core dilution lesson.
+- THE WATERFALL: "if sold today at $X": the bank first, preferences
+  next, then the split — preferences bite below the cap, drawn.
+- THE POOL panel: size, granted, available, upcoming vesting cliffs.
+- Board & covenants strip stays here (existing mechanics).
+
+### 2. THE RAISE — the fundraising PIPELINE (in motion, for investors)
+- Stages: ON THE RADAR (inbound knocks — generated mechanically from
+  traction/hype/era/board network as an interest score — plus
+  outbound targets you pitch) → CONVERSATIONS (they ask for real
+  numbers; the data room readiness reads YOUR binder: growth, margin,
+  runway, pipeline — weak pages = investor doubts, named) → TERMS ON
+  THE TABLE → SIGNED & WIRED.
+- **All instrument types**, each with true semantics: angel check
+  (small, fast) · SAFE (post-money, cap + discount — money now,
+  dilution LATER; the SAFE STACK warning shows total deferred
+  dilution if all convert) · convertible note (SAFE + interest +
+  maturity that can come due) · PRICED ROUND (valuation, new share
+  class, 1x non-participating standard — participating flagged
+  predatory, board seat ask, POOL TOP-UP demanded pre-money — the
+  top-up dilutes founders, not the new investor: taught explicitly)
+  · bridge (insider note) · venture debt (lives at the bank, warrant
+  nibble) · secondary (exists — soft landing).
+- THE COMPARISON CARD: two offers side by side — true dilution today
+  AND at next round, board seats, preferences, pool demands. The
+  desk's biggest teaching moment.
+- **The raise costs founder time**: an active raise consumes weekly
+  attention (the shop measurably slows) — fundraising is never free.
+- No-shop, covenants, strikes: existing board mechanics plug in.
+
+### 3. RECRUITMENT — the hiring pipeline with real offers
+- OPEN ROLES: role cards (seat, level, comp band from the price
+  book, advert stepper, ≈applicants/wk).
+- THE CANDIDATES: per role, applied → interviewed (costs founder
+  time) → OFFER OUT → signed/joined (ramp) or lost.
+- **THE OFFER COMPOSER** (the ESOP hook): salary $ + options from
+  the pool (N% · 4-year vest · 1-year cliff) + title; acceptance
+  odds move with the mix AND the candidate's profile (mercenary
+  wants cash, missionary takes equity) — comp design taught. Rival
+  counter-offers can outbid; declined offers sour the market
+  slightly.
+- Collapse ladder: many roles → grouped by function (rung 2 team
+  grammar).
+
+### THE ESOP THREAD (one mechanic, three surfaces)
+- Pool born/expanded at (typically) a priced round's demand or by
+  founder op; expansion dilutes existing holders — shown on the
+  dilution story.
+- Grants: {n%, 208-wk vest, 52-wk cliff}; leavers keep vested,
+  unvested returns to the pool.
+- Surfaces: cap table (the pool panel) · TEAM (each row gains a
+  vesting mini-bar: "0.4% · 31% vested · cliff passed") · recruitment
+  (the offer composer draws from the pool; empty pool = no equity
+  offers until expanded).
+- Attractiveness: grants raise labor-market appeal and allow lower
+  cash salary (comp mix is a real lever).
+
+Engine work recorded: ESOP pool + grant records + vesting ticks;
+instrument records (safe/note/priced/bridge) with conversion at
+priced rounds; investor interest score + raise pipeline state +
+founder-time tax; offer records with acceptance model; recruitment
+desk state. Board-lane term-sheet/covenant/no-shop mechanics are the
+foundation the raise extends.
+
+### 4. THE OFFER — a MOMENTARY desk (owner, 2026-08-26: buyout offers
+### create a temporary tab)
+
+When a buyout offer lands, a gold tab slides into THE COMPANY group
+and stays only until the offer is answered or expires (then folds
+into HISTORY). This is the first of the MOMENTARY DESK pattern (an
+IPO window can reuse it later). Contents, four zones:
+1. **WHAT'S ON THE TABLE** — the headline price decomposed honestly:
+   cash today vs acquirer STOCK (lockup months — their paper, their
+   luck) vs EARNOUT (paid only if targets hit — flagged when the
+   targets sit under the buyer's control) vs retention handcuffs
+   ("you must stay N months").
+2. **WHO GETS WHAT** — the waterfall applied to THIS number: the bank
+   first, then preferences (or conversion when converting beats the
+   1× — computed, shown), then the split incl. the ESOP holders
+   ("your people get paid too — vested only"), and YOUR take
+   decomposed into cash / locked stock / maybe-earnout.
+3. **THE FINE PRINT, READ ALOUD** — the game generates SOME offers
+   fishy on purpose (earnout under buyer control, long lockups,
+   retention carved from the founders' share, low-ball with expiry
+   pressure); the desk names each flag in red. Learning to read the
+   small lines IS the lesson.
+4. **WHO CAN SAY NO** — the powers, resolved from what was SIGNED at
+   the raise: protective provisions (an investor veto can block the
+   sale you want), drag-along thresholds (≥N% of preferred accepting
+   can force the sale you don't), board composition. Taught
+   explicitly: the term sheet decided your exit freedom years early.
+Resolution: ACCEPT (two-tap; no-shop freezes the raise) / NEGOTIATE
+(one counter, priced by the world) / DECLINE (offers can sour or
+return higher; the street hears). Engine: offer records extend the
+board lane's M&A offers with structure {cash, stock+lockup, earnout+
+controller, retention}, waterfall executor, powers checks
+(protective/drag-along fields on instrument records, set at signing).

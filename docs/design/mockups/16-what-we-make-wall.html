@@ -1,0 +1,229 @@
+<title>What We Make</title>
+<style>
+@font-face{font-family:'Patrick';src:url(../../../game/assets/fonts/PatrickHand-Regular.ttf) format('truetype');font-display:block}
+@font-face{font-family:'Baloo';src:url(../../../game/assets/fonts/Baloo2-Bold.ttf) format('truetype');font-weight:700;font-display:block}
+:root{
+  --wall:#2A2722; --wall2:#332F28; --paper:#F2EAD3; --paper2:#F6F0DE; --card:#EFE6CE;
+  --kraft:#DDBE8C; --kraft2:#CBA96F; --alert:#D93425;
+  --ink:#2B2823; --ink6:rgba(43,40,35,.6); --ink4:rgba(43,40,35,.42); --ink25:rgba(43,40,35,.25); --ink12:rgba(43,40,35,.12);
+  --coral:#E86A5C; --sage:#8FA582; --blue:#6E8CA0; --yell:#F4B942;
+  --chrome:#D8D2C4; --chrome-dim:#A69E8D;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--wall);color:var(--chrome);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 0 90px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 26px}
+.topbar{position:sticky;top:0;z-index:50;background:linear-gradient(var(--wall) 82%,transparent);padding:18px 0 10px}
+.topbar .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-family:'Baloo';color:var(--paper);font-size:28px}
+.crumb{font-size:12.5px;color:var(--chrome-dim);letter-spacing:.08em}
+.lede{padding:24px 0 6px;max-width:950px}
+.lede p{margin:0 0 12px}
+.lede .how{border-left:4px solid var(--yell);padding:10px 16px;background:var(--wall2);border-radius:6px;margin-top:12px}
+.lede .how b{color:var(--paper)}
+.secttl{display:flex;align-items:baseline;gap:14px;margin:46px 0 8px}
+.secttl h2{font-family:'Baloo';color:var(--paper);font-size:25px}
+.secttl span{color:var(--chrome-dim);font-size:14px}
+.binder{position:relative;max-width:100%;display:flex;font-family:'Patrick';color:var(--ink);filter:drop-shadow(0 14px 30px rgba(0,0,0,.5))}
+.cover{flex:none;width:50px;background:var(--kraft);border:3px solid var(--ink);border-right:none;border-radius:16px 0 0 14px;position:relative;background-image:repeating-linear-gradient(115deg, rgba(43,40,35,.05) 0 3px, transparent 3px 9px)}
+.cover .sticker{position:absolute;top:26px;left:50%;transform:translateX(-50%) rotate(-90deg);white-space:nowrap;background:var(--paper2);border:2.2px solid var(--ink);border-radius:6px;padding:2px 12px;font-size:15px}
+.ringbar{flex:none;width:44px;background:var(--kraft2);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);display:flex;flex-direction:column;justify-content:space-around;align-items:center;padding:20px 0}
+.ring{width:32px;height:32px;border-radius:50%;border:3.4px solid var(--ink);position:relative}
+.ring::after{content:"";position:absolute;inset:6px;border-radius:50%;border:2.6px solid var(--ink);opacity:.45}
+.stack{flex:1;background:var(--paper);border:3px solid var(--ink);border-left:2.6px solid var(--ink);border-radius:0 14px 12px 0;display:flex;min-width:0;position:relative}
+.rail{flex:none;width:196px;padding:18px 8px 18px 22px}
+.divider{position:relative;margin:10px 0;border:2.6px solid var(--ink);border-radius:10px;background:var(--paper2)}
+.divider .tab{position:absolute;top:-2.6px;bottom:-2.6px;left:-16px;width:13px;border:2.6px solid var(--ink);border-radius:8px 0 0 8px}
+.tab.sage{background:var(--sage)}.tab.coral{background:var(--coral)}.tab.blue{background:var(--blue)}.tab.yell{background:var(--yell)}
+.divider .dh{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:15px}
+.divider.closed{background:var(--kraft);box-shadow:0 3px 0 -1px var(--kraft2), 0 6px 0 -2px rgba(43,40,35,.35)}
+.divider.open{background:var(--paper)}
+.divider.open .dh{border-bottom:2px solid var(--ink25)}
+.divider .pages{padding:6px 6px 9px}
+.ptab{display:flex;align-items:center;gap:7px;font-size:16px;padding:4px 9px;border-radius:8px;margin:2px 0}
+.ptab.on{background:var(--paper2);border:2.4px solid var(--ink);box-shadow:1.5px 1.5px 0 rgba(43,40,35,.18)}
+.sheet{flex:1;min-width:0;padding:18px 22px 20px;border-left:2.4px solid var(--ink25);background:var(--paper);border-radius:0 12px 10px 0}
+.money{font-variant-numeric:tabular-nums}
+.big{font-family:'Baloo';line-height:1.05}
+.pos{color:#5D7A50}.neg{color:#C0392B}
+.dim{color:var(--ink6)}.dimmer{color:var(--ink4)}
+.clock{display:inline-block;background:var(--alert);color:#fff;border:2.2px solid var(--ink);border-radius:8px;padding:0 8px;font-size:13px}
+.vplate{border:3px solid var(--ink);border-radius:10px;background:var(--card);padding:5px 14px;text-align:center;display:flex;flex-direction:column;box-shadow:2px 2px 0 rgba(43,40,35,.2);flex:none}
+.signbtn{font-family:'Baloo';font-size:15px;background:var(--yell);border:2.6px solid var(--ink);border-radius:9px;padding:1px 12px;box-shadow:1.5px 2px 0 rgba(43,40,35,.25);display:inline-block}
+/* THE WALL */
+.wallgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.wcol{display:flex;flex-direction:column;gap:10px}
+.whead{font-family:'Baloo';font-size:15px;letter-spacing:.06em;border:2.6px solid var(--ink);border-radius:8px;background:var(--kraft);text-align:center;padding:4px 0}
+.wsub{font-size:12.5px;color:var(--ink4);text-align:center;margin-top:-4px;min-height:32px}
+.wcard{border:2.5px solid var(--ink);border-radius:9px;background:#FDFBF2;padding:9px 12px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.wcard b{font-size:15.5px;display:block;margin-bottom:4px}
+.wrow{display:flex;justify-content:space-between;font-size:13.5px;color:var(--ink6);padding:1.5px 0;gap:10px}
+.wrow .money{color:var(--ink)}
+.wcard.wnext{background:var(--paper2)}
+.wcard.wbuild{background:#FCF3DA}
+.wcard.wready{border-color:var(--alert);border-width:2.8px;background:#F9E9DC}
+.wbar{height:12px;border:2.2px solid var(--ink);border-radius:6px;background:var(--paper2);overflow:hidden;margin-top:6px}
+.wbar span{display:block;height:100%;background:var(--yell)}
+.wghost{border:2.4px dashed var(--ink25);border-radius:9px;padding:8px 12px;font-size:13.5px;color:var(--ink6);text-align:center}
+/* LIVE BAND */
+.liveband{margin-top:18px;border:2.8px solid var(--ink);border-radius:11px;background:var(--paper2);padding:12px 16px 14px}
+.livehead{font-family:'Baloo';font-size:15px;letter-spacing:.06em;margin-bottom:10px}
+.lgroup{display:flex;gap:14px;align-items:flex-start;padding:8px 0;border-top:1.8px solid var(--ink12)}
+.lglab{flex:none;width:150px;font-size:12.5px;letter-spacing:.09em;color:var(--ink6);padding-top:8px}
+.lgrid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.lcard{border:2.4px solid var(--ink);border-radius:9px;background:var(--card);padding:7px 11px;box-shadow:1.5px 1.5px 0 rgba(43,40,35,.15)}
+.lcard b{font-size:15px}
+.lnote{font-size:12.5px;color:var(--ink6);margin-top:3px}
+.sd{display:inline-block;width:11px;height:11px;border-radius:50%;border:2.2px solid var(--ink)}
+.sd.ok{background:var(--sage)}
+.sd.cr{background:var(--yell)}
+.sd.bad{background:var(--alert)}
+.costline{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;border-top:2px solid var(--ink25);padding-top:9px;font-size:14.5px;color:var(--ink6)}
+.footer{margin-top:64px;border-top:1px solid var(--wall2);padding-top:20px;color:var(--chrome-dim);font-size:14.5px}
+.footer b{color:var(--paper)}
+</style>
+
+<div class="topbar"><div class="wrap">
+<h1>What We Make</h1><span class="crumb">TAB 10 / 16 · THE WALL, EXPLORED · SAY OK OR ADJUST</span>
+</div></div>
+
+<div class="wrap">
+<div class="lede">
+<p><b style="color:var(--paper)">The wall, taken seriously — and the tab renamed "WHAT WE MAKE"</b>, because "product" was too narrow: a spa makes an experience, a device maker makes the device, a marketplace makes the platform. (Prefer "the craft" or "the thing"? One word swaps it.) The trio is now clean: <b style="color:var(--paper)">offers</b> = what we charge for it · <b style="color:var(--paper)">what we make</b> = the thing itself · <b style="color:var(--paper)">the works</b> = what delivering it costs.</p>
+<p>The page is two parts and takes its length: <b style="color:var(--paper)">THE PIPELINE WALL</b> on top — four columns, each with its meaning written under the header (shelf: priced ideas, press to commit · next: the queue, reorder freely · building: money burning against odds · ready: ship it or it ships itself) — and <b style="color:var(--paper)">LIVE, THE INVENTORY</b> as a full-width band below, grouped by job, one card per feature with its solidity dot, keep-cost, and the measured note on recent landings ("promised +price, measured +12%"). One card anatomy everywhere, so the wall reads as one system. The creaky card IS the debt — pointable, rebuildable.</p>
+<div class="how"><b>Four businesses below on the identical wall</b> — SaaS, a massage studio, a drone-kit maker, a marketplace. Only the vocabulary changes, and it's generated at run start. Say OK (or adjust) — then CAP TABLE.</div>
+</div>
+
+<div class="secttl"><h2>SOFTWARE — Paceboard</h2><span>the canonical case</span></div><div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider open"><span class="tab blue"></span><div class="dh">THE COMPANY</div>
+        <div class="pages"><div class="ptab on">what we make</div><div class="ptab">cap table</div><div class="ptab">the street</div><div class="ptab">threats</div><div class="ptab">pivot</div></div>
+      </div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:18px;margin:2px 0 14px">
+  <div class="vplate"><span class="dim" style="font-size:12px">what we make</span><b class="big" style="font-size:23px">PACEBOARD</b><span class="dim" style="font-size:12.5px">v0.62</span></div>
+  <div>
+    <div class="big" style="font-size:29px">schedules for small teams</div>
+    <div class="dim" style="font-size:16px">9 live · 1 building · 1 ready · 3 on the shelf · <span class="neg">creaks at the billing core — build speed −4%</span></div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div><span class="clock">integrations API self-ships in 2 wks</span></div>
+    <div class="dim" style="font-size:13.5px">SHIP rolls the dice · stand-down burns 25%</div>
+  </div>
+</div>
+<div class="wallgrid">
+  <div class="wcol"><div class="whead">THE SHELF</div><div class="wsub">priced ideas — press one to commit it</div><div class="wcard"><b>white-label</b><div class="wrow"><span>cost · time</span><span class="money">$900 · 3 wk</span></div><div class="wrow"><span>odds</span><span class="money">55%</span></div><div class="wrow"><span>would help</span><span class="money">charge more</span></div></div><div class="wcard"><b>group scheduling</b><div class="wrow"><span>cost · time</span><span class="money">$450 · 2 wk</span></div><div class="wrow"><span>odds</span><span class="money">70%</span></div><div class="wrow"><span>would help</span><span class="money">brings in</span></div></div><div class="wcard"><b>SMS pack</b><div class="wrow"><span>cost · time</span><span class="money">$300 · 1 wk</span></div><div class="wrow"><span>odds</span><span class="money">85%</span></div><div class="wrow"><span>would help</span><span class="money">keeps them</span></div></div><div class="wghost">write your own idea ▸ the world prices it</div></div>
+  <div class="wcol"><div class="whead">NEXT</div><div class="wsub">committed, waiting — reorder freely</div><div class="wcard wnext"><b>analytics pack</b><div class="wrow"><span>starts</span><span class="money">when mobile lands</span></div><div class="wrow"><span>would help</span><span class="money">keeps them</span></div></div></div>
+  <div class="wcol"><div class="whead">BUILDING</div><div class="wsub">money burning against odds</div><div class="wcard wbuild"><b>mobile app</b><div class="wrow"><span>progress</span><span class="money">wk 2 of 4</span></div><div class="wrow"><span>burning</span><span class="money">$250/wk</span></div><div class="wrow"><span>odds</span><span class="money">65%</span></div><div class="wbar"><span style="width:50%"></span></div></div></div>
+  <div class="wcol"><div class="whead">READY</div><div class="wsub">ship it, or it ships itself</div><div class="wcard wready"><b>integrations API</b><div class="wrow"><span>promises</span><span class="money">lets us charge</span></div><div style="margin-top:6px"><span class="signbtn">SHIP ▸</span> <span class="clock" style="font-size:11px">2 wk</span></div></div></div>
+</div>
+<div class="liveband"><div class="livehead">LIVE — WHAT IT'S MADE OF TODAY</div><div class="lgroup"><div class="lglab">BRINGS THEM IN</div><div class="lgrid"><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>online booking</b><span class="money dim" style="margin-left:auto;font-size:13px">$6/wk</span></div></div><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>reminders</b><span class="money dim" style="margin-left:auto;font-size:13px">$2/wk</span></div></div></div></div><div class="lgroup"><div class="lglab">KEEPS THEM</div><div class="lgrid"><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>team calendar</b><span class="money dim" style="margin-left:auto;font-size:13px">$4/wk</span></div></div><div class="lcard" style="border-color:var(--yell)"><div style="display:flex;align-items:center;gap:7px"><span class="sd cr"></span><b>reports</b><span class="money dim" style="margin-left:auto;font-size:13px">$8/wk</span></div><div class="lnote">creaky — rebuild candidate</div></div></div></div><div class="lgroup"><div class="lglab">LETS US CHARGE</div><div class="lgrid"><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>SSO</b><span class="money dim" style="margin-left:auto;font-size:13px">$5/wk</span></div><div class="lnote">promised +price, measured +12% on Enterprise</div></div><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>permissions</b><span class="money dim" style="margin-left:auto;font-size:13px">$3/wk</span></div></div></div></div><div class="lgroup"><div class="lglab">THE PLUMBING</div><div class="lgrid"><div class="lcard" style="border-color:var(--yell)"><div style="display:flex;align-items:center;gap:7px"><span class="sd cr"></span><b>billing core</b><span class="money dim" style="margin-left:auto;font-size:13px">$9/wk</span></div><div class="lnote">the creak — taxes build speed −4%</div></div><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>scheduler engine</b><span class="money dim" style="margin-left:auto;font-size:13px">$11/wk</span></div></div><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>data store</b><span class="money dim" style="margin-left:auto;font-size:13px">$7/wk</span></div></div></div></div></div>
+<div class="costline">building <b class="money">$250/wk</b> · keeping <b class="money">$55/wk</b> · features add <b class="money">$0.90</b>/unit → the works · <span class="neg">creak tax −4%</span></div></div>
+  </div>
+</div><div class="secttl"><h2>SERVICE — the Maison hour</h2><span>the experience is the thing being made; its features are service elements</span></div><div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider open"><span class="tab blue"></span><div class="dh">THE COMPANY</div>
+        <div class="pages"><div class="ptab on">what we make</div><div class="ptab">cap table</div><div class="ptab">the street</div><div class="ptab">threats</div><div class="ptab">pivot</div></div>
+      </div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:18px;margin:2px 0 14px">
+  <div class="vplate"><span class="dim" style="font-size:12px">what we make</span><b class="big" style="font-size:23px">THE MAISON HOUR</b><span class="dim" style="font-size:12.5px">exp. 3</span></div>
+  <div>
+    <div class="big" style="font-size:29px">a massage worth crossing town for</div>
+    <div class="dim" style="font-size:16px">7 live · 1 building · 1 ready · 3 on the shelf · <span class="neg">the laundry contract creaks — turnover slows</span></div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div><span class="clock">gift cards self-ship in 2 wks</span></div>
+    <div class="dim" style="font-size:13.5px">SHIP rolls the dice · stand-down burns 25%</div>
+  </div>
+</div>
+<div class="wallgrid">
+  <div class="wcol"><div class="whead">THE SHELF</div><div class="wsub">priced ideas — press one to commit it</div><div class="wcard"><b>home visits</b><div class="wrow"><span>cost · time</span><span class="money">$600 · 2 wk</span></div><div class="wrow"><span>odds</span><span class="money">65%</span></div><div class="wrow"><span>would help</span><span class="money">brings in</span></div></div><div class="wcard"><b>corporate packages</b><div class="wrow"><span>cost · time</span><span class="money">$900 · 3 wk</span></div><div class="wrow"><span>odds</span><span class="money">55%</span></div><div class="wrow"><span>would help</span><span class="money">charge more</span></div></div><div class="wcard"><b>the scent line</b><div class="wrow"><span>cost · time</span><span class="money">$250 · 1 wk</span></div><div class="wrow"><span>odds</span><span class="money">80%</span></div><div class="wrow"><span>would help</span><span class="money">keeps them</span></div></div><div class="wghost">write your own idea ▸ the world prices it</div></div>
+  <div class="wcol"><div class="whead">NEXT</div><div class="wsub">committed, waiting — reorder freely</div><div class="wcard wnext"><b>memberships</b><div class="wrow"><span>starts</span><span class="money">when the couples room lands</span></div><div class="wrow"><span>would help</span><span class="money">keeps them</span></div></div></div>
+  <div class="wcol"><div class="whead">BUILDING</div><div class="wsub">money burning against odds</div><div class="wcard wbuild"><b>the couples room</b><div class="wrow"><span>progress</span><span class="money">wk 1 of 3</span></div><div class="wrow"><span>burning</span><span class="money">$180/wk</span></div><div class="wrow"><span>odds</span><span class="money">70%</span></div><div class="wbar"><span style="width:33%"></span></div></div></div>
+  <div class="wcol"><div class="whead">READY</div><div class="wsub">ship it, or it ships itself</div><div class="wcard wready"><b>gift cards</b><div class="wrow"><span>promises</span><span class="money">brings in</span></div><div style="margin-top:6px"><span class="signbtn">SHIP ▸</span> <span class="clock" style="font-size:11px">2 wk</span></div></div></div>
+</div>
+<div class="liveband"><div class="livehead">LIVE — WHAT IT'S MADE OF TODAY</div><div class="lgroup"><div class="lglab">BRINGS THEM IN</div><div class="lgrid"><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>online booking</b><span class="money dim" style="margin-left:auto;font-size:13px">$5/wk</span></div></div><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>the 50-min protocol</b><span class="money dim" style="margin-left:auto;font-size:13px">$3/wk</span></div><div class="lnote">the signature — copied by rivals, still ours</div></div></div></div><div class="lgroup"><div class="lglab">KEEPS THEM</div><div class="lgrid"><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>the loyalty card</b><span class="money dim" style="margin-left:auto;font-size:13px">$2/wk</span></div></div><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>the quiet room</b><span class="money dim" style="margin-left:auto;font-size:13px">$6/wk</span></div></div></div></div><div class="lgroup"><div class="lglab">LETS US CHARGE</div><div class="lgrid"><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>hot-stone option</b><span class="money dim" style="margin-left:auto;font-size:13px">$4/wk</span></div><div class="lnote">measured: +$18 average ticket</div></div></div></div><div class="lgroup"><div class="lglab">THE PLUMBING</div><div class="lgrid"><div class="lcard" style="border-color:var(--yell)"><div style="display:flex;align-items:center;gap:7px"><span class="sd cr"></span><b>the laundry contract</b><span class="money dim" style="margin-left:auto;font-size:13px">$11/wk</span></div><div class="lnote">creaks — slows room turnover</div></div><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>trained-hands roster</b><span class="money dim" style="margin-left:auto;font-size:13px">$8/wk</span></div></div></div></div></div>
+<div class="costline">building <b class="money">$180/wk</b> · keeping <b class="money">$39/wk</b> · the experience adds <b class="money">$1.60</b>/session → the works · <span class="neg">laundry creak slows turnover</span></div></div>
+  </div>
+</div><div class="secttl"><h2>HARDWARE — Kestrel kit</h2><span>components and capabilities; the creak is a recall risk</span></div><div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider open"><span class="tab blue"></span><div class="dh">THE COMPANY</div>
+        <div class="pages"><div class="ptab on">what we make</div><div class="ptab">cap table</div><div class="ptab">the street</div><div class="ptab">threats</div><div class="ptab">pivot</div></div>
+      </div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:18px;margin:2px 0 14px">
+  <div class="vplate"><span class="dim" style="font-size:12px">what we make</span><b class="big" style="font-size:23px">KESTREL KIT</b><span class="dim" style="font-size:12.5px">mk. II</span></div>
+  <div>
+    <div class="big" style="font-size:29px">a drone you assemble in an evening</div>
+    <div class="dim" style="font-size:16px">8 live · 1 building · 1 ready · 3 on the shelf · <span class="neg">firmware creaks — 3% of kits phone home angry</span></div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div><span class="clock">night-flight LEDs self-ship in 1 wk</span></div>
+    <div class="dim" style="font-size:13.5px">SHIP rolls the dice · stand-down burns 25%</div>
+  </div>
+</div>
+<div class="wallgrid">
+  <div class="wcol"><div class="whead">THE SHELF</div><div class="wsub">priced ideas — press one to commit it</div><div class="wcard"><b>FPV goggles bundle</b><div class="wrow"><span>cost · time</span><span class="money">$2,400 · 4 wk</span></div><div class="wrow"><span>odds</span><span class="money">50%</span></div><div class="wrow"><span>would help</span><span class="money">charge more</span></div></div><div class="wcard"><b>solar charger</b><div class="wrow"><span>cost · time</span><span class="money">$1,100 · 3 wk</span></div><div class="wrow"><span>odds</span><span class="money">60%</span></div><div class="wrow"><span>would help</span><span class="money">brings in</span></div></div><div class="wcard"><b>crash-proof frame</b><div class="wrow"><span>cost · time</span><span class="money">$800 · 2 wk</span></div><div class="wrow"><span>odds</span><span class="money">75%</span></div><div class="wrow"><span>would help</span><span class="money">keeps them</span></div></div><div class="wghost">write your own idea ▸ the world prices it</div></div>
+  <div class="wcol"><div class="whead">NEXT</div><div class="wsub">committed, waiting — reorder freely</div><div class="wcard wnext"><b>the pro kit</b><div class="wrow"><span>starts</span><span class="money">when the gimbal lands</span></div><div class="wrow"><span>would help</span><span class="money">charge more</span></div></div></div>
+  <div class="wcol"><div class="whead">BUILDING</div><div class="wsub">money burning against odds</div><div class="wcard wbuild"><b>camera gimbal</b><div class="wrow"><span>progress</span><span class="money">wk 3 of 5</span></div><div class="wrow"><span>burning</span><span class="money">$420/wk</span></div><div class="wrow"><span>odds</span><span class="money">55%</span></div><div class="wbar"><span style="width:60%"></span></div></div></div>
+  <div class="wcol"><div class="whead">READY</div><div class="wsub">ship it, or it ships itself</div><div class="wcard wready"><b>night-flight LEDs</b><div class="wrow"><span>promises</span><span class="money">brings in</span></div><div style="margin-top:6px"><span class="signbtn">SHIP ▸</span> <span class="clock" style="font-size:11px">1 wk</span></div></div></div>
+</div>
+<div class="liveband"><div class="livehead">LIVE — WHAT IT'S MADE OF TODAY</div><div class="lgroup"><div class="lglab">BRINGS THEM IN</div><div class="lgrid"><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>spare-parts program</b><span class="money dim" style="margin-left:auto;font-size:13px">$9/wk</span></div><div class="lnote">measured: buyers return ×1.3</div></div><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>the build guide</b><span class="money dim" style="margin-left:auto;font-size:13px">$2/wk</span></div></div></div></div><div class="lgroup"><div class="lglab">KEEPS THEM</div><div class="lgrid"><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>the companion app</b><span class="money dim" style="margin-left:auto;font-size:13px">$12/wk</span></div></div><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>quick-swap battery</b><span class="money dim" style="margin-left:auto;font-size:13px">$4/wk</span></div></div></div></div><div class="lgroup"><div class="lglab">LETS US CHARGE</div><div class="lgrid"><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>the shell mk. II</b><span class="money dim" style="margin-left:auto;font-size:13px">$6/wk</span></div><div class="lnote">measured: +$22 on the ticket</div></div></div></div><div class="lgroup"><div class="lglab">THE PLUMBING</div><div class="lgrid"><div class="lcard" style="border-color:var(--yell)"><div style="display:flex;align-items:center;gap:7px"><span class="sd cr"></span><b>flight firmware</b><span class="money dim" style="margin-left:auto;font-size:13px">$14/wk</span></div><div class="lnote">creaks — 3% angry kits, recall risk</div></div><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>motor mount</b><span class="money dim" style="margin-left:auto;font-size:13px">$5/wk</span></div></div><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>supply jigs</b><span class="money dim" style="margin-left:auto;font-size:13px">$8/wk</span></div></div></div></div></div>
+<div class="costline">building <b class="money">$420/wk</b> · keeping <b class="money">$60/wk</b> · the design adds <b class="money">$2.40</b>/unit → the works · <span class="neg">firmware creak = recall risk</span></div></div>
+  </div>
+</div><div class="secttl"><h2>MARKETPLACE — Stalls</h2><span>the platform is the product; sellers and buyers both feel its features</span></div><div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider open"><span class="tab blue"></span><div class="dh">THE COMPANY</div>
+        <div class="pages"><div class="ptab on">what we make</div><div class="ptab">cap table</div><div class="ptab">the street</div><div class="ptab">threats</div><div class="ptab">pivot</div></div>
+      </div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:18px;margin:2px 0 14px">
+  <div class="vplate"><span class="dim" style="font-size:12px">what we make</span><b class="big" style="font-size:23px">STALLS</b><span class="dim" style="font-size:12.5px">v9</span></div>
+  <div>
+    <div class="big" style="font-size:29px">the town's goods, one basket</div>
+    <div class="dim" style="font-size:16px">8 live · 1 building · 1 ready · 3 on the shelf · <span class="neg">the dispute desk creaks — refunds take 9 days</span></div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div><span class="clock">bulk orders self-ship in 2 wks</span></div>
+    <div class="dim" style="font-size:13.5px">SHIP rolls the dice · stand-down burns 25%</div>
+  </div>
+</div>
+<div class="wallgrid">
+  <div class="wcol"><div class="whead">THE SHELF</div><div class="wsub">priced ideas — press one to commit it</div><div class="wcard"><b>subscriptions</b><div class="wrow"><span>cost · time</span><span class="money">$700 · 2 wk</span></div><div class="wrow"><span>odds</span><span class="money">65%</span></div><div class="wrow"><span>would help</span><span class="money">keeps them</span></div></div><div class="wcard"><b>gift registry</b><div class="wrow"><span>cost · time</span><span class="money">$500 · 2 wk</span></div><div class="wrow"><span>odds</span><span class="money">70%</span></div><div class="wrow"><span>would help</span><span class="money">brings in</span></div></div><div class="wcard"><b>B2B invoicing</b><div class="wrow"><span>cost · time</span><span class="money">$1,200 · 3 wk</span></div><div class="wrow"><span>odds</span><span class="money">55%</span></div><div class="wrow"><span>would help</span><span class="money">charge more</span></div></div><div class="wghost">write your own idea ▸ the world prices it</div></div>
+  <div class="wcol"><div class="whead">NEXT</div><div class="wsub">committed, waiting — reorder freely</div><div class="wcard wnext"><b>seller analytics</b><div class="wrow"><span>starts</span><span class="money">when protection lands</span></div><div class="wrow"><span>would help</span><span class="money">keeps sellers</span></div></div></div>
+  <div class="wcol"><div class="whead">BUILDING</div><div class="wsub">money burning against odds</div><div class="wcard wbuild"><b>buyer protection</b><div class="wrow"><span>progress</span><span class="money">wk 2 of 3</span></div><div class="wrow"><span>burning</span><span class="money">$300/wk</span></div><div class="wrow"><span>odds</span><span class="money">70%</span></div><div class="wbar"><span style="width:66%"></span></div></div></div>
+  <div class="wcol"><div class="whead">READY</div><div class="wsub">ship it, or it ships itself</div><div class="wcard wready"><b>bulk orders</b><div class="wrow"><span>promises</span><span class="money">charge more</span></div><div style="margin-top:6px"><span class="signbtn">SHIP ▸</span> <span class="clock" style="font-size:11px">2 wk</span></div></div></div>
+</div>
+<div class="liveband"><div class="livehead">LIVE — WHAT IT'S MADE OF TODAY</div><div class="lgroup"><div class="lglab">BRINGS THEM IN</div><div class="lgrid"><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>search that works</b><span class="money dim" style="margin-left:auto;font-size:13px">$10/wk</span></div><div class="lnote">measured: 71% find in one try</div></div><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>the weekly digest</b><span class="money dim" style="margin-left:auto;font-size:13px">$3/wk</span></div></div></div></div><div class="lgroup"><div class="lglab">KEEPS THEM</div><div class="lgrid"><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>seller ratings</b><span class="money dim" style="margin-left:auto;font-size:13px">$4/wk</span></div></div><div class="lcard" style="border-color:var(--yell)"><div style="display:flex;align-items:center;gap:7px"><span class="sd cr"></span><b>the dispute desk</b><span class="money dim" style="margin-left:auto;font-size:13px">$12/wk</span></div><div class="lnote">creaks — refunds take 9 days</div></div></div></div><div class="lgroup"><div class="lglab">LETS US CHARGE</div><div class="lgrid"><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>same-day courier</b><span class="money dim" style="margin-left:auto;font-size:13px">$15/wk</span></div><div class="lnote">measured: take rate +2pts where live</div></div></div></div><div class="lgroup"><div class="lglab">THE PLUMBING</div><div class="lgrid"><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>escrow payments</b><span class="money dim" style="margin-left:auto;font-size:13px">$14/wk</span></div></div><div class="lcard"><div style="display:flex;align-items:center;gap:7px"><span class="sd ok"></span><b>seller onboarding</b><span class="money dim" style="margin-left:auto;font-size:13px">$7/wk</span></div></div></div></div></div>
+<div class="costline">building <b class="money">$300/wk</b> · keeping <b class="money">$65/wk</b> · the platform adds <b class="money">$0.40</b>/order → the works · <span class="neg">dispute creak bleeds trust</span></div></div>
+  </div>
+</div>
+
+<div class="footer">
+<p><b>One wall, any business.</b> Recorded: the rename, the two-part layout, the card anatomy, and the mechanics already locked (features as engine objects, shelf priced inside price-book bands, dice-at-press SHIP, self-ship clocks, stand-down −25%, promised-vs-measured). Say OK — then CAP TABLE.</p>
+</div>
+</div>

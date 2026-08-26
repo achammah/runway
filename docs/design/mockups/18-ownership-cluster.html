@@ -1,0 +1,328 @@
+<title>The Ownership Cluster</title>
+<style>
+@font-face{font-family:'Patrick';src:url(../../../game/assets/fonts/PatrickHand-Regular.ttf) format('truetype');font-display:block}
+@font-face{font-family:'Baloo';src:url(../../../game/assets/fonts/Baloo2-Bold.ttf) format('truetype');font-weight:700;font-display:block}
+:root{
+  --wall:#2A2722; --wall2:#332F28; --paper:#F2EAD3; --paper2:#F6F0DE; --card:#EFE6CE;
+  --kraft:#DDBE8C; --kraft2:#CBA96F; --alert:#D93425;
+  --ink:#2B2823; --ink6:rgba(43,40,35,.6); --ink4:rgba(43,40,35,.42); --ink25:rgba(43,40,35,.25); --ink12:rgba(43,40,35,.12);
+  --coral:#E86A5C; --sage:#8FA582; --blue:#6E8CA0; --yell:#F4B942;
+  --sageband:rgba(143,165,130,.14);
+  --chrome:#D8D2C4; --chrome-dim:#A69E8D;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--wall);color:var(--chrome);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 0 90px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 26px}
+.topbar{position:sticky;top:0;z-index:50;background:linear-gradient(var(--wall) 82%,transparent);padding:18px 0 10px}
+.topbar .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-family:'Baloo';color:var(--paper);font-size:28px}
+.crumb{font-size:12.5px;color:var(--chrome-dim);letter-spacing:.08em}
+.lede{padding:24px 0 6px;max-width:950px}
+.lede p{margin:0 0 12px}
+.lede .how{border-left:4px solid var(--yell);padding:10px 16px;background:var(--wall2);border-radius:6px;margin-top:12px}
+.lede .how b{color:var(--paper)}
+.secttl{display:flex;align-items:baseline;gap:14px;margin:46px 0 8px}
+.secttl h2{font-family:'Baloo';color:var(--paper);font-size:25px}
+.secttl span{color:var(--chrome-dim);font-size:14px}
+.binder{position:relative;max-width:100%;display:flex;font-family:'Patrick';color:var(--ink);filter:drop-shadow(0 14px 30px rgba(0,0,0,.5))}
+.cover{flex:none;width:50px;background:var(--kraft);border:3px solid var(--ink);border-right:none;border-radius:16px 0 0 14px;position:relative;background-image:repeating-linear-gradient(115deg, rgba(43,40,35,.05) 0 3px, transparent 3px 9px)}
+.cover .sticker{position:absolute;top:26px;left:50%;transform:translateX(-50%) rotate(-90deg);white-space:nowrap;background:var(--paper2);border:2.2px solid var(--ink);border-radius:6px;padding:2px 12px;font-size:15px}
+.ringbar{flex:none;width:44px;background:var(--kraft2);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);display:flex;flex-direction:column;justify-content:space-around;align-items:center;padding:20px 0}
+.ring{width:32px;height:32px;border-radius:50%;border:3.4px solid var(--ink);position:relative}
+.ring::after{content:"";position:absolute;inset:6px;border-radius:50%;border:2.6px solid var(--ink);opacity:.45}
+.stack{flex:1;background:var(--paper);border:3px solid var(--ink);border-left:2.6px solid var(--ink);border-radius:0 14px 12px 0;display:flex;min-width:0;position:relative}
+.rail{flex:none;width:196px;padding:18px 8px 18px 22px}
+.divider{position:relative;margin:10px 0;border:2.6px solid var(--ink);border-radius:10px;background:var(--paper2)}
+.divider .tab{position:absolute;top:-2.6px;bottom:-2.6px;left:-16px;width:13px;border:2.6px solid var(--ink);border-radius:8px 0 0 8px}
+.tab.sage{background:var(--sage)}.tab.coral{background:var(--coral)}.tab.blue{background:var(--blue)}.tab.yell{background:var(--yell)}
+.divider .dh{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:15px}
+.divider.closed{background:var(--kraft);box-shadow:0 3px 0 -1px var(--kraft2), 0 6px 0 -2px rgba(43,40,35,.35)}
+.divider.open{background:var(--paper)}
+.divider.open .dh{border-bottom:2px solid var(--ink25)}
+.divider .pages{padding:6px 6px 9px}
+.ptab{display:flex;align-items:center;gap:7px;font-size:15.5px;padding:3px 9px;border-radius:8px;margin:2px 0}
+.ptab.on{background:var(--paper2);border:2.4px solid var(--ink);box-shadow:1.5px 1.5px 0 rgba(43,40,35,.18)}
+.ptab.mom{background:var(--yell);border:2.6px solid var(--ink);box-shadow:2px 2px 0 rgba(43,40,35,.3);transform:rotate(-1.2deg);font-family:'Baloo';font-size:14.5px}
+.sheet{flex:1;min-width:0;padding:18px 22px 20px;border-left:2.4px solid var(--ink25);background:var(--paper);border-radius:0 12px 10px 0}
+.money{font-variant-numeric:tabular-nums}
+.big{font-family:'Baloo';line-height:1.05}
+.pos{color:#5D7A50}.neg{color:#C0392B}
+.dim{color:var(--ink6)}.dimmer{color:var(--ink4)}.dim2{opacity:.8}
+.clock{display:inline-block;background:var(--alert);color:#fff;border:2.2px solid var(--ink);border-radius:8px;padding:0 8px;font-size:13px}
+.pcard{background:var(--card);border:2.4px solid var(--ink);border-radius:10px 8px 11px 9px;padding:12px 16px 14px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.pcard h5{font-size:14px;letter-spacing:.09em;color:var(--ink6);margin-bottom:8px;font-weight:400;display:flex;align-items:center;gap:8px}
+.zone{margin:14px 0 0;border:2.4px solid var(--ink);border-radius:10px;background:var(--paper2);padding:12px 16px 14px}
+.zonehead{display:flex;align-items:center;gap:10px;font-size:15px;letter-spacing:.07em;color:var(--ink);margin-bottom:10px}
+.znum{font-family:'Baloo';width:26px;height:26px;border:2.4px solid var(--ink);border-radius:50%;background:var(--yell);display:inline-flex;align-items:center;justify-content:center;font-size:15px;flex:none}
+.zlesson{font-size:13.5px;color:var(--ink4);letter-spacing:0}
+.lsheet{background:var(--paper2);border:2.6px solid var(--ink);border-radius:8px;overflow:hidden}
+.lsheet>div{display:grid;align-items:center;column-gap:12px;padding:0 14px}
+.lhead{font-size:13px;color:var(--ink4);letter-spacing:.08em;border-bottom:2.4px solid var(--ink);padding-top:8px !important;padding-bottom:6px !important}
+.lrow{font-size:17px;border-bottom:1.6px solid var(--ink12);padding-top:7px !important;padding-bottom:7px !important}
+.lrow .rn{font-size:12.5px;color:var(--ink25);font-variant-numeric:tabular-nums}
+.ltot{font-size:18px;border-top:7px double var(--ink);background:var(--card);padding-top:8px !important;padding-bottom:8px !important}
+.dilrow{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+.dilstep{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:13.5px;text-align:center;min-width:130px}
+.dilstep b{font-size:14px}
+.dilstep.now .dilbar{border-color:var(--ink);border-width:3px}
+.dilbar{width:56px;height:90px;border:2.6px solid var(--ink);border-radius:7px;background:var(--paper);position:relative;overflow:hidden}
+.dilbar span{position:absolute;bottom:0;left:0;right:0;background:var(--sage);opacity:.8}
+.wfall{border:2.5px solid var(--ink);border-radius:9px;background:var(--card);padding:8px 14px;display:flex;flex-direction:column;gap:2px;font-size:15px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.wfall.wide{flex:1;min-width:280px}
+.warr{font-size:18px;color:var(--ink4)}
+.costline{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;border-top:2px solid var(--ink25);padding-top:9px;font-size:14.5px;color:var(--ink6)}
+.wcol{display:flex;flex-direction:column;gap:9px}
+.whead{font-family:'Baloo';font-size:14px;letter-spacing:.06em;border:2.6px solid var(--ink);border-radius:8px;background:var(--kraft);text-align:center;padding:3px 0}
+.wcard{border:2.5px solid var(--ink);border-radius:9px;background:#FDFBF2;padding:8px 11px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.wcard b{font-size:15px}
+.wrow{display:flex;justify-content:space-between;font-size:13.5px;color:var(--ink6);padding:1.5px 0;gap:10px}
+.wcard.wready{border-color:var(--alert);border-width:2.8px;background:#F9E9DC}
+.lnote{font-size:12.5px;color:var(--ink6);margin-top:3px}
+.ticket{background:#FBF6E8;border:2.6px solid var(--ink);border-radius:4px;padding:10px 14px;box-shadow:2px 3px 0 rgba(43,40,35,.2)}
+.tickhead{text-align:center;font-size:12.5px;letter-spacing:.12em;color:var(--ink6);border-bottom:2px dashed var(--ink25);padding-bottom:5px;margin-bottom:5px}
+.trow{display:flex;justify-content:space-between;font-size:15px;padding:3px 0;gap:14px}
+.trow.price{border-top:7px double var(--ink);font-size:15.5px}
+.rcptfoot{font-size:12.5px;color:var(--ink4);text-align:center;border-top:2px dashed var(--ink25);padding-top:6px;margin-top:4px}
+.inst{border:2.4px solid var(--ink);border-radius:9px;background:var(--card);padding:5px 12px;font-size:14.5px;box-shadow:1.5px 1.5px 0 rgba(43,40,35,.15)}
+.inst i{display:block;font-style:normal;font-size:12px;color:var(--ink6)}
+.inst.dim2{background:var(--paper2);box-shadow:none}
+.crow{display:flex;align-items:center;gap:10px;border:2.4px solid var(--ink);border-radius:9px;background:var(--card);padding:8px 13px;font-size:16px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.crow span:first-child{flex:1}
+.crow.dim2{box-shadow:none;opacity:.85}
+.bstep{display:inline-flex;gap:6px}
+.bstep span{width:25px;height:25px;border:2.4px solid var(--ink);border-radius:8px 7px 9px 8px;background:var(--paper2);font-family:'Baloo';font-size:16px;display:inline-flex;align-items:center;justify-content:center;box-shadow:1.5px 1.5px 0 rgba(43,40,35,.2)}
+.mrow{display:flex;align-items:center;gap:10px;padding:3px 0}
+.mrow .lab{flex:1}
+.signbtn{font-family:'Baloo';font-size:15px;background:var(--yell);border:2.6px solid var(--ink);border-radius:9px;padding:2px 12px;box-shadow:1.5px 2px 0 rgba(43,40,35,.25);display:inline-block}
+.hw{color:#B8860B}
+.flagchip{font-family:'Baloo';font-size:12px;background:var(--alert);color:#fff;border:2.2px solid var(--ink);border-radius:7px;padding:0 8px;margin-right:6px}
+.okchip{font-family:'Baloo';font-size:12px;background:var(--sage);color:#fff;border:2.2px solid var(--ink);border-radius:7px;padding:0 8px;margin-right:6px}
+.pwr{border:2.4px solid var(--ink);border-radius:9px;background:var(--card);padding:7px 13px;font-size:15px;display:flex;flex-direction:column;gap:2px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.footer{margin-top:64px;border-top:1px solid var(--wall2);padding-top:20px;color:var(--chrome-dim);font-size:14.5px}
+.footer b{color:var(--paper)}
+</style>
+
+<div class="topbar"><div class="wrap">
+<h1>The Ownership Cluster</h1><span class="crumb">CAP TABLE · THE RAISE · RECRUITMENT · SAY OK OR ADJUST PER PAGE</span>
+</div></div>
+
+<div class="wrap">
+<div class="lede">
+<p>Thought hard — your ask is really <b style="color:var(--paper)">three pages and one thread</b>, and the binder grows to 18 desks: COSTS gains <b style="color:var(--paper)">RECRUITMENT</b> (beside team), THE COMPANY gains <b style="color:var(--paper)">THE RAISE</b> (beside cap table). The split keeps each page honest: <b style="color:var(--paper)">CAP TABLE</b> is the STATE (who owns what, dilution, the waterfall, the pool) · <b style="color:var(--paper)">THE RAISE</b> is the PIPELINE (inbound comes to traction, outbound costs your week, every instrument with its true character, term sheets compared for their real price) · <b style="color:var(--paper)">RECRUITMENT</b> is where equity meets people (the offer composer draws options from the pool). <b style="color:var(--paper)">THE ESOP THREAD</b> stitches them: the pool lives on the cap table, every teammate's row in TEAM gains a vesting mini-bar ("0.4% · 31% vested · cliff passed"), and recruitment can't offer equity from an empty pool.</p>
+<div class="how"><b>Three full pages below.</b> Teaching moments built in: the pool top-up dilutes YOU, not the investor · the SAFE stack converts all at once · preferences eat everything below ≈$700k · participating preferred gets flagged predatory · the raise eats 30% of your week. Say OK (or adjust per page) — then THE STREET.</div>
+</div>
+
+<div class="secttl"><h2>CAP TABLE — the state</h2><span>the slices · the dilution story · the waterfall · the pool</span></div><div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack"><div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider open"><span class="tab blue"></span><div class="dh">THE COMPANY</div><div class="pages"><div class="ptab">what we make</div><div class="ptab on">cap table</div><div class="ptab">the raise</div><div class="ptab">the street</div><div class="ptab">threats</div><div class="ptab">pivot</div></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:22px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:44px">you own 58% <span style="font-size:23px">· ≈ $1.5M on paper</span></div>
+    <div class="dim" style="font-size:17px">paper, not cash — it becomes money only at an exit, after everyone ahead of you.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">the company priced at <b class="big" style="font-size:22px">$2.6M</b></div>
+    <div class="dim" style="font-size:14.5px">board: 1 seat theirs · covenant met, 0 strikes</div>
+  </div>
+</div><div class="zone"><div class="zonehead"><span class="znum">1</span>THE SLICES <span class="zlesson">— every holder, every class, every preference — the book of who owns what</span></div><div class="lsheet">
+  <div class="lhead" style="grid-template-columns:30px 1.5fr 1.1fr .9fr .9fr 1.4fr"><span></span><span>HOLDER</span><span>INSTRUMENT</span><span class="money">PUT IN</span><span class="money">OWNS</span><span style="text-align:right">PREFERENCES</span></div>
+  <div class="lrow" style="grid-template-columns:30px 1.5fr 1.1fr .9fr .9fr 1.4fr"><span class="rn">1</span><span><b>you</b></span><span class="dim">common</span><span class="money dim">sweat</span><span class="money big" style="font-size:19px">58.0%</span><span style="text-align:right" class="dim">last in line</span></div>
+  <div class="lrow" style="grid-template-columns:30px 1.5fr 1.1fr .9fr .9fr 1.4fr"><span class="rn">2</span><span><b>Mara</b> <span class="dim" style="font-size:13px">cofounder</span></span><span class="dim">common</span><span class="money dim">sweat</span><span class="money big" style="font-size:19px">17.0%</span><span style="text-align:right" class="dim">last in line</span></div>
+  <div class="lrow" style="grid-template-columns:30px 1.5fr 1.1fr .9fr .9fr 1.4fr"><span class="rn">3</span><span><b>Fern Capital</b></span><span class="dim">seed preferred</span><span class="money">$400k</span><span class="money big" style="font-size:19px">15.0%</span><span style="text-align:right" class="dim">1× non-participating</span></div>
+  <div class="lrow" style="grid-template-columns:30px 1.5fr 1.1fr .9fr .9fr 1.4fr"><span class="rn">4</span><span><b>the ESOP pool</b> → team ▸</span><span class="dim">options</span><span class="money dim">—</span><span class="money big" style="font-size:19px">10.0%</span><span style="text-align:right" class="dim">6.2% granted · 3.8% free</span></div>
+  <div class="ltot" style="grid-template-columns:30px 1.5fr 1.1fr .9fr .9fr 1.4fr"><span></span><span><b>THE WHOLE PIE</b></span><span></span><span class="money">$400k</span><span class="money big" style="font-size:21px">100%</span><span></span></div>
+  </div></div><div class="zone"><div class="zonehead"><span class="znum">2</span>THE DILUTION STORY <span class="zlesson">— your slice shrinks at events — and can be worth more every time it does</span></div><div class="dilrow">
+    <div class="dilstep"><div class="dilbar"><span style="height:100%"></span></div><b>day 0</b><span class="dim">100% · $0</span></div>
+    <svg width="30" height="20" viewBox="0 0 30 20"><path d="M2 10 h20 M16 4 l8 6 -8 6" stroke="#2B2823" stroke-width="2.4" fill="none"/></svg>
+    <div class="dilstep"><div class="dilbar"><span style="height:78%"></span></div><b>wk 9 — 2 SAFEs</b><span class="dim">still 78%*<br>$150k in · *converts later</span></div>
+    <svg width="30" height="20" viewBox="0 0 30 20"><path d="M2 10 h20 M16 4 l8 6 -8 6" stroke="#2B2823" stroke-width="2.4" fill="none"/></svg>
+    <div class="dilstep"><div class="dilbar"><span style="height:68%"></span></div><b>wk 30 — the pool</b><span class="dim">−7% · <i class="neg">the top-up dilutes YOU,<br>not the investor</i></span></div>
+    <svg width="30" height="20" viewBox="0 0 30 20"><path d="M2 10 h20 M16 4 l8 6 -8 6" stroke="#2B2823" stroke-width="2.4" fill="none"/></svg>
+    <div class="dilstep now"><div class="dilbar"><span style="height:58%"></span></div><b>wk 31 — seed priced</b><span class="dim">58% · <b class="pos">≈$1.5M</b><br>smaller slice, bigger pie</span></div>
+  </div></div><div class="zone"><div class="zonehead"><span class="znum">3</span>IF SOLD TODAY <span class="zlesson">— the waterfall — who gets paid, in order, before your slice means anything</span></div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <div class="wfall"><b>the bank</b><span class="money">$7,350</span><span class="dim" style="font-size:12px">debts first, always</span></div>
+    <span class="warr">→</span>
+    <div class="wfall"><b>preferences</b><span class="money">$400k</span><span class="dim" style="font-size:12px">Fern's 1× back</span></div>
+    <span class="warr">→</span>
+    <div class="wfall wide"><b>then the split</b><span class="money">the rest ÷ by the slices</span><span class="dim" style="font-size:12px">at today's $2.6M: you'd see ≈$1.28M · below ≈$700k the preferences eat everything</span></div>
+  </div></div><div class="costline">the pool has <b class="money">3.8% free</b> — recruitment draws from it · next cliff: June's 52 wks in 3 weeks · covenant met · <span class="dim">rounds happen at THE RAISE ▸</span></div></div>
+  </div>
+</div><div class="secttl"><h2>THE RAISE — the pipeline</h2><span>radar → conversations → terms → wired · the comparison card · six instruments</span></div><div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack"><div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider open"><span class="tab blue"></span><div class="dh">THE COMPANY</div><div class="pages"><div class="ptab">what we make</div><div class="ptab">cap table</div><div class="ptab on">the raise</div><div class="ptab">the street</div><div class="ptab">threats</div><div class="ptab">pivot</div></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:22px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:42px">2 offers on the table <span style="font-size:22px">· 4 investors in motion</span></div>
+    <div class="dim" style="font-size:17px">raising is a pipeline, like customers — except the buyer buys a piece of you.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:17px"><span class="neg">the raise eats ≈30% of your week</span></div>
+    <div class="dim" style="font-size:14.5px">the shop slows while you pitch — that is real</div>
+  </div>
+</div><div class="zone"><div class="zonehead"><span class="znum">1</span>WHO'S IN MOTION <span class="zlesson">— inbound comes to traction, not to wishes — outbound is yours to spend time on</span></div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+    <div class="wcol"><div class="whead">ON THE RADAR</div>
+      <div class="wcard"><b>Halden Ventures</b><div class="wrow"><span>inbound — saw the growth</span></div></div>
+      <div class="wcard"><b>R. Osei</b> <span class="dim" style="font-size:12px">angel</span><div class="wrow"><span>inbound via the board</span></div></div>
+      <div class="wcard" style="border-style:dashed"><b class="dim">3 outbound targets</b><div class="wrow"><span>pitch one — costs a week's focus</span></div></div>
+    </div>
+    <div class="wcol"><div class="whead">CONVERSATIONS</div>
+      <div class="wcard"><b>Fern Capital</b><div class="wrow"><span>asked for cohort numbers</span></div><div class="lnote">the data room reads YOUR binder — churn page weak, they noticed</div></div>
+    </div>
+    <div class="wcol"><div class="whead">TERMS ON THE TABLE</div>
+      <div class="wcard wready"><b>Halden — SAFE</b><div class="wrow"><span>$250k · cap $3M</span></div></div>
+      <div class="wcard wready"><b>Fern — priced A</b><div class="wrow"><span>$500k at $2.5M pre</span></div><div class="lnote">wants: 12% pool top-up + a board seat + no-shop 4 wks</div></div>
+    </div>
+    <div class="wcol"><div class="whead">SIGNED &amp; WIRED</div>
+      <div class="wcard" style="opacity:.75"><b>seed — Fern</b><div class="wrow"><span>$400k · wk 31 ✓</span></div></div>
+    </div>
+  </div></div><div class="zone"><div class="zonehead"><span class="znum">2</span>THE COMPARISON <span class="zlesson">— two term sheets never say their true price — this card does</span></div><div style="display:flex;gap:14px;flex-wrap:wrap">
+    <div class="ticket" style="flex:1;min-width:250px"><div class="tickhead">HALDEN — THE SAFE</div>
+      <div class="trow"><span>money now</span><b class="money">$250k</b></div>
+      <div class="trow"><span>dilution today</span><b class="money pos">0%</b></div>
+      <div class="trow"><span>dilution at the A (cap $3M)</span><b class="money neg">≈7.7%</b></div>
+      <div class="trow"><span>board · control</span><b>none</b></div>
+      <div class="trow price"><span>character</span><b>fast money, deferred pain</b></div>
+    </div>
+    <div class="ticket" style="flex:1;min-width:250px;border-color:var(--blue)"><div class="tickhead">FERN — THE PRICED A</div>
+      <div class="trow"><span>money now</span><b class="money">$500k</b></div>
+      <div class="trow"><span>dilution today</span><b class="money neg">16.7% + 12% pool top-up</b></div>
+      <div class="trow"><span>preferences</span><b>1× non-participating ✓ fair</b></div>
+      <div class="trow"><span>board · control</span><b class="neg">1 seat + no-shop 4 wks</b></div>
+      <div class="trow price"><span>character</span><b>real partner, real price</b></div>
+    </div>
+    <div style="flex:.8;min-width:200px" class="dim">
+      <div style="font-size:15px"><b class="neg">THE SAFE STACK:</b> with the 2 old SAFEs, taking Halden's means <b>≈19% converts at once</b> at the A. Deferred is not free.</div>
+      <div class="dimmer" style="font-size:13px;margin-top:6px">participating preferred would be flagged here in red — predatory.</div>
+    </div>
+  </div></div><div class="zone"><div class="zonehead"><span class="znum">3</span>EVERY WAY MONEY COMES IN <span class="zlesson">— six instruments, six characters — the game knows them all</span></div><div style="display:flex;gap:8px;flex-wrap:wrap">
+    <span class="inst">angel check <i>small · fast · a friend</i></span>
+    <span class="inst">SAFE <i>now, dilutes later</i></span>
+    <span class="inst">convertible note <i>a SAFE with a fuse — interest + maturity</i></span>
+    <span class="inst">priced round <i>the real wedding — class, board, covenants</i></span>
+    <span class="inst">bridge <i>insiders keeping you alive</i></span>
+    <span class="inst">venture debt <i>→ the bank, warrant nibble</i></span>
+    <span class="inst dim2">secondary <i>selling your own slice — the soft landing</i></span>
+  </div></div><div class="costline">signing Fern → the cap table redraws + covenants arm · walking away is allowed — <b>the best deal is sometimes none</b> · no-shop honored: other terms freeze 4 wks</div></div>
+  </div>
+</div><div class="secttl"><h2>RECRUITMENT — the offer desk</h2><span>seats priced from the price book · candidates in motion · the offer composer</span></div><div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack"><div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider open"><span class="tab coral"></span><div class="dh">COSTS</div><div class="pages"><div class="ptab">spend</div><div class="ptab">team</div><div class="ptab on">recruitment</div><div class="ptab">bills</div><div class="ptab">the bank</div><div class="ptab">the works</div></div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:22px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:42px">2 seats open <span style="font-size:22px">· 5 candidates in motion · 1 offer out</span></div>
+    <div class="dim" style="font-size:17px">hiring is a pipeline too — and the offer is a design: cash, equity, title.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div><span class="clock">Dana's offer expires in 1 wk</span></div>
+    <div class="dim" style="font-size:14.5px">interviews cost founder time — 2 this week</div>
+  </div>
+</div><div class="zone"><div class="zonehead"><span class="znum">1</span>THE OPEN SEATS <span class="zlesson">— every seat priced from the price book before you advertise</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div class="pcard"><h5>SALESPERSON #2 <span class="dim" style="margin-left:auto;font-size:12px">band $490–580/wk</span></h5>
+      <div class="mrow"><span class="lab">advert</span><span class="money">$60/wk</span><span class="bstep"><span>−</span><span>+</span></span><span class="dim" style="font-size:13px">→ ≈2 applicants/wk</span></div>
+    </div>
+    <div class="pcard"><h5>CARE LEAD <span class="dim" style="margin-left:auto;font-size:12px">band $520–640/wk</span></h5>
+      <div class="mrow"><span class="lab">advert</span><span class="money">$40/wk</span><span class="bstep"><span>−</span><span>+</span></span><span class="dim" style="font-size:13px">→ ≈1/wk · senior = slower</span></div>
+    </div>
+  </div></div><div class="zone"><div class="zonehead"><span class="znum">2</span>THE CANDIDATES <span class="zlesson">— interviewing costs your week; ghosting costs your name</span></div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+    <div class="wcol"><div class="whead">APPLIED</div>
+      <div class="wcard"><b>Priya N.</b><div class="wrow"><span>sales · asks $540</span></div></div>
+      <div class="wcard"><b>Tom B.</b><div class="wrow"><span>sales · asks $500</span></div></div>
+      <div class="wcard"><b>+2 for care lead</b></div>
+    </div>
+    <div class="wcol"><div class="whead">INTERVIEWED</div>
+      <div class="wcard"><b>Dana K.</b><div class="wrow"><span>sales · strong closer · <i class="hw" style="font-style:normal;color:#B8860B">mercenary</i></span></div></div>
+    </div>
+    <div class="wcol"><div class="whead">OFFER OUT</div>
+      <div class="wcard wready"><b>Dana K.</b><div class="wrow"><span>$520/wk + 0.4%</span></div><div class="lnote">a rival may counter — her profile chases cash</div></div>
+    </div>
+    <div class="wcol"><div class="whead">JOINED</div>
+      <div class="wcard" style="opacity:.75"><b>June</b><div class="wrow"><span>wk 12 · ramped ✓</span></div></div>
+    </div>
+  </div></div><div class="zone"><div class="zonehead"><span class="znum">3</span>THE OFFER COMPOSER <span class="zlesson">— comp is a mix you design — and the pool is finite</span></div><div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+    <div style="flex:1;min-width:270px;display:flex;flex-direction:column;gap:9px">
+      <div class="crow"><span>cash</span><b class="money" style="font-size:20px">$520/wk</b><span class="bstep"><span>−</span><span>+</span></span></div>
+      <div class="crow"><span>options from the pool</span><b class="money" style="font-size:20px">0.4%</b><span class="bstep"><span>−</span><span>+</span></span><span class="dim" style="font-size:12.5px">4-yr vest · 1-yr cliff</span></div>
+      <div class="crow dim2"><span>the pool after</span><b class="money">3.4% free</b><span class="dim" style="font-size:12.5px">→ cap table</span></div>
+    </div>
+    <div class="ticket" style="flex:1;min-width:240px">
+      <div class="tickhead">WILL SHE SAY YES?</div>
+      <div class="trow"><span>her ask</span><b class="money">$540 cash-leaning</b></div>
+      <div class="trow"><span>this mix reads</span><b>fair, cash-light</b></div>
+      <div class="trow price"><span>acceptance odds</span><b class="money">≈70%</b></div>
+      <div class="rcptfoot">+$30 cash ≈ +12pts · +0.2% options ≈ +4pts (she's a mercenary — cash moves her)</div>
+      <div style="text-align:center;margin-top:6px"><span class="signbtn">SEND THE OFFER ▸</span></div>
+    </div>
+  </div></div><div class="costline">signed → she appears in TEAM with a vesting bar ("0.4% · cliff wk 52") · declined → the market hears · empty pool = no equity offers until the cap table expands it</div></div>
+  </div>
+</div><div class="secttl"><h2>THE OFFER — a momentary desk</h2><span>a gold tab that exists only while a buyout is on the table</span></div><div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack"><div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider open"><span class="tab blue"></span><div class="dh">THE COMPANY</div><div class="pages"><div class="ptab">what we make</div><div class="ptab">cap table</div><div class="ptab">the raise</div><div class="ptab">the street</div><div class="ptab">threats</div><div class="ptab">pivot</div><div class="ptab on mom">the offer!</div></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:22px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:42px">VANTIV GROUP offers $4.2M</div>
+    <div class="dim" style="font-size:17px">this desk appeared when the letter did — it leaves when you answer.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div><span class="clock">expires in 2 wks</span></div>
+    <div class="dim" style="font-size:14.5px">while it lives, the raise is frozen by their no-shop ask</div>
+  </div>
+</div><div class="zone"><div class="zonehead"><span class="znum">1</span>WHAT'S ON THE TABLE <span class="zlesson">— a headline is not money — read what the $4.2M is made of</span></div><div style="display:flex;gap:14px;flex-wrap:wrap">
+    <div class="ticket" style="flex:1;min-width:260px"><div class="tickhead">THE $4.2M, DECOMPOSED</div>
+      <div class="trow"><span>cash at closing</span><b class="money">$1.6M</b></div>
+      <div class="trow"><span>Vantiv stock <span class="neg">(locked 18 months)</span></span><b class="money">$1.9M</b></div>
+      <div class="trow"><span>earnout <span class="neg">(if targets hit)</span></span><b class="money">$700k</b></div>
+      <div class="trow price"><span>certain today</span><b class="money">$1.6M of $4.2M</b></div>
+    </div>
+    <div class="dim" style="flex:1;min-width:220px;font-size:15px">and the handcuffs: <b>you must stay 24 months</b> for the stock to vest — the price includes two years of your life.</div>
+  </div></div><div class="zone"><div class="zonehead"><span class="znum">2</span>WHO GETS WHAT <span class="zlesson">— the waterfall, applied to this exact number</span></div><div class="lsheet">
+    <div class="lhead" style="grid-template-columns:30px 1.3fr 1fr 2fr"><span></span><span>IN ORDER</span><span class="money">TAKE</span><span style="text-align:right">NOTE</span></div>
+    <div class="lrow" style="grid-template-columns:30px 1.3fr 1fr 2fr"><span class="rn">1</span><span>the bank</span><span class="money">$7,350</span><span style="text-align:right" class="dim">debts die first</span></div>
+    <div class="lrow" style="grid-template-columns:30px 1.3fr 1fr 2fr"><span class="rn">2</span><span>Fern Capital</span><span class="money">$630k</span><span style="text-align:right" class="dim">converts — 15% beats their 1× ($400k); computed</span></div>
+    <div class="lrow" style="grid-template-columns:30px 1.3fr 1fr 2fr"><span class="rn">3</span><span>the ESOP holders</span><span class="money">$260k</span><span style="text-align:right" class="dim">vested only — your people get paid too</span></div>
+    <div class="lrow" style="grid-template-columns:30px 1.3fr 1fr 2fr"><span class="rn">4</span><span>Mara</span><span class="money">$714k</span><span style="text-align:right" class="dim">common</span></div>
+    <div class="ltot" style="grid-template-columns:30px 1.3fr 1fr 2fr"><span></span><span><b>YOU</b></span><span class="money big" style="font-size:20px">≈$2.33M</b></span><span style="text-align:right" class="dim">= $890k cash + $1.05M locked stock + $390k maybe</span></div>
+  </div></div><div class="zone"><div class="zonehead"><span class="znum">3</span>THE FINE PRINT, READ ALOUD <span class="zlesson">— some offers are written fishy on purpose — learning to read them is the game</span></div><div style="display:flex;flex-direction:column;gap:6px;font-size:15.5px">
+    <div><span class="flagchip">FLAG</span> the earnout's targets are set — and measured — <b>by the buyer</b>, after they control the company.</div>
+    <div><span class="flagchip">FLAG</span> $1.9M of the price is <b>their stock</b>, unsellable for 18 months — their paper, their luck.</div>
+    <div><span class="okchip">CLEAN</span> the retention pool is carved from the buyer's side, not from your share — this one is fair.</div>
+  </div></div><div class="zone"><div class="zonehead"><span class="znum">4</span>WHO CAN SAY NO <span class="zlesson">— the powers were signed at the raise — your exit freedom was decided years early</span></div><div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+    <div class="pwr"><b>you</b><span class="pos">your yes is needed ✓</span></div>
+    <div class="pwr"><b>Fern Capital</b><span class="neg">holds a sale veto (protective provision from the A) — leaning yes</span></div>
+    <div class="pwr"><b>drag-along</b><span class="dim">≥60% of preferred could force a sale — not triggered here</span></div>
+  </div>
+  <div style="display:flex;gap:12px;justify-content:center;margin-top:12px">
+    <span class="signbtn">ACCEPT — TWO-TAP ▸</span>
+    <span class="signbtn" style="background:var(--paper2)">NEGOTIATE — one counter ▸</span>
+    <span class="signbtn" style="background:var(--coral);color:#fff">DECLINE ▸</span>
+  </div></div><div class="costline">answered → this tab folds into HISTORY · declined offers can sour, or come back higher · the street hears everything</div></div>
+  </div>
+</div>
+
+<div class="footer">
+<p><b>All recorded in DECISIONS.md</b> with the engine work: ESOP pool + grants + weekly vesting, instrument records with conversion at priced rounds, investor interest score + founder-time tax, offer records with an acceptance model, and the board lane's term-sheet/covenant/no-shop mechanics as the foundation the raise extends. Say OK — then THE STREET.</p>
+</div>
+</div>

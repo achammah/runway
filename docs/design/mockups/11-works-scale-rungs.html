@@ -1,0 +1,212 @@
+<title>The Works at Three Scales</title>
+<style>
+@font-face{font-family:'Patrick';src:url(../../../game/assets/fonts/PatrickHand-Regular.ttf) format('truetype');font-display:block}
+@font-face{font-family:'Baloo';src:url(../../../game/assets/fonts/Baloo2-Bold.ttf) format('truetype');font-weight:700;font-display:block}
+:root{
+  --wall:#2A2722; --wall2:#332F28; --paper:#F2EAD3; --paper2:#F6F0DE; --card:#EFE6CE;
+  --kraft:#DDBE8C; --kraft2:#CBA96F; --alert:#D93425;
+  --ink:#2B2823; --ink6:rgba(43,40,35,.6); --ink4:rgba(43,40,35,.42); --ink25:rgba(43,40,35,.25); --ink12:rgba(43,40,35,.12);
+  --coral:#E86A5C; --sage:#8FA582; --blue:#6E8CA0; --yell:#F4B942;
+  --sageband:rgba(143,165,130,.14);
+  --chrome:#D8D2C4; --chrome-dim:#A69E8D;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--wall);color:var(--chrome);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 0 90px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 26px}
+.topbar{position:sticky;top:0;z-index:50;background:linear-gradient(var(--wall) 82%,transparent);padding:18px 0 10px}
+.topbar .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-family:'Baloo';color:var(--paper);font-size:28px}
+.crumb{font-size:12.5px;color:var(--chrome-dim);letter-spacing:.08em}
+.lede{padding:24px 0 6px;max-width:940px}
+.lede p{margin:0 0 12px}
+.lede .how{border-left:4px solid var(--yell);padding:10px 16px;background:var(--wall2);border-radius:6px;margin-top:12px}
+.lede .how b{color:var(--paper)}
+.secttl{display:flex;align-items:baseline;gap:14px;margin:44px 0 8px}
+.secttl h2{font-family:'Baloo';color:var(--paper);font-size:26px}
+.secttl span{color:var(--chrome-dim);font-size:14px}
+.binder{position:relative;max-width:100%;display:flex;font-family:'Patrick';color:var(--ink);filter:drop-shadow(0 14px 30px rgba(0,0,0,.5))}
+.cover{flex:none;width:50px;background:var(--kraft);border:3px solid var(--ink);border-right:none;border-radius:16px 0 0 14px;position:relative;background-image:repeating-linear-gradient(115deg, rgba(43,40,35,.05) 0 3px, transparent 3px 9px)}
+.cover .sticker{position:absolute;top:26px;left:50%;transform:translateX(-50%) rotate(-90deg);white-space:nowrap;background:var(--paper2);border:2.2px solid var(--ink);border-radius:6px;padding:2px 12px;font-size:15px}
+.ringbar{flex:none;width:44px;background:var(--kraft2);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);display:flex;flex-direction:column;justify-content:space-around;align-items:center;padding:20px 0}
+.ring{width:32px;height:32px;border-radius:50%;border:3.4px solid var(--ink);position:relative}
+.ring::after{content:"";position:absolute;inset:6px;border-radius:50%;border:2.6px solid var(--ink);opacity:.45}
+.stack{flex:1;background:var(--paper);border:3px solid var(--ink);border-left:2.6px solid var(--ink);border-radius:0 14px 12px 0;display:flex;min-width:0;position:relative}
+.rail{flex:none;width:196px;padding:18px 8px 18px 22px}
+.divider{position:relative;margin:10px 0;border:2.6px solid var(--ink);border-radius:10px;background:var(--paper2)}
+.divider .tab{position:absolute;top:-2.6px;bottom:-2.6px;left:-16px;width:13px;border:2.6px solid var(--ink);border-radius:8px 0 0 8px}
+.tab.sage{background:var(--sage)}.tab.coral{background:var(--coral)}.tab.blue{background:var(--blue)}.tab.yell{background:var(--yell)}
+.divider .dh{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:15px}
+.divider.closed{background:var(--kraft);box-shadow:0 3px 0 -1px var(--kraft2), 0 6px 0 -2px rgba(43,40,35,.35)}
+.divider.open{background:var(--paper)}
+.divider.open .dh{border-bottom:2px solid var(--ink25)}
+.divider .pages{padding:6px 6px 9px}
+.ptab{display:flex;align-items:center;gap:7px;font-size:16.5px;padding:4px 9px;border-radius:8px;margin:2px 0}
+.ptab.on{background:var(--paper2);border:2.4px solid var(--ink);box-shadow:1.5px 1.5px 0 rgba(43,40,35,.18)}
+.sheet{flex:1;min-width:0;padding:20px 24px 22px;border-left:2.4px solid var(--ink25);background:var(--paper);border-radius:0 12px 10px 0}
+.money{font-variant-numeric:tabular-nums}
+.big{font-family:'Baloo';line-height:1.05}
+.pos{color:#5D7A50}.neg{color:#C0392B}
+.dim{color:var(--ink6)}.dimmer{color:var(--ink4)}
+.footrules{font-size:14.5px;color:var(--ink4)}
+.clock{display:inline-block;background:var(--alert);color:#fff;border:2.2px solid var(--ink);border-radius:8px;padding:0 8px;font-size:13.5px}
+.pcard{background:var(--card);border:2.4px solid var(--ink);border-radius:10px 8px 11px 9px;padding:12px 16px 14px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.pcard h5{font-size:14.5px;letter-spacing:.09em;color:var(--ink6);margin-bottom:8px;font-weight:400;display:flex;align-items:center;gap:8px}
+.bstep{display:inline-flex;gap:7px;vertical-align:middle;margin-left:8px}
+.bstep span{width:27px;height:27px;border:2.4px solid var(--ink);border-radius:8px 7px 9px 8px;background:var(--paper2);font-family:'Baloo';font-size:17px;line-height:1;display:inline-flex;align-items:center;justify-content:center;box-shadow:1.5px 1.5px 0 rgba(43,40,35,.2)}
+.zone{margin:14px 0 0;border:2.4px solid var(--ink);border-radius:10px;background:var(--paper2);padding:12px 16px 14px}
+.zonehead{display:flex;align-items:center;gap:10px;font-size:15px;letter-spacing:.07em;color:var(--ink);margin-bottom:10px}
+.znum{font-family:'Baloo';width:26px;height:26px;border:2.4px solid var(--ink);border-radius:50%;background:var(--yell);display:inline-flex;align-items:center;justify-content:center;font-size:15px;flex:none}
+.zlesson{font-size:13.5px;color:var(--ink4);letter-spacing:0}
+.cbrow{display:flex;align-items:center;gap:12px;margin:7px 0}
+.cbl{width:150px;font-size:16px}
+.cbtrack{flex:1;height:22px;border:2.6px solid var(--ink);border-radius:7px;background:var(--paper);position:relative;overflow:hidden}
+.cbfill{position:absolute;top:0;bottom:0;left:0}
+.cbfill.make{background:var(--sage);opacity:.85}
+.cbv{width:90px;font-size:15px;color:var(--ink6);text-align:right}
+.ticket{background:#FBF6E8;border:2.6px solid var(--ink);border-radius:4px;padding:10px 14px;box-shadow:2px 3px 0 rgba(43,40,35,.2)}
+.tickhead{text-align:center;font-size:12.5px;letter-spacing:.12em;color:var(--ink6);border-bottom:2px dashed var(--ink25);padding-bottom:5px;margin-bottom:5px}
+.trow{display:flex;justify-content:space-between;font-size:15.5px;padding:3px 0;gap:14px}
+.trow.tot{border-top:2px solid var(--ink6)}
+.trow.price{border-top:7px double var(--ink);font-size:16.5px}
+.rcptfoot{font-size:13px;color:var(--ink4);text-align:center;border-top:2px dashed var(--ink25);padding-top:6px;margin-top:4px}
+.signbtn{font-family:'Baloo';font-size:17px;background:var(--yell);border:2.6px solid var(--ink);border-radius:9px;padding:2px 14px;box-shadow:1.5px 2px 0 rgba(43,40,35,.25);display:inline-block}
+.crow{display:flex;align-items:center;gap:8px;border:2.4px solid var(--ink);border-radius:9px;background:var(--card);padding:8px 14px;font-size:17px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.lsheet{background:var(--paper2);border:2.6px solid var(--ink);border-radius:8px;overflow:hidden;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.lsheet>div{display:grid;align-items:center;column-gap:12px;padding:0 14px}
+.lhead{font-size:13px;color:var(--ink4);letter-spacing:.08em;border-bottom:2.4px solid var(--ink);padding-top:8px !important;padding-bottom:6px !important}
+.lrow{font-size:17px;border-bottom:1.6px solid var(--ink12);padding-top:7px !important;padding-bottom:7px !important}
+.lrow .rn{font-size:12.5px;color:var(--ink25);font-variant-numeric:tabular-nums}
+.lrow.sel{background:rgba(244,185,66,.18)}
+.lrow.alert3{background:rgba(217,52,37,.07)}
+.ltot{font-size:18px;border-top:7px double var(--ink);background:var(--card);padding-top:8px !important;padding-bottom:8px !important}
+.lmemo{font-size:14.5px;color:var(--ink6);border-top:1.6px solid var(--ink12);padding-top:6px !important;padding-bottom:8px !important}
+.minichip{border:2.2px solid var(--ink);border-radius:8px;background:var(--paper2);padding:2px 10px;font-size:14px}
+.minichip.neg2{border-color:var(--alert);color:#C0392B}
+.footer{margin-top:64px;border-top:1px solid var(--wall2);padding-top:20px;color:var(--chrome-dim);font-size:14.5px}
+.footer b{color:var(--paper)}
+</style>
+
+<div class="topbar"><div class="wrap">
+<h1>The Works at Three Scales</h1><span class="crumb">TAB 9 / 16 · SCALE REWORK · SAY OK OR ADJUST</span>
+</div></div>
+
+<div class="wrap">
+<div class="lede">
+<p>Right — the last render froze at boutique scale. The fix: <b style="color:var(--paper)">the four zones never change, their CONTENTS climb a three-rung ladder</b>, recursing exactly like team's person → function → business unit. Rung 2, <b style="color:var(--paper)">THE HOUSE</b>: many offers under one roof — the demand becomes a MIX over one shared pool (offers drink from the same hands, and a 90-minute session honestly eats 1.8 slots), the ticket becomes a TICKET BOOK on the ledger sheet (press a row, it opens itemized), assets group with subtotals. Rung 3, <b style="color:var(--paper)">THE EMPIRE</b>: the page leads with THE SITES LEDGER — each studio/plant/region one row with capacity, utilization, ITS OWN unit cost and margin — and pressing a site opens its whole rung-2 desk. Same lesson at the top of every rung: <b style="color:var(--paper)">the same session costs $27 under Lyon's roof and $36 under Geneva's</b> — unit economics differ by roof, and that is what running many of them means.</p>
+<p>Software climbs the same rungs as tiers → products → regions; marketplace as categories → regions; hardware as SKUs → plants. One grammar, any size — 82/wk or 82k/wk.</p>
+<div class="how"><b>Below: rung 1 recap, rung 2 and rung 3 full-size</b> (the massage business growing). Say OK (or adjust) — then PRODUCT.</div>
+</div>
+
+<div class="secttl"><h2>RUNG 1 — THE BOUTIQUE</h2><span>unchanged, as validated</span></div>
+<div class="pcard" style="max-width:900px"><h5>RUNG 1 — THE BOUTIQUE (as already validated)</h5>
+<div style="font-size:15.5px" class="dim">One roof, few offers, named assets: Nadia · Tomas · Lea as cards, one itemized ticket, the freelancer valve. Nothing changes — the boutique IS the ladder's first rung, and most runs live here for a long time.</div></div>
+<div class="secttl"><h2>RUNG 2 — THE HOUSE</h2><span>one roof · three offers · one shared pool · the ticket book</span></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider open"><span class="tab coral"></span><div class="dh">COSTS</div>
+        <div class="pages"><div class="ptab">spend</div><div class="ptab">team</div><div class="ptab">bills</div><div class="ptab">the bank</div><div class="ptab on">the works</div></div>
+      </div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:42px">214 sessions wanted <span style="font-size:22px">· hands for 196</span></div>
+    <div class="dim" style="font-size:17px">three offers, one pool of hands — every offer drinks from the same hours.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">blended margin <b class="big" style="font-size:22px">$47</b>/session</div>
+    <div class="dim" style="font-size:14.5px"><b class="neg">18 turned away — $1,510 walks</b></div>
+  </div>
+</div><div class="zone"><div class="zonehead"><span class="znum">1</span>CAN WE SERVE? — THE DEMAND MIX <span class="zlesson">— offers share one capacity pool; the gap lands on whatever you deprioritize</span></div><div class="lsheet" style="margin-bottom:10px">
+    <div class="lhead" style="grid-template-columns:30px 1.6fr 1fr 1fr 1.1fr"><span></span><span>OFFER</span><span class="money">WANTED</span><span class="money">SERVED</span><span style="text-align:right">GAP</span></div>
+    <div class="lrow" style="grid-template-columns:30px 1.6fr 1fr 1fr 1.1fr"><span class="rn">1</span><span><b>the classic 50</b></span><span class="money">122</span><span class="money">118</span><span style="text-align:right" class="neg">−4</span></div>
+    <div class="lrow" style="grid-template-columns:30px 1.6fr 1fr 1fr 1.1fr"><span class="rn">2</span><span><b>the deep 90</b></span><span class="money">58</span><span class="money">50</span><span style="text-align:right" class="neg">−8 <span class="dim" style="font-size:12.5px">(eats 1.8 slots)</span></span></div>
+    <div class="lrow" style="grid-template-columns:30px 1.6fr 1fr 1fr 1.1fr"><span class="rn">3</span><span><b>house calls</b></span><span class="money">34</span><span class="money">28</span><span style="text-align:right" class="neg">−6</span></div>
+    <div class="ltot" style="grid-template-columns:30px 1.6fr 1fr 1fr 1.1fr"><span></span><span><b>THE WEEK</b></span><span class="money">214</span><span class="money">196</span><span style="text-align:right" class="neg"><b>−18</b></span></div>
+  </div>
+  <div class="cbrow"><span class="cbl">the shared pool</span><div class="cbtrack"><div class="cbfill make" style="width:92%"></div></div><span class="cbv money">196 of 214</span></div></div><div class="zone"><div class="zonehead"><span class="znum">2</span>WHAT ONE COSTS — THE TICKET BOOK <span class="zlesson">— one row per offer; press a row and its ticket opens itemized</span></div><div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
+  <div class="lsheet" style="flex:1.5;min-width:380px">
+    <div class="lhead" style="grid-template-columns:30px 1.7fr 1fr .95fr .95fr 1fr"><span></span><span>OFFER</span><span class="money">COSTS EACH</span><span class="money">SELLS</span><span class="money">MARGIN</span><span class="money">OF VOLUME</span></div>
+    <div class="lrow sel" style="grid-template-columns:30px 1.7fr 1fr .95fr .95fr 1fr"><span class="rn">1</span><span><b>the classic 50</b> ◂</span><span class="money">$31</span><span class="money">$80</span><span class="money pos">$49</span><span class="money dim">60%</span></div>
+    <div class="lrow" style="grid-template-columns:30px 1.7fr 1fr .95fr .95fr 1fr"><span class="rn">2</span><span><b>the deep 90</b></span><span class="money">$52</span><span class="money">$130</span><span class="money pos">$78</span><span class="money dim">26%</span></div>
+    <div class="lrow" style="grid-template-columns:30px 1.7fr 1fr .95fr .95fr 1fr"><span class="rn">3</span><span><b>house calls</b></span><span class="money">$47</span><span class="money">$110</span><span class="money pos">$63</span><span class="money dim">14%</span></div>
+    <div class="ltot" style="grid-template-columns:30px 1.7fr 1fr .95fr .95fr 1fr"><span></span><span><b>BLENDED</b></span><span class="money">$37</span><span class="money">$84</span><span class="money pos"><b>$47</b></span><span class="money">100%</span></div>
+  </div>
+  <div class="ticket" style="flex:1;min-width:230px">
+    <div class="tickhead">THE CLASSIC 50 — OPENED</div>
+    <div class="trow"><span>hands, 50 min</span><b class="money">$22.00</b></div>
+    <div class="trow"><span>oils &amp; linens</span><b class="money">$4.00</b></div>
+    <div class="trow"><span>room &amp; laundry</span><b class="money">$5.00</b></div>
+    <div class="trow tot"><span>costs, each</span><b class="money">$31.00</b></div>
+    <div class="trow price"><span>margin, each</span><b class="money pos">$49.00</b></div>
+    <div class="rcptfoot">booking #340 — was $38 at the start; ≈$29 by #600</div>
+  </div>
+  </div></div><div class="zone"><div class="zonehead"><span class="znum">3</span>WHAT MAKES THE CAPACITY <span class="zlesson">— assets group like the team does — best hands named, the crowd counted</span></div><div class="lsheet">
+    <div class="lhead" style="grid-template-columns:30px 1.9fr 1.1fr 1fr 1.3fr"><span></span><span>ASSET GROUP</span><span class="money">COUNT</span><span class="money">GIVES</span><span style="text-align:right">NOTE</span></div>
+    <div class="lrow" style="grid-template-columns:30px 1.9fr 1.1fr 1fr 1.3fr"><span class="rn">1</span><span><b>HANDS</b> — Nadia leads, 96% booked ▸</span><span class="money">×9</span><span class="money">216 slots/wk</span><span style="text-align:right" class="dim">2 near burnout → team</span></div>
+    <div class="lrow" style="grid-template-columns:30px 1.9fr 1.1fr 1fr 1.3fr"><span class="rn">2</span><span><b>ROOMS</b> ▸</span><span class="money">×4</span><span class="money">holds 230</span><span style="text-align:right" class="dim">idle Tuesdays</span></div>
+    <div class="lrow" style="grid-template-columns:30px 1.9fr 1.1fr 1fr 1.3fr"><span class="rn">3</span><span><b>TABLES &amp; KIT</b> ▸</span><span class="money">×6</span><span class="money">—</span><span style="text-align:right" class="dim">resale ≈ half</span></div>
+    <div class="lmemo" style="grid-template-columns:30px 1.9fr 1.1fr 1fr 1.3fr"><span></span><span class="dim">on offer: 5th room + 2 hires</span><span class="money dim">−$4,100</span><span class="money pos">+48 slots/wk</span><span style="text-align:right"><span class="signbtn" style="font-size:13px">OPEN ▸</span></span></div>
+  </div></div><div class="zone"><div class="zonehead"><span class="znum">4</span>THE RELIEF VALVES <span class="zlesson">— every valve priced against in-house — including smoothing the demand itself</span></div><div style="display:flex;gap:12px;flex-wrap:wrap"><div class="crow">freelancers up to <b class="money">14/wk</b><span class="bstep"><span>−</span><span>+</span></span><span class="dim" style="font-size:13.5px">margin $32 vs $49</span></div><div class="crow">off-peak price <b class="money">−15%</b><span class="bstep"><span>−</span><span>+</span></span><span class="dim" style="font-size:13.5px">moves ≈9 bookings to quiet hours</span></div></div></div><div style="margin-top:12px" class="footrules">rung 2 of 3 — same four zones as the boutique, contents folded onto the ledger sheet</div></div>
+  </div>
+</div>
+<div class="secttl"><h2>RUNG 3 — THE EMPIRE</h2><span>the sites ledger · each row opens its own works · comparative unit economics</span></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider open"><span class="tab coral"></span><div class="dh">COSTS</div>
+        <div class="pages"><div class="ptab">spend</div><div class="ptab">team</div><div class="ptab">bills</div><div class="ptab">the bank</div><div class="ptab on">the works</div></div>
+      </div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:42px">4 studios <span style="font-size:22px">· 890 sessions a week</span></div>
+    <div class="dim" style="font-size:17px">the works is now a book of sites — each row is a whole studio, and it opens.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">blended margin <b class="big" style="font-size:22px">$44</b>/session</div>
+    <div class="dim" style="font-size:14.5px"><b class="neg">Geneva bleeds — rent eats its ticket</b></div>
+  </div>
+</div>
+<div class="lsheet">
+  <div class="lhead" style="__GS__"><span></span><span>SITE</span><span class="money">CAPACITY</span><span class="money">WANTED</span><span class="money">USED</span><span class="money">COSTS EACH</span><span class="money">MARGIN EACH</span><span style="text-align:right">FLAG</span></div>
+  <div class="lrow" style="__GS__"><span class="rn">1</span><span><b>Lyon</b> ▸</span><span class="money">260</span><span class="money">288</span><span class="money">100%</span><span class="money pos">$27</span><span class="money pos">$53</span><span style="text-align:right" class="dim">overflow → freelancers</span></div>
+  <div class="lrow" style="__GS__"><span class="rn">2</span><span><b>Paris 11e</b> ▸</span><span class="money">240</span><span class="money">231</span><span class="money">96%</span><span class="money">$31</span><span class="money pos">$49</span><span style="text-align:right" class="dim">steady</span></div>
+  <div class="lrow" style="__GS__"><span class="rn">3</span><span><b>Bordeaux</b> ▸</span><span class="money">220</span><span class="money">198</span><span class="money">90%</span><span class="money">$30</span><span class="money pos">$50</span><span style="text-align:right" class="dim">young — still learning</span></div>
+  <div class="lrow alert3" style="__GS__"><span class="rn">4</span><span><b>Geneva</b> ▸</span><span class="money">200</span><span class="money">142</span><span class="money neg">71%</span><span class="money neg">$36</span><span class="money neg">$44</span><span style="text-align:right"><span class="clock">fix or close</span></span></div>
+  <div class="ltot" style="__GS__"><span></span><span><b>THE COMPANY</b></span><span class="money">920</span><span class="money">859</span><span class="money">93%</span><span class="money">$31</span><span class="money pos"><b>$44</b></span><span></span></div>
+  <div class="lmemo" style="__GS__"><span></span><span class="dim">on offer: studio #5, Lille</span><span class="money pos">+240</span><span class="money dim">est. 210</span><span></span><span class="money dim">$29 by wk 12</span><span class="money dim">−$18,000 now</span><span style="text-align:right"><span class="signbtn" style="font-size:13px">OPEN ▸</span></span></div>
+</div>
+<div style="display:flex;gap:14px;margin-top:12px;align-items:flex-start;flex-wrap:wrap">
+  <div class="pcard" style="flex:1.4;min-width:360px"><h5>LYON ▸ OPENED — A SITE ROW IS A WHOLE RUNG-2 WORKS</h5>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:15px">
+      <span class="minichip">mix: classic 61% · deep 25% · calls 14%</span>
+      <span class="minichip">hands ×11 · rooms ×5</span>
+      <span class="minichip">learning: $27 (was $38)</span>
+      <span class="minichip neg2">wants 288, holds 260 — send 20 to freelancers</span>
+    </div>
+  </div>
+  <div class="pcard" style="flex:1;min-width:280px"><h5>WHY GENEVA BLEEDS — SAME SESSION, DIFFERENT ROOF</h5>
+    <div class="trow" style="font-size:15px"><span>Lyon's ticket</span><b class="money pos">$27</b></div>
+    <div class="trow" style="font-size:15px"><span>Geneva's ticket</span><b class="money neg">$36</b></div>
+    <div class="trow price" style="font-size:15px"><span>the difference is rent &amp; wages</span><b class="money neg">+$9 every session</b></div>
+    <div class="rcptfoot">unit economics differ by roof — that is the whole lesson of scale</div>
+  </div>
+</div>
+<div style="margin-top:12px" class="footrules">rung 3 of 3 — sites recurse: press any row and the whole rung-2 desk opens for that roof · the red flag climbs to the tab</div></div>
+  </div>
+</div>
+<div class="footer">
+<p><b>The ladder in one line:</b> boutique = named things · house = the mix over one pool + the ticket book · empire = a book of sites, each opening to its own house. Red always climbs to the tab. Say OK — then THE COMPANY group opens with PRODUCT.</p>
+</div>
+</div>

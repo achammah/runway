@@ -20,8 +20,17 @@ else on a page is context, not law.
 | `06-ledger-sheet-money-desks.html` | bills · spend · team | THE LEDGER SHEET primitive (book-keeping grammar, subtotal single rule, TOTAL double rule) | LOCKED |
 | `07-spend-adjust-column.html` | spend (correction) | top section — separate −/+ buttons in the ADJUST column (sheet law) | LOCKED |
 | `08-bank-the-meeting.html` | the bank | A — THE MEETING (four numbered didactic zones: standing derived · owed anatomized · receipt before SIGN · miss stairs) | LOCKED |
-| `09-factory-round.html` | the factory | round open — A/B/C candidates on the numbered-zone pattern | PENDING |
+| `09-factory-round.html` | the factory | superseded — see the works pages below | HISTORY |
+| `10-works-four-types.html` | the works | A (four-zone meeting) across service/software/hardware/marketplace | LOCKED |
+| `11-works-scale-rungs.html` | the works | rung 2 (the house) + first rung-3 draft | LOCKED (rung 2) |
+| `12-works-sliced-rung3.html` | the works | rung 3 axis-agnostic — face = B hero rows (default) | LOCKED |
+| `13-division-mechanic.html` | divisions | the mechanism: decision-born divisions, fixed axes, group-by books | LOCKED |
+| `14-arrange-and-mutation-law.html` | arrange + all desks | bins + chips + closing receipt + THE MUTATION LAW table | LOCKED |
+| `15-product-ten-styles.html` | what we make | style round — 5 (kanban wall) won | HISTORY |
+| `16-what-we-make-wall.html` | what we make | the wall, two-part, four business types | LOCKED |
+| `17-wall-scale.html` | what we make | families + attention-first folds + THE LINEUP + shared plumbing | LOCKED |
+| `18-ownership-cluster.html` | cap table · the raise · recruitment · THE OFFER | all four pages | LOCKED |
 
-Still to run their rounds: THE COMPANY group (product, cap table, the
-street, threats, pivot) and THE LOG group (this week, history, events).
-Add each round's page here when its pick locks.
+Remaining desks (the street, threats, pivot, this week, history,
+events) are specced in `../12-binder-rework-2.md` — delegated by the
+owner in the established grammars, no separate rounds.

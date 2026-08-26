@@ -1,0 +1,113 @@
+<title>Where Divisions Come From</title>
+<style>
+@font-face{font-family:'Patrick';src:url(../../../game/assets/fonts/PatrickHand-Regular.ttf) format('truetype');font-display:block}
+@font-face{font-family:'Baloo';src:url(../../../game/assets/fonts/Baloo2-Bold.ttf) format('truetype');font-weight:700;font-display:block}
+:root{
+  --wall:#2A2722; --wall2:#332F28; --paper:#F2EAD3; --paper2:#F6F0DE; --card:#EFE6CE;
+  --kraft:#DDBE8C; --kraft2:#CBA96F; --alert:#D93425;
+  --ink:#2B2823; --ink6:rgba(43,40,35,.6); --ink4:rgba(43,40,35,.42); --ink25:rgba(43,40,35,.25); --ink12:rgba(43,40,35,.12);
+  --coral:#E86A5C; --sage:#8FA582; --blue:#6E8CA0; --yell:#F4B942;
+  --chrome:#D8D2C4; --chrome-dim:#A69E8D;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--wall);color:var(--chrome);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 0 90px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 26px}
+.topbar{position:sticky;top:0;z-index:50;background:linear-gradient(var(--wall) 82%,transparent);padding:18px 0 10px}
+.topbar .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-family:'Baloo';color:var(--paper);font-size:28px}
+.crumb{font-size:12.5px;color:var(--chrome-dim);letter-spacing:.08em}
+.lede{padding:24px 0 6px;max-width:900px}
+.lede p{margin:0 0 12px}
+.lede .how{border-left:4px solid var(--yell);padding:10px 16px;background:var(--wall2);border-radius:6px;margin-top:12px}
+.lede .how b{color:var(--paper)}
+.money{font-variant-numeric:tabular-nums}
+.big{font-family:'Baloo'}
+.paper{background:var(--paper);color:var(--ink);font-family:'Patrick';border:3px solid var(--ink);border-radius:12px;padding:20px 24px;margin-top:26px;box-shadow:0 12px 26px rgba(0,0,0,.45)}
+.zone{margin:14px 0 0;border:2.4px solid var(--ink);border-radius:10px;background:var(--paper2);padding:12px 16px 14px}
+.zonehead{display:flex;align-items:center;gap:10px;font-size:15px;letter-spacing:.07em;color:var(--ink);margin-bottom:10px}
+.znum{font-family:'Baloo';width:26px;height:26px;border:2.4px solid var(--ink);border-radius:50%;background:var(--yell);display:inline-flex;align-items:center;justify-content:center;font-size:15px;flex:none}
+.zlesson{font-size:13.5px;color:rgba(43,40,35,.42)}
+.dim{color:rgba(43,40,35,.6)}
+.dimmer{color:rgba(43,40,35,.42)}
+.neg{color:#C0392B}.pos{color:#5D7A50}
+.lsheet{background:var(--paper2);border:2.6px solid var(--ink);border-radius:8px;overflow:hidden}
+.lsheet>div{display:grid;align-items:center;column-gap:14px;padding:0 14px}
+.lhead{font-size:13px;color:rgba(43,40,35,.42);letter-spacing:.08em;border-bottom:2.4px solid var(--ink);padding-top:8px !important;padding-bottom:6px !important}
+.lrow{font-size:16.5px;border-bottom:1.6px solid rgba(43,40,35,.12);padding-top:7px !important;padding-bottom:7px !important}
+.lrow:last-child{border-bottom:none}
+.opchip{font-family:'Baloo';font-size:13.5px;background:var(--blue);color:#fff;border:2.2px solid var(--ink);border-radius:8px;padding:0 9px;display:inline-block}
+.axchip{font-family:'Baloo';font-size:14px;background:var(--yell);border:2.4px solid var(--ink);border-radius:9px;padding:1px 12px;display:inline-block;margin-right:6px}
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin-top:6px}
+.fstep{flex:1;min-width:150px;border:2.5px solid var(--ink);border-radius:9px;background:var(--card);padding:9px 12px;font-size:14.5px;display:flex;flex-direction:column;gap:3px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.fstep b{font-size:15px}
+.farr{align-self:center;padding:0 6px;flex:none}
+.shared{border:2.6px dashed var(--ink);border-radius:9px;background:rgba(203,169,111,.18);padding:9px 14px;font-size:15px;margin-top:10px}
+.footer{margin-top:44px;border-top:1px solid var(--wall2);padding-top:18px;color:var(--chrome-dim);font-size:14.5px}
+.footer b{color:var(--paper)}
+</style>
+
+<div class="topbar"><div class="wrap">
+<h1>Where Divisions Come From</h1><span class="crumb">THE MECHANIC BEHIND RUNG 3 · THEN PICK A / B / C</span>
+</div></div>
+
+<div class="wrap">
+<div class="lede">
+<p>Fair challenge. The fix to the law: <b style="color:var(--paper)">divisions are never generated — they are engine state, born only from decisions you made in the game.</b> The LLM names things and paints awnings; it never invents a division, a capacity or a dollar. Here is the whole mechanism:</p>
+</div>
+
+<div class="paper">
+
+<div class="zone"><div class="zonehead"><span class="znum">1</span>DIVISIONS ARE BORN FROM OPS, NOT WORDS <span class="zlesson">— no decision, no division</span></div>
+<div class="lsheet">
+  <div class="lhead" style="grid-template-columns:1.35fr 1fr 1.8fr"><span>YOU DO THIS</span><span>ENGINE CREATES</span><span>ITS BOOK OPENS WITH</span></div>
+  <div class="lrow" style="grid-template-columns:1.35fr 1fr 1.8fr"><span>"open a studio in Lyon" → clarify rounds → sign</span><span><span class="opchip">open_site</span></span><span class="dim">rent quote, capex, hire pack, its own demand ramp</span></div>
+  <div class="lrow" style="grid-template-columns:1.35fr 1fr 1.8fr"><span>a roadmap bet SHIPS a second product</span><span><span class="opchip">product id</span></span><span class="dim">offers tagged to it; its cost lines already exist</span></div>
+  <div class="lrow" style="grid-template-columns:1.35fr 1fr 1.8fr"><span>you sell to a second customer type</span><span><span class="opchip">segment</span></span><span class="dim">the funnel/pipeline already keep per-audience books</span></div>
+  <div class="lrow" style="grid-template-columns:1.35fr 1fr 1.8fr"><span>you add a third offer</span><span><span class="opchip">offer</span></span><span class="dim">the ticket book grows a row — nothing else needed</span></div>
+</div>
+<div class="dimmer" style="font-size:13.5px;margin-top:6px">closing is the mirror: <span class="opchip" style="background:var(--coral)">close_site</span> — severance owed, lease broken, machines at half. Nothing vanishes politely.</div>
+</div>
+
+<div class="zone"><div class="zonehead"><span class="znum">2</span>THE AXES ARE SCHEMA, THE NAMES ARE DRESSING <span class="zlesson">— four axes exist in code; the DM only labels them in your world</span></div>
+<div style="margin:4px 0 8px"><span class="axchip">site</span><span class="axchip">product</span><span class="axchip">offer</span><span class="axchip">segment</span></div>
+<div style="font-size:15.5px">"Sliced by ▾" offers ONLY the axes that have ≥2 divisions in state. A spa chain happens to populate <i>site</i>; a SaaS populates <i>product</i>; nobody decides this — the state does. The DM's whole role: when a site is born it proposes the name "Lyon"; when the works renders, it words the labels for your world ("studios", "plants", "categories").</div>
+</div>
+
+<div class="zone"><div class="zonehead"><span class="znum">3</span>EVERY DOLLAR ALREADY HAS AN ADDRESS <span class="zlesson">— a division's book is a GROUP-BY, never an invention</span></div>
+<div class="lsheet">
+  <div class="lhead" style="grid-template-columns:1.4fr 1fr 1.6fr"><span>RECORD THE ENGINE KEEPS</span><span>CARRIES</span><span>SO THE ROLL-UP IS JUST A SUM</span></div>
+  <div class="lrow" style="grid-template-columns:1.4fr 1fr 1.6fr"><span>each employee</span><span class="money">.site</span><span class="dim">payroll & hands per site</span></div>
+  <div class="lrow" style="grid-template-columns:1.4fr 1fr 1.6fr"><span>each machine / room</span><span class="money">.site</span><span class="dim">capacity & wear per site</span></div>
+  <div class="lrow" style="grid-template-columns:1.4fr 1fr 1.6fr"><span>each offer (cost lines live here)</span><span class="money">.product</span><span class="dim">ticket book per product</span></div>
+  <div class="lrow" style="grid-template-columns:1.4fr 1fr 1.6fr"><span>each rent line</span><span class="money">.site</span><span class="dim">the roof each division pays</span></div>
+  <div class="lrow" style="grid-template-columns:1.4fr 1fr 1.6fr"><span>customers / demand</span><span class="money">.segment · site weight</span><span class="dim">served & wanted per slice</span></div>
+</div>
+<div class="shared"><b>THE SHARED ROW.</b> What genuinely has no address — you, brand marketing, HQ rent — is NEVER smeared across divisions. It sits as one honest <b>SHARED / HQ</b> row under the slices. Direct vs allocated cost is a real lesson, so the game refuses to fake the allocation.</div>
+</div>
+
+<div class="zone"><div class="zonehead"><span class="znum">4</span>WHY LYON ≠ GENEVA, MECHANICALLY <span class="zlesson">— the comparison falls out of state, it is not written by anyone</span></div>
+<div style="font-size:15.5px">A site carries: its rent (the quote you signed) · a local wage multiplier (set at open_site from the world table) · its own learning count (Lyon has done 4,100 sessions, Geneva 900) · its own demand ramp. Unit cost per site = the same formula, fed by that site's numbers. Geneva's $36 is not a story — it is Geneva's rent divided by Geneva's volume plus Geneva's wages.</div>
+</div>
+
+<div class="zone"><div class="zonehead"><span class="znum">5</span>RUNGS SWITCH ON COUNTS <span class="zlesson">— no judgment, no model call</span></div>
+<div class="flow">
+  <div class="fstep"><b>sites ≥ 2?</b><span class="dim">→ EMPIRE, sliced by site</span></div>
+  <span class="farr">↓ no</span>
+  <div class="fstep"><b>products ≥ 2?</b><span class="dim">→ EMPIRE, sliced by product</span></div>
+  <span class="farr">↓ no</span>
+  <div class="fstep"><b>offers ≥ 3?</b><span class="dim">→ THE HOUSE, ticket book</span></div>
+  <span class="farr">↓ no</span>
+  <div class="fstep"><b>else</b><span class="dim">→ THE BOUTIQUE</span></div>
+</div>
+</div>
+
+<div class="zone" style="background:var(--card)"><div class="zonehead"><span class="znum">✓</span>ONE STORY, END TO END</div>
+<div style="font-size:15.5px;line-height:1.6">Week 40, you write <i>"open a second studio in Lyon."</i> The clarify pass asks what it always asks (how big? who runs it?). The engine prices the lease from the world table, the DM proposes the name, THE PRE-ROLL REVIEW shows the capex and the hire pack, you sign. A site record is born with rent $2,100/wk, wage ×0.92, demand ramp week 1. From that Monday, every hire you route there, every table you buy it, every session it serves lands on Lyon's book because the records carry <span class="money">.site</span>. Twelve weeks later the works shows Lyon at $27 a session — and nobody generated anything but the name.</div>
+</div>
+
+</div>
+
+<div class="footer">
+<p><b>So: schema-fixed axes, decision-born divisions, group-by books, one honest SHARED row, count-driven rungs — the LLM only names.</b> Recorded in DECISIONS.md with the engine work (site record, .site fields, open_site/close_site, per-site demand weights, product ids). The face is still yours to pick: <b>A folders · B hero rows · C quartet grid</b> — answer with a letter, then PRODUCT.</p>
+</div>
+</div>

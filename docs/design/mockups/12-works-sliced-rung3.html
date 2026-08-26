@@ -1,0 +1,412 @@
+<title>The Works, Sliced</title>
+<style>
+@font-face{font-family:'Patrick';src:url(../../../game/assets/fonts/PatrickHand-Regular.ttf) format('truetype');font-display:block}
+@font-face{font-family:'Baloo';src:url(../../../game/assets/fonts/Baloo2-Bold.ttf) format('truetype');font-weight:700;font-display:block}
+:root{
+  --wall:#2A2722; --wall2:#332F28; --paper:#F2EAD3; --paper2:#F6F0DE; --card:#EFE6CE;
+  --kraft:#DDBE8C; --kraft2:#CBA96F; --alert:#D93425;
+  --ink:#2B2823; --ink6:rgba(43,40,35,.6); --ink4:rgba(43,40,35,.42); --ink25:rgba(43,40,35,.25); --ink12:rgba(43,40,35,.12);
+  --coral:#E86A5C; --sage:#8FA582; --blue:#6E8CA0; --yell:#F4B942;
+  --chrome:#D8D2C4; --chrome-dim:#A69E8D;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--wall);color:var(--chrome);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 0 90px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 26px}
+.topbar{position:sticky;top:0;z-index:50;background:linear-gradient(var(--wall) 82%,transparent);padding:18px 0 10px}
+.topbar .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-family:'Baloo';color:var(--paper);font-size:28px}
+.crumb{font-size:12.5px;color:var(--chrome-dim);letter-spacing:.08em}
+.lede{padding:24px 0 6px;max-width:940px}
+.lede p{margin:0 0 12px}
+.lede .how{border-left:4px solid var(--yell);padding:10px 16px;background:var(--wall2);border-radius:6px;margin-top:12px}
+.lede .how b{color:var(--paper)}
+.opt-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.badge{font-family:'Baloo';color:var(--wall);background:var(--yell);border:3px solid var(--ink);border-radius:12px 15px 13px 14px;padding:0 14px;line-height:1.45;transform:rotate(-1.2deg)}
+.opt-head h2{font-family:'Baloo';color:var(--paper)}
+.optnote{font-size:14.5px;color:var(--chrome-dim);margin:10px 0 0;max-width:900px}
+.optnote b{color:var(--chrome)}
+.binder{position:relative;max-width:100%;display:flex;font-family:'Patrick';color:var(--ink);filter:drop-shadow(0 14px 30px rgba(0,0,0,.5))}
+.cover{flex:none;width:50px;background:var(--kraft);border:3px solid var(--ink);border-right:none;border-radius:16px 0 0 14px;position:relative;background-image:repeating-linear-gradient(115deg, rgba(43,40,35,.05) 0 3px, transparent 3px 9px)}
+.cover .sticker{position:absolute;top:26px;left:50%;transform:translateX(-50%) rotate(-90deg);white-space:nowrap;background:var(--paper2);border:2.2px solid var(--ink);border-radius:6px;padding:2px 12px;font-size:15px}
+.ringbar{flex:none;width:44px;background:var(--kraft2);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);display:flex;flex-direction:column;justify-content:space-around;align-items:center;padding:20px 0}
+.ring{width:32px;height:32px;border-radius:50%;border:3.4px solid var(--ink);position:relative}
+.ring::after{content:"";position:absolute;inset:6px;border-radius:50%;border:2.6px solid var(--ink);opacity:.45}
+.stack{flex:1;background:var(--paper);border:3px solid var(--ink);border-left:2.6px solid var(--ink);border-radius:0 14px 12px 0;display:flex;min-width:0;position:relative}
+.rail{flex:none;width:196px;padding:18px 8px 18px 22px}
+.divider{position:relative;margin:10px 0;border:2.6px solid var(--ink);border-radius:10px;background:var(--paper2)}
+.divider .tab{position:absolute;top:-2.6px;bottom:-2.6px;left:-16px;width:13px;border:2.6px solid var(--ink);border-radius:8px 0 0 8px}
+.tab.sage{background:var(--sage)}.tab.coral{background:var(--coral)}.tab.blue{background:var(--blue)}.tab.yell{background:var(--yell)}
+.divider .dh{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:15px}
+.divider.closed{background:var(--kraft);box-shadow:0 3px 0 -1px var(--kraft2), 0 6px 0 -2px rgba(43,40,35,.35)}
+.divider.open{background:var(--paper)}
+.divider.open .dh{border-bottom:2px solid var(--ink25)}
+.divider .pages{padding:6px 6px 9px}
+.ptab{display:flex;align-items:center;gap:7px;font-size:16.5px;padding:4px 9px;border-radius:8px;margin:2px 0}
+.ptab.on{background:var(--paper2);border:2.4px solid var(--ink);box-shadow:1.5px 1.5px 0 rgba(43,40,35,.18)}
+.sheet{flex:1;min-width:0;padding:20px 24px 22px;border-left:2.4px solid var(--ink25);background:var(--paper);border-radius:0 12px 10px 0}
+.money{font-variant-numeric:tabular-nums}
+.big{font-family:'Baloo';line-height:1.05}
+.pos{color:#5D7A50}.neg{color:#C0392B}
+.dim{color:var(--ink6)}.dimmer{color:var(--ink4)}
+.footrules{font-size:14.5px;color:var(--ink4)}
+.clock{display:inline-block;background:var(--alert);color:#fff;border:2.2px solid var(--ink);border-radius:8px;padding:0 8px;font-size:13.5px}
+.pcard{background:var(--card);border:2.4px solid var(--ink);border-radius:10px 8px 11px 9px;padding:12px 16px 14px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.pcard h5{font-size:14.5px;letter-spacing:.09em;color:var(--ink6);margin-bottom:8px;font-weight:400;display:flex;align-items:center;gap:8px;justify-content:center}
+.pcard.lesson{margin-top:14px;background:var(--paper2)}
+.ticket{background:#FBF6E8;border:2.6px solid var(--ink);border-radius:4px;padding:10px 14px;box-shadow:2px 3px 0 rgba(43,40,35,.2)}
+.tickhead{text-align:center;font-size:12.5px;letter-spacing:.12em;color:var(--ink6);border-bottom:2px dashed var(--ink25);padding-bottom:5px;margin-bottom:5px}
+.trow{display:flex;justify-content:space-between;font-size:15.5px;padding:3px 0;gap:14px}
+.signbtn{font-family:'Baloo';font-size:17px;background:var(--yell);border:2.6px solid var(--ink);border-radius:9px;padding:2px 14px;box-shadow:1.5px 2px 0 rgba(43,40,35,.25);display:inline-block}
+.lsheet{background:var(--paper2);border:2.6px solid var(--ink);border-radius:8px;overflow:hidden;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.lsheet>div{display:grid;align-items:center;column-gap:12px;padding:0 14px}
+.ltot{font-size:18px;background:var(--card);padding-top:9px !important;padding-bottom:9px !important}
+.slice{font-size:13.5px;border:2.2px solid var(--ink);border-radius:8px;background:var(--paper2);padding:2px 10px}
+.slice i{font-style:normal;font-size:12.5px}
+.prooftag{font-family:'Baloo';font-size:14px;letter-spacing:.1em;color:var(--ink4);text-align:center;margin:22px 0 10px;border-top:2px dashed var(--ink25);padding-top:12px}
+/* FILE DRAWER */
+.drawer{display:flex;gap:12px;align-items:stretch;flex-wrap:wrap;padding-top:12px}
+.folder{flex:1;min-width:186px;position:relative;border:2.8px solid var(--ink);border-radius:0 10px 8px 8px;background:var(--kraft);box-shadow:2px 3px 0 rgba(43,40,35,.22);display:flex;flex-direction:column}
+.folder .ftab{position:absolute;top:-15px;left:10px;background:var(--kraft);border:2.8px solid var(--ink);border-bottom:none;border-radius:8px 8px 0 0;padding:0 12px;font-size:14px;line-height:1.9}
+.folder.falert{border-color:var(--alert)}
+.folder.falert .ftab{border-color:var(--alert);background:var(--alert);color:#fff}
+.folder.fghost{border-style:dashed;background:var(--paper2);box-shadow:none}
+.folder.fghost .ftab{border-style:dashed;background:var(--paper2);color:var(--ink6)}
+.fbody{padding:14px 12px 12px;display:flex;flex-direction:column;gap:4px;background:var(--card);border-radius:0 8px 6px 6px;margin:8px;flex:1}
+.fmarg{display:flex;flex-direction:column}
+.fmeter{position:relative;height:18px;border:2.4px solid var(--ink);border-radius:6px;background:var(--paper2);overflow:hidden}
+.ffill{position:absolute;top:0;bottom:0;left:0;background:var(--sage);opacity:.75}
+.fmeter span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px}
+.fcost{font-size:13.5px;color:var(--ink6)}
+.fsub{font-size:12.5px}
+.fstat{font-size:13px;margin-top:auto}
+/* HERO ROWS */
+.doss{display:grid;grid-template-columns:1.2fr 1.4fr .8fr 1.05fr .7fr 1.15fr;align-items:center;gap:12px;border:2.6px solid var(--ink);border-radius:10px;background:var(--card);padding:9px 16px;margin-top:10px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.doss.dalert{border-color:var(--alert);border-width:2.8px}
+.doss.dghost{border-style:dashed;background:var(--paper2);box-shadow:none}
+.dname{font-family:'Baloo';font-size:18px}
+.dmeter{position:relative;height:20px;border:2.4px solid var(--ink);border-radius:7px;background:var(--paper2);overflow:hidden}
+.dfill{position:absolute;top:0;bottom:0;left:0;background:var(--sage);opacity:.75}
+.dmeter span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12.5px}
+.dcost{font-size:13.5px;color:var(--ink6);text-align:right}
+.dstat{font-size:13px;color:var(--ink6);text-align:right}
+/* QUARTET */
+.qcard{background:var(--card);border:2.6px solid var(--ink);border-radius:10px 8px 11px 9px;padding:12px 14px;box-shadow:2px 3px 0 rgba(43,40,35,.2)}
+.qcard.qalert{border-color:var(--alert);border-width:2.8px}
+.qcard.qghost{border-style:dashed;background:var(--paper2);box-shadow:none}
+.qcard h5{font-size:13.5px;letter-spacing:.09em;color:var(--ink6);margin-bottom:6px;font-weight:400;display:flex}
+.footer{margin-top:64px;border-top:1px solid var(--wall2);padding-top:20px;color:var(--chrome-dim);font-size:14.5px}
+.footer b{color:var(--paper)}
+</style>
+
+<div class="topbar"><div class="wrap">
+<h1>The Works, Sliced</h1><span class="crumb">RUNG 3, GENERALIZED · PICK ONE LETTER</span>
+</div></div>
+
+<div class="wrap">
+<div class="lede">
+<p>Right — storefronts and maps assume shops on streets. The general truth of rung 3: <b style="color:var(--paper)">at scale, the works splits along an axis that DIFFERS per business</b> — studios for a spa, products for a SaaS, plants or SKUs for hardware, categories for a marketplace — and sometimes more than one axis at once. So the design hardcodes NOTHING about the axis: the axis name is <b style="color:var(--paper)">generated content</b> (written at run start like everything else), a <b style="color:var(--paper)">"sliced by ▾"</b> control regroups the same numbers along another axis (by offer, by customer type), and every division shows the SAME five facts — used%, volume, cost each, margin each, status — and opens into its own rung-2 works.</p>
+<p>To prove there's no overfit, <b style="color:var(--paper)">each option below renders TWICE</b>: the massage chain (sliced by studios) and then a SaaS (sliced by products) on the identical skeleton. The centerpiece lesson generalizes with it: "same unit, different books" — Lyon $27 vs Geneva $36 of rent; a seat of Core $2.90 vs a seat of Legacy $9.40 of support minutes.</p>
+<div class="how"><b>Answer with a letter.</b> Then PRODUCT.</div>
+</div>
+
+<div class="opt-head" style="margin-top:40px"><span class="badge" style="font-size:30px">A</span><h2 style="font-size:27px">The File Drawer</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider open"><span class="tab coral"></span><div class="dh">COSTS</div>
+        <div class="pages"><div class="ptab">spend</div><div class="ptab">team</div><div class="ptab">bills</div><div class="ptab">the bank</div><div class="ptab on">the works</div></div>
+      </div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 12px">
+  <div>
+    <div class="big" style="font-size:42px">4 studios <span style="font-size:22px">· 890 sessions a week · margin $44</span></div>
+    <div class="dim" style="font-size:16.5px">every line keeps its own books — press one and its whole works opens.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:17px"><span class="clock">Geneva: fix or close</span></div>
+    <div style="margin-top:4px"><span class="slice">sliced by <b>studios ▾</b> <i class="dim">· or by offer, by customer type</i></span></div>
+  </div>
+</div><div class="drawer"><div class="folder">
+    <div class="ftab"><b>LYON</b></div>
+    <div class="fbody">
+      <div class="fmarg"><span class="money big" style="font-size:26px">$53</span><span class="dim" style="font-size:12.5px">margin each</span></div>
+      <div class="fmeter"><div class="ffill" style="width:100%"></div><span>100% used</span></div>
+      <div class="fcost">makes each for $27</div>
+      <div class="fsub dim">288/wk</div>
+      <div class="fstat">full — overflow → relief</div>
+    </div>
+  </div><div class="folder">
+    <div class="ftab"><b>PARIS 11e</b></div>
+    <div class="fbody">
+      <div class="fmarg"><span class="money big" style="font-size:26px">$49</span><span class="dim" style="font-size:12.5px">margin each</span></div>
+      <div class="fmeter"><div class="ffill" style="width:96%"></div><span>96% used</span></div>
+      <div class="fcost">makes each for $31</div>
+      <div class="fsub dim">231/wk</div>
+      <div class="fstat">steady</div>
+    </div>
+  </div><div class="folder">
+    <div class="ftab"><b>BORDEAUX</b></div>
+    <div class="fbody">
+      <div class="fmarg"><span class="money big" style="font-size:26px">$50</span><span class="dim" style="font-size:12.5px">margin each</span></div>
+      <div class="fmeter"><div class="ffill" style="width:90%"></div><span>90% used</span></div>
+      <div class="fcost">makes each for $30</div>
+      <div class="fsub dim">198/wk</div>
+      <div class="fstat">young — learning</div>
+    </div>
+  </div><div class="folder falert">
+    <div class="ftab"><b>GENEVA</b></div>
+    <div class="fbody">
+      <div class="fmarg"><span class="money big" style="font-size:26px">$44</span><span class="dim" style="font-size:12.5px">margin each</span></div>
+      <div class="fmeter"><div class="ffill" style="width:71%"></div><span>71% used</span></div>
+      <div class="fcost">makes each for $36</div>
+      <div class="fsub dim">142/wk</div>
+      <div class="fstat"><span class="clock" style="font-size:12px">fix or close ▸</span></div>
+    </div>
+  </div><div class="folder fghost">
+    <div class="ftab"><b>LILLE — NEW?</b></div>
+    <div class="fbody">
+      <div class="fmarg"><span class="money big" style="font-size:26px">−$18,000 now</span><span class="dim" style="font-size:12.5px">margin each</span></div>
+      
+      <div class="fcost">≈$29 each by wk 12</div>
+      <div class="fsub dim">+240 capacity</div>
+      <div class="fstat"><span class="signbtn" style="font-size:13px">OPEN ▸</span></div>
+    </div>
+  </div></div><div class="pcard lesson"><h5>SAME UNIT, DIFFERENT BOOKS — THE LESSON OF SCALE</h5>
+  <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:center">
+    <div class="ticket" style="min-width:190px"><div class="tickhead">LYON'S SESSION</div>
+      <div class="trow"><span>costs, each</span><b class="money pos">$27</b></div></div>
+    <div style="text-align:center">
+      <svg width="90" height="30" viewBox="0 0 90 30"><path d="M6 15 h66 M60 6 l14 9 -14 9" stroke="#2B2823" stroke-width="3" fill="none"/></svg>
+      <div class="dimmer" style="font-size:13px;max-width:150px">+$9 of rent &amp; wages — nothing else</div>
+    </div>
+    <div class="ticket" style="min-width:190px;border-color:var(--alert)"><div class="tickhead">GENEVA'S SESSION</div>
+      <div class="trow"><span>costs, each</span><b class="money neg">$36</b></div></div>
+  </div>
+</div><div class="lsheet" style="margin-top:12px"><div class="ltot" style="grid-template-columns:1.6fr 1fr 1fr 1fr 1fr"><span><b>ALL STUDIOS</b></span><span class="money">920 capacity</span><span class="money">859 served</span><span class="money">$31 cost each</span><span class="money pos"><b>$44 margin each</b></span></div></div><div class="prooftag">THE SAME DESK, ANOTHER BUSINESS ↓</div><div style="display:flex;align-items:center;gap:24px;margin:2px 0 12px">
+  <div>
+    <div class="big" style="font-size:42px">3 products <span style="font-size:22px">· 2,140 seats · margin $16 avg</span></div>
+    <div class="dim" style="font-size:16.5px">same page, different business — the axis changed, the grammar didn't.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:17px"><span class="clock">Legacy API bleeds</span></div>
+    <div style="margin-top:4px"><span class="slice">sliced by <b>products ▾</b> <i class="dim">· or by region, by customer type</i></span></div>
+  </div>
+</div><div class="drawer"><div class="folder">
+    <div class="ftab"><b>CORE</b></div>
+    <div class="fbody">
+      <div class="fmarg"><span class="money big" style="font-size:26px">$15.10</span><span class="dim" style="font-size:12.5px">margin each</span></div>
+      <div class="fmeter"><div class="ffill" style="width:84%"></div><span>84% used</span></div>
+      <div class="fcost">serves each for $2.90</div>
+      <div class="fsub dim">1,330 seats</div>
+      <div class="fstat">the workhorse</div>
+    </div>
+  </div><div class="folder">
+    <div class="ftab"><b>ENTERPRISE SUITE</b></div>
+    <div class="fbody">
+      <div class="fmarg"><span class="money big" style="font-size:26px">$21.90</span><span class="dim" style="font-size:12.5px">margin each</span></div>
+      <div class="fmeter"><div class="ffill" style="width:76%"></div><span>76% used</span></div>
+      <div class="fcost">serves each for $6.10</div>
+      <div class="fsub dim">610 seats</div>
+      <div class="fstat">support-heavy, worth it</div>
+    </div>
+  </div><div class="folder falert">
+    <div class="ftab"><b>LEGACY API</b></div>
+    <div class="fbody">
+      <div class="fmarg"><span class="money big" style="font-size:26px">$2.60</span><span class="dim" style="font-size:12.5px">margin each</span></div>
+      <div class="fmeter"><div class="ffill" style="width:31%"></div><span>31% used</span></div>
+      <div class="fcost">serves each for $9.40</div>
+      <div class="fsub dim">200 seats</div>
+      <div class="fstat"><span class="clock" style="font-size:12px">retire? ▸</span></div>
+    </div>
+  </div><div class="folder fghost">
+    <div class="ftab"><b>NEW PRODUCT?</b></div>
+    <div class="fbody">
+      <div class="fmarg"><span class="money big" style="font-size:26px">—</span><span class="dim" style="font-size:12.5px">margin each</span></div>
+      
+      <div class="fcost">ships when a bet lands</div>
+      <div class="fsub dim">from the roadmap</div>
+      <div class="fstat"><span class="dim" style="font-size:13px">→ product desk</span></div>
+    </div>
+  </div></div><div class="pcard lesson"><h5>SAME UNIT, DIFFERENT BOOKS — THE LESSON OF SCALE</h5>
+  <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:center">
+    <div class="ticket" style="min-width:190px"><div class="tickhead">A SEAT OF CORE</div>
+      <div class="trow"><span>costs, each</span><b class="money pos">$2.90</b></div></div>
+    <div style="text-align:center">
+      <svg width="90" height="30" viewBox="0 0 90 30"><path d="M6 15 h66 M60 6 l14 9 -14 9" stroke="#2B2823" stroke-width="3" fill="none"/></svg>
+      <div class="dimmer" style="font-size:13px;max-width:150px">support minutes — nothing else</div>
+    </div>
+    <div class="ticket" style="min-width:190px;border-color:var(--alert)"><div class="tickhead">A SEAT OF LEGACY</div>
+      <div class="trow"><span>costs, each</span><b class="money neg">$9.40</b></div></div>
+  </div>
+</div><div class="lsheet" style="margin-top:12px"><div class="ltot" style="grid-template-columns:1.6fr 1fr 1fr 1fr 1fr"><span><b>ALL PRODUCTS</b></span><span class="money">2,600 ceiling</span><span class="money">2,140 seats</span><span class="money">$4.10 cost each</span><span class="money pos"><b>$16 margin each</b></span></div></div><div style="margin-top:10px" class="footrules">folders hold anything — studios, products, plants, categories. Worst and best stay face-up; the healthy middle stacks behind.</div></div>
+  </div>
+</div>
+<p class="optnote"><b>Each division a kraft folder</b> — label on the tab, margin big on the face, used-meter, status; the bleeder's tab goes red, the new line is a dashed folder. Deeply in the binder's paper world; folders hold anything.</p>
+<div class="opt-head" style="margin-top:40px"><span class="badge" style="font-size:30px">B</span><h2 style="font-size:27px">The Hero Rows</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider open"><span class="tab coral"></span><div class="dh">COSTS</div>
+        <div class="pages"><div class="ptab">spend</div><div class="ptab">team</div><div class="ptab">bills</div><div class="ptab">the bank</div><div class="ptab on">the works</div></div>
+      </div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 12px">
+  <div>
+    <div class="big" style="font-size:42px">4 studios <span style="font-size:22px">· 890 sessions a week · margin $44</span></div>
+    <div class="dim" style="font-size:16.5px">every line keeps its own books — press one and its whole works opens.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:17px"><span class="clock">Geneva: fix or close</span></div>
+    <div style="margin-top:4px"><span class="slice">sliced by <b>studios ▾</b> <i class="dim">· or by offer, by customer type</i></span></div>
+  </div>
+</div><div class="doss"><b class="dname">LYON</b><div class="dmeter"><div class="dfill" style="width:100%"></div><span>100% used</span></div><span class="money dim" style="font-size:14.5px">288/wk</span><span class="money dcost">makes each for $27</span><span class="money big" style="font-size:25px">$53</span><span class="dstat">full — overflow → relief</span></div><div class="doss"><b class="dname">PARIS 11e</b><div class="dmeter"><div class="dfill" style="width:96%"></div><span>96% used</span></div><span class="money dim" style="font-size:14.5px">231/wk</span><span class="money dcost">makes each for $31</span><span class="money big" style="font-size:25px">$49</span><span class="dstat">steady</span></div><div class="doss"><b class="dname">BORDEAUX</b><div class="dmeter"><div class="dfill" style="width:90%"></div><span>90% used</span></div><span class="money dim" style="font-size:14.5px">198/wk</span><span class="money dcost">makes each for $30</span><span class="money big" style="font-size:25px">$50</span><span class="dstat">young — learning</span></div><div class="doss dalert"><b class="dname">GENEVA</b><div class="dmeter"><div class="dfill" style="width:71%"></div><span>71% used</span></div><span class="money dim" style="font-size:14.5px">142/wk</span><span class="money dcost">makes each for $36</span><span class="money big" style="font-size:25px">$44</span><span class="dstat"><span class="clock" style="font-size:12px">fix or close ▸</span></span></div><div class="doss dghost"><b class="dname">LILLE — NEW?</b><span class="dim" style="font-size:14px">—</span><span class="money dim" style="font-size:14.5px">+240 capacity</span><span class="money dcost">≈$29 each by wk 12</span><span class="money big" style="font-size:25px">−$18,000 now</span><span class="dstat"><span class="signbtn" style="font-size:13px">OPEN ▸</span></span></div><div class="pcard lesson"><h5>SAME UNIT, DIFFERENT BOOKS — THE LESSON OF SCALE</h5>
+  <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:center">
+    <div class="ticket" style="min-width:190px"><div class="tickhead">LYON'S SESSION</div>
+      <div class="trow"><span>costs, each</span><b class="money pos">$27</b></div></div>
+    <div style="text-align:center">
+      <svg width="90" height="30" viewBox="0 0 90 30"><path d="M6 15 h66 M60 6 l14 9 -14 9" stroke="#2B2823" stroke-width="3" fill="none"/></svg>
+      <div class="dimmer" style="font-size:13px;max-width:150px">+$9 of rent &amp; wages — nothing else</div>
+    </div>
+    <div class="ticket" style="min-width:190px;border-color:var(--alert)"><div class="tickhead">GENEVA'S SESSION</div>
+      <div class="trow"><span>costs, each</span><b class="money neg">$36</b></div></div>
+  </div>
+</div><div class="lsheet" style="margin-top:12px"><div class="ltot" style="grid-template-columns:1.6fr 1fr 1fr 1fr 1fr"><span><b>ALL STUDIOS</b></span><span class="money">920 capacity</span><span class="money">859 served</span><span class="money">$31 cost each</span><span class="money pos"><b>$44 margin each</b></span></div></div><div class="prooftag">THE SAME DESK, ANOTHER BUSINESS ↓</div><div style="display:flex;align-items:center;gap:24px;margin:2px 0 12px">
+  <div>
+    <div class="big" style="font-size:42px">3 products <span style="font-size:22px">· 2,140 seats · margin $16 avg</span></div>
+    <div class="dim" style="font-size:16.5px">same page, different business — the axis changed, the grammar didn't.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:17px"><span class="clock">Legacy API bleeds</span></div>
+    <div style="margin-top:4px"><span class="slice">sliced by <b>products ▾</b> <i class="dim">· or by region, by customer type</i></span></div>
+  </div>
+</div><div class="doss"><b class="dname">CORE</b><div class="dmeter"><div class="dfill" style="width:84%"></div><span>84% used</span></div><span class="money dim" style="font-size:14.5px">1,330 seats</span><span class="money dcost">serves each for $2.90</span><span class="money big" style="font-size:25px">$15.10</span><span class="dstat">the workhorse</span></div><div class="doss"><b class="dname">ENTERPRISE SUITE</b><div class="dmeter"><div class="dfill" style="width:76%"></div><span>76% used</span></div><span class="money dim" style="font-size:14.5px">610 seats</span><span class="money dcost">serves each for $6.10</span><span class="money big" style="font-size:25px">$21.90</span><span class="dstat">support-heavy, worth it</span></div><div class="doss dalert"><b class="dname">LEGACY API</b><div class="dmeter"><div class="dfill" style="width:31%"></div><span>31% used</span></div><span class="money dim" style="font-size:14.5px">200 seats</span><span class="money dcost">serves each for $9.40</span><span class="money big" style="font-size:25px">$2.60</span><span class="dstat"><span class="clock" style="font-size:12px">retire? ▸</span></span></div><div class="doss dghost"><b class="dname">NEW PRODUCT?</b><span class="dim" style="font-size:14px">—</span><span class="money dim" style="font-size:14.5px">from the roadmap</span><span class="money dcost">ships when a bet lands</span><span class="money big" style="font-size:25px">—</span><span class="dstat"><span class="dim" style="font-size:13px">→ product desk</span></span></div><div class="pcard lesson"><h5>SAME UNIT, DIFFERENT BOOKS — THE LESSON OF SCALE</h5>
+  <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:center">
+    <div class="ticket" style="min-width:190px"><div class="tickhead">A SEAT OF CORE</div>
+      <div class="trow"><span>costs, each</span><b class="money pos">$2.90</b></div></div>
+    <div style="text-align:center">
+      <svg width="90" height="30" viewBox="0 0 90 30"><path d="M6 15 h66 M60 6 l14 9 -14 9" stroke="#2B2823" stroke-width="3" fill="none"/></svg>
+      <div class="dimmer" style="font-size:13px;max-width:150px">support minutes — nothing else</div>
+    </div>
+    <div class="ticket" style="min-width:190px;border-color:var(--alert)"><div class="tickhead">A SEAT OF LEGACY</div>
+      <div class="trow"><span>costs, each</span><b class="money neg">$9.40</b></div></div>
+  </div>
+</div><div class="lsheet" style="margin-top:12px"><div class="ltot" style="grid-template-columns:1.6fr 1fr 1fr 1fr 1fr"><span><b>ALL PRODUCTS</b></span><span class="money">2,600 ceiling</span><span class="money">2,140 seats</span><span class="money">$4.10 cost each</span><span class="money pos"><b>$16 margin each</b></span></div></div><div style="margin-top:10px" class="footrules">one hero-row per line of the business — at 12+ the healthy middle folds to a count row</div></div>
+  </div>
+</div>
+<p class="optnote"><b>One hero-row per division</b> — name in display type, drawn meter, cost in words, margin big. The calmest and the most scalable; the healthy middle folds to a count row at 12+.</p>
+<div class="opt-head" style="margin-top:40px"><span class="badge" style="font-size:30px">C</span><h2 style="font-size:27px">The Quartet Grid</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider open"><span class="tab coral"></span><div class="dh">COSTS</div>
+        <div class="pages"><div class="ptab">spend</div><div class="ptab">team</div><div class="ptab">bills</div><div class="ptab">the bank</div><div class="ptab on">the works</div></div>
+      </div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 12px">
+  <div>
+    <div class="big" style="font-size:42px">4 studios <span style="font-size:22px">· 890 sessions a week · margin $44</span></div>
+    <div class="dim" style="font-size:16.5px">every line keeps its own books — press one and its whole works opens.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:17px"><span class="clock">Geneva: fix or close</span></div>
+    <div style="margin-top:4px"><span class="slice">sliced by <b>studios ▾</b> <i class="dim">· or by offer, by customer type</i></span></div>
+  </div>
+</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px"><div class="qcard"><h5 style="justify-content:center">LYON</h5>
+    <div style="text-align:center"><span class="money big" style="font-size:30px">$53</span><div class="dim" style="font-size:12.5px">margin each</div></div>
+    <div class="dmeter" style="margin:6px 0"><div class="dfill" style="width:100%"></div><span>100% used</span></div>
+    <div class="dim" style="font-size:13.5px;text-align:center">makes each for $27 · 288/wk</div>
+    <div style="font-size:13px;text-align:center;margin-top:4px">full — overflow → relief</div>
+  </div><div class="qcard"><h5 style="justify-content:center">PARIS 11e</h5>
+    <div style="text-align:center"><span class="money big" style="font-size:30px">$49</span><div class="dim" style="font-size:12.5px">margin each</div></div>
+    <div class="dmeter" style="margin:6px 0"><div class="dfill" style="width:96%"></div><span>96% used</span></div>
+    <div class="dim" style="font-size:13.5px;text-align:center">makes each for $31 · 231/wk</div>
+    <div style="font-size:13px;text-align:center;margin-top:4px">steady</div>
+  </div><div class="qcard"><h5 style="justify-content:center">BORDEAUX</h5>
+    <div style="text-align:center"><span class="money big" style="font-size:30px">$50</span><div class="dim" style="font-size:12.5px">margin each</div></div>
+    <div class="dmeter" style="margin:6px 0"><div class="dfill" style="width:90%"></div><span>90% used</span></div>
+    <div class="dim" style="font-size:13.5px;text-align:center">makes each for $30 · 198/wk</div>
+    <div style="font-size:13px;text-align:center;margin-top:4px">young — learning</div>
+  </div><div class="qcard qalert"><h5 style="justify-content:center">GENEVA</h5>
+    <div style="text-align:center"><span class="money big" style="font-size:30px">$44</span><div class="dim" style="font-size:12.5px">margin each</div></div>
+    <div class="dmeter" style="margin:6px 0"><div class="dfill" style="width:71%"></div><span>71% used</span></div>
+    <div class="dim" style="font-size:13.5px;text-align:center">makes each for $36 · 142/wk</div>
+    <div style="font-size:13px;text-align:center;margin-top:4px"><span class="clock" style="font-size:12px">fix or close ▸</span></div>
+  </div><div class="qcard qghost"><h5 style="justify-content:center">LILLE — NEW?</h5>
+    <div style="text-align:center"><span class="money big" style="font-size:30px">−$18,000 now</span><div class="dim" style="font-size:12.5px">margin each</div></div>
+    
+    <div class="dim" style="font-size:13.5px;text-align:center">≈$29 each by wk 12 · +240 capacity</div>
+    <div style="font-size:13px;text-align:center;margin-top:4px"><span class="signbtn" style="font-size:13px">OPEN ▸</span></div>
+  </div></div><div class="pcard lesson"><h5>SAME UNIT, DIFFERENT BOOKS — THE LESSON OF SCALE</h5>
+  <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:center">
+    <div class="ticket" style="min-width:190px"><div class="tickhead">LYON'S SESSION</div>
+      <div class="trow"><span>costs, each</span><b class="money pos">$27</b></div></div>
+    <div style="text-align:center">
+      <svg width="90" height="30" viewBox="0 0 90 30"><path d="M6 15 h66 M60 6 l14 9 -14 9" stroke="#2B2823" stroke-width="3" fill="none"/></svg>
+      <div class="dimmer" style="font-size:13px;max-width:150px">+$9 of rent &amp; wages — nothing else</div>
+    </div>
+    <div class="ticket" style="min-width:190px;border-color:var(--alert)"><div class="tickhead">GENEVA'S SESSION</div>
+      <div class="trow"><span>costs, each</span><b class="money neg">$36</b></div></div>
+  </div>
+</div><div class="lsheet" style="margin-top:12px"><div class="ltot" style="grid-template-columns:1.6fr 1fr 1fr 1fr 1fr"><span><b>ALL STUDIOS</b></span><span class="money">920 capacity</span><span class="money">859 served</span><span class="money">$31 cost each</span><span class="money pos"><b>$44 margin each</b></span></div></div><div class="prooftag">THE SAME DESK, ANOTHER BUSINESS ↓</div><div style="display:flex;align-items:center;gap:24px;margin:2px 0 12px">
+  <div>
+    <div class="big" style="font-size:42px">3 products <span style="font-size:22px">· 2,140 seats · margin $16 avg</span></div>
+    <div class="dim" style="font-size:16.5px">same page, different business — the axis changed, the grammar didn't.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:17px"><span class="clock">Legacy API bleeds</span></div>
+    <div style="margin-top:4px"><span class="slice">sliced by <b>products ▾</b> <i class="dim">· or by region, by customer type</i></span></div>
+  </div>
+</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px"><div class="qcard"><h5 style="justify-content:center">CORE</h5>
+    <div style="text-align:center"><span class="money big" style="font-size:30px">$15.10</span><div class="dim" style="font-size:12.5px">margin each</div></div>
+    <div class="dmeter" style="margin:6px 0"><div class="dfill" style="width:84%"></div><span>84% used</span></div>
+    <div class="dim" style="font-size:13.5px;text-align:center">serves each for $2.90 · 1,330 seats</div>
+    <div style="font-size:13px;text-align:center;margin-top:4px">the workhorse</div>
+  </div><div class="qcard"><h5 style="justify-content:center">ENTERPRISE SUITE</h5>
+    <div style="text-align:center"><span class="money big" style="font-size:30px">$21.90</span><div class="dim" style="font-size:12.5px">margin each</div></div>
+    <div class="dmeter" style="margin:6px 0"><div class="dfill" style="width:76%"></div><span>76% used</span></div>
+    <div class="dim" style="font-size:13.5px;text-align:center">serves each for $6.10 · 610 seats</div>
+    <div style="font-size:13px;text-align:center;margin-top:4px">support-heavy, worth it</div>
+  </div><div class="qcard qalert"><h5 style="justify-content:center">LEGACY API</h5>
+    <div style="text-align:center"><span class="money big" style="font-size:30px">$2.60</span><div class="dim" style="font-size:12.5px">margin each</div></div>
+    <div class="dmeter" style="margin:6px 0"><div class="dfill" style="width:31%"></div><span>31% used</span></div>
+    <div class="dim" style="font-size:13.5px;text-align:center">serves each for $9.40 · 200 seats</div>
+    <div style="font-size:13px;text-align:center;margin-top:4px"><span class="clock" style="font-size:12px">retire? ▸</span></div>
+  </div><div class="qcard qghost"><h5 style="justify-content:center">NEW PRODUCT?</h5>
+    <div style="text-align:center"><span class="money big" style="font-size:30px">—</span><div class="dim" style="font-size:12.5px">margin each</div></div>
+    
+    <div class="dim" style="font-size:13.5px;text-align:center">ships when a bet lands · from the roadmap</div>
+    <div style="font-size:13px;text-align:center;margin-top:4px"><span class="dim" style="font-size:13px">→ product desk</span></div>
+  </div></div><div class="pcard lesson"><h5>SAME UNIT, DIFFERENT BOOKS — THE LESSON OF SCALE</h5>
+  <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:center">
+    <div class="ticket" style="min-width:190px"><div class="tickhead">A SEAT OF CORE</div>
+      <div class="trow"><span>costs, each</span><b class="money pos">$2.90</b></div></div>
+    <div style="text-align:center">
+      <svg width="90" height="30" viewBox="0 0 90 30"><path d="M6 15 h66 M60 6 l14 9 -14 9" stroke="#2B2823" stroke-width="3" fill="none"/></svg>
+      <div class="dimmer" style="font-size:13px;max-width:150px">support minutes — nothing else</div>
+    </div>
+    <div class="ticket" style="min-width:190px;border-color:var(--alert)"><div class="tickhead">A SEAT OF LEGACY</div>
+      <div class="trow"><span>costs, each</span><b class="money neg">$9.40</b></div></div>
+  </div>
+</div><div class="lsheet" style="margin-top:12px"><div class="ltot" style="grid-template-columns:1.6fr 1fr 1fr 1fr 1fr"><span><b>ALL PRODUCTS</b></span><span class="money">2,600 ceiling</span><span class="money">2,140 seats</span><span class="money">$4.10 cost each</span><span class="money pos"><b>$16 margin each</b></span></div></div><div style="margin-top:10px" class="footrules">the dashboard-quartet grammar, reused — every card is a line's hero and IS the button into its works</div></div>
+  </div>
+</div>
+<p class="optnote"><b>The dashboard-quartet grammar reused</b> — each card is a division's hero and IS the button into its works. Rhymes with the group overviews already locked.</p>
+<div class="footer">
+<p><b>All three, on any axis:</b> the same five facts per division, margin as the big number, drawn used-meter, red climbing to the tab, ghost divisions as pending decisions, the "sliced by ▾" regroup, the two-ticket lesson centered, one company strip double-ruled. Answer with a letter — then PRODUCT opens THE COMPANY group.</p>
+</div>
+</div>

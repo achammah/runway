@@ -1,0 +1,563 @@
+<title>The Product Page, Ten Ways</title>
+<style>
+@font-face{font-family:'Patrick';src:url(../../../game/assets/fonts/PatrickHand-Regular.ttf) format('truetype');font-display:block}
+@font-face{font-family:'Baloo';src:url(../../../game/assets/fonts/Baloo2-Bold.ttf) format('truetype');font-weight:700;font-display:block}
+:root{
+  --wall:#2A2722; --wall2:#332F28; --paper:#F2EAD3; --paper2:#F6F0DE; --card:#EFE6CE;
+  --kraft:#DDBE8C; --kraft2:#CBA96F; --alert:#D93425;
+  --ink:#2B2823; --ink6:rgba(43,40,35,.6); --ink4:rgba(43,40,35,.42); --ink25:rgba(43,40,35,.25); --ink12:rgba(43,40,35,.12);
+  --coral:#E86A5C; --sage:#8FA582; --blue:#6E8CA0; --yell:#F4B942;
+  --chrome:#D8D2C4; --chrome-dim:#A69E8D;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--wall);color:var(--chrome);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 0 90px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 26px}
+.topbar{position:sticky;top:0;z-index:50;background:linear-gradient(var(--wall) 82%,transparent);padding:18px 0 10px}
+.topbar .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-family:'Baloo';color:var(--paper);font-size:28px}
+.crumb{font-size:12.5px;color:var(--chrome-dim);letter-spacing:.08em}
+.lede{padding:24px 0 6px;max-width:960px}
+.lede p{margin:0 0 12px}
+.lede .how{border-left:4px solid var(--yell);padding:10px 16px;background:var(--wall2);border-radius:6px;margin-top:12px}
+.lede .how b{color:var(--paper)}
+.typestrip{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.typestrip span{border:1px solid var(--wall2);background:var(--wall2);border-radius:8px;padding:4px 12px;font-size:13px;color:var(--chrome-dim)}
+.typestrip b{color:var(--chrome)}
+.opt-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.badge{font-family:'Baloo';color:var(--wall);background:var(--yell);border:3px solid var(--ink);border-radius:12px 15px 13px 14px;padding:0 13px;line-height:1.45;transform:rotate(-1.2deg)}
+.opt-head h2{font-family:'Baloo';color:var(--paper)}
+.optnote{font-size:14.5px;color:var(--chrome-dim);margin:10px 0 0;max-width:920px}
+.optnote b{color:var(--chrome)}
+.binder{position:relative;max-width:100%;display:flex;font-family:'Patrick';color:var(--ink);filter:drop-shadow(0 14px 30px rgba(0,0,0,.5))}
+.cover{flex:none;width:50px;background:var(--kraft);border:3px solid var(--ink);border-right:none;border-radius:16px 0 0 14px;position:relative;background-image:repeating-linear-gradient(115deg, rgba(43,40,35,.05) 0 3px, transparent 3px 9px)}
+.cover .sticker{position:absolute;top:26px;left:50%;transform:translateX(-50%) rotate(-90deg);white-space:nowrap;background:var(--paper2);border:2.2px solid var(--ink);border-radius:6px;padding:2px 12px;font-size:15px}
+.ringbar{flex:none;width:44px;background:var(--kraft2);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);display:flex;flex-direction:column;justify-content:space-around;align-items:center;padding:20px 0}
+.ring{width:32px;height:32px;border-radius:50%;border:3.4px solid var(--ink);position:relative}
+.ring::after{content:"";position:absolute;inset:6px;border-radius:50%;border:2.6px solid var(--ink);opacity:.45}
+.stack{flex:1;background:var(--paper);border:3px solid var(--ink);border-left:2.6px solid var(--ink);border-radius:0 14px 12px 0;display:flex;min-width:0;position:relative}
+.rail{flex:none;width:196px;padding:18px 8px 18px 22px}
+.divider{position:relative;margin:10px 0;border:2.6px solid var(--ink);border-radius:10px;background:var(--paper2)}
+.divider .tab{position:absolute;top:-2.6px;bottom:-2.6px;left:-16px;width:13px;border:2.6px solid var(--ink);border-radius:8px 0 0 8px}
+.tab.sage{background:var(--sage)}.tab.coral{background:var(--coral)}.tab.blue{background:var(--blue)}.tab.yell{background:var(--yell)}
+.divider .dh{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:15px}
+.divider.closed{background:var(--kraft);box-shadow:0 3px 0 -1px var(--kraft2), 0 6px 0 -2px rgba(43,40,35,.35)}
+.divider.open{background:var(--paper)}
+.divider.open .dh{border-bottom:2px solid var(--ink25)}
+.divider .pages{padding:6px 6px 9px}
+.ptab{display:flex;align-items:center;gap:7px;font-size:16.5px;padding:4px 9px;border-radius:8px;margin:2px 0}
+.ptab.on{background:var(--paper2);border:2.4px solid var(--ink);box-shadow:1.5px 1.5px 0 rgba(43,40,35,.18)}
+.sheet{flex:1;min-width:0;padding:18px 22px 20px;border-left:2.4px solid var(--ink25);background:var(--paper);border-radius:0 12px 10px 0}
+.money{font-variant-numeric:tabular-nums}
+.big{font-family:'Baloo';line-height:1.05}
+.pos{color:#5D7A50}.neg{color:#C0392B}
+.dim{color:var(--ink6)}.dimmer{color:var(--ink4)}
+.clock{display:inline-block;background:var(--alert);color:#fff;border:2.2px solid var(--ink);border-radius:8px;padding:0 8px;font-size:13px}
+.pcard{background:var(--card);border:2.4px solid var(--ink);border-radius:10px 8px 11px 9px;padding:12px 16px 14px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.pcard h5{font-size:14px;letter-spacing:.09em;color:var(--ink6);margin-bottom:8px;font-weight:400}
+.vplate{border:3px solid var(--ink);border-radius:10px;background:var(--card);padding:5px 14px;text-align:center;display:flex;flex-direction:column;box-shadow:2px 2px 0 rgba(43,40,35,.2);flex:none}
+.costline{display:flex;gap:16px;flex-wrap:wrap;margin-top:11px;border-top:2px solid var(--ink25);padding-top:9px;font-size:14.5px;color:var(--ink6)}
+.sd{display:inline-block;width:11px;height:11px;border-radius:50%;border:2.2px solid var(--ink);vertical-align:-1px;margin-right:5px}
+.sd.ok{background:var(--sage)}
+.sd.cr{background:var(--yell)}
+.fchip2{display:inline-flex;align-items:center;border:2.3px solid var(--ink);border-radius:9px;background:var(--card);padding:2px 10px;font-size:14.5px;margin:3px 4px 3px 0;box-shadow:1.5px 1.5px 0 rgba(43,40,35,.18)}
+.fchip2 i{font-style:normal;color:var(--ink6);font-size:12.5px;margin-left:6px}
+.fchip2.warn{border-color:var(--alert)}
+.fchip2.hotc{border-color:var(--alert)}
+.fchip2.dim{background:var(--paper2);box-shadow:none;color:var(--ink6)}
+.terr{border:2.5px solid var(--ink);border-radius:10px;background:var(--paper2);padding:9px 12px}
+.terr h6{font-size:12.5px;letter-spacing:.1em;color:var(--ink6);font-weight:400;margin-bottom:5px}
+.convey{display:flex;align-items:center;gap:7px;margin-top:12px;flex-wrap:wrap}
+.cstage{border:2.4px solid var(--ink);border-radius:9px;background:var(--paper2);padding:5px 11px;font-size:13.5px}
+.cstage b{font-size:12px;letter-spacing:.08em;display:block;color:var(--ink6)}
+.cstage.hot{border-color:var(--alert)}
+.cstage.live2{background:var(--sage);color:#fff}
+.cstage.live2 b{color:rgba(255,255,255,.85)}
+.carr{font-size:18px;color:var(--ink4)}
+.carte{max-width:640px;margin:0 auto;background:#FBF6E8;border:3px solid var(--ink);border-radius:6px;padding:16px 26px;box-shadow:3px 4px 0 rgba(43,40,35,.22)}
+.cartehead{text-align:center;font-family:'Baloo';font-size:24px;border-bottom:3px double var(--ink);padding-bottom:8px}
+.cartehead span{font-family:'Patrick';font-size:13px;color:var(--ink6);font-weight:400}
+.csec{text-align:center;font-size:12.5px;letter-spacing:.16em;color:var(--ink6);margin:12px 0 4px}
+.cline{display:flex;align-items:baseline;gap:8px;font-size:16.5px;padding:2.5px 0}
+.cline i{flex:1;border-bottom:2px dotted var(--ink25)}
+.chalk{margin-top:14px;background:var(--wall);color:var(--chrome);border-radius:8px;padding:10px 14px;font-size:14.5px;border:2.6px solid var(--ink)}
+.khead{font-size:12.5px;letter-spacing:.1em;color:var(--ink6);border:2.4px solid var(--ink);border-radius:7px;background:var(--paper2);text-align:center;padding:3px 0;margin-bottom:8px}
+.kcard{border:2.4px solid var(--ink);border-radius:8px;background:#FDFBF2;padding:7px 10px;margin-bottom:8px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.kcard b{font-size:14.5px;display:block}
+.kcard span{font-size:12.5px;color:var(--ink6)}
+.kcard.kbuild{background:#FCF3DA}
+.kcard.kready{border-color:var(--alert);background:#F9E9DC}
+.kcard.klive{background:var(--card)}
+.kcard.kwarn{border-color:var(--yell)}
+.catbox{border:2.4px solid var(--ink);border-radius:9px;background:var(--paper2);padding:8px 10px;display:flex;flex-direction:column;gap:2px;position:relative}
+.catbox b{font-size:14px}
+.catbox .sd{position:absolute;top:8px;right:8px;margin:0}
+.catpic{font-size:20px;color:var(--ink6)}
+.catghost{border-style:dashed;opacity:.75}
+.recipe{max-width:760px;margin:0 auto;background:#FBF6E8;border:2.8px solid var(--ink);border-radius:6px;box-shadow:3px 4px 0 rgba(43,40,35,.22)}
+.rechead{font-family:'Baloo';font-size:20px;padding:12px 20px;border-bottom:2.6px solid var(--ink)}
+.reccol{padding:12px 20px}
+.reccol h6{font-size:12.5px;letter-spacing:.12em;color:var(--ink6);font-weight:400;margin-bottom:6px}
+.ring2{font-size:15.5px;padding:3.5px 0}
+.rack{border:3px solid var(--ink);border-radius:10px;background:#3A362E;padding:12px 14px;display:flex;flex-direction:column;gap:9px}
+.rackrow{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.racklab{color:var(--chrome-dim);font-size:11.5px;letter-spacing:.14em;width:66px;flex:none;text-align:right}
+.mod{display:inline-flex;align-items:center;gap:8px;border:2.5px solid var(--ink);border-radius:7px;background:var(--card);padding:5px 12px;font-size:14px;box-shadow:inset 0 -3px 0 rgba(43,40,35,.15)}
+.mod b{font-size:14.5px}
+.modlight{width:9px;height:9px;border-radius:50%;background:var(--sage);border:1.8px solid var(--ink)}
+.modwarn .modlight{background:var(--yell)}
+.mod.spark{border-color:var(--alert)}
+.modhalf{transform:translateY(-7px) rotate(-1.6deg);border-style:dashed;background:var(--paper2)}
+.tray{margin-top:11px;border:2.5px dashed var(--ink25);border-radius:9px;padding:8px 13px;font-size:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tray b{font-size:12px;letter-spacing:.1em;color:var(--ink6)}
+.footer{margin-top:64px;border-top:1px solid var(--wall2);padding-top:20px;color:var(--chrome-dim);font-size:14.5px}
+.footer b{color:var(--paper)}
+</style>
+
+<div class="topbar"><div class="wrap">
+<h1>The Product Page, Ten Ways</h1><span class="crumb">TAB 10 / 16 · CORRECTED + TEN STYLES · PICK ONE (OR MIX)</span>
+</div></div>
+
+<div class="wrap">
+<div class="lede">
+<p>Understood, and corrected: this tab is <b style="color:var(--paper)">the product's own page</b> — you see WHAT it is (name + what it does, up top in every option), WHAT IT'S MADE OF (the concrete features, each with its job — brings them in / keeps them / lets us charge / plumbing — its solidity and its keep-cost), THE WHOLE PIPELINE (shelf of priced ideas → next → building → ready → live, with the dice-at-press SHIP, the self-ship clock, the −25% stand-down), and WHAT THE PRODUCT COSTS (build + keep + what its features add to every unit's ticket). Debt stops being an abstract jar: it's the <b style="color:var(--paper)">creaky feature</b> you can point at.</p>
+<p>All ten carry identical facts (a scheduling SaaS) so the comparison is pure style. Every option works for any business — the features of a spa are its service elements, of a device its components, of a marketplace its platform pieces:</p>
+<div class="typestrip"><span><b>spa</b>: the 50-min protocol · hot stones · online booking · loyalty card</span><span><b>hardware</b>: motor · shell · firmware · the app</span><span><b>marketplace</b>: escrow · ratings · search · same-day courier</span></div>
+<div class="how"><b>Answer with a number (or "N but…" to mix).</b> Then: cap table, the street, threats, pivot.</div>
+</div>
+
+<div class="opt-head" style="margin-top:42px"><span class="badge" style="font-size:28px">1</span><h2 style="font-size:26px">The Product Map</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider open"><span class="tab blue"></span><div class="dh">THE COMPANY</div>
+        <div class="pages"><div class="ptab on">product</div><div class="ptab">cap table</div><div class="ptab">the street</div><div class="ptab">threats</div><div class="ptab">pivot</div></div>
+      </div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:18px;margin:2px 0 13px">
+  <div class="vplate"><span class="dim" style="font-size:12px">the product</span><b class="big" style="font-size:24px">PACEBOARD</b><span class="dim" style="font-size:12.5px">v0.62</span></div>
+  <div>
+    <div class="big" style="font-size:30px">schedules for small teams</div>
+    <div class="dim" style="font-size:16px">9 features live · 1 building · 1 ready · 5 on the shelf · <span class="neg">creaks at the billing core</span></div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div><span class="clock">integrations API ships itself in 2 wks</span></div>
+    <div class="dim" style="font-size:14px">SHIP rolls the dice · standing down burns 25%</div>
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px">
+  <div class="terr"><h6>BRINGS THEM IN</h6><span class="fchip2"><span class="sd ok"></span>online booking <i>$6</i></span><span class="fchip2"><span class="sd ok"></span>reminders <i>$2</i></span></div>
+  <div class="terr"><h6>KEEPS THEM</h6><span class="fchip2"><span class="sd ok"></span>team calendar <i>$4</i></span><span class="fchip2"><span class="sd cr"></span>reports <i>$8</i></span></div>
+  <div class="terr"><h6>LETS US CHARGE</h6><span class="fchip2"><span class="sd ok"></span>SSO <i>$5</i></span><span class="fchip2"><span class="sd ok"></span>permissions <i>$3</i></span></div>
+  <div class="terr"><h6>THE PLUMBING — everything stands on it</h6><span class="fchip2 warn"><span class="sd cr"></span>billing core <i>$9</i></span><span class="fchip2"><span class="sd ok"></span>scheduler engine <i>$11</i></span><span class="fchip2"><span class="sd ok"></span>data store <i>$7</i></span></div>
+</div>
+<div class="convey">
+  <span class="cstage"><b>THE SHELF</b> white-label $900·55% · group scheduling $450·70% · SMS $300·85%</span><span class="carr">→</span>
+  <span class="cstage"><b>NEXT</b> analytics pack</span><span class="carr">→</span>
+  <span class="cstage"><b>BUILDING</b> mobile app · wk 2/4 · 65%</span><span class="carr">→</span>
+  <span class="cstage hot"><b>READY</b> integrations API <span class="clock" style="font-size:11px">2 wk</span></span><span class="carr">→</span>
+  <span class="cstage live2"><b>LIVE</b></span>
+</div>
+<div class="costline"><span>building <b class="money">$250/wk</b></span><span>keeping the features <b class="money">$55/wk</b></span><span>they add <b class="money">$0.90</b> to every unit's ticket → the works</span><span class="neg">the creak taxes build speed −4%</span></div></div>
+  </div>
+</div>
+<p class="optnote"><b>Four labeled territories + the conveyor.</b> The cleanest product-manager read; everything scannable, nothing decorative.</p>
+<div class="opt-head" style="margin-top:42px"><span class="badge" style="font-size:28px">2</span><h2 style="font-size:26px">The Menu</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider open"><span class="tab blue"></span><div class="dh">THE COMPANY</div>
+        <div class="pages"><div class="ptab on">product</div><div class="ptab">cap table</div><div class="ptab">the street</div><div class="ptab">threats</div><div class="ptab">pivot</div></div>
+      </div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:18px;margin:2px 0 13px">
+  <div class="vplate"><span class="dim" style="font-size:12px">the product</span><b class="big" style="font-size:24px">PACEBOARD</b><span class="dim" style="font-size:12.5px">v0.62</span></div>
+  <div>
+    <div class="big" style="font-size:30px">schedules for small teams</div>
+    <div class="dim" style="font-size:16px">9 features live · 1 building · 1 ready · 5 on the shelf · <span class="neg">creaks at the billing core</span></div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div><span class="clock">integrations API ships itself in 2 wks</span></div>
+    <div class="dim" style="font-size:14px">SHIP rolls the dice · standing down burns 25%</div>
+  </div>
+</div>
+<div class="carte">
+  <div class="cartehead">PACEBOARD<br><span>· la carte of what it does ·</span></div>
+  <div class="csec">TO BRING THEM IN</div>
+  <div class="cline"><span>online booking</span><i></i><span class="money">$6/wk</span></div>
+  <div class="cline"><span>reminders</span><i></i><span class="money">$2/wk</span></div>
+  <div class="csec">TO KEEP THEM</div>
+  <div class="cline"><span>team calendar</span><i></i><span class="money">$4/wk</span></div>
+  <div class="cline"><span>reports <em class="neg">(creaky)</em></span><i></i><span class="money">$8/wk</span></div>
+  <div class="csec">TO CHARGE MORE</div>
+  <div class="cline"><span>SSO · permissions</span><i></i><span class="money">$8/wk</span></div>
+  <div class="csec">THE KITCHEN (plumbing)</div>
+  <div class="cline"><span>billing core <em class="neg">(creaks — −4% speed)</em> · scheduler · data store</span><i></i><span class="money">$27/wk</span></div>
+  <div class="chalk">COMING SOON — mobile app (wk 2/4) · integrations API <span class="clock" style="font-size:11px">2 wk</span> · next: analytics · the shelf holds 3 priced ideas</div>
+</div>
+<div class="costline"><span>building <b class="money">$250/wk</b></span><span>keeping the features <b class="money">$55/wk</b></span><span>they add <b class="money">$0.90</b> to every unit's ticket → the works</span><span class="neg">the creak taxes build speed −4%</span></div></div>
+  </div>
+</div>
+<p class="optnote"><b>The product as a carte</b> — sections by job, dotted leaders to keep-costs, the pipeline chalked as COMING SOON. Charming, universal (a spa's carte IS its menu).</p>
+<div class="opt-head" style="margin-top:42px"><span class="badge" style="font-size:28px">3</span><h2 style="font-size:26px">The Exploded View</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider open"><span class="tab blue"></span><div class="dh">THE COMPANY</div>
+        <div class="pages"><div class="ptab on">product</div><div class="ptab">cap table</div><div class="ptab">the street</div><div class="ptab">threats</div><div class="ptab">pivot</div></div>
+      </div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:18px;margin:2px 0 13px">
+  <div class="vplate"><span class="dim" style="font-size:12px">the product</span><b class="big" style="font-size:24px">PACEBOARD</b><span class="dim" style="font-size:12.5px">v0.62</span></div>
+  <div>
+    <div class="big" style="font-size:30px">schedules for small teams</div>
+    <div class="dim" style="font-size:16px">9 features live · 1 building · 1 ready · 5 on the shelf · <span class="neg">creaks at the billing core</span></div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div><span class="clock">integrations API ships itself in 2 wks</span></div>
+    <div class="dim" style="font-size:14px">SHIP rolls the dice · standing down burns 25%</div>
+  </div>
+</div>
+<div class="pcard" style="padding:10px"><svg width="100%" height="320" viewBox="0 0 980 320">
+  <rect x="380" y="90" width="220" height="150" rx="12" fill="#F6F0DE" stroke="#2B2823" stroke-width="3.4"/>
+  <rect x="380" y="90" width="220" height="30" rx="12" fill="#DDBE8C" stroke="#2B2823" stroke-width="3"/>
+  <text x="490" y="180" text-anchor="middle" font-family="Baloo" font-size="22" fill="#2B2823">PACEBOARD</text>
+  <text x="490" y="205" text-anchor="middle" font-family="Patrick" font-size="14" fill="rgba(43,40,35,.6)">schedules for small teams</text>
+  <g stroke="#2B2823" stroke-width="2.2" fill="none">
+    <path d="M380 110 L250 60"/><path d="M380 150 L230 150"/><path d="M380 210 L250 265"/>
+    <path d="M600 110 L730 60"/><path d="M600 150 L750 150"/><path d="M600 210 L730 265"/>
+    <path d="M490 240 L490 292" stroke-dasharray="6 5"/>
+  </g>
+  <g font-family="Patrick" font-size="15" fill="#2B2823">
+    <text x="240" y="52" text-anchor="end">● online booking · brings in · $6</text>
+    <text x="222" y="145" text-anchor="end">● reminders · brings in · $2</text>
+    <text x="240" y="282" text-anchor="end">● team calendar · keeps · $4</text>
+    <text x="740" y="52">● SSO · charge · $5</text>
+    <text x="758" y="145">◐ reports · keeps · $8 · creaky</text>
+    <text x="740" y="282">● permissions · charge · $3</text>
+    <text x="490" y="310" text-anchor="middle" fill="rgba(43,40,35,.6)">⌂ plumbing under the floor: billing core (creaks) · scheduler · data store — $27/wk</text>
+  </g>
+  <rect x="700" y="180" width="150" height="34" rx="8" fill="none" stroke="#2B2823" stroke-width="2.4" stroke-dasharray="6 5"/>
+  <text x="775" y="202" text-anchor="middle" font-family="Patrick" font-size="13.5" fill="rgba(43,40,35,.6)">mobile app — wk 2/4, attaching…</text>
+</svg></div>
+<div class="convey" style="margin-top:10px"><span class="cstage"><b>SHELF</b> 3 priced ideas</span><span class="carr">→</span><span class="cstage"><b>NEXT</b> analytics</span><span class="carr">→</span><span class="cstage hot"><b>READY</b> integrations API <span class="clock" style="font-size:11px">2wk</span></span></div>
+<div class="costline"><span>building <b class="money">$250/wk</b></span><span>keeping the features <b class="money">$55/wk</b></span><span>they add <b class="money">$0.90</b> to every unit's ticket → the works</span><span class="neg">the creak taxes build speed −4%</span></div></div>
+  </div>
+</div>
+<p class="optnote"><b>An engineering callout drawing</b> — the product at center, features as labeled parts, the building feature literally attaching, plumbing under the floor.</p>
+<div class="opt-head" style="margin-top:42px"><span class="badge" style="font-size:28px">4</span><h2 style="font-size:26px">The House</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider open"><span class="tab blue"></span><div class="dh">THE COMPANY</div>
+        <div class="pages"><div class="ptab on">product</div><div class="ptab">cap table</div><div class="ptab">the street</div><div class="ptab">threats</div><div class="ptab">pivot</div></div>
+      </div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:18px;margin:2px 0 13px">
+  <div class="vplate"><span class="dim" style="font-size:12px">the product</span><b class="big" style="font-size:24px">PACEBOARD</b><span class="dim" style="font-size:12.5px">v0.62</span></div>
+  <div>
+    <div class="big" style="font-size:30px">schedules for small teams</div>
+    <div class="dim" style="font-size:16px">9 features live · 1 building · 1 ready · 5 on the shelf · <span class="neg">creaks at the billing core</span></div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div><span class="clock">integrations API ships itself in 2 wks</span></div>
+    <div class="dim" style="font-size:14px">SHIP rolls the dice · standing down burns 25%</div>
+  </div>
+</div>
+<div class="pcard" style="padding:10px"><svg width="100%" height="330" viewBox="0 0 980 330">
+  <polygon points="330,88 490,18 650,88" fill="#CBA96F" stroke="#2B2823" stroke-width="3.4"/>
+  <text x="490" y="70" text-anchor="middle" font-family="Baloo" font-size="18" fill="#2B2823">PACEBOARD — schedules for small teams</text>
+  <rect x="350" y="88" width="280" height="70" fill="#F6F0DE" stroke="#2B2823" stroke-width="3"/>
+  <text x="490" y="112" text-anchor="middle" font-family="Patrick" font-size="14" fill="rgba(43,40,35,.55)">TOP FLOOR — LETS US CHARGE</text>
+  <text x="490" y="138" text-anchor="middle" font-family="Patrick" font-size="16" fill="#2B2823">SSO $5 · permissions $3</text>
+  <rect x="350" y="158" width="280" height="70" fill="#F6F0DE" stroke="#2B2823" stroke-width="3"/>
+  <text x="490" y="182" text-anchor="middle" font-family="Patrick" font-size="14" fill="rgba(43,40,35,.55)">LIVING FLOOR — BRINGS IN · KEEPS</text>
+  <text x="490" y="208" text-anchor="middle" font-family="Patrick" font-size="15.5" fill="#2B2823">booking $6 · reminders $2 · calendar $4 · reports $8 ◐</text>
+  <rect x="330" y="228" width="320" height="52" fill="#DDBE8C" stroke="#2B2823" stroke-width="3.4"/>
+  <text x="490" y="250" text-anchor="middle" font-family="Patrick" font-size="14" fill="rgba(43,40,35,.6)">THE FOUNDATION — PLUMBING $27/wk</text>
+  <text x="490" y="270" text-anchor="middle" font-family="Patrick" font-size="15" fill="#2B2823">billing core · scheduler · data store</text>
+  <path d="M420 280 l14 -18 l10 12 l12 -16" stroke="#D93425" stroke-width="3" fill="none"/>
+  <text x="392 " y="302" font-family="Patrick" font-size="13.5" fill="#D93425">the crack — creaks, −4% build speed</text>
+  <g stroke="#2B2823" stroke-width="2.6" fill="none"><path d="M680 88 v192 M740 88 v192 M680 120 h60 M680 168 h60 M680 216 h60 M680 264 h60"/></g>
+  <text x="710" y="80" text-anchor="middle" font-family="Patrick" font-size="13.5" fill="rgba(43,40,35,.6)">scaffolding</text>
+  <text x="760" y="150" font-family="Patrick" font-size="14.5" fill="#2B2823">mobile app — wk 2/4 · 65%</text>
+  <text x="760" y="176" font-family="Patrick" font-size="14.5" fill="#C0392B">integrations API — READY, 2 wks</text>
+  <text x="760" y="202" font-family="Patrick" font-size="14" fill="rgba(43,40,35,.6)">next: analytics · shelf: 3 ideas</text>
+  <rect x="180" y="240" width="120" height="40" rx="6" fill="#EFE6CE" stroke="#2B2823" stroke-width="2.6" stroke-dasharray="6 5"/>
+  <text x="240" y="265" text-anchor="middle" font-family="Patrick" font-size="13" fill="rgba(43,40,35,.6)">the shelf crates</text>
+</svg></div>
+<div class="costline"><span>building <b class="money">$250/wk</b></span><span>keeping the features <b class="money">$55/wk</b></span><span>they add <b class="money">$0.90</b> to every unit's ticket → the works</span><span class="neg">the creak taxes build speed −4%</span></div></div>
+  </div>
+</div>
+<p class="optnote"><b>Foundation, floors, roof, scaffolding</b> — plumbing IS the foundation and the crack in it is the debt. The strongest metaphor for solidity.</p>
+<div class="opt-head" style="margin-top:42px"><span class="badge" style="font-size:28px">5</span><h2 style="font-size:26px">The Kanban Wall</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider open"><span class="tab blue"></span><div class="dh">THE COMPANY</div>
+        <div class="pages"><div class="ptab on">product</div><div class="ptab">cap table</div><div class="ptab">the street</div><div class="ptab">threats</div><div class="ptab">pivot</div></div>
+      </div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:18px;margin:2px 0 13px">
+  <div class="vplate"><span class="dim" style="font-size:12px">the product</span><b class="big" style="font-size:24px">PACEBOARD</b><span class="dim" style="font-size:12.5px">v0.62</span></div>
+  <div>
+    <div class="big" style="font-size:30px">schedules for small teams</div>
+    <div class="dim" style="font-size:16px">9 features live · 1 building · 1 ready · 5 on the shelf · <span class="neg">creaks at the billing core</span></div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div><span class="clock">integrations API ships itself in 2 wks</span></div>
+    <div class="dim" style="font-size:14px">SHIP rolls the dice · standing down burns 25%</div>
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">
+  <div><div class="khead">THE SHELF</div><div class="kcard "><b>white-label</b><span>$900 · 3wk · 55%</span></div><div class="kcard "><b>group scheduling</b><span>$450 · 2wk · 70%</span></div><div class="kcard "><b>SMS pack</b><span>$300 · 1wk · 85%</span></div></div>
+  <div><div class="khead">NEXT</div><div class="kcard "><b>analytics pack</b><span>starts when mobile lands</span></div></div>
+  <div><div class="khead">BUILDING</div><div class="kcard kbuild"><b>mobile app</b><span>wk 2/4 · 65% · $250/wk</span></div></div>
+  <div><div class="khead">READY</div><div class="kcard kready"><b>integrations API</b><span>SHIP ▸ rolls the dice · <span class="clock" style="font-size:10.5px">self-ships 2wk</span></span></div></div>
+  <div><div class="khead">LIVE — 9</div><div class="kcard klive"><b>booking · reminders</b><span>bring in · $8</span></div><div class="kcard klive"><b>calendar · reports ◐</b><span>keep · $12</span></div><div class="kcard klive"><b>SSO · permissions</b><span>charge · $8</span></div><div class="kcard klive kwarn"><b>plumbing ×3 ◐</b><span>the base · $27</span></div></div>
+</div>
+<div class="costline"><span>building <b class="money">$250/wk</b></span><span>keeping the features <b class="money">$55/wk</b></span><span>they add <b class="money">$0.90</b> to every unit's ticket → the works</span><span class="neg">the creak taxes build speed −4%</span></div></div>
+  </div>
+</div>
+<p class="optnote"><b>Shelf → next → building → ready → live as index cards.</b> The most tool-like; planners feel at home instantly; the whole pipeline is the page.</p>
+<div class="opt-head" style="margin-top:42px"><span class="badge" style="font-size:28px">6</span><h2 style="font-size:26px">The Floor Plan</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider open"><span class="tab blue"></span><div class="dh">THE COMPANY</div>
+        <div class="pages"><div class="ptab on">product</div><div class="ptab">cap table</div><div class="ptab">the street</div><div class="ptab">threats</div><div class="ptab">pivot</div></div>
+      </div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:18px;margin:2px 0 13px">
+  <div class="vplate"><span class="dim" style="font-size:12px">the product</span><b class="big" style="font-size:24px">PACEBOARD</b><span class="dim" style="font-size:12.5px">v0.62</span></div>
+  <div>
+    <div class="big" style="font-size:30px">schedules for small teams</div>
+    <div class="dim" style="font-size:16px">9 features live · 1 building · 1 ready · 5 on the shelf · <span class="neg">creaks at the billing core</span></div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div><span class="clock">integrations API ships itself in 2 wks</span></div>
+    <div class="dim" style="font-size:14px">SHIP rolls the dice · standing down burns 25%</div>
+  </div>
+</div>
+<div class="pcard" style="padding:10px"><svg width="100%" height="300" viewBox="0 0 980 300">
+  <rect x="60" y="30" width="860" height="240" fill="#F6F0DE" stroke="#2B2823" stroke-width="3.6"/>
+  <rect x="60" y="30" width="300" height="150" fill="#EFE6CE" stroke="#2B2823" stroke-width="2.6"/>
+  <text x="210" y="60" text-anchor="middle" font-family="Patrick" font-size="14" fill="rgba(43,40,35,.55)">BRINGS THEM IN</text>
+  <text x="210" y="90" text-anchor="middle" font-family="Patrick" font-size="16">online booking $6 · reminders $2</text>
+  <rect x="360" y="30" width="280" height="150" fill="#EFE6CE" stroke="#2B2823" stroke-width="2.6"/>
+  <text x="500" y="60" text-anchor="middle" font-family="Patrick" font-size="14" fill="rgba(43,40,35,.55)">KEEPS THEM</text>
+  <text x="500" y="90" text-anchor="middle" font-family="Patrick" font-size="16">team calendar $4 · reports $8 ◐</text>
+  <rect x="640" y="30" width="280" height="150" fill="#EFE6CE" stroke="#2B2823" stroke-width="2.6"/>
+  <text x="780" y="60" text-anchor="middle" font-family="Patrick" font-size="14" fill="rgba(43,40,35,.55)">LETS US CHARGE</text>
+  <text x="780" y="90" text-anchor="middle" font-family="Patrick" font-size="16">SSO $5 · permissions $3</text>
+  <rect x="60" y="180" width="640" height="90" fill="#DDBE8C" stroke="#2B2823" stroke-width="2.8"/>
+  <text x="380" y="212" text-anchor="middle" font-family="Patrick" font-size="14" fill="rgba(43,40,35,.6)">SERVICE CORRIDOR — PLUMBING $27/wk · billing core creaks ⚡ −4%</text>
+  <g fill="none" stroke="#2B2823" stroke-width="2.4"><path d="M700 180 h220 v90 h-220 z" stroke-dasharray="0"/><path d="M700 180 l220 90 M700 270 l220 -90"/></g>
+  <text x="810" y="230" text-anchor="middle" font-family="Patrick" font-size="14" fill="#2B2823" transform="rotate(0)">mobile app — hatched, wk 2/4</text>
+  <rect x="770" y="120" width="150" height="60" fill="none" stroke="#C0392B" stroke-width="2.6" stroke-dasharray="7 5"/>
+  <text x="845" y="145" text-anchor="middle" font-family="Patrick" font-size="13" fill="#C0392B">integrations API</text>
+  <text x="845" y="163" text-anchor="middle" font-family="Patrick" font-size="12.5" fill="#C0392B">READY — 2 wks</text>
+</svg></div>
+<div class="convey" style="margin-top:10px"><span class="cstage"><b>SHELF</b> white-label · group · SMS (priced)</span><span class="carr">→</span><span class="cstage"><b>NEXT</b> analytics pack</span></div>
+<div class="costline"><span>building <b class="money">$250/wk</b></span><span>keeping the features <b class="money">$55/wk</b></span><span>they add <b class="money">$0.90</b> to every unit's ticket → the works</span><span class="neg">the creak taxes build speed −4%</span></div></div>
+  </div>
+</div>
+<p class="optnote"><b>The product from above</b> — rooms by job, the hatched room under construction, the dashed extension ready to open, the service corridor carrying the plumbing.</p>
+<div class="opt-head" style="margin-top:42px"><span class="badge" style="font-size:28px">7</span><h2 style="font-size:26px">The Catalog</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider open"><span class="tab blue"></span><div class="dh">THE COMPANY</div>
+        <div class="pages"><div class="ptab on">product</div><div class="ptab">cap table</div><div class="ptab">the street</div><div class="ptab">threats</div><div class="ptab">pivot</div></div>
+      </div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:18px;margin:2px 0 13px">
+  <div class="vplate"><span class="dim" style="font-size:12px">the product</span><b class="big" style="font-size:24px">PACEBOARD</b><span class="dim" style="font-size:12.5px">v0.62</span></div>
+  <div>
+    <div class="big" style="font-size:30px">schedules for small teams</div>
+    <div class="dim" style="font-size:16px">9 features live · 1 building · 1 ready · 5 on the shelf · <span class="neg">creaks at the billing core</span></div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div><span class="clock">integrations API ships itself in 2 wks</span></div>
+    <div class="dim" style="font-size:14px">SHIP rolls the dice · standing down burns 25%</div>
+  </div>
+</div>
+<div class="pcard"><h5>THE CATALOG — everything your product ships with today</h5>
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px"><div class="catbox"><div class="catpic">▣</div><b>online booking</b><span class="dim" style="font-size:12.5px">brings in</span><span class="money" style="font-size:13px">$6/wk</span><span class="sd ok"></span></div><div class="catbox"><div class="catpic">▣</div><b>reminders</b><span class="dim" style="font-size:12.5px">brings in</span><span class="money" style="font-size:13px">$2/wk</span><span class="sd ok"></span></div><div class="catbox"><div class="catpic">▣</div><b>team calendar</b><span class="dim" style="font-size:12.5px">keeps</span><span class="money" style="font-size:13px">$4/wk</span><span class="sd ok"></span></div><div class="catbox"><div class="catpic">▣</div><b>reports</b><span class="dim" style="font-size:12.5px">keeps</span><span class="money" style="font-size:13px">$8/wk</span><span class="sd cr"></span></div><div class="catbox"><div class="catpic">▣</div><b>SSO</b><span class="dim" style="font-size:12.5px">charge</span><span class="money" style="font-size:13px">$5/wk</span><span class="sd ok"></span></div><div class="catbox"><div class="catpic">▣</div><b>permissions</b><span class="dim" style="font-size:12.5px">charge</span><span class="money" style="font-size:13px">$3/wk</span><span class="sd ok"></span></div><div class="catbox"><div class="catpic">▣</div><b>billing core</b><span class="dim" style="font-size:12.5px">plumbing</span><span class="money" style="font-size:13px">$9/wk</span><span class="sd cr"></span></div><div class="catbox"><div class="catpic">▣</div><b>scheduler</b><span class="dim" style="font-size:12.5px">plumbing</span><span class="money" style="font-size:13px">$11/wk</span><span class="sd ok"></span></div><div class="catbox"><div class="catpic">▣</div><b>data store</b><span class="dim" style="font-size:12.5px">plumbing</span><span class="money" style="font-size:13px">$7/wk</span><span class="sd ok"></span></div><div class="catbox catghost"><div class="catpic">◻</div><b>mobile app</b><span class="dim" style="font-size:12.5px">building wk2/4</span><span class="money" style="font-size:13px">$250/wk</span></div></div></div>
+<div class="pcard" style="margin-top:11px;background:var(--paper2)"><h5>NEXT SEASON'S CATALOG</h5>
+<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:14.5px">
+<span class="fchip2 hotc">integrations API — READY <span class="clock" style="font-size:10.5px">2wk</span></span>
+<span class="fchip2">analytics pack — next</span>
+<span class="fchip2 dim">white-label $900·55% · group $450·70% · SMS $300·85%</span></div></div>
+<div class="costline"><span>building <b class="money">$250/wk</b></span><span>keeping the features <b class="money">$55/wk</b></span><span>they add <b class="money">$0.90</b> to every unit's ticket → the works</span><span class="neg">the creak taxes build speed −4%</span></div></div>
+  </div>
+</div>
+<p class="optnote"><b>Every feature a little catalog box</b> (illustration slot ready for the generated-image pipeline), next season's catalog below. Merchandises the product to its own founder.</p>
+<div class="opt-head" style="margin-top:42px"><span class="badge" style="font-size:28px">8</span><h2 style="font-size:26px">The Recipe Card</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider open"><span class="tab blue"></span><div class="dh">THE COMPANY</div>
+        <div class="pages"><div class="ptab on">product</div><div class="ptab">cap table</div><div class="ptab">the street</div><div class="ptab">threats</div><div class="ptab">pivot</div></div>
+      </div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:18px;margin:2px 0 13px">
+  <div class="vplate"><span class="dim" style="font-size:12px">the product</span><b class="big" style="font-size:24px">PACEBOARD</b><span class="dim" style="font-size:12.5px">v0.62</span></div>
+  <div>
+    <div class="big" style="font-size:30px">schedules for small teams</div>
+    <div class="dim" style="font-size:16px">9 features live · 1 building · 1 ready · 5 on the shelf · <span class="neg">creaks at the billing core</span></div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div><span class="clock">integrations API ships itself in 2 wks</span></div>
+    <div class="dim" style="font-size:14px">SHIP rolls the dice · standing down burns 25%</div>
+  </div>
+</div>
+<div class="recipe">
+  <div class="rechead">PACEBOARD <span class="dim" style="font-size:13px">— makes: schedules for small teams · serves: SMBs</span></div>
+  <div style="display:grid;grid-template-columns:1.1fr 1.4fr;gap:0">
+    <div class="reccol">
+      <h6>INGREDIENTS (keep-cost each)</h6>
+      <div class="ring2">2 measures of pull — booking $6, reminders $2</div>
+      <div class="ring2">2 of glue — calendar $4, reports $8 <em class="neg">(stale)</em></div>
+      <div class="ring2">2 of premium — SSO $5, permissions $3</div>
+      <div class="ring2">a base of plumbing — billing ◐, scheduler, store $27</div>
+    </div>
+    <div class="reccol" style="border-left:2px dashed var(--ink25)">
+      <h6>METHOD (the pipeline)</h6>
+      <div class="ring2">1. pick from the shelf — 3 ideas, priced ($900·$450·$300)</div>
+      <div class="ring2">2. queue it — analytics pack waits</div>
+      <div class="ring2">3. build — mobile app, wk 2 of 4, $250/wk, 65%</div>
+      <div class="ring2">4. SHIP — dice at the press · <span class="neg">ready API self-ships in 2 wks</span></div>
+      <div class="ring2">5. taste — promised vs measured, on the record</div>
+    </div>
+  </div>
+</div>
+<div class="costline"><span>building <b class="money">$250/wk</b></span><span>keeping the features <b class="money">$55/wk</b></span><span>they add <b class="money">$0.90</b> to every unit's ticket → the works</span><span class="neg">the creak taxes build speed −4%</span></div></div>
+  </div>
+</div>
+<p class="optnote"><b>Ingredients + method</b> — features with amounts, the pipeline as numbered steps ending at 'taste: promised vs measured'. The most narrative and compact.</p>
+<div class="opt-head" style="margin-top:42px"><span class="badge" style="font-size:28px">9</span><h2 style="font-size:26px">The Tree</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider open"><span class="tab blue"></span><div class="dh">THE COMPANY</div>
+        <div class="pages"><div class="ptab on">product</div><div class="ptab">cap table</div><div class="ptab">the street</div><div class="ptab">threats</div><div class="ptab">pivot</div></div>
+      </div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:18px;margin:2px 0 13px">
+  <div class="vplate"><span class="dim" style="font-size:12px">the product</span><b class="big" style="font-size:24px">PACEBOARD</b><span class="dim" style="font-size:12.5px">v0.62</span></div>
+  <div>
+    <div class="big" style="font-size:30px">schedules for small teams</div>
+    <div class="dim" style="font-size:16px">9 features live · 1 building · 1 ready · 5 on the shelf · <span class="neg">creaks at the billing core</span></div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div><span class="clock">integrations API ships itself in 2 wks</span></div>
+    <div class="dim" style="font-size:14px">SHIP rolls the dice · standing down burns 25%</div>
+  </div>
+</div>
+<div class="pcard" style="padding:10px"><svg width="100%" height="330" viewBox="0 0 980 330">
+  <rect x="452" y="170" width="76" height="120" rx="10" fill="#CBA96F" stroke="#2B2823" stroke-width="3.4"/>
+  <text x="490" y="238" text-anchor="middle" font-family="Patrick" font-size="13" fill="#2B2823">plumbing</text>
+  <path d="M470 250 l12 -14 l8 10 l10 -12" stroke="#D93425" stroke-width="3" fill="none"/>
+  <text x="490" y="312" text-anchor="middle" font-family="Patrick" font-size="13.5" fill="#D93425">rot at the trunk: billing core creaks, −4%</text>
+  <g stroke="#2B2823" stroke-width="3" fill="none">
+    <path d="M480 175 C 420 120, 330 110, 240 96"/><path d="M500 175 C 560 110, 660 100, 740 88"/><path d="M490 170 C 490 120, 490 90, 490 60"/>
+  </g>
+  <g font-family="Patrick" font-size="14.5">
+    <circle cx="225" cy="92" r="30" fill="#8FA582" opacity=".85" stroke="#2B2823" stroke-width="2.6"/><text x="225" y="88" text-anchor="middle">brings in</text><text x="225" y="106" text-anchor="middle" font-size="12.5">booking · reminders</text>
+    <circle cx="490" cy="52" r="30" fill="#8FA582" opacity=".85" stroke="#2B2823" stroke-width="2.6"/><text x="490" y="48" text-anchor="middle">keeps</text><text x="490" y="66" text-anchor="middle" font-size="12.5">calendar · reports ◐</text>
+    <circle cx="755" cy="84" r="30" fill="#8FA582" opacity=".85" stroke="#2B2823" stroke-width="2.6"/><text x="755" y="80" text-anchor="middle">charge</text><text x="755" y="98" text-anchor="middle" font-size="12.5">SSO · permissions</text>
+    <circle cx="640" cy="150" r="14" fill="#F4B942" stroke="#2B2823" stroke-width="2.4"/><text x="662" y="146" font-size="13.5">bud: mobile app wk2/4</text>
+    <circle cx="340" cy="150" r="14" fill="none" stroke="#C0392B" stroke-width="2.6"/><text x="130" y="146" font-size="13.5" fill="#C0392B">ready: integrations API · 2wk</text>
+  </g>
+  <rect x="820" y="240" width="130" height="50" rx="8" fill="#EFE6CE" stroke="#2B2823" stroke-width="2.5" stroke-dasharray="6 5"/>
+  <text x="885" y="262" text-anchor="middle" font-family="Patrick" font-size="12.5" fill="rgba(43,40,35,.6)">the seed tray</text>
+  <text x="885" y="279" text-anchor="middle" font-family="Patrick" font-size="12" fill="rgba(43,40,35,.6)">3 priced ideas</text>
+</svg></div>
+<div class="costline"><span>building <b class="money">$250/wk</b></span><span>keeping the features <b class="money">$55/wk</b></span><span>they add <b class="money">$0.90</b> to every unit's ticket → the works</span><span class="neg">the creak taxes build speed −4%</span></div></div>
+  </div>
+</div>
+<p class="optnote"><b>Trunk = plumbing, branches by job, buds building, seeds on a tray</b> — growth and rot in one organism. The most alive; the least columnar.</p>
+<div class="opt-head" style="margin-top:42px"><span class="badge" style="font-size:28px">10</span><h2 style="font-size:26px">The Control Rack</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider open"><span class="tab blue"></span><div class="dh">THE COMPANY</div>
+        <div class="pages"><div class="ptab on">product</div><div class="ptab">cap table</div><div class="ptab">the street</div><div class="ptab">threats</div><div class="ptab">pivot</div></div>
+      </div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:18px;margin:2px 0 13px">
+  <div class="vplate"><span class="dim" style="font-size:12px">the product</span><b class="big" style="font-size:24px">PACEBOARD</b><span class="dim" style="font-size:12.5px">v0.62</span></div>
+  <div>
+    <div class="big" style="font-size:30px">schedules for small teams</div>
+    <div class="dim" style="font-size:16px">9 features live · 1 building · 1 ready · 5 on the shelf · <span class="neg">creaks at the billing core</span></div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div><span class="clock">integrations API ships itself in 2 wks</span></div>
+    <div class="dim" style="font-size:14px">SHIP rolls the dice · standing down burns 25%</div>
+  </div>
+</div>
+<div class="rack">
+  <div class="rackrow"><span class="racklab">PULL</span><div class="mod "><span class="modlight"></span><b>online booking</b><span class="money" style="font-size:12px">$6</span></div><div class="mod "><span class="modlight"></span><b>reminders</b><span class="money" style="font-size:12px">$2</span></div></div>
+  <div class="rackrow"><span class="racklab">GLUE</span><div class="mod "><span class="modlight"></span><b>team calendar</b><span class="money" style="font-size:12px">$4</span></div><div class="mod modwarn"><span class="modlight"></span><b>reports</b><span class="money" style="font-size:12px">$8</span></div></div>
+  <div class="rackrow"><span class="racklab">PREMIUM</span><div class="mod "><span class="modlight"></span><b>SSO</b><span class="money" style="font-size:12px">$5</span></div><div class="mod "><span class="modlight"></span><b>permissions</b><span class="money" style="font-size:12px">$3</span></div></div>
+  <div class="rackrow"><span class="racklab">BASE</span><div class="mod modwarn spark"><span class="modlight"></span><b>billing core</b><span class="money" style="font-size:12px">$9</span></div><div class="mod "><span class="modlight"></span><b>scheduler</b><span class="money" style="font-size:12px">$11</span></div><div class="mod "><span class="modlight"></span><b>data store</b><span class="money" style="font-size:12px">$7</span></div><div class="mod modhalf"><span class="modlight"></span><b>mobile app — sliding in, wk 2/4</b><span class="money" style="font-size:12px">$250/wk</span></div></div>
+</div>
+<div class="tray"><b>THE SPARES TRAY</b> <span class="fchip2 hotc">integrations API — READY <span class="clock" style="font-size:10.5px">2wk</span></span><span class="fchip2">analytics — next</span><span class="fchip2 dim">white-label · group scheduling · SMS (priced on the shelf)</span></div>
+<div class="costline"><span>building <b class="money">$250/wk</b></span><span>keeping the features <b class="money">$55/wk</b></span><span>they add <b class="money">$0.90</b> to every unit's ticket → the works</span><span class="neg">the creak taxes build speed −4%</span></div></div>
+  </div>
+</div>
+<p class="optnote"><b>Features as slotted modules</b> — lights for solidity, the building module sliding in half-seated, spares on the tray. The most mechanical; state at a glance.</p>
+<div class="footer">
+<p><b>All ten share the corrected spine</b> (identity · feature inventory with jobs/solidity/keep-cost · full pipeline with ship ritual · the product's cost incl. per-unit impact) and the recorded mechanics: features are engine objects (birth features + landed bets), the shelf is DM-proposed inside price-book bands, promised vs measured is checked. Answer with a number — then CAP TABLE.</p>
+</div>
+</div>

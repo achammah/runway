@@ -1,0 +1,176 @@
+<title>Arrange Mode, Bins Included</title>
+<style>
+@font-face{font-family:'Patrick';src:url(../../../game/assets/fonts/PatrickHand-Regular.ttf) format('truetype');font-display:block}
+@font-face{font-family:'Baloo';src:url(../../../game/assets/fonts/Baloo2-Bold.ttf) format('truetype');font-weight:700;font-display:block}
+:root{
+  --wall:#2A2722; --wall2:#332F28; --paper:#F2EAD3; --paper2:#F6F0DE; --card:#EFE6CE;
+  --kraft:#DDBE8C; --kraft2:#CBA96F; --alert:#D93425;
+  --ink:#2B2823; --ink6:rgba(43,40,35,.6); --ink4:rgba(43,40,35,.42); --ink25:rgba(43,40,35,.25); --ink12:rgba(43,40,35,.12);
+  --coral:#E86A5C; --sage:#8FA582; --blue:#6E8CA0; --yell:#F4B942;
+  --chrome:#D8D2C4; --chrome-dim:#A69E8D;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--wall);color:var(--chrome);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 0 90px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 26px}
+.topbar{position:sticky;top:0;z-index:50;background:linear-gradient(var(--wall) 82%,transparent);padding:18px 0 10px}
+.topbar .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-family:'Baloo';color:var(--paper);font-size:28px}
+.crumb{font-size:12.5px;color:var(--chrome-dim);letter-spacing:.08em}
+.lede{padding:24px 0 6px;max-width:940px}
+.lede p{margin:0 0 12px}
+.lede .how{border-left:4px solid var(--yell);padding:10px 16px;background:var(--wall2);border-radius:6px;margin-top:12px}
+.lede .how b{color:var(--paper)}
+.binder{position:relative;max-width:100%;display:flex;font-family:'Patrick';color:var(--ink);filter:drop-shadow(0 14px 30px rgba(0,0,0,.5));margin-top:18px}
+.cover{flex:none;width:50px;background:var(--kraft);border:3px solid var(--ink);border-right:none;border-radius:16px 0 0 14px;position:relative;background-image:repeating-linear-gradient(115deg, rgba(43,40,35,.05) 0 3px, transparent 3px 9px)}
+.cover .sticker{position:absolute;top:26px;left:50%;transform:translateX(-50%) rotate(-90deg);white-space:nowrap;background:var(--paper2);border:2.2px solid var(--ink);border-radius:6px;padding:2px 12px;font-size:15px}
+.ringbar{flex:none;width:44px;background:var(--kraft2);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);display:flex;flex-direction:column;justify-content:space-around;align-items:center;padding:20px 0}
+.ring{width:32px;height:32px;border-radius:50%;border:3.4px solid var(--ink);position:relative}
+.ring::after{content:"";position:absolute;inset:6px;border-radius:50%;border:2.6px solid var(--ink);opacity:.45}
+.stack{flex:1;background:var(--paper);border:3px solid var(--ink);border-left:2.6px solid var(--ink);border-radius:0 14px 12px 0;display:flex;min-width:0;position:relative}
+.rail{flex:none;width:196px;padding:18px 8px 18px 22px}
+.divider{position:relative;margin:10px 0;border:2.6px solid var(--ink);border-radius:10px;background:var(--paper2)}
+.divider .tab{position:absolute;top:-2.6px;bottom:-2.6px;left:-16px;width:13px;border:2.6px solid var(--ink);border-radius:8px 0 0 8px}
+.tab.sage{background:var(--sage)}.tab.coral{background:var(--coral)}.tab.blue{background:var(--blue)}.tab.yell{background:var(--yell)}
+.divider .dh{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:15px}
+.divider.closed{background:var(--kraft);box-shadow:0 3px 0 -1px var(--kraft2), 0 6px 0 -2px rgba(43,40,35,.35)}
+.divider.open{background:var(--paper)}
+.divider.open .dh{border-bottom:2px solid var(--ink25)}
+.divider .pages{padding:6px 6px 9px}
+.ptab{display:flex;align-items:center;gap:7px;font-size:16.5px;padding:4px 9px;border-radius:8px;margin:2px 0}
+.ptab.on{background:var(--paper2);border:2.4px solid var(--ink);box-shadow:1.5px 1.5px 0 rgba(43,40,35,.18)}
+.sheet{flex:1;min-width:0;padding:20px 24px 22px;border-left:2.4px solid var(--ink25);background:var(--paper);border-radius:0 12px 10px 0}
+.money{font-variant-numeric:tabular-nums}
+.big{font-family:'Baloo';line-height:1.05}
+.pos{color:#5D7A50}.neg{color:#C0392B}
+.dim{color:var(--ink6)}
+.footrules{font-size:14.5px;color:var(--ink4)}
+.modechip{font-family:'Baloo';font-size:15px;background:var(--yell);border:2.6px solid var(--ink);border-radius:9px;padding:3px 14px;transform:rotate(-1deg)}
+.bins{display:grid;grid-template-columns:repeat(5,1fr);gap:11px}
+.bin{border:2.7px solid var(--ink);border-radius:10px;background:var(--paper2);min-height:180px;display:flex;flex-direction:column}
+.bin.closing{border-color:var(--alert);box-shadow:0 0 0 3px rgba(217,52,37,.22);opacity:.92}
+.binhead{display:flex;align-items:center;border-bottom:2.4px solid var(--ink25);padding:7px 12px 5px}
+.binhead b{font-size:15.5px}
+.verb{width:22px;height:22px;border:2.2px solid var(--ink);border-radius:6px;background:var(--card);display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+.verb.vx{background:var(--coral);color:#fff}
+.binbody{padding:9px 10px;display:flex;flex-wrap:wrap;gap:7px;align-content:flex-start}
+.chip{border:2.3px solid var(--ink);border-radius:9px;background:var(--card);padding:1px 9px;font-size:13.5px;box-shadow:1.5px 1.5px 0 rgba(43,40,35,.2)}
+.chip.m{background:var(--kraft);border-radius:6px}
+.chip.s{background:#FBF6E8;border-style:dotted}
+.chip.crowd{background:var(--paper2);box-shadow:none;color:var(--ink6)}
+.ghostbin{border-style:dashed;background:transparent;display:flex;align-items:center;justify-content:center}
+.ghostin{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;color:var(--ink6);padding:12px}
+.plus{font-family:'Baloo';font-size:30px;width:44px;height:44px;border:2.6px dashed var(--ink6);border-radius:50%;display:flex;align-items:center;justify-content:center}
+.receipt2{max-width:560px;margin:16px auto 0;background:#FBF6E8;border:2.6px solid var(--ink);border-radius:5px;padding:12px 18px;box-shadow:3px 4px 0 rgba(43,40,35,.25)}
+.rhead{text-align:center;font-size:13px;letter-spacing:.1em;color:var(--ink6);border-bottom:2px dashed var(--ink25);padding-bottom:6px;margin-bottom:4px}
+.rsec{font-size:12px;letter-spacing:.12em;color:var(--ink4);margin-top:7px;border-bottom:1.6px solid var(--ink12);padding-bottom:2px}
+.rline{display:flex;justify-content:space-between;font-size:15.5px;padding:3px 0;gap:16px}
+.rline.foot{border-top:7px double var(--ink);margin-top:6px;padding-top:7px;font-size:16px}
+.signbtn{font-family:'Baloo';font-size:16px;background:var(--alert);color:#fff;border:2.6px solid var(--ink);border-radius:9px;padding:2px 14px;box-shadow:1.5px 2px 0 rgba(43,40,35,.25);display:inline-block}
+.pbstrip{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.pbstrip span{border:2.3px solid var(--ink);border-radius:9px;background:var(--paper2);padding:4px 12px;font-size:13.5px}
+.lawwrap{margin-top:44px}
+.lawttl{font-family:'Baloo';color:var(--paper);font-size:24px;margin-bottom:6px}
+.lawsub{color:var(--chrome-dim);font-size:14.5px;max-width:900px;margin-bottom:14px}
+.lawsub b{color:var(--chrome)}
+.lawsheet{background:var(--paper2);border:2.6px solid var(--ink);border-radius:10px;overflow:hidden;font-family:'Patrick';color:var(--ink);box-shadow:0 10px 24px rgba(0,0,0,.4)}
+.lawhead{display:grid;grid-template-columns:.7fr 1.5fr 1.3fr 1.5fr;gap:14px;padding:9px 16px;font-size:12.5px;letter-spacing:.1em;color:var(--ink4);border-bottom:2.4px solid var(--ink)}
+.lawrow{display:grid;grid-template-columns:.7fr 1.5fr 1.3fr 1.5fr;gap:14px;padding:8px 16px;font-size:14.5px;border-bottom:1.6px solid var(--ink12);align-items:start}
+.lawrow:last-child{border-bottom:none}
+.lawrow b{font-size:15px}
+.dim2{color:var(--ink4)}
+.footer{margin-top:52px;border-top:1px solid var(--wall2);padding-top:20px;color:var(--chrome-dim);font-size:14.5px}
+.footer b{color:var(--paper)}
+</style>
+
+<div class="topbar"><div class="wrap">
+<h1>Arrange Mode, Bins Included</h1><span class="crumb">FULL STRUCTURE EDITING · SAY OK + PICK A/B/C</span>
+</div></div>
+
+<div class="wrap">
+<div class="lede">
+<p>Understood — arranging is also <b style="color:var(--paper)">editing the bins themselves</b>. Every bin now carries its verbs: <b style="color:var(--paper)">✎ edit</b> (rename free — it's ink; re-leasing or resizing priced — it's brick), <b style="color:var(--paper)">✕ close</b> (the teardown wizard below), and a dashed <b style="color:var(--paper)">+ NEW ROOF</b> bin that enters the same open_site flow as a written move — lease quote, capex, hire pack, priced before you sign. One op, two doors.</p>
+<p>Closing is the deep one: the wizard walks EVERY element of the bin with a decision each — people move (priced) or are let go (severance always owed), machines move or sell at half, the lease breaks with a penalty, and the customers are decided FOR you by the world: some transfer with churn risk, the rest die with the roof. It all composes into one receipt whose last line is derived, not asserted: <b style="color:var(--paper)">"Geneva loses $210/wk — this closing pays back in ≈29 weeks."</b></p>
+<div class="how"><b>Below: the full arrange view</b> — verbs on bins, the ghost bin, Geneva's closing receipt staged. Say OK + the rung-3 face letter (A folders · B hero rows · C quartet). Then PRODUCT.</div>
+</div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE</div></div>
+      <div class="divider open"><span class="tab coral"></span><div class="dh">COSTS</div>
+        <div class="pages"><div class="ptab">spend</div><div class="ptab">team</div><div class="ptab">bills</div><div class="ptab">the bank</div><div class="ptab on">the works</div></div>
+      </div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:16px;margin:2px 0 12px">
+  <div>
+    <div class="big" style="font-size:38px">ARRANGE THE WORKS</div>
+    <div class="dim" style="font-size:16.5px">chips move between bins — and the bins themselves are yours to open, rename, resize and close. Everything priced first.</div>
+  </div>
+  <span class="modechip" style="margin-left:auto">ARRANGING · Esc exits</span>
+</div>
+<div class="bins"><div class="bin">
+    <div class="binhead"><b>LYON</b><span style="margin-left:auto;display:flex;gap:5px"><span class="verb">✎</span><span class="verb vx">✕</span></span></div>
+    <div class="dim" style="font-size:12.5px;padding:0 12px">11 hands · 5 rooms · $53 margin each</div>
+    <div class="binbody"><span class="chip p">Nadia</span><span class="chip crowd">+9 more</span><span class="chip m">tables ×5</span><span class="chip s">the kitchen $220/wk</span></div>
+  </div><div class="bin">
+    <div class="binhead"><b>PARIS 11e</b><span style="margin-left:auto;display:flex;gap:5px"><span class="verb">✎</span><span class="verb vx">✕</span></span></div>
+    <div class="dim" style="font-size:12.5px;padding:0 12px">9 hands · 4 rooms · $49</div>
+    <div class="binbody"><span class="chip p">Tomas</span><span class="chip crowd">+7 more</span><span class="chip m">tables ×4</span></div>
+  </div><div class="bin closing">
+    <div class="binhead"><b>GENEVA</b><span style="margin-left:auto;display:flex;gap:5px"><span class="verb">✎</span><span class="verb vx">✕</span></span></div>
+    <div class="dim" style="font-size:12.5px;padding:0 12px">6 hands · 3 rooms · $44 · losing $210/wk</div>
+    <div class="binbody"><span class="chip p">Ines</span><span class="chip crowd">+4 more</span><span class="chip m">tables ×3</span></div>
+  </div><div class="bin">
+    <div class="binhead"><b>SHARED / HQ</b><span style="margin-left:auto;display:flex;gap:5px"><span class="verb">✎</span><span class="verb vx">✕</span></span></div>
+    <div class="dim" style="font-size:12.5px;padding:0 12px">what has no roof</div>
+    <div class="binbody"><span class="chip p">you</span><span class="chip s">brand ads $300/wk</span><span class="chip s">the bookkeeper $180/wk</span></div>
+  </div><div class="bin ghostbin"><div class="ghostin"><span class="plus">+</span><b>NEW ROOF</b><span class="dim" style="font-size:12.5px">lease · capex · hires<br>priced before you sign</span></div></div></div>
+
+<div class="receipt2">
+  <div class="rhead">CLOSING GENEVA — EVERY PIECE DECIDED, ONE TOTAL</div>
+  <div class="rsec">THE PEOPLE — 6</div>
+  <div class="rline"><span>Ines + 1 → move to Paris 11e</span><b class="money neg">−$800 relocation</b></div>
+  <div class="rline"><span>4 let go — severance is always owed</span><b class="money neg">−$2,300</b></div>
+  <div class="rsec">THE THINGS</div>
+  <div class="rline"><span>tables ×3 → sold at half</span><b class="money pos">+$1,050</b></div>
+  <div class="rline"><span>the lease, broken mid-term</span><b class="money neg">−$1,900</b></div>
+  <div class="rsec">THE CUSTOMERS — 31</div>
+  <div class="rline"><span>≈12 transfer to Paris (with churn risk)</span><b class="money dim">kept, fragile</b></div>
+  <div class="rline"><span>≈19 lost with the roof</span><b class="money neg">−$780/wk revenue</b></div>
+  <div class="rsec">THE VERDICT</div>
+  <div class="rline"><span>closing costs, net, today</span><b class="money neg">−$3,950</b></div>
+  <div class="rline"><span>bills that die with the roof</span><b class="money pos">+$2,140/wk freed</b></div>
+  <div class="rline foot"><span>Geneva loses $210/wk — this closing <b>pays back in ≈29 weeks</b></span><span></span></div>
+  <div style="display:flex;gap:10px;justify-content:center;margin-top:8px"><span class="signbtn">CLOSE IT — TWO-TAP ▸</span><span class="dim" style="font-size:14px;align-self:center">or Esc keeps Geneva</span></div>
+</div>
+
+<div class="pbstrip"><span><b>PAPER</b> divisions (products — groupings of offers) restructure <b class="pos">free</b></span><span><b>BRICK</b> divisions (roofs, plants) <b class="neg">always price</b></span><span><b>SEGMENTS</b> belong to the world — not editable</span><span><b>rename ✎</b> is always free — it's just ink</span></div>
+<div style="margin-top:10px" class="footrules">chip moves confirm one by one · bin operations stage into one composite receipt · Esc abandons the whole staged change</div></div>
+  </div>
+</div>
+
+<div class="lawwrap">
+<h2 class="lawttl">THE MUTATION LAW — the same grammar on every desk</h2>
+<p class="lawsub">Receipt first · two-tap confirm · Esc abandons. <b>Ink is free</b> (renames, tags, groupings) · <b>brick is priced</b> (capex, leases, ramps, relocations) · <b>obligations survive removal</b> (severance, penalties, churn — nothing is silently destroyed).</p>
+<div class="lawsheet">
+  <div class="lawhead"><span>DESK</span><span>ADD</span><span>EDIT</span><span>REMOVE</span></div>
+  <div class="lawrow"><span><b>offers</b></span><span>define one → the DM prices its tools + unit cost → receipt → on the card</span><span>price steppers free · redefining re-prices its lines</span><span>drop behind two-tap — its customers churn or migrate to a neighbor offer</span></div>
+  <div class="lawrow"><span><b>customers</b></span><span class="dim2">never by hand — customers are EARNED</span><span class="dim2">—</span><span>fire an account: contract penalty, revenue dies, the street hears it</span></div>
+  <div class="lawrow"><span><b>segments</b></span><span>a new customer type is a priced door — its motion ramps from zero</span><span class="dim2">—</span><span>leaving loses its customers (the pivot desk owns the full version)</span></div>
+  <div class="lawrow"><span><b>the bank</b></span><span>borrow = the quote + SIGN</span><span><b>refinance</b> — swap a note for a new quote at today's standing, break fee on the old</span><span>repay early: cash out now, the interest line dies</span></div>
+  <div class="lawrow"><span><b>team</b></span><span>hire — asks "which roof?" when roofs ≥ 2</span><span>raises · role change (ramp week) · move via arrange</span><span>let go — severance ALWAYS owed</span></div>
+  <div class="lawrow"><span><b>the works</b></span><span>open a roof: lease + capex + hires, priced</span><span>re-lease priced · rename free</span><span>close: the teardown wizard, one receipt, payback line</span></div>
+  <div class="lawrow"><span><b>product</b></span><span>a new product ships only from a landed bet</span><span>reprioritize bets (stand-down −25%)</span><span>retire: its offers go with it, customers migrate or churn</span></div>
+  <div class="lawrow"><span><b>spend</b></span><span>add a line into a bucket — starts billing $/wk</span><span>steppers, free</span><span>stop instantly — unless marked "contract" (notice period bills through)</span></div>
+  <div class="lawrow"><span><b>bills</b></span><span class="dim2" style="grid-column:span 3">not editable — a bill changes only when its SOURCE changes; that is the desk's whole lesson</span></div>
+  <div class="lawrow"><span><b>cap table</b></span><span class="dim2" style="grid-column:span 3">moves only through rounds, offers and events — never by hand</span></div>
+</div>
+</div>
+
+<div class="footer">
+<p><b>Recorded in DECISIONS.md:</b> add/edit/close/merge on bins, the composite closing receipt with the payback line, paper-vs-brick pricing, engine ops (open_site shared with the written door, close_site{decisions}, edit_site{lease}). Chip moves confirm singly; bin operations stage into one receipt; Esc abandons the staged change.</p>
+</div>
+</div>
