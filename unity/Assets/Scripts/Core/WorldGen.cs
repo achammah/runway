@@ -766,6 +766,17 @@ namespace Runway.Core
         /// <summary>Clamp-and-write the LLM's birth blocks over the defaults.
         /// Also the PIVOT regeneration entry point (a pivot keeps its investors
         /// and rivals; only the business's own book is reborn).</summary>
+        /// <summary>The prompt asks for plain ASCII; the clamp enforces it — a
+        /// stray glyph near a length boundary drops out instead of shipping.</summary>
+        static string Ascii(string t)
+        {
+            if (string.IsNullOrEmpty(t)) return "";
+            var sb = new System.Text.StringBuilder(t.Length);
+            foreach (char c in t)
+                if (c >= 32 && c <= 126) sb.Append(c);
+            return sb.ToString().Trim();
+        }
+
         public static bool ApplyBirth(GameState state, LlmWorld gen)
         {
             if (gen == null) return false;
@@ -781,8 +792,8 @@ namespace Runway.Core
             foreach (string ch in GROWTH_CHANNELS)
             {
                 LlmTopic t = topicIn[ch];
-                string nm = t != null ? Gd.Left((t.Name ?? "").Trim(), 28) : "";
-                string ln = t != null ? Gd.Left((t.OneLine ?? "").Trim(), 110) : "";
+                string nm = t != null ? Gd.Left(Ascii(t.Name), 28) : "";
+                string ln = t != null ? Gd.Left(Ascii(t.OneLine), 110) : "";
                 if (nm.Length == 0 || ln.Length == 0)
                     growth2[ch] = new Dictionary<string, object>
                     { { "name", GROWTH_DEFAULTS[ch][0] }, { "one_line", GROWTH_DEFAULTS[ch][1] } };
@@ -790,12 +801,12 @@ namespace Runway.Core
                     growth2[ch] = new Dictionary<string, object> { { "name", nm }, { "one_line", ln } };
             }
             string[] termsDef = WorksDefaultsFor(state.BizWhat);
-            string oneLiner = gen.Identity != null ? Gd.Left((gen.Identity.OneLiner ?? "").Trim(), 140) : "";
+            string oneLiner = gen.Identity != null ? Gd.Left(Ascii(gen.Identity.OneLiner), 140) : "";
             if (oneLiner.Length == 0) oneLiner = IdentityFallback(state);
-            string whoFor = gen.Identity != null ? Gd.Left((gen.Identity.WhoFor ?? "").Trim(), 80) : "";
-            string unitWord = gen.WorksTerms != null ? Gd.Left((gen.WorksTerms.UnitWord ?? "").Trim(), 16) : "";
-            string capWord = gen.WorksTerms != null ? Gd.Left((gen.WorksTerms.CapacityWord ?? "").Trim(), 28) : "";
-            string reliefWord = gen.WorksTerms != null ? Gd.Left((gen.WorksTerms.ReliefWord ?? "").Trim(), 28) : "";
+            string whoFor = gen.Identity != null ? Gd.Left(Ascii(gen.Identity.WhoFor), 80) : "";
+            string unitWord = gen.WorksTerms != null ? Gd.Left(Ascii(gen.WorksTerms.UnitWord), 16) : "";
+            string capWord = gen.WorksTerms != null ? Gd.Left(Ascii(gen.WorksTerms.CapacityWord), 28) : "";
+            string reliefWord = gen.WorksTerms != null ? Gd.Left(Ascii(gen.WorksTerms.ReliefWord), 28) : "";
             state.Topics = new Dictionary<string, object>
             {
                 { "identity", new Dictionary<string, object>
@@ -815,12 +826,12 @@ namespace Runway.Core
                 foreach (LlmSpendLine row in gen.SpendBook)
                 {
                     if (row == null || book.Count >= 10) continue;
-                    string rname = Gd.Left((row.Name ?? "").Trim(), 28);
+                    string rname = Gd.Left(Ascii(row.Name), 28);
                     if (rname.Length == 0) continue;
                     double amt = Math.Max(0.0, Math.Min(SPEND_LINE_CAP, row.Amt));
                     book.Add(new SpendLine
                     {
-                        Name = rname, Buys = Gd.Left((row.Buys ?? "").Trim(), 60),
+                        Name = rname, Buys = Gd.Left(Ascii(row.Buys), 60),
                         Amt = Gd.RoundToInt(amt),
                         Bucket = Array.IndexOf(SPEND_BUCKETS, row.Bucket ?? "") >= 0 ? row.Bucket : "office",
                         ContractNotice = Gd.Clampi(row.ContractNotice, 0, PRICE_BANDS["contract_notice_wks"][1]),
@@ -855,7 +866,7 @@ namespace Runway.Core
                 foreach (LlmBirthFeature f in gen.BirthFeatures)
                 {
                     if (f == null || feats.Count >= 6) continue;
-                    string fname = Gd.Left((f.Name ?? "").Trim(), 28);
+                    string fname = Gd.Left(Ascii(f.Name), 28);
                     if (fname.Length == 0) continue;
                     feats.Add(new Feature
                     {

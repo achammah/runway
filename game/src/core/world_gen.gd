@@ -420,6 +420,17 @@ static func default_birth(state: GameState) -> void:
 ## regeneration entry point: a nature-changing pivot calls generate_world and
 ## hands the fresh gen HERE (not apply_llm_world — the pivot keeps its
 ## investors and rivals; only the business's own book is reborn).
+
+## The prompt asks for plain ASCII; the clamp enforces it — a stray glyph near
+## a length boundary drops out instead of shipping to a label.
+static func _ascii(t: String) -> String:
+	var out := ""
+	for i in t.length():
+		var c := t.unicode_at(i)
+		if c >= 32 and c <= 126:
+			out += char(c)
+	return out.strip_edges()
+
 static func apply_birth(state: GameState, gen: Dictionary) -> bool:
 	if gen.is_empty():
 		return false
@@ -430,19 +441,19 @@ static func apply_birth(state: GameState, gen: Dictionary) -> bool:
 	var growth := {}
 	for ch in ["ads", "content", "referrals", "outbound"]:
 		var t: Dictionary = growth_in.get(ch, {})
-		var nm := String(t.get("name", "")).strip_edges().left(28)
-		var ln := String(t.get("one_line", "")).strip_edges().left(110)
+		var nm := _ascii(String(t.get("name", ""))).left(28)
+		var ln := _ascii(String(t.get("one_line", ""))).left(110)
 		if nm == "" or ln == "":
 			growth[ch] = (GROWTH_DEFAULTS[ch] as Dictionary).duplicate(true)
 		else:
 			growth[ch] = {"name": nm, "one_line": ln}
 	var works_def: Dictionary = WORKS_TERMS_DEFAULTS.get(state.biz_what,
 		WORKS_TERMS_DEFAULTS["Software"])
-	var one_liner := String(identity_in.get("one_liner", "")).strip_edges().left(140)
+	var one_liner := _ascii(String(identity_in.get("one_liner", ""))).left(140)
 	if one_liner == "":
 		one_liner = (state.company_idea.left(140) if state.company_idea != ""
 			else "a small company doing what it says on the door")
-	var who_for := String(identity_in.get("who_for", "")).strip_edges().left(80)
+	var who_for := _ascii(String(identity_in.get("who_for", ""))).left(80)
 	state.topics = {
 		"identity": {"one_liner": one_liner,
 			"who_for": (who_for if who_for != "" else state.biz_who)},
@@ -460,12 +471,12 @@ static func apply_birth(state: GameState, gen: Dictionary) -> bool:
 		if not (row is Dictionary) or book.size() >= 10:
 			continue
 		var r: Dictionary = row
-		var rname := String(r.get("name", "")).strip_edges().left(28)
+		var rname := _ascii(String(r.get("name", ""))).left(28)
 		if rname == "":
 			continue
 		var amt := clampf(float(r.get("amt", 0.0)), 0.0, SPEND_LINE_CAP)
 		book.append({"name": rname,
-			"buys": String(r.get("buys", "")).strip_edges().left(60),
+			"buys": _ascii(String(r.get("buys", ""))).left(60),
 			"amt": int(round(amt)),
 			"bucket": (String(r.get("bucket", "")) if SPEND_BUCKETS.has(String(r.get("bucket", ""))) else "office"),
 			"contract_notice": clampi(int(r.get("contract_notice", 0)), 0,
@@ -497,7 +508,7 @@ static func apply_birth(state: GameState, gen: Dictionary) -> bool:
 		if not (f is Dictionary) or feats.size() >= 6:
 			continue
 		var fd: Dictionary = f
-		var fname := String(fd.get("name", "")).strip_edges().left(28)
+		var fname := _ascii(String(fd.get("name", ""))).left(28)
 		if fname == "":
 			continue
 		feats.append({"id": "ft_birth_%d" % (feats.size() + 1), "name": fname,
@@ -523,7 +534,7 @@ static func apply_birth(state: GameState, gen: Dictionary) -> bool:
 	return true
 
 static func _word(src: Dictionary, key: String, fallback: Dictionary, cap: int) -> String:
-	var w := String(src.get(key, "")).strip_edges().left(cap)
+	var w := _ascii(String(src.get(key, ""))).left(cap)
 	return w if w != "" else String(fallback.get(key, ""))
 
 ## Investor-founder compatibility: the alignment dot product → a DC nudge on
