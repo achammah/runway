@@ -16,9 +16,10 @@ extends SceneTree
 ## live failures print [LIVE FAIL ...] and the fallback proof stands instead.
 
 var _fails := 0
-## LGEN_SMOKE_SECTIONS picks the sections to run ("0,1,2,3" default):
-## 0 offline invariants · 1 birth call · 2 portrait · 3 logo. Lets the QA
-## wave re-prove one asset without re-paying the whole ladder.
+## LGEN_SMOKE_SECTIONS picks the sections to run ("0,1,2,3,4" default):
+## 0 offline invariants · 1 birth call · 2 portrait · 3 label illustration ·
+## 4 make illustration. Lets the QA wave re-prove one asset without
+## re-paying the whole ladder.
 var _sections := PackedStringArray()
 
 func _want(n: int) -> bool:
@@ -36,7 +37,7 @@ func _init() -> void:
 
 func _run() -> void:
 	var wanted := OS.get_environment("LGEN_SMOKE_SECTIONS")
-	_sections = ("0,1,2,3" if wanted.strip_edges() == "" else wanted).split(",")
+	_sections = ("0,1,2,3,4" if wanted.strip_edges() == "" else wanted).split(",")
 	print("── 0 · offline: deterministic fallback + clamps ──")
 	var s := GameState.new()
 	s.sim_seed = 777
@@ -105,6 +106,8 @@ func _run() -> void:
 		await _live_portrait()
 	if _want(3):
 		await _live_logo(s)
+	if _want(4):
+		await _live_make(s)
 	print("── live smoke done: %d offline fails ──" % _fails)
 	quit(1 if _fails > 0 else 0)
 
@@ -170,6 +173,36 @@ func _live_portrait() -> void:
 		if lerr == OK:
 			print("  size %dx%d, format %d (alpha checked by the wrapper via sips)" % [
 				img.get_width(), img.get_height(), img.get_format()])
+
+func _live_make(s: GameState) -> void:
+	print("── 4 · live: one make-illustration generation ──")
+	var pc := PortraitClient.new(self)
+	var m_box: Array = []
+	var works: Dictionary = (s.topics.get("works", {}) as Dictionary)
+	pc.generate_make({"idea": s.company_idea, "what": s.biz_what, "who": s.biz_who,
+		"unit": String(works.get("unit_word", ""))},
+		func(path: String) -> void: m_box.append(path), true)
+	var m_waited := 0.0
+	while m_box.is_empty() and m_waited < 300.0:
+		await create_timer(0.5).timeout
+		m_waited += 0.5
+	if m_box.is_empty() or String(m_box[0]) == "":
+		print("[LIVE FAIL make] no PNG in %.0fs — the version plate stands alone" % m_waited)
+		return
+	var mpath := ProjectSettings.globalize_path(String(m_box[0]))
+	print("  make in %.0fs -> %s" % [m_waited, mpath])
+	var img := Image.new()
+	var lerr := img.load(mpath)
+	_check(lerr == OK, "the make PNG loads")
+	if lerr != OK:
+		return
+	var w := img.get_width()
+	var h := img.get_height()
+	var maxa := 0.0
+	for p in [Vector2i(2, 2), Vector2i(w - 3, 2), Vector2i(2, h - 3), Vector2i(w - 3, h - 3)]:
+		maxa = maxf(maxa, img.get_pixelv(p).a)
+	_check(maxa < 0.06, "make corners transparent (max corner alpha %.2f)" % maxa)
+	print("  size %dx%d" % [w, h])
 
 func _live_logo(s: GameState) -> void:
 	print("── 3 · live: one company-logo generation ──")

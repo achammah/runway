@@ -21,6 +21,13 @@ const OUT_PATH := "user://binder_portrait.png"
 ## (names are always engine-overlaid), bold enough to read at 48px. The UI's
 ## drawn monogram is the instant placeholder and the permanent fallback.
 const LOGO_PATH := "user://company_logo.png"
+## THE THREE BINDER ILLUSTRATIONS (DECISIONS): the label above is one of
+## three — THE MAKE (the thing the company makes, for the WHAT WE MAKE hero
+## plate) and THE PITCH (the venture as an optimistic little scene, for the
+## raise desk's header) ride the same ladder, same laws, same force
+## semantics. Vignette style is correct — never stark logo marks.
+const MAKE_PATH := "user://illus_make.png"
+const PITCH_PATH := "user://illus_pitch.png"
 const IMAGES_URL := "https://api.openai.com/v1/images/generations"
 const MODELS := ["gpt-image-2", "gpt-image-1"]
 
@@ -29,6 +36,12 @@ static func portrait_path() -> String:
 
 static func logo_path() -> String:
 	return LOGO_PATH
+
+static func make_path() -> String:
+	return MAKE_PATH
+
+static func pitch_path() -> String:
+	return PITCH_PATH
 
 ## The look (owner-amended): a NICE 3D-ILLUSTRATED object — soft-shaded,
 ## gently dimensional, a chunky real binder prop — still inside the game
@@ -66,6 +79,48 @@ func generate(cb: Callable = Callable(), force := false) -> void:
 ## Same cache, force and coalescing semantics as the portrait.
 func generate_logo(company: Dictionary, cb: Callable = Callable(), force := false) -> void:
 	_generate_to(_logo_prompt(company), LOGO_PATH, cb, force)
+
+## Fire THE MAKE illustration: the thing the company makes as an illustrated
+## object/scene. `company` carries {idea, what, who, unit} (unit = the works'
+## unit_word when the birth book has one). Same semantics as the others.
+func generate_make(company: Dictionary, cb: Callable = Callable(), force := false) -> void:
+	_generate_to(_make_prompt(company), MAKE_PATH, cb, force)
+
+## Fire THE PITCH illustration: the company as a venture, an optimistic
+## little scene. Same payload and semantics.
+func generate_pitch(company: Dictionary, cb: Callable = Callable(), force := false) -> void:
+	_generate_to(_pitch_prompt(company), PITCH_PATH, cb, force)
+
+## The style law every illustration shares: flat, palette-locked, textless,
+## die-cut on transparency.
+const STYLE_TAIL := ("Thick simple shapes, flat fills, no gradients, no "
+	+ "outlines thinner than a pencil, a clean die-cut silhouette. Palette "
+	+ "only: ink #1E1E1E, coral #E86A5C, yellow #F4B942, sage #8FA582, blue "
+	+ "#6E8CA0, cream #F2EAD3. NO TEXT anywhere: no letters, no numbers, no "
+	+ "letterforms, no wordmark. Transparent background: nothing behind or "
+	+ "around the illustration at all.")
+
+static func _fit_clause(company: Dictionary) -> String:
+	var idea := String(company.get("idea", "")).strip_edges()
+	if idea == "":
+		return "a small honest business"
+	return "%s (%s for %s)" % [idea, String(company.get("what", "a business")),
+		String(company.get("who", "its customers"))]
+
+func _make_prompt(company: Dictionary) -> String:
+	var unit := String(company.get("unit", "")).strip_edges()
+	var thing := "the thing made and sold by " + _fit_clause(company)
+	if unit != "":
+		thing = "one %s — the thing made and sold by %s" % [unit, _fit_clause(company)]
+	return ("A small flat illustration for a game: " + thing
+		+ ", drawn as one appealing illustrated object or tiny scene, seen "
+		+ "slightly from above, inviting and concrete. " + STYLE_TAIL)
+
+func _pitch_prompt(company: Dictionary) -> String:
+	return ("A small flat illustration for a game: " + _fit_clause(company)
+		+ " as a young venture on its way up — one optimistic little scene "
+		+ "(the small place open for business, first customers arriving, a "
+		+ "morning feel, a gentle sense of growth). " + STYLE_TAIL)
 
 func _logo_prompt(company: Dictionary) -> String:
 	var idea := String(company.get("idea", "")).strip_edges()

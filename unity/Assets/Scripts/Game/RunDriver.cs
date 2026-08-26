@@ -360,16 +360,31 @@ namespace Runway.Game
                         if (portrait == null)
                             portrait = Boot.Instance.gameObject.AddComponent<PortraitClient>();
                         portrait.Generate(null, null);
-                        // …and the company logo mark on the same ladder
-                        // (DECISIONS § THE COMPANY LOGO): fitted to the idea,
-                        // no text, transparent; the drawn monogram is the
-                        // fallback and nothing waits on it.
-                        portrait.GenerateLogo(new JObject
+                        // …and THE THREE BINDER ILLUSTRATIONS on the same
+                        // ladder (DECISIONS): the label, the make, the pitch —
+                        // fitted to the idea, no text, transparent; the drawn
+                        // fallbacks stand and nothing waits on them.
+                        string unitWord = "";
+                        object worksObj;
+                        if (State.Topics != null && State.Topics.TryGetValue("works", out worksObj))
+                        {
+                            var worksDict = worksObj as System.Collections.Generic.Dictionary<string, object>;
+                            if (worksDict != null && worksDict.ContainsKey("unit_word"))
+                                unitWord = worksDict["unit_word"] as string ?? "";
+                            var worksJ = worksObj as JObject;
+                            if (worksJ != null)
+                                unitWord = worksJ.Value<string>("unit_word") ?? "";
+                        }
+                        var birthCo = new JObject
                         {
                             ["idea"] = State.CompanyIdea ?? "",
                             ["what"] = State.BizWhat ?? "",
                             ["who"] = State.BizWho ?? "",
-                        }, null);
+                            ["unit"] = unitWord,
+                        };
+                        portrait.GenerateLogo(birthCo, null);
+                        portrait.GenerateMake(birthCo, null);
+                        portrait.GeneratePitch(birthCo, null);
                     }
                     JObject market = _worldgenRes["market"] as JObject;
                     string oneLiner = ContentDb.Str(market, "one_liner");

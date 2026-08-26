@@ -958,11 +958,15 @@ func _finish_worldgen(g: GarageViewScreen, birth: BirthScreen = null) -> void:
 	if _portrait_client == null:
 		_portrait_client = PortraitClient.new(get_tree())
 	_portrait_client.generate()
-	# …and the company logo mark on the same ladder (DECISIONS § THE COMPANY
-	# LOGO): fitted to the idea, no text, transparent; the drawn monogram is
-	# the fallback and nothing waits on it.
-	_portrait_client.generate_logo({"idea": state.company_idea,
-		"what": state.biz_what, "who": state.biz_who})
+	# …and THE THREE BINDER ILLUSTRATIONS on the same ladder (DECISIONS):
+	# the label, the make, the pitch — fitted to the idea, no text,
+	# transparent; the drawn fallbacks stand and nothing waits on them.
+	var birth_co := {"idea": state.company_idea, "what": state.biz_what,
+		"who": state.biz_who,
+		"unit": String((state.topics.get("works", {}) as Dictionary).get("unit_word", ""))}
+	_portrait_client.generate_logo(birth_co)
+	_portrait_client.generate_make(birth_co)
+	_portrait_client.generate_pitch(birth_co)
 	# DAY ONE IS WRITTEN BEFORE THE BOOK OPENS (owner: the book kept opening
 	# onto an empty page): the birth screen stays up — "writing day one…" —
 	# until the founding lands (60s ceiling), so the first thing the reader

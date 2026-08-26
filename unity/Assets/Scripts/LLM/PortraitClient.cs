@@ -38,6 +38,14 @@ namespace Runway.Llm
         /// read at 48px. The UI's drawn monogram is the instant placeholder
         /// and the permanent fallback.
         public const string LogoFileName = "company_logo.png";
+        /// THE THREE BINDER ILLUSTRATIONS (DECISIONS): the label above is one
+        /// of three — THE MAKE (the thing the company makes, for the WHAT WE
+        /// MAKE hero plate) and THE PITCH (the venture as an optimistic little
+        /// scene, for the raise desk's header) ride the same ladder, same
+        /// laws, same force semantics. Vignette style is correct — never
+        /// stark logo marks.
+        public const string MakeFileName = "illus_make.png";
+        public const string PitchFileName = "illus_pitch.png";
         public const string ImagesUrl = "https://api.openai.com/v1/images/generations";
         public static readonly string[] Models = { "gpt-image-2", "gpt-image-1" };
 
@@ -68,6 +76,8 @@ namespace Runway.Llm
 
         public static string OutPath { get { return RunwayPaths.User(OutFileName); } }
         public static string LogoPath { get { return RunwayPaths.User(LogoFileName); } }
+        public static string MakePath { get { return RunwayPaths.User(MakeFileName); } }
+        public static string PitchPath { get { return RunwayPaths.User(PitchFileName); } }
 
         /// Fire the portrait. payload (all optional): {"force": bool}. cb gets
         /// {"path": "..."} on success, null on failure. Cached: an existing PNG
@@ -86,6 +96,62 @@ namespace Runway.Llm
         public void GenerateLogo(JObject payload, Action<JObject> cb)
         {
             GenerateTo(LogoPrompt(payload), LogoPath, payload, cb);
+        }
+
+        /// Fire THE MAKE illustration: the thing the company makes as an
+        /// illustrated object/scene. payload: {"idea","what","who","unit"?,
+        /// "force"?} — unit is the works' unit_word when the birth book has
+        /// one. Same semantics as the others.
+        public void GenerateMake(JObject payload, Action<JObject> cb)
+        {
+            GenerateTo(MakePrompt(payload), MakePath, payload, cb);
+        }
+
+        /// Fire THE PITCH illustration: the company as a venture, an
+        /// optimistic little scene. Same payload and semantics.
+        public void GeneratePitch(JObject payload, Action<JObject> cb)
+        {
+            GenerateTo(PitchPrompt(payload), PitchPath, payload, cb);
+        }
+
+        /// The style law every illustration shares: flat, palette-locked,
+        /// textless, die-cut on transparency.
+        const string StyleTail =
+            "Thick simple shapes, flat fills, no gradients, no "
+            + "outlines thinner than a pencil, a clean die-cut silhouette. Palette "
+            + "only: ink #1E1E1E, coral #E86A5C, yellow #F4B942, sage #8FA582, blue "
+            + "#6E8CA0, cream #F2EAD3. NO TEXT anywhere: no letters, no numbers, no "
+            + "letterforms, no wordmark. Transparent background: nothing behind or "
+            + "around the illustration at all.";
+
+        static string FitClause(JObject payload)
+        {
+            string idea = payload != null ? (payload.Value<string>("idea") ?? "").Trim() : "";
+            if (idea.Length == 0) return "a small honest business";
+            string what = payload.Value<string>("what");
+            string who = payload.Value<string>("who");
+            return string.Format("{0} ({1} for {2})", idea,
+                string.IsNullOrEmpty(what) ? "a business" : what,
+                string.IsNullOrEmpty(who) ? "its customers" : who);
+        }
+
+        static string MakePrompt(JObject payload)
+        {
+            string unit = payload != null ? (payload.Value<string>("unit") ?? "").Trim() : "";
+            string thing = "the thing made and sold by " + FitClause(payload);
+            if (unit.Length > 0)
+                thing = string.Format("one {0} — the thing made and sold by {1}", unit, FitClause(payload));
+            return "A small flat illustration for a game: " + thing
+                + ", drawn as one appealing illustrated object or tiny scene, seen "
+                + "slightly from above, inviting and concrete. " + StyleTail;
+        }
+
+        static string PitchPrompt(JObject payload)
+        {
+            return "A small flat illustration for a game: " + FitClause(payload)
+                + " as a young venture on its way up — one optimistic little scene "
+                + "(the small place open for business, first customers arriving, a "
+                + "morning feel, a gentle sense of growth). " + StyleTail;
         }
 
         static string LogoPrompt(JObject payload)
