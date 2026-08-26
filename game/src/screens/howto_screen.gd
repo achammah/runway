@@ -30,7 +30,7 @@ const TITLES := [
 const CAPS := [
 	"Write your week's move in the journal. A d20 rolls the moment you commit — your five muscles (build, sell, raise, recruit, grit) add to it, the world sets the difficulty.",
 	"Beat the difficulty by 5 and it's brilliant. Miss by 3 and it backfires, expensively. Cash moves, people remember, promises come due.",
-	"Rent, payroll and every budget burn weekly. Set marketing, sales, care and R&D in THE LEDGER (TAB). A customer costs money to win and pays back over their stay. Three weeks below zero and it's over."]
+	"Rent, payroll and every budget burn weekly. Set marketing, sales, care and R&D on the binder's SPEND desk (TAB). A customer costs money to win and pays back over their stay. Three weeks below zero and it's over."]
 const LOOPS := [
 	"res://assets/title/howto_1.png",
 	"res://assets/title/howto_2.png",
@@ -329,7 +329,7 @@ class _Art:
 		_txt("4 · MONEY IS THE FOOD", Vector2(836, y + 448), 32, ink)
 		for i in 9:
 			draw_rect(Rect2(846 + i * 40, y + 500, 26, 7), Color(ink, 0.8 - float(i) * 0.08))
-		_wrap("rent, payroll and every budget you set burn weekly. spend on marketing, sales, care and R&D in THE LEDGER (press TAB). a customer costs money to win and pays back over their stay. three weeks below zero and it's over.",
+		_wrap("rent, payroll and every budget you set burn weekly. spend on marketing, sales, care and R&D on the binder's SPEND desk (press TAB). a customer costs money to win and pays back over their stay. three weeks below zero and it's over.",
 			Vector2(846, y + 540), 560.0, 23, dim)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 

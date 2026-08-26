@@ -541,12 +541,13 @@ namespace Runway.Game
 
         /// The mark is versioned: the tour teaches the CURRENT game, so a tour that
         /// grew a step is a tour nobody has seen yet.
-        const string CoachMark = "seen_coach_v2.unity";
+        const string CoachMark = "seen_coach_v3.unity";
 
         /// THE LIVE TUTORIAL (owner: a first start walks the player through the
-        /// real screen): four pen chips in sequence — the room, the journal, the
-        /// binder, and the two things that arrived with the bank — each advanced
-        /// by a click, once per install.
+        /// real screen): five pen chips in sequence — the room, the journal, the
+        /// binder object at bottom-left (handing over to the binder's own
+        /// six-flip tour), the red ! system, and the dice with the pre-roll
+        /// review — each advanced by a click, once per install.
         void BuildCoach()
         {
             if (State == null || State.Week > 1) return;
@@ -570,22 +571,28 @@ namespace Runway.Game
                     break;
                 case 1:
                     text = "the journal is the week: open it, write what the company does, then LOCK IN. if the world needs a number or a price, it asks before the die rolls.\n\n(click to continue)";
-                    x = 420f; y = 700f; w = 560f;
+                    x = 420f; y = 670f; w = 560f;
                     break;
                 case 2:
-                    text = "THE BINDER holds your prices, levers and ledger. a coral ! means something has no price yet \u2014 set one or the market bills the going rate. when people apply, the CREW tab is where you hire.\n\n(click to continue)";
-                    x = 900f; y = 700f; w = 560f;
+                    text = "THE BINDER is the little book at the bottom-left \u2014 the whole company in one place: prices, people, money, the works. open it any time (TAB); your first open walks you through it in six flips.\n\n(click to continue)";
+                    x = 260f; y = 670f; w = 560f;
                     break;
                 case 3:
-                    text = "THE BANK is its own page in there \u2014 loans, what they cost, and the taxman. and when you lock a week, the world shows you what's still unset \u2014 fix it or roll anyway.\n\n(click to start week 1)";
-                    x = 900f; y = 700f; w = 560f;
+                    text = "anything that needs a decision turns RED with a ! \u2014 a sticker on the binder's cover, a red tab inside. red climbs so you can't miss it; coral is just money out.\n\n(click to continue)";
+                    x = 260f; y = 670f; w = 560f;
+                    break;
+                case 4:
+                    text = "when you LOCK IN, dice decide how well it lands. before any roll, the game shows everything still unset \u2014 fix it first, or roll anyway. read the week, set the binder, write the move, roll.\n\n(click to start week 1)";
+                    x = 420f; y = 670f; w = 560f;
                     break;
                 default:
                     try { System.IO.File.WriteAllText(Runway.App.RunwayPaths.User(CoachMark), "1"); }
                     catch (System.Exception) { }
                     return;
             }
-            _coach = GameUi.PaperSheet(Rect, x, y, w, 190f, 2, 4f, null, "coach");
+            // 240 tall: five wrapped lines plus the click cue stay INSIDE the
+            // sheet — at 190 the cue rode the border or escaped onto the room.
+            _coach = GameUi.PaperSheet(Rect, x, y, w, 240f, 2, 4f, null, "coach");
             DrawnUI.HandLabel(_coach, text, 26f, 24f, 26f, DrawnUI.Ink, w - 52f);
             var hit = _coach.gameObject.AddComponent<Image>();
             hit.color = new Color(0f, 0f, 0f, 0f);

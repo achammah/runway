@@ -40,7 +40,7 @@ namespace Runway.Screens
         {
             "Write your week's move in the journal. A d20 rolls the moment you commit — your five muscles (build, sell, raise, recruit, grit) add to it, the world sets the difficulty.",
             "Beat the difficulty by 5 and it's brilliant. Miss by 3 and it backfires, expensively. Cash moves, people remember, promises come due.",
-            "Rent, payroll and every budget burn weekly. Set marketing, sales, care and R&D in THE LEDGER (TAB). A customer costs money to win and pays back over their stay. Three weeks below zero and it's over.",
+            "Rent, payroll and every budget burn weekly. Set marketing, sales, care and R&D on the binder's SPEND desk (TAB). A customer costs money to win and pays back over their stay. Three weeks below zero and it's over.",
         };
 
         static readonly string[] Loops =

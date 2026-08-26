@@ -413,12 +413,13 @@ func _ready() -> void:
 const BREATH_FPS := 12.0
 ## The mark is versioned: the tour teaches the CURRENT game, so a tour that grew
 ## a step is a tour nobody has seen yet.
-const COACH_MARK := "user://seen_coach_v2"
+const COACH_MARK := "user://seen_coach_v3"
 
 ## THE LIVE TUTORIAL (owner: a first start walks the player through the real
-## screen): four pen chips in sequence — the room, the journal, the binder, and
-## the two things that arrived with the bank — each advanced by a click, once
-## per install.
+## screen): five pen chips in sequence — the room, the journal, the binder
+## object at bottom-left (handing over to the binder's own six-flip tour),
+## the red ! system, and the dice with the pre-roll review — each advanced by
+## a click, once per install.
 ## THE COACH-CHIP POOL (07/03/09 asked; polish-pass build): one-time teaching
 ## cards, one per week at most, each shown once per install. A lane ships its
 ## own chip via coach_chip(state); spine-side entries hang on the attention
@@ -442,7 +443,7 @@ func _mark_chip(id: String) -> void:
 func _maybe_coach_chip() -> void:
 	if state == null or _chip_card != null:
 		return
-	if OS.get_environment("RUNWAY_FULLRUN") != "" or OS.get_environment("RUNWAY_FIRSTFLOW") != "" \
+	if _harness() or OS.get_environment("RUNWAY_FIRSTFLOW") != "" \
 			or OS.get_environment("RUNWAY_SHOTS") != "":
 		return
 	if not FileAccess.file_exists(COACH_MARK):
@@ -503,7 +504,7 @@ func _build_coach() -> void:
 		return
 	if FileAccess.file_exists(COACH_MARK):
 		return
-	if OS.get_environment("RUNWAY_FULLRUN") != "" or OS.get_environment("RUNWAY_FIRSTFLOW") != "" \
+	if _harness() or OS.get_environment("RUNWAY_FIRSTFLOW") != "" \
 			or OS.get_environment("RUNWAY_SHOTS") != "":
 		return
 	_coach_step = 0
@@ -522,15 +523,19 @@ func _show_coach_step() -> void:
 			pos = Vector2(500, 380)
 		1:
 			text = "the journal is the week: open it, write what the company does, then LOCK IN. if the world needs a number or a price, it asks before the die rolls.\n\n(click to continue)"
-			pos = Vector2(420, 690)
+			pos = Vector2(420, 670)
 			w = 560.0
 		2:
-			text = "THE BINDER holds your prices, levers and ledger. a coral ! means something has no price yet — set one or the market bills the going rate. when people apply, the CREW tab is where you hire.\n\n(click to continue)"
-			pos = Vector2(880, 690)
+			text = "THE BINDER is the little book at the bottom-left — the whole company in one place: prices, people, money, the works. open it any time (TAB); your first open walks you through it in six flips.\n\n(click to continue)"
+			pos = Vector2(260, 670)
 			w = 560.0
 		3:
-			text = "THE BANK is its own page in there — loans, what they cost, and the taxman. and when you lock a week, the world shows you what's still unset — fix it or roll anyway.\n\n(click to start week 1)"
-			pos = Vector2(880, 690)
+			text = "anything that needs a decision turns RED with a ! — a sticker on the binder's cover, a red tab inside. red climbs so you can't miss it; coral is just money out.\n\n(click to continue)"
+			pos = Vector2(260, 670)
+			w = 560.0
+		4:
+			text = "when you LOCK IN, dice decide how well it lands. before any roll, the game shows everything still unset — fix it first, or roll anyway. read the week, set the binder, write the move, roll.\n\n(click to start week 1)"
+			pos = Vector2(420, 670)
 			w = 560.0
 		_:
 			var f := FileAccess.open(COACH_MARK, FileAccess.WRITE)
@@ -539,7 +544,9 @@ func _show_coach_step() -> void:
 			return
 	var card := Button.new()
 	card.position = pos
-	card.size = Vector2(w, 190)
+	# 240 tall: five wrapped lines plus the click cue stay INSIDE the sheet —
+	# at 190 the cue rode the border or escaped onto the room.
+	card.size = Vector2(w, 240)
 	_style_button(card, PALETTE["cream"], 24)
 	card.text = ""
 	var lbl := Label.new()
@@ -549,7 +556,7 @@ func _show_coach_step() -> void:
 	lbl.add_theme_color_override("font_color", PALETTE["ink"])
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.position = Vector2(24, 20)
-	lbl.size = Vector2(w - 48, 150)
+	lbl.size = Vector2(w - 48, 200)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(lbl)
 	card.pressed.connect(func() -> void:
