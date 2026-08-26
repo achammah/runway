@@ -16,7 +16,8 @@ extends SceneTree
 ## live failures print [LIVE FAIL ...] and the fallback proof stands instead.
 
 var _fails := 0
-## LGEN_SMOKE_SECTIONS picks the sections to run ("0,1,2,3,4" default):
+## LGEN_SMOKE_SECTIONS picks the sections to run ("0,1,2,3,4" default;
+## 5 = pitch illustration, 6 = one garden-plot generation via Atlas):
 ## 0 offline invariants · 1 birth call · 2 portrait · 3 label illustration ·
 ## 4 make illustration. Lets the QA wave re-prove one asset without
 ## re-paying the whole ladder.
@@ -108,6 +109,10 @@ func _run() -> void:
 		await _live_logo(s)
 	if _want(4):
 		await _live_make(s)
+	if _want(5):
+		await _live_pitch(s)
+	if _want(6):
+		await _live_garden(s)
 	print("── live smoke done: %d offline fails ──" % _fails)
 	quit(1 if _fails > 0 else 0)
 
@@ -231,3 +236,56 @@ func _live_logo(s: GameState) -> void:
 		maxa = maxf(maxa, img.get_pixelv(p).a)
 	_check(maxa < 0.06, "logo corners transparent (max corner alpha %.2f)" % maxa)
 	print("  size %dx%d" % [w, h])
+
+
+func _live_pitch(s: GameState) -> void:
+	print("── 5 · live: one pitch-illustration generation ──")
+	var pc := PortraitClient.new(self)
+	var p_box: Array = []
+	var works: Dictionary = (s.topics.get("works", {}) as Dictionary)
+	pc.generate_pitch({"idea": s.company_idea, "what": s.biz_what, "who": s.biz_who,
+		"unit": String(works.get("unit_word", ""))},
+		func(path: String) -> void: p_box.append(path), true)
+	var p_waited := 0.0
+	while p_box.is_empty() and p_waited < 300.0:
+		await create_timer(0.5).timeout
+		p_waited += 0.5
+	if p_box.is_empty() or String(p_box[0]) == "":
+		print("[LIVE FAIL pitch] no PNG in %.0fs — the plain header stands" % p_waited)
+		return
+	var ppath := ProjectSettings.globalize_path(String(p_box[0]))
+	print("  pitch in %.0fs -> %s" % [p_waited, ppath])
+	var img := Image.new()
+	var lerr := img.load(ppath)
+	_check(lerr == OK, "the pitch PNG loads")
+	if lerr != OK:
+		return
+	var w := img.get_width()
+	var h := img.get_height()
+	var maxa := 0.0
+	for pt in [Vector2i(2, 2), Vector2i(w - 3, 2), Vector2i(2, h - 3), Vector2i(w - 3, h - 3)]:
+		maxa = maxf(maxa, img.get_pixelv(pt).a)
+	_check(maxa < 0.06, "pitch corners transparent (max corner alpha %.2f)" % maxa)
+	print("  size %dx%d" % [w, h])
+
+func _live_garden(s: GameState) -> void:
+	print("── 6 · live: one garden-plot generation (Atlas) ──")
+	var director := SceneDirector.new(self)
+	var run_key := "%d_p%d" % [s.sim_seed, s.pivots]
+	director.make_birth_illustrations(run_key, s.topics, s.spend_book,
+		{"name": s.company_name, "idea": s.company_idea,
+			"what": s.biz_what, "who": s.biz_who})
+	var target := "user://gen_illustrations/%s/plot_ads.png" % run_key
+	var g_waited := 0.0
+	while not FileAccess.file_exists(target) and g_waited < 300.0:
+		await create_timer(1.0).timeout
+		g_waited += 1.0
+	if not FileAccess.file_exists(target):
+		print("[LIVE FAIL garden] no plot PNG in %.0fs — drawn instruments stand" % g_waited)
+		return
+	var gpath := ProjectSettings.globalize_path(target)
+	print("  garden plot in %.0fs -> %s" % [g_waited, gpath])
+	var img := Image.new()
+	_check(img.load(gpath) == OK, "the garden plot PNG loads")
+	if img.get_width() > 0:
+		print("  size %dx%d" % [img.get_width(), img.get_height()])
