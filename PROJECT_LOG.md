@@ -505,3 +505,35 @@ salts/hooks/stubs + the ring-binder frame/DeskKit v2/18 desk stubs),
 then seven lanes (ownership, divisions+works, features/wall, revenue
 desks, money desks, company+log desks, world-gen/DM prompts + once-only
 illustrations), integration, QA screenshots, ship.
+
+## 2026-08-26 — DAG 2 shipped: the binder rework is real in both engines
+
+EXECUTION, all autonomous: W1 twin spines (engine fields/salts/hooks/
+stubs at 66c3322; the ring-binder frame, DeskKit v2, 19 desks, the
+diegetic binder object at b8d1af1) → L-GEN (birth generation with
+engine-clamped books, the 14 structural ops taught, clarify's "which
+roof?", the portrait/logo/make/pitch illustrations live-verified
+transparent through gpt-image-2, garden plots through Atlas) → six W2
+lanes in parallel through quota storms (ownership cluster with ESOP/
+instruments/raise/waterfall/recruitment; divisions+works with sites,
+group-by books, arrange, ten mutation executors; features + the wall;
+the four revenue desks; the four money desks on the ledger sheet;
+street/threats/pivot + the log group + SimPivot) → W3 merged
+integration (31-op registry live at six sites with every executor,
+pivot resolving at LOCK IN with four-asset regeneration, feature_keep
+as the 27th pnl lane, labor re-pinned to the recruitment reconcile,
+the river snapshot, 570/570 lockstep) → W4 (the PA prompt pass — ops
+grouped under three hoisted laws, the ASCII clamp; the 165-shot +
+14-scale-state visual sweep fixing 23 defect classes; and the balance
+forensics that found THE BIRTH BUG: the draft promised $8,000 day one
+and birth never granted it — item luck had masked it since before the
+first DAG; START_CASH=8000 as one law, smoke 30/30 deaths → 24/6;
+then Service/Consumer 0.25→0.4 and the works overflow law COMPLETED —
+walked units un-bill their serving costs like the factory's stockouts,
+Service/Consumer 100%→5% deaths with the ceiling as the honest story).
+
+Suites 573/573 in lockstep both engines. Import 0. Unity build marker
+green. Smoke 24/6 in the roguelike band. Backlog recorded in the W3
+ledger: Hardware's capacity crawl, the attention registry's legacy
+vocabulary, bench demo polish, rename-by-keyboard, MERGE/SPLIT
+receipts, Unity garden twin, notarization, key rotation before public.
