@@ -1,20 +1,19 @@
 class_name Binder
 extends Control
-## THE OPERATIONS BINDER — the founder's dashboard, in the game's own hand
-## (docs/DND_STARTUP_PLAN.md, UI item 1-7). Never a SaaS panel: a clipboard
-## sheet over the dimmed room, ten pen-labelled tabs, doodle icons, charts
-## drawn as wobbly polylines.
+## THE RING BINDER — the founder's dashboard as a real object (docs/design/
+## DECISIONS.md § "Binder rework — owner picks", mockups/00 pick A). Never a
+## SaaS panel: a kraft cover, drawn rings, a side rail of divider groups with
+## colored index tabs poking left, and the open group fanning its pages.
 ##
-## FOG OF WAR: precision follows state.analytics_level (0-3). At 0 the customer
-## page says "traffic seems decent"; invest in analytics (a writable move) and
-## the pages sharpen. The dashboard you EARN is a mechanic, not a view.
+## THE FRAME OWNS: the binder body, the rail, the alarm-red climb, the group
+## overviews, the first-open tour, the momentary tab slot and the cover state.
+## IT OWNS NO PAGE: every desk lives in its own file under ui/desks/ and is
+## handed this node (docs/design/HOOKS.md), so a subsystem grows its page
+## without ever opening this file — and one page has exactly one writer.
 ##
-## THE SHEET IS THE FRAME, THE DESKS ARE THE PAGES. Vitals, the ledger and
-## threats are drawn here; every other tab body lives in its own file under
-## ui/desks/ and is handed this node (docs/design/HOOKS.md), so a subsystem
-## grows its page without ever opening this file. Desks draw through the public
-## helpers below — `label`, `ink_btn`, `spark`, `fmt`, `wrap_h`, `pane` — and
-## share the drawn components in ui/components.gd (DeskKit).
+## FOG OF WAR: precision follows state.analytics_level (0-3) — unchanged.
+## ESC CONTRACT: Esc pops desk states (armed → mode), then the overview, then
+## closes the binder; TAB/B always close. The tour eats Esc as "skip".
 ##
 ## Usage:  var b := Binder.new(); b.setup(state); add_child(b)
 ##         b.closed.connect(...)  — TAB/B/Esc or the close corner dismisses it.
@@ -22,39 +21,109 @@ extends Control
 signal closed
 
 const CREAM := Color("F2EAD3")
+const PAPER2 := Color("F6F0DE")
+const CARD := Color("EFE6CE")
+const KRAFT := Color("DDBE8C")
+const KRAFT2 := Color("CBA96F")
 const INK := Color("1E1E1E")
 const PEN := Color("E86A5C")
 const SAGE := Color("8FA582")
 const YELL := Color("F4B942")
 const BLUE := Color("6E8CA0")
+const ALERT := Color("D93425")
 const HAND := "res://assets/fonts/PatrickHand-Regular.ttf"
+const DISPLAY := "res://assets/fonts/Baloo2-Bold.ttf"
 
-## TEN TABS AT PITCH 120 (docs/design/00-spine.md §10, DECISIONS.md #1): the
-## sheet is 1240 wide, 24 + 10×120 = 1224 fits, buttons are 118×44 and the
-## longest label ("the street") measures ≈110px at 23px in the hand. THE PEN
-## RING AND THE BANGS READ THESE CONSTANTS TOO — the ring desynced from the
-## button row twice when a pitch was re-typed somewhere else.
+## THE TAXONOMY (DECISIONS: 18 desks in 4 groups). Group order is rail order;
+## desk order is page order; THE LOG's "this week" is the default landing desk.
+const GROUPS := [
+	{"name": "REVENUE", "col": SAGE,
+		"desks": ["offers", "customers", "in motion", "growth"]},
+	{"name": "COSTS", "col": PEN,
+		"desks": ["spend", "team", "recruitment", "bills", "the bank", "the works"]},
+	{"name": "THE COMPANY", "col": BLUE,
+		"desks": ["what we make", "cap table", "the raise", "the street", "threats", "pivot"]},
+	{"name": "THE LOG", "col": YELL,
+		"desks": ["this week", "history", "events"]},
+]
+
+## THE OLD TEN TABS, kept as the LEGACY ORDER: the engine's attention registry,
+## the garage's focus calls and the shot harnesses all still speak these names,
+## and `_tab` (poked by tests) still indexes this list. The alias map turns any
+## old name into its new desk.
 const TABS := ["vitals", "the ledger", "the bank", "pricing", "customers",
 	"product", "crew", "cap table", "the street", "threats"]
-## The content pane the desks draw into (docs/design/10-interface-language §1.4).
+const LEGACY_TO_DESK := {
+	"vitals": "this week", "the ledger": "spend", "the bank": "the bank",
+	"pricing": "offers", "customers": "customers", "product": "what we make",
+	"crew": "team", "cap table": "cap table", "the street": "the street",
+	"threats": "threats", "pipeline": "in motion", "factory": "the works",
+	"catalog": "offers", "bank": "the bank", "cap": "cap table",
+	"street": "the street", "ledger": "spend",
+}
+
+## THE FRAME GEOMETRY (mockups/00 variant A, scaled into the 1536×1024 view).
+## cover 54 + ringbar 46 + rail ~196 + sheet — the sheet's content pane keeps
+## the binder-wide 1160 width, so every shipped desk lands unchanged.
+const FRAME_POS := Vector2(16, 28)
+const FRAME_SIZE := Vector2(1504, 968)
+const COVER_W := 54.0
+const RING_W := 46.0
+const STACK_X := 100.0            ## cover + ringbar
+const RAIL_X := 124.0             ## divider boxes start here (frame-local)
+const RAIL_BOX_W := 182.0         ## a divider box; its index tab pokes 16 left
+const SHEET_RULE_X := 318.0       ## the sheet's left rule
+const CONTENT_POS := Vector2(344, 36)
+const CONTENT_SIZE := Vector2(1160, 880)
+## The content pane the desks draw into — unchanged widths, taller pane.
 const PANE_W := 1160.0
+## Legacy tab-row constants (retired furniture, kept so old readers stay sane).
 const TAB_X0 := 24.0
 const TAB_PITCH := 120.0
 const TAB_W := 118.0
 const TAB_H := 44.0
 
+## THE BINDER PORTRAIT (DECISIONS § THE BINDER PORTRAIT, owner-corrected):
+## the portrait is a DIEGETIC OBJECT on the room painting, bottom-left — it
+## replaces the binder doorway button. The PNG is cached by the generation
+## lane; the drawn mini-binder (same silhouette) is the instant placeholder
+## and permanent fallback. The label is BLANK in the image — the company name
+## is overlaid in the hand inside LABEL_RECT (fractions of the object's rect,
+## so the generation lane can tune placement). Below LABEL_MIN_PX the name is
+## omitted rather than rendered illegibly.
+const PORTRAIT_PATH := "user://binder_portrait.png"
+const LABEL_RECT := Rect2(0.26, 0.42, 0.48, 0.13)
+const LABEL_FONT_SIZE := 46
+const LABEL_MIN_PX := 10
+const TOUR_FLAG := "user://seen_binder_tour"
+
 var state: GameState
 var generator: EventGenerator = null   # the street's pricing road (01 WAIT state)
 ## DESK-LOCAL STATE, one visit long (docs/design/10-interface-language.md §4.8):
 ## a desk's page mode, its expanded row, its armed control. Never saved, cleared
-## on every tab change, dead with this node — so reopening the binder is always
-## a clean read of state and no half-finished act survives a close.
+## on every page change, dead with this node.
 var desk := {}
-var _bangs := {}   # tab name → the coral ! while that desk needs attention
 var _font: Font
-var _tab := 0
-var _sheet: Control
+var _font_d: Font
+## Navigation: one open group, one active page, and the transient layers.
+var _open_group := 3               ## THE LOG opens first — "this week" lands
+var _page := "this week"
+var _overview := -1                ## ≥0 = that group's overview covers the sheet
+var _tour := -1                    ## ≥0 = the tour owns the binder
+var _momentary: Array = []         ## [{id, group, label, wks}] — gold tabs
+## LEGACY SHIM: tests and old callers poke `_tab` (an index into TABS) and call
+## refresh. The shim maps it onto the new navigation without clearing the desk
+## dict the harness just seeded.
+var _tab := -1
+var _legacy_applied := -1
+## The shot benches drive the binder's states by hand; this keeps the tour
+## from hijacking their sheets (a real install never touches it).
+var tour_enabled := true
+var _frame: Control
+var _rail: Control
 var _content: Control
+var _close_btn: Button
+var _tour_demo_red := false
 
 func setup(p_state: GameState, p_gen: EventGenerator = null) -> void:
 	generator = p_gen
@@ -62,6 +131,7 @@ func setup(p_state: GameState, p_gen: EventGenerator = null) -> void:
 
 func _ready() -> void:
 	_font = load(HAND)
+	_font_d = load(DISPLAY)
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var dim := ColorRect.new()
@@ -70,85 +140,67 @@ func _ready() -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)
 
-	_sheet = _Clipboard.new()
-	_sheet.position = Vector2(148, 52)
-	_sheet.set_deferred("size", Vector2(1240, 920))
-	_sheet.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(_sheet)
+	_frame = _FrameBoard.new()
+	_frame.position = FRAME_POS
+	_frame.set_deferred("size", FRAME_SIZE)
+	_frame.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_frame)
+
+	_rail = Control.new()
+	_rail.position = Vector2.ZERO
+	_rail.set_deferred("size", FRAME_SIZE)
+	_rail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_frame.add_child(_rail)
 
 	_content = Control.new()
-	_content.position = Vector2(40, 118)
-	_content.set_deferred("size", Vector2(1160, 760))
+	_content.position = CONTENT_POS
+	_content.set_deferred("size", CONTENT_SIZE)
 	_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_sheet.add_child(_content)
+	_frame.add_child(_content)
 
-	# tabs: pen labels across the top; the active one gets the ring
-	for i in TABS.size():
-		var b := Button.new()
-		b.flat = true
-		b.text = TABS[i]
-		b.add_theme_font_override("font", _font)
-		b.add_theme_font_size_override("font_size", 23)
-		b.add_theme_color_override("font_color", INK)
-		b.add_theme_color_override("font_hover_color", PEN)
-		for stn in ["normal", "hover", "pressed", "focus"]:
-			b.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
-		b.position = Vector2(TAB_X0 + i * TAB_PITCH, 54)
-		b.set_deferred("size", Vector2(TAB_W, TAB_H))
-		var idx := i
-		b.pressed.connect(func() -> void:
-			if _tab != idx:
-				desk.clear()   # a desk's page mode dies when you leave the page
-			_tab = idx
-			_refresh())
-		_sheet.add_child(b)
-		# THE WARNING BANGS (owner: "! warnings on tab where things are unset").
-		# EVERY tab carries one now: the engine's attention registry decides
-		# which ones light up (docs/design/00-spine.md §4), so a desk that grows
-		# a new warning needs no change here — it files a registry row instead.
-		# The bang hangs on the tab's own shoulder, DERIVED from the tab width,
-		# so the row and its marks can never drift apart again.
-		var bang := Label.new()
-		bang.text = "!"
-		bang.add_theme_font_override("font", _font)
-		bang.add_theme_font_size_override("font_size", 30)
-		bang.add_theme_color_override("font_color", PEN)
-		bang.position = b.position + Vector2(TAB_W - 27.0, -12.0)
-		bang.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		bang.visible = false
-		_sheet.add_child(bang)
-		_bangs[TABS[i]] = bang
-
-	var close := Button.new()
-	close.flat = true
-	close.text = "×"
-	close.add_theme_font_override("font", _font)
-	close.add_theme_font_size_override("font_size", 46)
-	close.add_theme_color_override("font_color", PEN)
-	for stn2 in ["normal", "hover", "pressed", "focus"]:
-		close.add_theme_stylebox_override(stn2, StyleBoxEmpty.new())
-	close.position = Vector2(1180, 8)
-	close.set_deferred("size", Vector2(52, 52))
-	close.pressed.connect(func() -> void: _dismiss())
-	_sheet.add_child(close)
+	_close_btn = Button.new()
+	_close_btn.flat = true
+	_close_btn.text = "×"
+	_close_btn.add_theme_font_override("font", _font)
+	_close_btn.add_theme_font_size_override("font_size", 46)
+	_close_btn.add_theme_color_override("font_color", PEN)
+	for stn in ["normal", "hover", "pressed", "focus"]:
+		_close_btn.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
+	_close_btn.position = Vector2(FRAME_SIZE.x - 60.0, 2.0)
+	_close_btn.set_deferred("size", Vector2(52, 52))
+	_close_btn.pressed.connect(func() -> void: _dismiss())
+	_frame.add_child(_close_btn)
 
 	gui_input.connect(func(ev: InputEvent) -> void:
 		if ev is InputEventMouseButton and ev.pressed:
 			_dismiss())
 	_refresh()
 
-## ESC POPS BEFORE IT CLOSES (docs/design/10-interface-language.md §4.2): inside
-## a desk's state machine Esc walks DETAIL/WRITE/WAIT/REVIEW back to the list and
-## disarms an armed control; only from a tab's base state does it shut the binder.
+## ESC POPS BEFORE IT CLOSES (docs/design/10-interface-language.md §4.2): the
+## tour eats Esc as "skip"; then a desk's armed control, then its mode, then an
+## open overview, and only from a page's base state does Esc shut the binder.
+## TAB and B always shut it — the same keys that opened it.
 func _unhandled_key_input(ev: InputEvent) -> void:
 	if ev is InputEventKey and ev.pressed and ev.keycode in [KEY_ESCAPE, KEY_TAB, KEY_B]:
 		accept_event()
+		if _tour >= 0:
+			if ev.keycode == KEY_ESCAPE:
+				_tour_finish()
+				return
+			_tour_finish()
+			_dismiss()
+			return
 		if ev.keycode == KEY_ESCAPE and _desk_pop():
+			return
+		if ev.keycode == KEY_ESCAPE and _overview >= 0:
+			_overview = -1
+			_refresh()
 			return
 		_dismiss()
 
 ## One step back inside the current desk. True = something was popped, so the
-## press is spent and the binder stays open.
+## press is spent and the binder stays open. The arrange shell lives in
+## desk["mode"], so Esc abandoning a staged change is this same pop.
 func _desk_pop() -> bool:
 	if desk.has("armed"):
 		desk.erase("armed")
@@ -157,6 +209,8 @@ func _desk_pop() -> bool:
 	if String(desk.get("mode", "")) != "":
 		desk["mode"] = ""
 		desk.erase("row")
+		desk.erase("chip")
+		desk.erase("staged")
 		_refresh()
 		return true
 	return false
@@ -165,43 +219,160 @@ func _dismiss() -> void:
 	closed.emit()
 	queue_free()
 
-# ─────────────────────────────── composition ────────────────────────────────
+# ─────────────────────────────── navigation ──────────────────────────────────
+
+## Open the binder ON a desk — old names and new names both land. The pre-roll
+## review's "go fix it" arrives with the attention row's own (old) desk word.
+func focus_desk(desk_name: String) -> void:
+	var id := String(LEGACY_TO_DESK.get(desk_name, desk_name))
+	if _find_group(id) < 0:
+		return
+	desk.clear()
+	open_page(id)
+
+## The page press: sets the active sheet, clears desk-local state, keeps the
+## group. Also the overview's card press and the momentary tab press.
+func open_page(id: String) -> void:
+	var gi := _find_group(id)
+	if gi < 0:
+		return
+	if _page != id:
+		desk.clear()
+	_overview = -1
+	if gi != _open_group:
+		_open_group = gi
+	_page = id
+	if _content != null:
+		_refresh()
+		_slide_sheet()
+
+## The divider-header press. Closed → the group opens (kraft→paper ease, pages
+## fan). Open → THE DASHBOARD QUARTET: the group's overview covers the sheet.
+func press_group(gi: int) -> void:
+	if _tour >= 0:
+		return
+	if gi == _open_group:
+		_overview = gi if _overview != gi else -1
+		_refresh()
+		return
+	_open_group = gi
+	_overview = -1
+	var desks: Array = (GROUPS[gi] as Dictionary).get("desks", [])
+	_page = String(desks[0]) if desks.size() > 0 else _page
+	desk.clear()
+	_refresh()
+	_animate_open(gi)
+	_slide_sheet()
+
+func _find_group(id: String) -> int:
+	for gi in GROUPS.size():
+		if ((GROUPS[gi] as Dictionary).get("desks", []) as Array).has(id):
+			return gi
+	for m in _momentary:
+		if String((m as Dictionary).get("id", "")) == id:
+			return int((m as Dictionary).get("group", 2))
+	return -1
+
+# ────────────────────────────── momentary tabs ───────────────────────────────
+
+## THE MOMENTARY TAB SLOT (DECISIONS §4 THE OFFER): a gold page tab any desk
+## can summon into a group; it folds away when resolved. `group_name` is the
+## rail name ("THE COMPANY"); `wks` feeds the deadline clock chip.
+func summon_momentary(id: String, group_name: String, label: String, wks: int) -> void:
+	for m in _momentary:
+		if String((m as Dictionary).get("id", "")) == id:
+			return
+	var gi := 2
+	for i in GROUPS.size():
+		if String((GROUPS[i] as Dictionary).get("name", "")) == group_name:
+			gi = i
+	_momentary.append({"id": id, "group": gi, "label": label, "wks": wks})
+	if _content != null:
+		_refresh()
+
+func resolve_momentary(id: String) -> void:
+	for i in range(_momentary.size() - 1, -1, -1):
+		if String((_momentary[i] as Dictionary).get("id", "")) == id:
+			_momentary.remove_at(i)
+	if _page == id:
+		var desks: Array = (GROUPS[_open_group] as Dictionary).get("desks", [])
+		_page = String(desks[0]) if desks.size() > 0 else "this week"
+		desk.clear()
+	if _content != null:
+		_refresh()
+
+## The debug summon — the shell's first client until the board lane wires the
+## real buyout event: THE OFFER slides into THE COMPANY with a 3-week clock.
+func debug_summon_offer() -> void:
+	summon_momentary("the offer", "THE COMPANY", "THE OFFER", 3)
+
+# ─────────────────────────────── composition ─────────────────────────────────
+
 func _refresh() -> void:
-	# ONE list behind every mark on this sheet: a tab wears the bang of its
-	# loudest attention item, and an alarm (3) is coral where a note (1) is ink.
-	var worst := {}
-	for it in SimEngine.attention_items(state):
-		var dsk := String((it as Dictionary).get("desk", ""))
-		worst[dsk] = maxi(int(worst.get(dsk, 0)), int((it as Dictionary).get("severity", 1)))
-	for tab_name in _bangs:
-		var sev := int(worst.get(String(tab_name), 0))
-		var lbl := _bangs[tab_name] as Label
-		lbl.visible = sev > 0
-		lbl.add_theme_color_override("font_color", INK if sev == 1 else PEN)
+	# LEGACY SHIM: a harness that poked `_tab` gets the old tab's new desk,
+	# with the desk dict it seeded left exactly as found.
+	if _tab >= 0 and _tab < TABS.size():
+		var want := String(LEGACY_TO_DESK.get(TABS[_tab], "this week"))
+		if _tab != _legacy_applied or want != _page:
+			_overview = -1
+			_tour = -1
+			var gi := _find_group(want)
+			if gi >= 0:
+				_open_group = gi
+				_page = want
+		_legacy_applied = _tab
+	# the first open of an install: the tour
+	if tour_enabled and _tour < 0 and not FileAccess.file_exists(TOUR_FLAG) \
+			and _legacy_applied < 0:
+		_tour = 0
+		_tour_apply()
 	for c in _content.get_children():
 		c.queue_free()
-	(_sheet as _Clipboard).active_tab = _tab
-	_sheet.queue_redraw()
-	# THE DESK DISPATCH (docs/design/HOOKS.md): a tab a subsystem owns is drawn by
-	# its own desk file, handed this node. Vitals, the ledger and threats are the
-	# frame's own pages and stay here.
-	match _tab:
-		0: _tab_vitals()
-		1: DeskLedger.draw(self)
-		2: DeskBank.draw(self)
-		3: DeskCatalog.draw(self)
-		4: DeskCustomers.draw(self)
-		5: DeskProduct.draw(self)
-		6: DeskCrew.draw(self)
-		7: DeskCap.draw(self)
-		8: DeskStreet.draw(self)
-		9: _tab_threats()
+	for c2 in _rail.get_children():
+		c2.queue_free()
+	_frame.queue_redraw()
+	_build_rail()
+	# THE SHEET: tour > overview > the page's own desk
+	if _tour >= 0:
+		DeskTour.draw(self, _tour)
+		return
+	if _overview >= 0:
+		DeskOverview.draw(self, _overview)
+		return
+	_dispatch(_page)
 
-## THE PRESS ROUTER: a desk that prefers id-dispatch to closures registers its
-## controls against an id and answers in its own `handle()`. The tab rebuilds
-## afterwards, so a handler only ever has to write state.
+## THE DESK DISPATCH (docs/design/HOOKS.md): every page drawn by its own file.
+func _dispatch(id: String) -> void:
+	match id:
+		"offers": DeskOffers.draw(self)
+		"customers": DeskCustomersPage.draw(self)
+		"in motion": DeskInMotion.draw(self)
+		"growth": DeskGrowth.draw(self)
+		"spend": DeskSpend.draw(self)
+		"team": DeskTeam.draw(self)
+		"recruitment": DeskRecruit.draw(self)
+		"bills": DeskBills.draw(self)
+		"the bank": DeskBankPage.draw(self)
+		"the works": DeskWorks.draw(self)
+		"what we make": DeskMake.draw(self)
+		"cap table": DeskCapPage.draw(self)
+		"the raise": DeskRaise.draw(self)
+		"the street": DeskStreetPage.draw(self)
+		"threats": DeskThreatsPage.draw(self)
+		"pivot": DeskPivot.draw(self)
+		"this week": DeskThisWeek.draw(self)
+		"history": DeskHistory.draw(self)
+		"events": DeskEvents.draw(self)
+		"the offer": DeskOffer.draw(self)
+		_: DeskThisWeek.draw(self)
+
+## THE PRESS ROUTER: id-dispatch for desks that prefer it. Old names keep
+## working (the shipped desks' controls are embedded unchanged); new pages
+## answer under their own names.
 func desk_press(desk_name: String, id: String) -> void:
 	match desk_name:
+		"vitals": DeskVitals.handle(self, id)
+		"threats": DeskThreats.handle(self, id)
 		"catalog": DeskCatalog.handle(self, id)
 		"crew": DeskCrew.handle(self, id)
 		"street": DeskStreet.handle(self, id)
@@ -211,30 +382,360 @@ func desk_press(desk_name: String, id: String) -> void:
 		"product": DeskProduct.handle(self, id)
 		"factory": DeskFactory.handle(self, id)
 		"cap": DeskCap.handle(self, id)
+		"works": DeskWorks.handle(self, id)
+		"arrange": DeskArrange.handle(self, id)
+		"offer": DeskOffer.handle(self, id)
+		"overview": DeskOverview.handle(self, id)
 	_refresh()
 
-## Open the binder ON a desk. The pre-roll review's "go fix it" lands here with
-## the loudest attention row's own desk name, so the founder arrives looking at
-## the thing the world stopped them for.
-func focus_desk(desk_name: String) -> void:
-	var i := TABS.find(desk_name)
-	if i < 0:
+# ─────────────────────────────── the rail ────────────────────────────────────
+
+## The severity every desk wears, from the ONE list behind every mark: the
+## engine's attention registry, its old desk words aliased onto the new pages.
+func desk_severities() -> Dictionary:
+	var worst := {}
+	for it in SimEngine.attention_items(state):
+		var old := String((it as Dictionary).get("desk", ""))
+		var id := String(LEGACY_TO_DESK.get(old, old))
+		worst[id] = maxi(int(worst.get(id, 0)), int((it as Dictionary).get("severity", 1)))
+	if _tour_demo_red:
+		worst["threats"] = 3
+	return worst
+
+func _build_rail() -> void:
+	var sev := desk_severities()
+	var y := 24.0
+	for gi in GROUPS.size():
+		var g: Dictionary = GROUPS[gi]
+		var desks: Array = g.get("desks", [])
+		var moms: Array = []
+		for m in _momentary:
+			if int((m as Dictionary).get("group", -1)) == gi:
+				moms.append(m)
+		var open := gi == _open_group
+		var g_sev := 0
+		for d in desks:
+			g_sev = maxi(g_sev, int(sev.get(String(d), 0)))
+		var box_h := 48.0
+		if open:
+			box_h = 52.0 + float(desks.size() + moms.size()) * 40.0 + 12.0
+		var div := _Divider.new()
+		div.col = g.get("col", SAGE)
+		div.open_t = 1.0 if open else 0.0
+		div.sev = 0 if open else g_sev
+		div.font = _font
+		div.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		div.position = Vector2(RAIL_X, y)
+		div.set_deferred("size", Vector2(RAIL_BOX_W, box_h))
+		_rail.add_child(div)
+		# the header press: open the group, or open its overview
+		var head := Button.new()
+		head.flat = true
+		head.text = ""
+		head.position = Vector2(RAIL_X, y)
+		head.set_deferred("size", Vector2(RAIL_BOX_W, 48.0))
+		for stn in ["normal", "hover", "pressed", "focus"]:
+			head.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
+		var gidx := gi
+		head.pressed.connect(func() -> void: press_group(gidx))
+		_rail.add_child(head)
+		var name_l := Label.new()
+		name_l.text = String(g.get("name", ""))
+		name_l.add_theme_font_override("font", _font)
+		name_l.add_theme_font_size_override("font_size", 19)
+		name_l.add_theme_color_override("font_color", INK)
+		name_l.position = Vector2(RAIL_X + 12.0, y + 10.0)
+		name_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_rail.add_child(name_l)
+		# the live count/total on the header (closed carries it; open keeps it)
+		var cnt := Label.new()
+		cnt.text = _group_count(gi)
+		cnt.add_theme_font_override("font", _font)
+		cnt.add_theme_font_size_override("font_size", 15)
+		cnt.add_theme_color_override("font_color", Color(INK, 0.5))
+		cnt.position = Vector2(RAIL_X + RAIL_BOX_W - 66.0, y + 14.0)
+		cnt.custom_minimum_size = Vector2(58.0, 0)
+		cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		cnt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_rail.add_child(cnt)
+		# a closed divider with attention: the red bang chip climbs onto it
+		if not open and g_sev > 0:
+			var chip := _BangChip.new()
+			chip.pulse = g_sev >= 3
+			chip.font = _font_d
+			chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			chip.position = Vector2(RAIL_X + RAIL_BOX_W - 92.0, y + 12.0)
+			chip.set_deferred("size", Vector2(22.0, 22.0))
+			_rail.add_child(chip)
+		if open:
+			var py := y + 52.0
+			for d2 in desks:
+				var did := String(d2)
+				_page_tab(did, py, int(sev.get(did, 0)), false, "")
+				py += 40.0
+			for m2 in moms:
+				var md: Dictionary = m2
+				_page_tab(String(md.get("id", "")), py, 0, true,
+					"%d wks" % int(md.get("wks", 0)))
+				py += 40.0
+		y += box_h + 12.0
+
+## One page tab in the fan. Red-filled with the white bang when its desk has
+## attention; gold with the deadline clock when momentary.
+func _page_tab(id: String, y: float, severity: int, gold: bool, clock_text: String) -> void:
+	var tab := _PageTab.new()
+	tab.text_v = id
+	tab.active = id == _page and _overview < 0
+	tab.sev = severity
+	tab.gold = gold
+	tab.clock_text = clock_text
+	tab.font = _font
+	tab.font_d = _font_d
+	tab.position = Vector2(RAIL_X + 8.0, y)
+	tab.set_deferred("size", Vector2(RAIL_BOX_W - 16.0, 36.0))
+	var did := id
+	tab.pressed.connect(func() -> void: open_page(did))
+	_rail.add_child(tab)
+
+## The live figure a closed divider carries: money for the money groups, the
+## week for the log — the binder read without opening it.
+func _group_count(gi: int) -> String:
+	var pnl: Dictionary = state.get_meta("pnl", {})
+	match gi:
+		0:
+			var rev := int(pnl.get("revenue", 0))
+			return ("$%s/wk" % _fmt(rev)) if rev > 0 else "—"
+		1:
+			var burn := int(pnl.get("burn", 0))
+			return ("$%s/wk" % _fmt(burn)) if burn > 0 else "—"
+		2:
+			return "6"
+		3:
+			return "wk %d" % state.week
+	return ""
+
+## ~0.3s kraft→paper ease + the pages fanning with ~40ms stagger.
+func _animate_open(gi: int) -> void:
+	# EVERY TWEEN RIDES ITS OWN NODE: a refresh mid-animation frees the rail,
+	# and a tween created on the binder would then call into freed captures
+	# ("Lambda capture was freed" — caught by the first kit_shots run). A
+	# node-bound tween dies with its node instead.
+	var idx := 0
+	for c in _rail.get_children():
+		if c is _Divider:
+			if idx == gi:
+				var div := c as _Divider
+				div.open_t = 0.0
+				var tw := div.create_tween()
+				tw.tween_method(func(t: float) -> void:
+					div.open_t = t
+					div.queue_redraw(), 0.0, 1.0, 0.3).set_ease(Tween.EASE_OUT)
+			idx += 1
+	var fan := 0
+	for c2 in _rail.get_children():
+		if c2 is _PageTab:
+			var tabc := c2 as _PageTab
+			tabc.modulate.a = 0.0
+			var from_x := tabc.position.x - 14.0
+			var to_x := tabc.position.x
+			tabc.position.x = from_x
+			var tw2 := tabc.create_tween()
+			tw2.tween_interval(0.04 * float(fan))
+			tw2.tween_property(tabc, "modulate:a", 1.0, 0.12)
+			var tw3 := tabc.create_tween()
+			tw3.tween_interval(0.04 * float(fan))
+			tw3.tween_property(tabc, "position:x", to_x, 0.12) \
+				.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			fan += 1
+
+## The active sheet slides out from under its tab.
+func _slide_sheet() -> void:
+	if _content == null:
 		return
+	_content.position = CONTENT_POS + Vector2(-26.0, 0)
+	_content.modulate.a = 0.35
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(_content, "position", CONTENT_POS, 0.22) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_content, "modulate:a", 1.0, 0.18)
+
+# ────────────────────────── the binder, as an object ─────────────────────────
+
+## The portrait texture, or null — never awaited: the drawn mini-binder is the
+## instant placeholder and the permanent fallback.
+static func portrait_texture() -> Texture2D:
+	if not FileAccess.file_exists(PORTRAIT_PATH):
+		return null
+	var img := Image.new()
+	if img.load(ProjectSettings.globalize_path(PORTRAIT_PATH)) != OK:
+		return null
+	return ImageTexture.create_from_image(img)
+
+## THE DIEGETIC BINDER (DECISIONS § THE BINDER PORTRAIT, corrected): the
+## object that sits ON the room painting at the scene's bottom-left and
+## REPLACES the binder doorway button. Portrait when cached, the drawn
+## mini-binder (same silhouette) otherwise; the company name overlaid on the
+## label in the hand (omitted below LABEL_MIN_PX rather than rendered
+## illegibly); slight lift/tilt on hover; press opens the binder; and when
+## the company has attention items the red "!" sticker appears — the red
+## system reaching the scene, fed by the SAME attention list as the tabs.
+static func make_object(p_state: GameState, on_open: Callable,
+		obj_size := Vector2(210, 250)) -> Control:
+	var root := _BinderObject.new()
+	root.state = p_state
+	root.on_open = on_open
+	root.set_deferred("size", obj_size)
+	root.pivot_offset = obj_size * 0.5
+	var tex := portrait_texture()
+	if tex != null:
+		var tr := TextureRect.new()
+		tr.texture = tex
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.set_deferred("size", obj_size)
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(tr)
+	else:
+		var art := _CoverArt.new()
+		art.set_deferred("size", obj_size)
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(art)
+	# the name, overlaid — the image is generated with a BLANK label
+	var f: Font = load(HAND)
+	var company := String(p_state.company_name) if p_state != null else ""
+	if company == "":
+		company = "the company"
+	var sz := LABEL_FONT_SIZE
+	while sz > LABEL_MIN_PX and f.get_string_size(company,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x > obj_size.x * LABEL_RECT.size.x - 10.0:
+		sz -= 1
+	if sz >= LABEL_MIN_PX:
+		var lab := Label.new()
+		lab.text = company
+		lab.add_theme_font_override("font", f)
+		lab.add_theme_font_size_override("font_size", sz)
+		lab.add_theme_color_override("font_color", INK)
+		lab.position = Vector2(obj_size.x * LABEL_RECT.position.x,
+			obj_size.y * LABEL_RECT.position.y)
+		lab.custom_minimum_size = Vector2(obj_size.x * LABEL_RECT.size.x,
+			obj_size.y * LABEL_RECT.size.y)
+		lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(lab)
+	# the red "!" sticker — hidden until the attention feed says otherwise
+	var sticker := _BangChip.new()
+	sticker.font = load(DISPLAY)
+	sticker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sticker.position = Vector2(obj_size.x - 40.0, 8.0)
+	sticker.set_deferred("size", Vector2(30.0, 30.0))
+	sticker.visible = false
+	root.add_child(sticker)
+	root.sticker = sticker
+	# the press — the whole object is the doorway
+	var press := Button.new()
+	press.flat = true
+	press.text = ""
+	press.set_anchors_preset(Control.PRESET_FULL_RECT)
+	for stn in ["normal", "hover", "pressed", "focus"]:
+		press.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
+	press.pressed.connect(func() -> void:
+		if on_open.is_valid():
+			on_open.call())
+	press.mouse_entered.connect(func() -> void: root.hover(true))
+	press.mouse_exited.connect(func() -> void: root.hover(false))
+	root.add_child(press)
+	root.refresh_attention()
+	return root
+
+## The object's own body: the hover lift, and the 1s attention poll that keeps
+## the sticker honest without asking the room screen to wire anything.
+class _BinderObject:
+	extends Control
+	var state: GameState
+	var on_open: Callable
+	var sticker: Control = null
+	var _poll := 0.0
+	func hover(on: bool) -> void:
+		var tw := create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(self, "scale", Vector2(1.05, 1.05) if on else Vector2.ONE, 0.14) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(self, "rotation", -0.02 if on else 0.0, 0.14)
+	func _process(dt: float) -> void:
+		_poll += dt
+		if _poll < 1.0:
+			return
+		_poll = 0.0
+		refresh_attention()
+	func refresh_attention() -> void:
+		if sticker == null or state == null:
+			return
+		var worst := 0
+		for it in SimEngine.attention_items(state):
+			worst = maxi(worst, int((it as Dictionary).get("severity", 1)))
+		sticker.visible = worst > 0
+		sticker.set("pulse", worst >= 3)
+
+# ─────────────────────────────── the tour ────────────────────────────────────
+
+## THE FIRST-OPEN TOUR (DECISIONS #6): six steps — the four groups fanned with
+## one-liners, the red demo, the handover. Click advances, Esc skips, once per
+## install; the how-to screen can replay it by clearing the flag.
+func tour_advance() -> void:
+	_tour += 1
+	if _tour > 5:
+		_tour_finish()
+		return
+	_tour_apply()
+	_refresh()
+
+func _tour_apply() -> void:
+	_tour_demo_red = _tour == 4
+	if _tour >= 0 and _tour <= 3:
+		_open_group = _tour
+		var desks: Array = (GROUPS[_tour] as Dictionary).get("desks", [])
+		_page = String(desks[0]) if desks.size() > 0 else _page
+	elif _tour == 4:
+		_open_group = 2
+		_page = "threats"
+	else:
+		_open_group = 3
+		_page = "this week"
+
+func _tour_finish() -> void:
+	_tour = -1
+	_tour_demo_red = false
+	var f := FileAccess.open(TOUR_FLAG, FileAccess.WRITE)
+	if f != null:
+		f.store_string("1")
+		f.close()
+	_open_group = 3
+	_page = "this week"
 	desk.clear()
-	_tab = i
-	if _content != null:
-		_refresh()
+	_refresh()
+
+static func tour_seen() -> bool:
+	return FileAccess.file_exists(TOUR_FLAG)
+
+## The how-to screen's replay: clear the mark; the next binder open tours.
+static func reset_tour() -> void:
+	if FileAccess.file_exists(TOUR_FLAG):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(TOUR_FLAG))
 
 # ───────────────────────── what a desk may touch ─────────────────────────────
-## The public half of this node: the drawing hand every desk file and the shared
-## component kit draw through. The private twins below stay for this file's own
-## pages — one implementation, two names, no second way to draw a label.
+## The public half of this node: the drawing hand every desk file and the
+## shared component kit draw through — unchanged, so every shipped desk lands.
 
 func pane() -> Control:
 	return _content
 
 func font() -> Font:
 	return _font
+
+func display_font() -> Font:
+	return _font_d
 
 func label(text: String, pos: Vector2, sz: int = 30, col: Color = INK, w: float = 1100.0) -> Label:
 	return _label(text, pos, sz, col, w)
@@ -270,9 +771,17 @@ func debt_jar(fill: float, pos: Vector2, size_v: Vector2) -> void:
 	jar.set_deferred("size", size_v)
 	_content.add_child(jar)
 
+## THE FACE: a wobbled coral clock with two ink hands — the leading mark on any
+## deadline line (§2.10).
+func clock(pos: Vector2, side: float = 30.0) -> void:
+	var face := _Clock.new()
+	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	face.position = pos
+	face.set_deferred("size", Vector2(side, side))
+	_content.add_child(face)
+
 ## THE WHEEL: slices at 0.75α under a 4px ink rim, names hung round the arc's
-## middle. `slices` = [{pct, col, label}]. Radial means share-of-whole, nothing
-## else — a percentage that is not a slice of something is a word on a line.
+## middle. `slices` = [{pct, col, label}].
 func pie(slices: Array, pos: Vector2, side: float) -> void:
 	var p := _Pie.new()
 	p.slices = slices
@@ -331,47 +840,6 @@ func _fmt(n: int) -> String:
 		s = s.substr(0, s.length() - 3)
 	return ("-" if n < 0 else "") + s + out
 
-# ── tab 0: vitals ────────────────────────────────────────────────────────────
-func _tab_vitals() -> void:
-	_icon("cash", Vector2(10, 6))
-	_label("$%s in the bank" % _fmt(state.cash), Vector2(100, 10), 46)
-	_label(SimEngine.health_band(state), Vector2(100, 66), 30,
-		PEN if SimEngine.runway_weeks(state) <= 10 else SAGE)
-	_label("cash, drawn weekly:", Vector2(10, 140), 24, Color(INK, 0.6))
-	_spark(_series("cash"), Vector2(10, 172), Vector2(1120, 190), BLUE)
-	var last: Dictionary = state.metric_history[-1] if state.metric_history.size() > 0 else {}
-	_label("last week: $%s in · $%s out" % [_fmt(int(last.get("revenue", 0))), _fmt(int(last.get("burn", 0)))],
-		Vector2(10, 386), 30)
-	var payroll := 0
-	for e in state.employees:
-		payroll += int(e.get("salary", 0))
-	# the marketing number is the CHANNEL SUM now: the single legacy field goes
-	# stale the moment the ledger's four lanes carry the spend (04 §6.2)
-	var mk_pnl: Dictionary = state.get_meta("pnl", {})
-	var mk_burn := int(mk_pnl.get("marketing", int(SimFunnel.spend_total(state))))
-	# ONE HONEST DEBT FIGURE across shark, bank and venture notes (06 §9): the
-	# single `loan_principal` field stopped being the whole story the week the
-	# structured notes landed, and a founder must never read a debt-free line
-	# with a bank note on the books.
-	var debt_owed := SimBank.debt_total(state)
-	var note_count := state.loans.size() + (1 if state.loan_principal > 0 else 0)
-	_label("burn: rent $%s · payroll $%s · marketing $%s%s" % [
-		_fmt(int(GameState.ERA_RENT.get(state.era, 150))), _fmt(payroll),
-		_fmt(mk_burn),
-		("  ·  DEBT $%s across %d notes (worst %d%%/wk)" % [_fmt(debt_owed), note_count,
-			int(round(SimBank.worst_rate(state) * 100.0))]) if debt_owed > 0 else ""],
-		Vector2(10, 432), 27, Color(INK, 0.8))
-	_label("valuation, if anyone asked: $%s" % _fmt(SimEngine.valuation(state)), Vector2(10, 486), 30)
-	# THE PRICE LINE OWNS 532–566 AT 27px, so the hype caption cannot start at 556:
-	# it was written over the line above it and its own spark's wash was drawn over
-	# it in turn. 574 clears both, and the spark still lands inside the 760 pane.
-	_label("price ×%.2f  ·  the market is %s" % [state.price_mult,
-		"warm" if state.market_trend > 1.05 else ("cold" if state.market_trend < 0.95 else "even")],
-		Vector2(10, 532), 27, Color(INK, 0.8))
-	# the hype chart moved here when the roadmap took the product sheet (07)
-	_label("hype:", Vector2(10, 574), 24, Color(INK, 0.6))
-	_spark(_series("hype"), Vector2(10, 606), Vector2(1120, 120), YELL)
-
 func _ink_btn(btn: Button) -> void:
 	btn.flat = true
 	btn.add_theme_font_override("font", _font)
@@ -381,116 +849,278 @@ func _ink_btn(btn: Button) -> void:
 	for stn in ["normal", "hover", "pressed", "focus"]:
 		btn.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
 
-## Wrapped text is MEASURED, never assumed one line — fixed steps stacked the
-## street on itself the first week a thesis wrapped (owner photo).
+## Wrapped text is MEASURED, never assumed one line.
 func _wrap_h(text: String, sz: int, w: float) -> float:
 	return _font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, w, sz).y
 
-# ── tab 9: threats & promises ────────────────────────────────────────────────
-## The drawn clock's footprint — the space the typed ⏰ used to take at 30px type.
-const CLOCK_SIDE := 30.0
-
-func _tab_threats() -> void:
-	_label("threats & promises", Vector2(10, 6), 40)
-	var y := 80.0
-	# WHAT NEEDS A HAND, in one place (docs/design/00-spine.md §4/§11): every
-	# attention item at warn or above, loudest first. This is the same list the
-	# tab bangs, the garage badge and the pre-roll review read — so a desk that
-	# is shouting can never be shouting only somewhere the player is not looking.
-	var wants := SimEngine.preroll_items(state)
-	if not wants.is_empty():
-		var shown := 0
-		for it in wants:
-			if shown >= 12:
-				_label("+%d more — the desks have the details" % (wants.size() - shown),
-					Vector2(10, y), 26, Color(INK, 0.6))
-				y += 44.0
-				break
-			var itd: Dictionary = it
-			_label("! %s  ·  %s" % [String(itd.get("label", "")), String(itd.get("desk", ""))],
-				Vector2(10, y), 28, PEN if int(itd.get("severity", 2)) >= 3 else Color(INK, 0.85))
-			y += 44.0
-			shown += 1
-		y += 12.0
-	if state.clocks.is_empty() and state.statuses.is_empty() and state.commitments.is_empty():
-		_label("nothing ticking. that never lasts.", Vector2(10, y), 30, Color(INK, 0.6))
-	# THE WORD IS THE MARK. The hand carries no clock, no triangles and no repeat
-	# arrow (U+23F0/25B2/25BC/21BB are all absent from Patrick Hand), so a typed
-	# one was borrowed from whatever face the OS handed over — the clock arrived
-	# as a full-colour emoji on a cream sheet. Each row now leads with the word
-	# that says what kind of row it is, which is also what §3.3 asks for: read the
-	# page in grey and every state is still there.
-	# THE CLOCK IS DRAWN, NOT TYPED — the instrument §2.10 names, and the twin
-	# Unity has always drawn: a wobbled coral face with two ink hands. The typed
-	# ⏰ this line used to carry is absent from the hand, so it came back from the
-	# OS as a full-colour emoji on a cream sheet.
-	for c in state.clocks:
-		var cd: Dictionary = c
-		var face := _Clock.new()
-		face.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		face.position = Vector2(10, y + 3.0)
-		face.set_deferred("size", Vector2(CLOCK_SIDE, CLOCK_SIDE))
-		_content.add_child(face)
-		_label("in %d wks: %s" % [int(cd.get("weeks_left", 0)), String(cd.get("consequence", ""))],
-			Vector2(10.0 + CLOCK_SIDE + 8.0, y), 30, PEN)
-		y += 52.0
-	for s in state.statuses:
-		var sd: Dictionary = s
-		var kind := String(SimEngine.STATUS.get(String(sd.get("name", "")), {}).get("kind", "condition"))
-		_label("%s %s — %d wks left" % ["helping:" if kind == "buff" else "hurting:",
-			String(sd.get("name", "")).replace("_", " "), int(sd.get("weeks_left", 0))],
-			Vector2(10, y), 30, SAGE if kind == "buff" else PEN)
-		y += 52.0
-	for cm in state.commitments:
-		var cmd: Dictionary = cm
-		_label("standing: %s — $%d/wk for %d more wks" % [String(cmd.get("name", "")),
-			int(cmd.get("cash_wk", 0)), int(cmd.get("weeks_left", 0))], Vector2(10, y), 30, BLUE)
-		y += 52.0
-	# THE PAGE STATES ITS OWN LAW, like every desk does (§2.7). Reading order ends
-	# on the lesson: this sheet is the overflow, and the thing it has to teach is
-	# that these rows are ranked and that the desks hold the controls.
-	_label("the rules of this page: everything the company is shouting about, loudest first · "
-		+ "a CLOCK fires on its week · a CONDITION expires on its own · a STANDING cost bills "
-		+ "until it runs out · nothing is fixed here, and every row names the desk that owns it",
-		Vector2(10, 734), 21, Color(INK, 0.5), 1100.0)
-
 # ─────────────────────────────── drawn pieces ───────────────────────────────
-class _Clipboard:
+
+## THE BINDER BODY (mockups/00 A): kraft cover with the rotated sticker, the
+## kraft2 ringbar with drawn concentric rings, the paper stack with its punched
+## margin, and the sheet's left rule. The rail and pages are child controls.
+class _FrameBoard:
 	extends Control
-	var active_tab := 0
 	func _draw() -> void:
 		var w := size.x
 		var h := size.y
-		draw_rect(Rect2(8, 12, w, h), Color(0, 0, 0, 0.25))
-		draw_rect(Rect2(0, 0, w, h), Binder.CREAM)
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 7
+		# the thrown shadow
+		draw_rect(Rect2(10, 14, w, h), Color(0, 0, 0, 0.25))
+		# the paper stack (everything right of the ringbar)
+		draw_rect(Rect2(Binder.STACK_X, 0, w - Binder.STACK_X, h), Binder.CREAM)
+		# the kraft cover
+		draw_rect(Rect2(0, 0, Binder.COVER_W, h), Binder.KRAFT)
+		for i in 24:
+			var sx := float(i) * 9.0 - 20.0
+			draw_line(Vector2(sx, 0), Vector2(sx + h * 0.12, h), Color(Binder.INK, 0.05), 3.0)
+		# the ringbar
+		draw_rect(Rect2(Binder.COVER_W, 0, Binder.RING_W, h), Binder.KRAFT2)
+		for r in 3:
+			var cy := h * (0.25 + 0.25 * float(r))
+			var cx := Binder.COVER_W + Binder.RING_W * 0.5
+			var ring := PackedVector2Array()
+			for k in 25:
+				var t := TAU * float(k) / 24.0
+				ring.append(Vector2(cx + cos(t) * 17.0, cy + sin(t) * 17.0)
+					+ Vector2(rng.randf_range(-0.6, 0.6), rng.randf_range(-0.6, 0.6)))
+			draw_polyline(ring, Binder.INK, 3.4, true)
+			var ring2 := PackedVector2Array()
+			for k2 in 21:
+				var t2 := TAU * float(k2) / 20.0
+				ring2.append(Vector2(cx + cos(t2) * 11.0, cy + sin(t2) * 11.0))
+			draw_polyline(ring2, Color(Binder.INK, 0.45), 2.6, true)
+		# the wobbled outer edge round the whole object
 		var pts := PackedVector2Array()
 		var corners := [Vector2(3, 3), Vector2(w - 3, 3), Vector2(w - 3, h - 3), Vector2(3, h - 3)]
+		for i2 in 4:
+			var a: Vector2 = corners[i2]
+			var b: Vector2 = corners[(i2 + 1) % 4]
+			for k3 in 20:
+				pts.append(a.lerp(b, float(k3) / 20.0)
+					+ Vector2(rng.randf_range(-2, 2), rng.randf_range(-2, 2)))
+		pts.append(pts[0])
+		draw_polyline(pts, Binder.INK, 4.0, true)
+		# the cover's rotated sticker
+		draw_set_transform(Vector2(Binder.COVER_W * 0.5, 120.0), -PI / 2.0, Vector2.ONE)
+		draw_rect(Rect2(-64, -14, 128, 28), Binder.PAPER2)
+		draw_rect(Rect2(-64, -14, 128, 28), Binder.INK, false, 2.2)
+		var f: Font = load(Binder.HAND)
+		draw_string(f, Vector2(-56, 7), "the binder", HORIZONTAL_ALIGNMENT_LEFT, 116, 17,
+			Binder.INK)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		# the punched margin rule
+		var dy := 12.0
+		while dy < h - 12.0:
+			draw_line(Vector2(Binder.STACK_X + 7.0, dy), Vector2(Binder.STACK_X + 7.0,
+				minf(dy + 9.0, h - 12.0)), Color(Binder.INK, 0.25), 2.0)
+			dy += 16.0
+		# the sheet's left rule
+		draw_line(Vector2(Binder.SHEET_RULE_X, 14.0), Vector2(Binder.SHEET_RULE_X, h - 14.0),
+			Color(Binder.INK, 0.25), 2.4)
+
+## A divider group on the rail: closed = kraft card with the stack shadow;
+## open = paper with its header rule. open_t eases kraft→paper in ~0.3s. The
+## colored index tab pokes LEFT of the box; a red group paints it ALERT.
+class _Divider:
+	extends Control
+	var col := Binder.SAGE
+	var open_t := 0.0
+	var sev := 0
+	var font: Font
+	func _process(_dt: float) -> void:
+		if sev >= 3:
+			queue_redraw()   # the 12fps pulse below quantizes the clock itself
+	func _draw() -> void:
+		var w := size.x
+		var h := size.y
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 11 + int(position.y)
+		# closed: the kraft stack shadow (two offset cards under this one)
+		if open_t < 0.5:
+			draw_rect(Rect2(2, h - 2.0, w - 4.0, 4.0), Binder.KRAFT2)
+			draw_rect(Rect2(4, h + 1.0, w - 8.0, 4.0), Color(Binder.INK, 0.35))
+		var body := Binder.KRAFT.lerp(Binder.CREAM, clampf(open_t, 0.0, 1.0))
+		draw_rect(Rect2(0, 0, w, h), body)
+		# the index tab, poking left — ALERT red climbs onto it when the group
+		# carries attention (sev3 pulses at ~12fps, sev2 holds still)
+		var tab_col := col
+		if sev > 0:
+			tab_col = Binder.ALERT
+			if sev >= 3:
+				var t := floorf(Time.get_ticks_msec() / 1000.0 * 12.0) / 12.0
+				tab_col = Binder.ALERT if fmod(t, 0.33) > 0.13 else Color(Binder.ALERT, 0.45)
+		draw_rect(Rect2(-16, 4, 15, h - 8.0), tab_col)
+		draw_rect(Rect2(-16, 4, 15, h - 8.0), Binder.INK, false, 2.6)
+		# the box's own wobbled edge
+		var pts := PackedVector2Array()
+		var corners := [Vector2(1, 1), Vector2(w - 1, 1), Vector2(w - 1, h - 1), Vector2(1, h - 1)]
 		for i in 4:
 			var a: Vector2 = corners[i]
 			var b: Vector2 = corners[(i + 1) % 4]
-			for k in 18:
-				pts.append(a.lerp(b, float(k) / 18.0) + Vector2(rng.randf_range(-2, 2), rng.randf_range(-2, 2)))
+			for k in 10:
+				pts.append(a.lerp(b, float(k) / 10.0)
+					+ Vector2(rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0)))
+		pts.append(pts[0])
+		draw_polyline(pts, Binder.INK, 2.6, true)
+		# the open group's header rule, fading in with the paper
+		if open_t > 0.6:
+			draw_line(Vector2(8, 46), Vector2(w - 8, 46),
+				Color(Binder.INK, 0.25 * open_t), 2.0)
+
+## One page tab in the fan: a quiet row normally; the active page in a paper2
+## box; a desk with attention RED-FILLED with the white bang; a momentary desk
+## GOLD in the display hand with the deadline clock chip, leaning slightly.
+class _PageTab:
+	extends Button
+	var text_v := ""
+	var active := false
+	var sev := 0
+	var gold := false
+	var clock_text := ""
+	var font: Font
+	var font_d: Font
+	func _init() -> void:
+		flat = true
+		text = ""
+		for stn in ["normal", "hover", "pressed", "focus"]:
+			add_theme_stylebox_override(stn, StyleBoxEmpty.new())
+	func _process(_dt: float) -> void:
+		if sev >= 3:
+			queue_redraw()
+	func _draw() -> void:
+		var w := size.x
+		var h := size.y
+		if gold:
+			draw_set_transform(Vector2(w * 0.5, h * 0.5), -0.03, Vector2.ONE)
+			draw_rect(Rect2(-w * 0.5 + 1, -h * 0.5 + 1, w - 2, h - 2), Binder.YELL)
+			draw_rect(Rect2(-w * 0.5 + 1, -h * 0.5 + 1, w - 2, h - 2), Binder.INK, false, 2.4)
+			if font_d != null:
+				draw_string(font_d, Vector2(-w * 0.5 + 8, 7), text_v,
+					HORIZONTAL_ALIGNMENT_LEFT, w - 60.0, 16, Binder.INK)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			if clock_text != "" and font != null:
+				draw_rect(Rect2(w - 52, 6, 48, 22), Binder.ALERT)
+				draw_rect(Rect2(w - 52, 6, 48, 22), Binder.INK, false, 2.0)
+				draw_string(font, Vector2(w - 47, 23), clock_text,
+					HORIZONTAL_ALIGNMENT_LEFT, 44, 14, Color.WHITE)
+			return
+		var red := sev > 0
+		var fill := Binder.ALERT
+		if red and sev >= 3:
+			var t := floorf(Time.get_ticks_msec() / 1000.0 * 12.0) / 12.0
+			fill = Binder.ALERT if fmod(t, 0.33) > 0.13 else Color(Binder.ALERT, 0.5)
+		if red:
+			draw_rect(Rect2(1, 1, w - 2, h - 2), fill)
+			draw_rect(Rect2(1, 1, w - 2, h - 2), Binder.INK, false, 2.4)
+		elif active:
+			draw_rect(Rect2(2.0, 2.0, w - 2.0, h - 2.0), Color(0, 0, 0, 0.18))
+			draw_rect(Rect2(0, 0, w - 2.0, h - 2.0), Binder.PAPER2)
+			draw_rect(Rect2(0, 0, w - 2.0, h - 2.0), Binder.INK, false, 2.4)
+		if font != null:
+			var col := Color.WHITE if red else Binder.INK
+			draw_string(font, Vector2(9, h - 11), text_v, HORIZONTAL_ALIGNMENT_LEFT,
+				w - (44.0 if red else 18.0), 19, col)
+			if red:
+				draw_string(font, Vector2(w - 24, h - 10), "!", HORIZONTAL_ALIGNMENT_LEFT,
+					20, 22, Color.WHITE)
+
+## The red bang chip a CLOSED divider wears when a page inside it needs the
+## founder: a drawn alert circle with the white bang (mockup 03's .abang).
+class _BangChip:
+	extends Control
+	var pulse := false
+	var font: Font
+	func _process(_dt: float) -> void:
+		if pulse:
+			queue_redraw()
+	func _draw() -> void:
+		var c := size * 0.5
+		var col := Binder.ALERT
+		if pulse:
+			var t := floorf(Time.get_ticks_msec() / 1000.0 * 12.0) / 12.0
+			col = Binder.ALERT if fmod(t, 0.33) > 0.13 else Color(Binder.ALERT, 0.45)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 13
+		var pts := PackedVector2Array()
+		for i in 19:
+			var t2 := TAU * float(i) / 18.0
+			pts.append(c + Vector2(cos(t2), sin(t2)) * (size.x * 0.5 - 1.0
+				+ rng.randf_range(-0.6, 0.6)))
+		draw_colored_polygon(pts, col)
+		pts.append(pts[0])
+		draw_polyline(pts, Binder.INK, 2.2, true)
+		if font != null:
+			draw_string(font, Vector2(c.x - 4.0, c.y + 7.0), "!",
+				HORIZONTAL_ALIGNMENT_LEFT, 12, 17, Color.WHITE)
+
+## THE DRAWN COVER — the portrait's instant placeholder and permanent
+## fallback: a chunky kraft binder, four index tabs in the group colors,
+## papers poking out untidily, and the taped label the name lands on.
+class _CoverArt:
+	extends Control
+	func _draw() -> void:
+		var w := size.x
+		var h := size.y
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 29
+		# untidy papers poking out of the top
+		for p in 4:
+			var px := w * 0.18 + float(p) * w * 0.16 + rng.randf_range(-8.0, 8.0)
+			var tilt := rng.randf_range(-0.12, 0.12)
+			draw_set_transform(Vector2(px, h * 0.06), tilt, Vector2.ONE)
+			draw_rect(Rect2(0, -18, w * 0.16, 36), Binder.PAPER2)
+			draw_rect(Rect2(0, -18, w * 0.16, 36), Binder.INK, false, 2.2)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		# the body
+		var body := Rect2(w * 0.06, h * 0.07, w * 0.82, h * 0.86)
+		draw_rect(Rect2(body.position + Vector2(9, 12), body.size), Color(0, 0, 0, 0.22))
+		draw_rect(body, Binder.KRAFT)
+		for s in 30:
+			var sx := body.position.x + float(s) * 14.0 - 30.0
+			draw_line(Vector2(sx, body.position.y), Vector2(sx + body.size.y * 0.1,
+				body.end.y), Color(Binder.INK, 0.05), 3.0)
+		# the spine band + rings
+		draw_rect(Rect2(body.position.x, body.position.y, w * 0.11, body.size.y), Binder.KRAFT2)
+		for r in 3:
+			var cy := body.position.y + body.size.y * (0.22 + 0.28 * float(r))
+			var cx := body.position.x + w * 0.055
+			var ring := PackedVector2Array()
+			for k in 23:
+				var t := TAU * float(k) / 22.0
+				ring.append(Vector2(cx + cos(t) * 15.0, cy + sin(t) * 15.0)
+					+ Vector2(rng.randf_range(-0.7, 0.7), rng.randf_range(-0.7, 0.7)))
+			draw_polyline(ring, Binder.INK, 3.2, true)
+		# four thick index tabs, right edge, the group colors
+		var cols := [Binder.SAGE, Binder.PEN, Binder.BLUE, Binder.YELL]
+		for i in 4:
+			var ty := body.position.y + body.size.y * (0.14 + 0.2 * float(i))
+			draw_rect(Rect2(body.end.x - 4, ty, w * 0.09, h * 0.09), cols[i])
+			draw_rect(Rect2(body.end.x - 4, ty, w * 0.09, h * 0.09), Binder.INK, false, 2.6)
+		# the wobbled edge round the body
+		var pts := PackedVector2Array()
+		var corners := [body.position, Vector2(body.end.x, body.position.y), body.end,
+			Vector2(body.position.x, body.end.y)]
+		for i2 in 4:
+			var a: Vector2 = corners[i2]
+			var b: Vector2 = corners[(i2 + 1) % 4]
+			for k2 in 16:
+				pts.append(a.lerp(b, float(k2) / 16.0)
+					+ Vector2(rng.randf_range(-2.0, 2.0), rng.randf_range(-2.0, 2.0)))
 		pts.append(pts[0])
 		draw_polyline(pts, Binder.INK, 4.0, true)
-		# the clip at the top
-		draw_rect(Rect2(w * 0.5 - 70, -18, 140, 34), Binder.YELL)
-		draw_rect(Rect2(w * 0.5 - 70, -18, 140, 34), Binder.INK, false, 4.0)
-		# the pen ring around the active tab
-		# TEN tabs at 120px pitch since the bank arrived. THE RING READS THE
-		# BUTTON ROW'S OWN CONSTANTS — it circled the gap, then thin air, then
-		# (this wave, caught by the tab shot) the tab one along, every time a
-		# pitch was re-typed here instead of read from up there.
-		var tx := Binder.TAB_X0 + float(active_tab) * Binder.TAB_PITCH + Binder.TAB_W * 0.5
-		var ring := PackedVector2Array()
-		for i in 33:
-			var t := TAU * float(i) / 32.0
-			ring.append(Vector2(tx + cos(t) * 62.0, 76.0 + sin(t) * 26.0)
-				+ Vector2(rng.randf_range(-2, 2), rng.randf_range(-2, 2)))
-		draw_polyline(ring, Binder.PEN, 3.5, true)
-		# a rule under the tab row
-		draw_line(Vector2(30, 108), Vector2(w - 30, 108), Color(Binder.INK, 0.25), 2.0)
+		# the taped label — BLANK: the caller overlays the name (LABEL_RECT)
+		var lab := Rect2(w * Binder.LABEL_RECT.position.x, h * Binder.LABEL_RECT.position.y,
+			w * Binder.LABEL_RECT.size.x, h * Binder.LABEL_RECT.size.y)
+		draw_rect(Rect2(lab.position + Vector2(3, 4), lab.size), Color(0, 0, 0, 0.18))
+		draw_rect(lab, Binder.PAPER2)
+		draw_rect(lab, Binder.INK, false, 2.6)
+		# the tape corners
+		for tc in [Vector2(lab.position.x - 12, lab.position.y - 8),
+				Vector2(lab.end.x - 24, lab.end.y - 10)]:
+			draw_set_transform(tc, 0.6, Vector2.ONE)
+			draw_rect(Rect2(0, 0, 44, 18), Color(1, 1, 1, 0.45))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 class _Spark:
 	extends Control
@@ -530,9 +1160,8 @@ class _Spark:
 		return "%.0f" % v
 
 ## THE CLOCK (10-interface-language §2.10): a wobbled coral face and two ink
-## hands — the minute hand straight up, the hour hand short and out to four. The
-## silhouette that reads as a clock at 30px and at 14. Transcribed from the twin
-## in DrawnChart.Clock so the two engines draw the same face.
+## hands — transcribed from the twin in DrawnChart.Clock so the two engines
+## draw the same face.
 class _Clock:
 	extends Control
 	func _draw() -> void:
@@ -586,12 +1215,9 @@ class _Pie:
 			draw_colored_polygon(pts, Color(d.get("col", Binder.SAGE), 0.75))
 			a0 = a1
 		draw_arc(c, r, 0, TAU, 64, Binder.INK, 4.0, true)
-		# LABELS HUNG ROUND THE WHEEL, never over it. The fixed −46px nudge used to
-		# centre every word on the arc's own point: right at the poles, wrong at
-		# both sides, where a name was written back INTO the pie (the founder's own
-		# slice was the one it always ate). The word hangs OUTWARD now — it starts
-		# at the point when the slice faces right, ends at it when the slice faces
-		# left, and centres only near top and bottom.
+		# LABELS HUNG ROUND THE WHEEL, never over it — the word hangs OUTWARD:
+		# it starts at the point when the slice faces right, ends at it when the
+		# slice faces left, and centres only near top and bottom.
 		a0 = -PI / 2.0
 		for s2 in slices:
 			var d2: Dictionary = s2
@@ -603,11 +1229,7 @@ class _Pie:
 			var p := c + dir * (r + 30.0)
 			var txt := String(d2.get("label", ""))
 			var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 24).x
-			# 0 = the word starts here (slice faces right) … 1 = it ends here
 			var anchor := (1.0 - dir.x) * 0.5
-			# …and it stays ON THE SHEET. A slice pointing hard left hangs its whole
-			# name off the left edge of the pane, which is how "option pool 10%"
-			# lost its first four letters to the margin.
 			var lx: float = clampf(p.x - tw * anchor, -position.x,
 				Binder.PANE_W - position.x - tw)
 			draw_string(font, Vector2(lx, p.y + 8.0), txt,

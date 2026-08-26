@@ -88,6 +88,25 @@ func _ready() -> void:
 	_btn.pressed.connect(_advance)
 	add_child(_btn)
 
+	# THE BINDER TOUR REPLAY (DECISIONS: the six-flip tour is replayable from
+	# here): one quiet word — the next binder open runs the tour again.
+	var replay := Button.new()
+	replay.flat = true
+	replay.text = "replay the binder tour"
+	replay.add_theme_font_override("font", _font)
+	replay.add_theme_font_size_override("font_size", 24)
+	replay.add_theme_color_override("font_color", Color("F2EAD3", 0.75))
+	replay.add_theme_color_override("font_hover_color", PEN)
+	for stn2 in ["normal", "hover", "pressed", "focus"]:
+		replay.add_theme_stylebox_override(stn2, StyleBoxEmpty.new())
+	replay.position = Vector2(48, 962)
+	replay.size = Vector2(320, 44)
+	replay.pressed.connect(func() -> void:
+		Binder.reset_tour()
+		replay.text = "the tour will greet you at the binder"
+		replay.disabled = true)
+	add_child(replay)
+
 	# the whole page is a click target too — nobody hunts for the button
 	gui_input.connect(func(ev: InputEvent) -> void:
 		if ev is InputEventMouseButton and ev.pressed \

@@ -139,6 +139,7 @@ func _init() -> void:
 	assert(s5.burn_per_week() >= 600 + 500, "coworking rent must apply")
 	s5.set_flag("launched")
 	s5.traction = 30
+	s5.cash = 6 * int(GameState.ERA_RENT["office"])   # the cushion law bites here too
 	up = s5.advance_era_if_ready()
 	assert(up["changed"] and s5.era == "office", "coworking→office gate")
 	s5.set_flag("pmf")

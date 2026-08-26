@@ -9,89 +9,96 @@ using Runway.Core;
 namespace Runway.Game
 {
     /// <summary>
-    /// THE OPERATIONS BINDER — binder.gd, ported. The founder's dashboard, in the
-    /// game's own hand. Never a SaaS panel: a clipboard sheet over the dimmed room,
-    /// ten pen-labelled tabs, doodle icons, charts drawn as wobbly polylines.
+    /// THE RING BINDER — binder.gd, ported (DECISIONS § "Binder rework — owner
+    /// picks", mockups/00 pick A). A kraft cover, drawn rings, a side rail of
+    /// divider groups with colored index tabs poking left, and the open group
+    /// fanning its pages.
     ///
-    /// FOG OF WAR: precision follows analytics_level (0-3). At 0 the customer page says
-    /// "traffic seems decent"; invest in analytics — a writable move — and the pages
-    /// sharpen. The dashboard you EARN is a mechanic, not a view.
+    /// THE FRAME OWNS: the binder body, the rail, the alarm-red climb, the
+    /// group overviews, the first-open tour, the momentary tab slot and the
+    /// diegetic binder object. IT OWNS NO PAGE: every desk lives in its own
+    /// file under Game/Desks/ and is handed this component.
     ///
-    /// THE SHEET IS THE FRAME, THE DESKS ARE THE PAGES. Vitals, the ledger and threats
-    /// are drawn here; every other tab body lives in its own file under Game/Desks/ and
-    /// is handed this component (docs/design/HOOKS.md), so a subsystem grows its page
-    /// without ever opening this file. Desks draw through the public hand below (L,
-    /// InkWord, Spark, Content, State) and share the drawn components in DeskKit.cs.
+    /// ESC CONTRACT: Esc pops desk states (armed → mode), then the overview,
+    /// then closes the binder; TAB/B always close. The tour eats Esc as skip.
     /// </summary>
     public sealed class BinderScreen : MonoBehaviour
     {
-        /// TEN TABS AT PITCH 120 (00-spine section 10, DECISIONS #1): the sheet is 1240
-        /// wide, 24 + 10x120 = 1224 fits, buttons are 118x44 and the longest label
-        /// ("the street") measures about 110px at 23px in the hand. THE PEN RING AND
-        /// THE BANGS READ THESE CONSTANTS TOO — the ring desynced from the button row
-        /// twice when a pitch was re-typed somewhere else.
+        // ── the taxonomy (DECISIONS: 18 desks in 4 groups) ─────────────────
+        public static readonly string[] GroupNames =
+            { "REVENUE", "COSTS", "THE COMPANY", "THE LOG" };
+        static readonly Color[] GroupCols =
+            { DrawnUI.Sage, DrawnUI.Coral, DrawnUI.Blue, DrawnUI.Yellow };
+        static readonly string[][] GroupDesks =
+        {
+            new[] { "offers", "customers", "in motion", "growth" },
+            new[] { "spend", "team", "recruitment", "bills", "the bank", "the works" },
+            new[] { "what we make", "cap table", "the raise", "the street", "threats", "pivot" },
+            new[] { "this week", "history", "events" },
+        };
+
+        /// THE OLD TEN TABS, kept as the LEGACY ORDER: the attention registry,
+        /// the room's focus calls and the shot harnesses still speak these
+        /// names, and `_tab` (poked by the harness) still indexes this list.
         static readonly string[] Tabs =
         {
             "vitals", "the ledger", "the bank", "pricing", "customers",
             "product", "crew", "cap table", "the street", "threats",
         };
-        const float TabX0 = 24f;
-        const float TabPitch = 120f;
-        const float TabW = 118f;
-        const float TabH = 44f;
+        static readonly Dictionary<string, string> LegacyToDesk =
+            new Dictionary<string, string>
+        {
+            { "vitals", "this week" }, { "the ledger", "spend" },
+            { "the bank", "the bank" }, { "pricing", "offers" },
+            { "customers", "customers" }, { "product", "what we make" },
+            { "crew", "team" }, { "cap table", "cap table" },
+            { "the street", "the street" }, { "threats", "threats" },
+            { "pipeline", "in motion" }, { "factory", "the works" },
+            { "catalog", "offers" }, { "bank", "the bank" }, { "cap", "cap table" },
+            { "street", "the street" }, { "ledger", "spend" },
+        };
 
-        /// [budget key, the word on the page, what the money actually does]. The
-        /// key and the word part company for the top lever: the state key
-        /// migrated to `ads` when the four acquisition channels landed, while
-        /// the founder still calls the whole top of the funnel MARKETING until
-        /// the channels unlock at coworking.
+        // ── the frame geometry (mockups/00 A, in the 1536x1024 view) ───────
+        const float FrameX = 16f, FrameY = 28f, FrameW = 1504f, FrameH = 968f;
+        const float CoverW = 54f, RingW = 46f, StackX = 100f;
+        const float RailX = 124f, RailBoxW = 182f, SheetRuleX = 318f;
+        const float ContentX = 344f, ContentY = 36f, ContentW = 1160f, ContentH = 880f;
+
+        /// THE BINDER PORTRAIT (DECISIONS, owner-corrected): a diegetic object
+        /// on the room painting, bottom-left, replacing the doorway button.
+        public const string PortraitFile = "binder_portrait.png";
+        public static readonly Rect LabelRect = new Rect(0.26f, 0.42f, 0.48f, 0.13f);
+        public const float LabelFontSize = 46f;
+        public const float LabelMinPx = 10f;
+        const string TourFlagFile = "seen_binder_tour.unity";
+
         public static readonly int[] LeverSteps = { 0, 250, 500, 1000, 2000, 4000, 8000 };
 
-        // THE PEN RING, from `_Clipboard._draw`: an ellipse centred on the tab's own
-        // middle (TabX0 + tab*TabPitch + TabW/2, 76) with radii 62 and 26, wobbled ±2
-        // and stroked 3.5 — the radius came down with the pitch when the bank made the
-        // row ten tabs long. The sprite is the
-        // ink's own box — its pad is the jitter plus half the stroke plus a margin —
-        // and it mounts 1:1, so the ring is the size the hand drew and not a squashed
-        // circle. A 60r circle stretched into a 130×52 cell measured 127×50 of ink
-        // against Godot's ~143×59, at 607 coral pixels against 1321, and its stroke ran
-        // 3.28 across but 1.31 top and bottom — a stretched circle holds no one width.
-        const float RingRx = 62f;                       // 118-wide tabs, at pitch 120
-        const float RingRy = 26f;
-        const float RingPad = 6f;                       // ceil(2 + 3.5/2 + 2)
-        const float RingW = RingRx * 2f + RingPad * 2f;   // 136
-        const float RingH = RingRy * 2f + RingPad * 2f;   // 64
-        const float RingTop = 76f - RingH * 0.5f;         // 44
-        static float RingX(int tab)
-        {
-            return TabX0 + tab * TabPitch + TabW * 0.5f - RingW * 0.5f;
-        }
-
         GameState _st;
-        RectTransform _sheet;
+        RectTransform _frame;
+        RectTransform _rail;
         RectTransform _content;
-        Image _tabRing;
-        readonly Dictionary<string, TextMeshProUGUI> _bangs =
-            new Dictionary<string, TextMeshProUGUI>();
-        int _tab;
+        int _openGroup = 3;                 // THE LOG opens first
+        string _page = "this week";
+        int _overview = -1;
+        int _tourStep = -1;
+        bool _tourDemoRed;
+        readonly List<string[]> _momentary = new List<string[]>(); // {id, group, label, wks}
 
-        /// DESK-LOCAL STATE, one visit long (10-interface-language section 4.8): a
-        /// desk's page mode, its expanded row, its armed control. Never saved, cleared
-        /// on every tab change, dead with this object — so reopening the binder is
-        /// always a clean read of state and no half-finished act survives a close.
+        /// LEGACY SHIM: the shot harness pokes `_tab` by reflection and calls
+        /// Refresh — the shim maps it onto the new navigation.
+        int _tab = -1;
+        int _legacyApplied = -1;
+        public bool TourEnabled = true;
+
+        /// DESK-LOCAL STATE, one visit long — never saved, cleared on every
+        /// page change, dead with this object.
         public readonly Dictionary<string, object> Desk = new Dictionary<string, object>();
 
         public GameState State { get { return _st; } }
         public RectTransform Content { get { return _content; } }
-
-        /// TAB AND B TOGGLE, THEY DO NOT FIGHT. Both the room and the binder listen for
-        /// the same keys, so without this the room re-opened the binder in the very
-        /// frame the binder dismissed itself.
         public static bool IsOpen { get; private set; }
 
-        /// `onDesk` opens the binder ON a desk — the pre-roll review's "go fix it"
-        /// arrives with the loudest attention row's own desk name, so the founder lands
-        /// looking at the thing the world stopped them for.
         public static BinderScreen Open(GameState state, string onDesk = "")
         {
             if (IsOpen) return null;
@@ -102,22 +109,19 @@ namespace Runway.Game
             b._st = state;
             IsOpen = true;
             Runway.Audio.RunwayMix.SetState("binder");
-            if (!string.IsNullOrEmpty(onDesk))
-            {
-                int i = System.Array.IndexOf(Tabs, onDesk);
-                if (i >= 0) b._tab = i;
-            }
             b.BuildParts();
+            if (!string.IsNullOrEmpty(onDesk)) b.FocusDesk(onDesk);
             return b;
         }
 
+        /// Open the binder ON a desk — old names and new names both land.
         public void FocusDesk(string deskName)
         {
-            int i = System.Array.IndexOf(Tabs, deskName);
-            if (i < 0) return;
+            string id;
+            if (!LegacyToDesk.TryGetValue(deskName ?? "", out id)) id = deskName;
+            if (FindGroup(id) < 0) return;
             Desk.Clear();
-            _tab = i;
-            Refresh();
+            OpenPage(id);
         }
 
         void OnDestroy() { IsOpen = false; Runway.Audio.RunwayMix.SetState("normal"); }
@@ -127,105 +131,100 @@ namespace Runway.Game
             var rt = GetComponent<RectTransform>();
             GameUi.Scrim(rt, new Color(0.05f, 0.05f, 0.06f, 0.55f), Dismiss);
 
-            _sheet = GameUi.PaperSheet(rt, 148f, 52f, 1240f, 920f, 7, 4f, null, "clipboard");
-            // the clipboard's own shadow: `_Clipboard._draw` opens on draw_rect(Rect2(
-            // 8, 12, w, h), Color(0, 0, 0, 0.25)) — a heavier, further-thrown shadow
-            // than the shared sheet's, because this board is held over a dimmed room
-            var board = _sheet.Find("shadow");
-            if (board != null)
+            _frame = DrawnUI.Rect(rt, "frame", FrameX, FrameY, FrameW, FrameH);
+            // the thrown shadow, the paper stack, the kraft cover, the ringbar
+            DrawnUI.Fill(_frame, "shadow", new Color(0f, 0f, 0f, 0.25f), 10f, 14f,
+                         FrameW, FrameH).raycastTarget = false;
+            DrawnUI.Fill(_frame, "stack", DrawnUI.Cream, StackX, 0f, FrameW - StackX,
+                         FrameH);
+            DrawnUI.Fill(_frame, "cover", DeskKit.Kraft, 0f, 0f, CoverW, FrameH);
+            DrawnUI.Fill(_frame, "ringbar", DeskKit.Kraft2, CoverW, 0f, RingW, FrameH);
+            for (int r = 0; r < 3; r++)
             {
-                var boardImg = board.GetComponent<Image>();
-                if (boardImg != null) boardImg.color = new Color(0f, 0f, 0f, 0.25f);
-                DrawnUI.SetTopLeft(board as RectTransform, 8f, 12f);
+                float cy = FrameH * (0.25f + 0.25f * r);
+                DrawnChart.Mount(_frame, "ring" + r,
+                    DrawnChart.PenEllipse(17f, 17f, 3.4f, 0.6f, 7 + r, DrawnUI.Ink),
+                    CoverW + RingW * 0.5f - 21f, cy - 21f, 42f, 42f);
+                DrawnChart.Mount(_frame, "ring2" + r,
+                    DrawnChart.PenEllipse(11f, 11f, 2.6f, 0.3f, 11 + r,
+                                          DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f)),
+                    CoverW + RingW * 0.5f - 14f, cy - 14f, 28f, 28f);
             }
-            // the clip at the top
-            var clip = DrawnUI.Fill(_sheet, "clip", DrawnUI.Yellow, 1240f * 0.5f - 70f, -18f, 140f, 34f);
-            clip.raycastTarget = false;
-            DrawnUI.AddInkEdge(clip.rectTransform, new Vector2(140f, 34f), new DrawnUI.PaperStyle
+            // the cover's rotated sticker
+            var sticker = DrawnUI.Fill(_frame, "sticker", DeskKit.Paper2,
+                                       CoverW * 0.5f - 14f, 56f, 28f, 128f);
+            sticker.raycastTarget = false;
+            var stickerLab = DrawnUI.HandLabel(_frame, "the binder", CoverW * 0.5f - 64f,
+                                               106f, 17f, DrawnUI.Ink, 128f,
+                                               TextAlignmentOptions.Center);
+            stickerLab.rectTransform.localEulerAngles = new Vector3(0f, 0f, 90f);
+            // the punched margin (dashes) + the sheet's left rule
+            for (float dy = 12f; dy < FrameH - 12f; dy += 16f)
+                DrawnUI.Fill(_frame, "punch", DrawnUI.WithAlpha(DrawnUI.Ink, 0.25f),
+                             StackX + 7f, dy, 2f, 9f).raycastTarget = false;
+            DrawnUI.Fill(_frame, "sheetrule", DrawnUI.WithAlpha(DrawnUI.Ink, 0.25f),
+                         SheetRuleX, 14f, 2.4f, FrameH - 28f).raycastTarget = false;
+            DrawnUI.AddInkEdge(_frame, new Vector2(FrameW, FrameH), new DrawnUI.PaperStyle
             {
-                ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 2f,
-                StepsPerEdge = 6, Jitter = 1f, Thickness = 4f, Seed = 7,
+                ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 3f,
+                StepsPerEdge = 20, Jitter = 2f, Thickness = 4f, Seed = 7,
             });
 
-            // THE PEN RING AND THE RULE GO DOWN BEFORE THE WORDS. `_Clipboard._draw`
-            // paints both, and a Godot node draws under its own children — so the ring
-            // passes BEHIND the tab it circles, never across it.
-            _tabRing = DrawnChart.Mount(_sheet, "tabring",
-                DrawnChart.PenEllipse(RingRx, RingRy, 3.5f, 2f, 5, DrawnUI.Coral),
-                RingX(0), RingTop, RingW, RingH);
-            DrawnUI.Fill(_sheet, "tabrule", DrawnUI.WithAlpha(DrawnUI.Ink, 0.25f),
-                         30f, 108f, 1180f, 2f);
+            _rail = DrawnUI.Rect(_frame, "rail", 0f, 0f, FrameW, FrameH);
+            _content = DrawnUI.Rect(_frame, "content", ContentX, ContentY, ContentW,
+                                    ContentH);
+            GameUi.InkWord(_frame, "×", FrameW - 60f, 2f, 52f, 52f, 46f, DrawnUI.Coral,
+                           Dismiss);
 
-            for (int i = 0; i < Tabs.Length; i++)
-            {
-                int idx = i;
-                GameUi.InkWord(_sheet, Tabs[i], TabX0 + i * TabPitch, 54f, TabW, TabH, 23f,
-                    DrawnUI.Ink, () =>
-                    {
-                        // a desk's page mode dies when you leave the page
-                        if (_tab != idx) Desk.Clear();
-                        _tab = idx;
-                        Refresh();
-                    });
-                // THE WARNING BANGS (owner: "! warnings on tab where things
-                // are unset"). EVERY tab carries one now: the engine's attention
-                // registry decides which ones light up (00-spine section 4), so
-                // a desk that grows a new warning needs no change here — it
-                // files a registry row instead. The bang hangs on the tab's own
-                // shoulder, DERIVED from the tab width, so the row and its marks
-                // can never drift apart again.
-                var bang = DrawnUI.HandLabel(_sheet, "!", TabX0 + i * TabPitch + TabW - 27f,
-                    42f, 30f, DrawnUI.Coral, 30f);
-                bang.gameObject.SetActive(false);
-                _bangs[Tabs[i]] = bang;
-            }
-
-            GameUi.InkWord(_sheet, "×", 1180f, 8f, 52f, 52f, 46f, DrawnUI.Coral, Dismiss);
-            _content = DrawnUI.Rect(_sheet, "content", 40f, 118f, 1160f, 760f);
-
-            // the clipboard comes UP off the desk, like everything else in this game
             var g = DrawnUI.Group(rt);
             g.alpha = 0f;
             StartCoroutine(DrawnUI.FadeTo(g, 1f, 0.2f));
+
+            // the first open of an install: the tour
+            if (TourEnabled && _tourStep < 0 && !TourSeen() && _legacyApplied < 0)
+            {
+                _tourStep = 0;
+                TourApply();
+            }
             Refresh();
         }
 
-        /// A component added mid-frame can still be reached by the same Update pass, so
-        /// the key that OPENED the binder must not be the key that closes it. One frame
-        /// of deafness is the whole fix.
         bool _armed;
 
-        /// ESC POPS BEFORE IT CLOSES (10-interface-language section 4.2): inside a
-        /// desk's state machine Esc walks DETAIL/WRITE/WAIT/REVIEW back to the list and
-        /// disarms an armed control; only from a tab's base state does it shut the
-        /// binder.
         void Update()
         {
             if (!_armed) { _armed = true; return; }
             if (Input.GetKeyDown(KeyCode.Escape))
             {
+                if (_tourStep >= 0) { TourFinish(); return; }
                 if (DeskPop()) return;
+                if (_overview >= 0) { _overview = -1; Refresh(); return; }
                 Dismiss();
                 return;
             }
-            // A DESK MAY OWN A WRITE FIELD (01's write-in): while one holds the
-            // keyboard, a typed "b" is a letter, not a dismissal.
             var sel = UnityEngine.EventSystems.EventSystem.current != null
                 ? UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject : null;
-            bool writing = sel != null && sel.GetComponent<TMPro.TMP_InputField>() != null;
-            if (!writing && (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.B))) Dismiss();
+            bool writing = sel != null && sel.GetComponent<TMP_InputField>() != null;
+            if (!writing && (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.B)))
+            {
+                if (_tourStep >= 0) TourFinish();
+                Dismiss();
+            }
         }
 
-        /// One step back inside the current desk. True = something was popped, so the
-        /// press is spent and the binder stays open.
+        /// One step back inside the current desk. The arrange shell lives in
+        /// Desk["mode"], so Esc abandoning a staged change is this same pop.
         public bool DeskPop()
         {
             if (Desk.ContainsKey("armed")) { Desk.Remove("armed"); Refresh(); return true; }
             object mode;
-            if (Desk.TryGetValue("mode", out mode) && mode != null && mode.ToString().Length > 0)
+            if (Desk.TryGetValue("mode", out mode) && mode != null
+                && mode.ToString().Length > 0)
             {
                 Desk["mode"] = "";
                 Desk.Remove("row");
+                Desk.Remove("chip");
+                Desk.Remove("staged");
                 Refresh();
                 return true;
             }
@@ -237,56 +236,141 @@ namespace Runway.Game
             if (this != null && gameObject != null) Destroy(gameObject);
         }
 
-        // ══ composition ════════════════════════════════════════════════════════
+        // ── navigation ─────────────────────────────────────────────────────
+
+        public void OpenPage(string id)
+        {
+            int gi = FindGroup(id);
+            if (gi < 0) return;
+            if (_page != id) Desk.Clear();
+            _overview = -1;
+            _openGroup = gi;
+            _page = id;
+            Refresh();
+        }
+
+        /// The divider-header press: closed → the group opens; open → the
+        /// group overview (THE DASHBOARD QUARTET).
+        public void PressGroup(int gi)
+        {
+            if (_tourStep >= 0) return;
+            if (gi == _openGroup)
+            {
+                _overview = _overview == gi ? -1 : gi;
+                Refresh();
+                return;
+            }
+            _openGroup = gi;
+            _overview = -1;
+            _page = GroupDesks[gi].Length > 0 ? GroupDesks[gi][0] : _page;
+            Desk.Clear();
+            Refresh();
+        }
+
+        int FindGroup(string id)
+        {
+            for (int gi = 0; gi < GroupDesks.Length; gi++)
+                if (Array.IndexOf(GroupDesks[gi], id) >= 0) return gi;
+            for (int i = 0; i < _momentary.Count; i++)
+                if (_momentary[i][0] == id) return int.Parse(_momentary[i][1]);
+            return -1;
+        }
+
+        // ── momentary tabs ─────────────────────────────────────────────────
+
+        /// THE MOMENTARY TAB SLOT: a gold page tab any desk can summon into a
+        /// group; it folds away when resolved.
+        public void SummonMomentary(string id, string groupName, string label, int wks)
+        {
+            for (int i = 0; i < _momentary.Count; i++)
+                if (_momentary[i][0] == id) return;
+            int gi = Array.IndexOf(GroupNames, groupName);
+            if (gi < 0) gi = 2;
+            _momentary.Add(new[] { id, gi.ToString(), label, wks.ToString() });
+            if (_content != null) Refresh();
+        }
+
+        public void ResolveMomentary(string id)
+        {
+            for (int i = _momentary.Count - 1; i >= 0; i--)
+                if (_momentary[i][0] == id) _momentary.RemoveAt(i);
+            if (_page == id)
+            {
+                _page = GroupDesks[_openGroup][0];
+                Desk.Clear();
+            }
+            if (_content != null) Refresh();
+        }
+
+        public void DebugSummonOffer()
+        {
+            SummonMomentary("the offer", "THE COMPANY", "THE OFFER", 3);
+        }
+
+        // ── composition ────────────────────────────────────────────────────
 
         public void Refresh()
         {
-            // ONE list behind every mark on this sheet: a tab wears the bang of
-            // its loudest attention item, and an alarm (3) is coral where a note
-            // (1) is ink.
-            var worst = new Dictionary<string, int>();
-            foreach (AttentionItem it in SimEngine.AttentionItems(_st))
+            // LEGACY SHIM: a harness that poked `_tab` gets the old tab's new
+            // desk, with the Desk dict it seeded left exactly as found.
+            if (_tab >= 0 && _tab < Tabs.Length)
             {
-                int had;
-                worst.TryGetValue(it.Desk ?? "", out had);
-                worst[it.Desk ?? ""] = Gd.Maxi(had, it.Severity);
-            }
-            foreach (KeyValuePair<string, TextMeshProUGUI> kv in _bangs)
-            {
-                int sev;
-                worst.TryGetValue(kv.Key, out sev);
-                kv.Value.gameObject.SetActive(sev > 0);
-                kv.Value.color = sev == 1 ? DrawnUI.Ink : DrawnUI.Coral;
+                string want;
+                if (!LegacyToDesk.TryGetValue(Tabs[_tab], out want)) want = "this week";
+                if (_tab != _legacyApplied || want != _page)
+                {
+                    _overview = -1;
+                    _tourStep = -1;
+                    int gi = FindGroup(want);
+                    if (gi >= 0) { _openGroup = gi; _page = want; }
+                }
+                _legacyApplied = _tab;
             }
             for (int i = _content.childCount - 1; i >= 0; i--)
                 Destroy(_content.GetChild(i).gameObject);
-            if (_tabRing != null)
-                DrawnUI.SetTopLeft(_tabRing.rectTransform, RingX(_tab), RingTop);
-            // THE DESK DISPATCH (docs/design/HOOKS.md): a tab a subsystem owns is drawn
-            // by its own desk file, handed this component. Vitals, the ledger and
-            // threats are the frame's own pages and stay here.
-            switch (_tab)
+            for (int i = _rail.childCount - 1; i >= 0; i--)
+                Destroy(_rail.GetChild(i).gameObject);
+            BuildRail();
+            if (_tourStep >= 0) { DeskTour.Draw(this, _tourStep); return; }
+            if (_overview >= 0) { DeskOverview.Draw(this, _overview); return; }
+            Dispatch(_page);
+        }
+
+        void Dispatch(string id)
+        {
+            switch (id)
             {
-                case 0: TabVitals(); break;
-                case 1: DeskLedger.Draw(this); break;
-                case 2: DeskBank.Draw(this); break;
-                case 3: DeskCatalog.Draw(this); break;
-                case 4: DeskCustomers.Draw(this); break;
-                case 5: DeskProduct.Draw(this); break;
-                case 6: DeskCrew.Draw(this); break;
-                case 7: DeskCap.Draw(this); break;
-                case 8: DeskStreet.Draw(this); break;
-                default: TabThreats(); break;
+                case "offers": DeskOffers.Draw(this); break;
+                case "customers": DeskCustomersPage.Draw(this); break;
+                case "in motion": DeskInMotion.Draw(this); break;
+                case "growth": DeskGrowth.Draw(this); break;
+                case "spend": DeskSpend.Draw(this); break;
+                case "team": DeskTeam.Draw(this); break;
+                case "recruitment": DeskRecruit.Draw(this); break;
+                case "bills": DeskBills.Draw(this); break;
+                case "the bank": DeskBankPage.Draw(this); break;
+                case "the works": DeskWorks.Draw(this); break;
+                case "what we make": DeskMake.Draw(this); break;
+                case "cap table": DeskCapPage.Draw(this); break;
+                case "the raise": DeskRaise.Draw(this); break;
+                case "the street": DeskStreetPage.Draw(this); break;
+                case "threats": DeskThreatsPage.Draw(this); break;
+                case "pivot": DeskPivot.Draw(this); break;
+                case "history": DeskHistory.Draw(this); break;
+                case "events": DeskEvents.Draw(this); break;
+                case "the offer": DeskOffer.Draw(this); break;
+                default: DeskThisWeek.Draw(this); break;
             }
         }
 
-        /// THE PRESS ROUTER: a desk that prefers id-dispatch to closures registers its
-        /// controls against an id and answers in its own Handle(). The tab rebuilds
-        /// afterwards, so a handler only ever has to write state.
+        /// THE PRESS ROUTER — old names keep working; new pages answer under
+        /// their own names.
         public void DeskPress(string deskName, string id)
         {
             switch (deskName)
             {
+                case "vitals": DeskVitals.Handle(this, id); break;
+                case "threats": DeskThreats.Handle(this, id); break;
                 case "catalog": DeskCatalog.Handle(this, id); break;
                 case "crew": DeskCrew.Handle(this, id); break;
                 case "street": DeskStreet.Handle(this, id); break;
@@ -296,13 +380,399 @@ namespace Runway.Game
                 case "product": DeskProduct.Handle(this, id); break;
                 case "factory": DeskFactory.Handle(this, id); break;
                 case "cap": DeskCap.Handle(this, id); break;
+                case "works": DeskWorks.Handle(this, id); break;
+                case "arrange": DeskArrange.Handle(this, id); break;
+                case "offer": DeskOffer.Handle(this, id); break;
             }
             Refresh();
         }
 
-        // ── what a desk may touch ──────────────────────────────────────────────
-        // The public half of this component: the drawing hand every desk file and the
-        // shared component kit draw through.
+        // ── the rail ───────────────────────────────────────────────────────
+
+        /// The severity every desk wears — the engine's attention registry,
+        /// its old desk words aliased onto the new pages.
+        public Dictionary<string, int> DeskSeverities()
+        {
+            var worst = new Dictionary<string, int>();
+            foreach (AttentionItem it in SimEngine.AttentionItems(_st))
+            {
+                string id;
+                if (!LegacyToDesk.TryGetValue(it.Desk ?? "", out id)) id = it.Desk ?? "";
+                int had;
+                worst.TryGetValue(id, out had);
+                worst[id] = Gd.Maxi(had, it.Severity);
+            }
+            if (_tourDemoRed) worst["threats"] = 3;
+            return worst;
+        }
+
+        void BuildRail()
+        {
+            Dictionary<string, int> sev = DeskSeverities();
+            float y = 24f;
+            for (int gi = 0; gi < GroupNames.Length; gi++)
+            {
+                string[] desks = GroupDesks[gi];
+                var moms = new List<string[]>();
+                for (int i = 0; i < _momentary.Count; i++)
+                    if (int.Parse(_momentary[i][1]) == gi) moms.Add(_momentary[i]);
+                bool open = gi == _openGroup;
+                int gSev = 0;
+                for (int i = 0; i < desks.Length; i++)
+                {
+                    int s;
+                    sev.TryGetValue(desks[i], out s);
+                    gSev = Gd.Maxi(gSev, s);
+                }
+                float boxH = open ? 52f + (desks.Length + moms.Count) * 40f + 12f : 48f;
+                // closed: the kraft stack shadow under the card
+                if (!open)
+                {
+                    DrawnUI.Fill(_rail, "dstack", DeskKit.Kraft2, RailX + 2f, y + boxH - 2f,
+                                 RailBoxW - 4f, 4f).raycastTarget = false;
+                    DrawnUI.Fill(_rail, "dstack2", new Color(0f, 0f, 0f, 0.35f), RailX + 4f,
+                                 y + boxH + 1f, RailBoxW - 8f, 4f).raycastTarget = false;
+                }
+                var body = DrawnUI.Fill(_rail, "divider", open ? DrawnUI.Cream : DeskKit.Kraft,
+                                        RailX, y, RailBoxW, boxH);
+                // the index tab, poking left — ALERT climbs onto it when the
+                // group carries attention (the pulse is the QA wave's polish)
+                Color tabCol = gSev > 0 ? DeskKit.Alert : GroupCols[gi];
+                var tab = DrawnUI.Fill(_rail, "gtab", tabCol, RailX - 16f, y + 4f, 15f,
+                                       boxH - 8f);
+                tab.raycastTarget = false;
+                DrawnUI.AddInkEdge(tab.rectTransform, new Vector2(15f, boxH - 8f),
+                    new DrawnUI.PaperStyle
+                    {
+                        ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
+                        StepsPerEdge = 5, Jitter = 0.7f, Thickness = 2.6f, Seed = 11 + gi,
+                    });
+                DrawnUI.AddInkEdge(body.rectTransform, new Vector2(RailBoxW, boxH),
+                    new DrawnUI.PaperStyle
+                    {
+                        ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
+                        StepsPerEdge = 10, Jitter = 1f, Thickness = 2.6f, Seed = 13 + gi,
+                    });
+                int gidx = gi;
+                GameUi.InkWord(_rail, "", RailX, y, RailBoxW, 48f, 19f, DrawnUI.Ink,
+                               () => PressGroup(gidx));
+                DrawnUI.HandLabel(_rail, GroupNames[gi], RailX + 12f, y + 10f, 19f,
+                                  DrawnUI.Ink, RailBoxW - 70f);
+                var cnt = DrawnUI.HandLabel(_rail, GroupCount(gi), RailX + RailBoxW - 66f,
+                                            y + 14f, 15f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f),
+                                            58f, TextAlignmentOptions.TopRight);
+                cnt.raycastTarget = false;
+                if (!open && gSev > 0)
+                {
+                    // the red bang chip on the closed divider header
+                    var chip = DrawnUI.Fill(_rail, "bang", DeskKit.Alert,
+                                            RailX + RailBoxW - 92f, y + 12f, 22f, 22f);
+                    chip.raycastTarget = false;
+                    DrawnUI.AddInkEdge(chip.rectTransform, new Vector2(22f, 22f),
+                        new DrawnUI.PaperStyle
+                        {
+                            ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
+                            StepsPerEdge = 5, Jitter = 0.6f, Thickness = 2.2f, Seed = 17,
+                        });
+                    DrawnUI.DisplayLabel(_rail, "!", RailX + RailBoxW - 92f, y + 12f, 15f,
+                                         Color.white, 22f, TextAlignmentOptions.Center);
+                }
+                if (open)
+                {
+                    DrawnUI.Fill(_rail, "drule", DrawnUI.WithAlpha(DrawnUI.Ink, 0.25f),
+                                 RailX + 8f, y + 46f, RailBoxW - 16f, 2f).raycastTarget = false;
+                    float py = y + 52f;
+                    for (int i = 0; i < desks.Length; i++)
+                    {
+                        int s;
+                        sev.TryGetValue(desks[i], out s);
+                        PageTab(desks[i], py, s, false, "");
+                        py += 40f;
+                    }
+                    for (int i = 0; i < moms.Count; i++)
+                    {
+                        PageTab(moms[i][0], py, 0, true, moms[i][3] + " wks");
+                        py += 40f;
+                    }
+                }
+                y += boxH + 12f;
+            }
+        }
+
+        /// One page tab in the fan: quiet row · active paper box · RED-filled
+        /// with the white bang when its desk has attention · GOLD with the
+        /// deadline clock when momentary (Baloo, slight lean).
+        void PageTab(string id, float y, int severity, bool gold, string clockText)
+        {
+            float x = RailX + 8f, w = RailBoxW - 16f, h = 36f;
+            if (gold)
+            {
+                var body = DrawnUI.Fill(_rail, "ptab_gold", DrawnUI.Yellow, x, y, w, h);
+                body.rectTransform.localEulerAngles = new Vector3(0f, 0f, 1.7f);
+                DrawnUI.AddInkEdge(body.rectTransform, new Vector2(w, h),
+                    new DrawnUI.PaperStyle
+                    {
+                        ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
+                        StepsPerEdge = 6, Jitter = 0.8f, Thickness = 2.4f, Seed = 19,
+                    });
+                DrawnUI.DisplayLabel(_rail, id, x + 8f, y + 8f, 16f, DrawnUI.Ink, w - 60f);
+                var cc = DrawnUI.Fill(_rail, "ptab_clock", DeskKit.Alert, x + w - 52f,
+                                      y + 6f, 48f, 22f);
+                cc.raycastTarget = false;
+                DrawnUI.HandLabel(_rail, clockText, x + w - 47f, y + 7f, 14f, Color.white,
+                                  44f);
+            }
+            else if (severity > 0)
+            {
+                var body = DrawnUI.Fill(_rail, "ptab_red", DeskKit.Alert, x, y, w, h);
+                DrawnUI.AddInkEdge(body.rectTransform, new Vector2(w, h),
+                    new DrawnUI.PaperStyle
+                    {
+                        ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
+                        StepsPerEdge = 6, Jitter = 0.8f, Thickness = 2.4f, Seed = 23,
+                    });
+                DrawnUI.HandLabel(_rail, id, x + 9f, y + 6f, 19f, Color.white, w - 44f);
+                DrawnUI.DisplayLabel(_rail, "!", x + w - 26f, y + 4f, 22f, Color.white, 20f);
+            }
+            else if (id == _page && _overview < 0)
+            {
+                DrawnUI.Fill(_rail, "ptab_sh", new Color(0f, 0f, 0f, 0.18f), x + 2f, y + 2f,
+                             w - 2f, h - 2f).raycastTarget = false;
+                var body = DrawnUI.Fill(_rail, "ptab_on", DeskKit.Paper2, x, y, w - 2f,
+                                        h - 2f);
+                DrawnUI.AddInkEdge(body.rectTransform, new Vector2(w - 2f, h - 2f),
+                    new DrawnUI.PaperStyle
+                    {
+                        ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
+                        StepsPerEdge = 6, Jitter = 0.8f, Thickness = 2.4f, Seed = 29,
+                    });
+                DrawnUI.HandLabel(_rail, id, x + 9f, y + 5f, 19f, DrawnUI.Ink, w - 18f);
+            }
+            else
+            {
+                DrawnUI.HandLabel(_rail, id, x + 9f, y + 5f, 19f, DrawnUI.Ink, w - 18f);
+            }
+            string did = id;
+            GameUi.InkWord(_rail, "", x, y, w, h, 19f, DrawnUI.Ink, () => OpenPage(did));
+        }
+
+        /// The live figure a closed divider carries.
+        string GroupCount(int gi)
+        {
+            switch (gi)
+            {
+                case 0:
+                {
+                    double rev = PnlNum("revenue");
+                    return rev > 0 ? "$" + GameUi.Money((int)rev) + "/wk" : "—";
+                }
+                case 1:
+                {
+                    double burn = PnlNum("burn");
+                    return burn > 0 ? "$" + GameUi.Money((int)burn) + "/wk" : "—";
+                }
+                case 2: return "6";
+                default: return "wk " + _st.Week;
+            }
+        }
+
+        double PnlNum(string key)
+        {
+            object box = _st.GetMeta("pnl", null);
+            var dict = box as IDictionary<string, object>;
+            if (dict != null)
+            {
+                object v;
+                if (dict.TryGetValue(key, out v) && v != null)
+                {
+                    double d;
+                    if (double.TryParse(v.ToString(),
+                        System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture, out d)) return d;
+                }
+                return 0.0;
+            }
+            var jo = box as Newtonsoft.Json.Linq.JObject;
+            return jo != null ? ContentDb.Num(jo, key, 0.0) : 0.0;
+        }
+
+        // ── the tour ───────────────────────────────────────────────────────
+
+        /// THE FIRST-OPEN TOUR: six steps — the four groups fanned with
+        /// one-liners, the red demo, the handover. Click advances, Esc skips,
+        /// once per install; the how-to screen replays by clearing the flag.
+        public void TourAdvance()
+        {
+            _tourStep += 1;
+            if (_tourStep > 5) { TourFinish(); return; }
+            TourApply();
+            Refresh();
+        }
+
+        public void TourApply()
+        {
+            _tourDemoRed = _tourStep == 4;
+            if (_tourStep >= 0 && _tourStep <= 3)
+            {
+                _openGroup = _tourStep;
+                _page = GroupDesks[_tourStep][0];
+            }
+            else if (_tourStep == 4) { _openGroup = 2; _page = "threats"; }
+            else { _openGroup = 3; _page = "this week"; }
+        }
+
+        void TourFinish()
+        {
+            _tourStep = -1;
+            _tourDemoRed = false;
+            try { System.IO.File.WriteAllText(RunwayPaths.User(TourFlagFile), "1"); }
+            catch (Exception) { }
+            _openGroup = 3;
+            _page = "this week";
+            Desk.Clear();
+            Refresh();
+        }
+
+        public static bool TourSeen()
+        {
+            try { return System.IO.File.Exists(RunwayPaths.User(TourFlagFile)); }
+            catch (Exception) { return false; }
+        }
+
+        public static void ResetTour()
+        {
+            try
+            {
+                string p = RunwayPaths.User(TourFlagFile);
+                if (System.IO.File.Exists(p)) System.IO.File.Delete(p);
+            }
+            catch (Exception) { }
+        }
+
+        // ── the binder, as an object ───────────────────────────────────────
+
+        /// The portrait texture, or null — never awaited.
+        public static Texture2D PortraitTexture()
+        {
+            try
+            {
+                string p = RunwayPaths.User(PortraitFile);
+                if (!System.IO.File.Exists(p)) return null;
+                byte[] bytes = System.IO.File.ReadAllBytes(p);
+                var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                return tex.LoadImage(bytes) ? tex : null;
+            }
+            catch (Exception) { return null; }
+        }
+
+        /// <summary>
+        /// THE DIEGETIC BINDER (DECISIONS § THE BINDER PORTRAIT, corrected):
+        /// the object on the room painting at the scene's bottom-left that
+        /// REPLACES the binder doorway button. Portrait when cached, the drawn
+        /// mini-binder (same silhouette) otherwise; the name overlaid on the
+        /// label (omitted below LabelMinPx); the red "!" sticker when the
+        /// company has attention items; press opens the binder.
+        /// </summary>
+        public static RectTransform MakeObject(RectTransform parent, GameState state,
+                                               Action onOpen, float w = 210f,
+                                               float h = 250f)
+        {
+            var root = DrawnUI.Rect(parent, "binder_object", 0f, 0f, w, h);
+            Texture2D tex = PortraitTexture();
+            if (tex != null)
+            {
+                var img = new GameObject("portrait",
+                    typeof(RectTransform), typeof(RawImage)).GetComponent<RawImage>();
+                img.texture = tex;
+                img.rectTransform.SetParent(root, false);
+                DrawnUI.SetTopLeft(img.rectTransform, 0f, 0f);
+                img.rectTransform.sizeDelta = new Vector2(w, h);
+                img.raycastTarget = false;
+            }
+            else
+            {
+                // the drawn mini-binder, same silhouette: kraft body, spine,
+                // rings, untidy papers, the four group tabs on the right edge
+                for (int p = 0; p < 4; p++)
+                    DrawnUI.Fill(root, "paper" + p, DeskKit.Paper2,
+                                 w * 0.16f + p * w * 0.17f, h * 0.02f, w * 0.15f, h * 0.05f)
+                        .raycastTarget = false;
+                var body = DrawnUI.Fill(root, "body", DeskKit.Kraft, w * 0.06f, h * 0.07f,
+                                        w * 0.82f, h * 0.86f);
+                body.raycastTarget = false;
+                DrawnUI.Fill(root, "spine", DeskKit.Kraft2, w * 0.06f, h * 0.07f, w * 0.11f,
+                             h * 0.86f).raycastTarget = false;
+                Color[] cols = { DrawnUI.Sage, DrawnUI.Coral, DrawnUI.Blue, DrawnUI.Yellow };
+                for (int i = 0; i < 4; i++)
+                {
+                    var t = DrawnUI.Fill(root, "otab" + i, cols[i], w * 0.86f,
+                                         h * (0.16f + 0.2f * i), w * 0.1f, h * 0.09f);
+                    t.raycastTarget = false;
+                    DrawnUI.AddInkEdge(t.rectTransform, new Vector2(w * 0.1f, h * 0.09f),
+                        new DrawnUI.PaperStyle
+                        {
+                            ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
+                            StepsPerEdge = 4, Jitter = 0.6f, Thickness = 2.2f, Seed = 29 + i,
+                        });
+                }
+                DrawnUI.AddInkEdge(body.rectTransform, new Vector2(w * 0.82f, h * 0.86f),
+                    new DrawnUI.PaperStyle
+                    {
+                        ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 2f,
+                        StepsPerEdge = 14, Jitter = 1.6f, Thickness = 3.4f, Seed = 29,
+                    });
+                var lab = DrawnUI.Fill(root, "labelpaper", DeskKit.Paper2,
+                                       w * LabelRect.x, h * LabelRect.y,
+                                       w * LabelRect.width, h * LabelRect.height);
+                lab.raycastTarget = false;
+                DrawnUI.AddInkEdge(lab.rectTransform,
+                    new Vector2(w * LabelRect.width, h * LabelRect.height),
+                    new DrawnUI.PaperStyle
+                    {
+                        ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
+                        StepsPerEdge = 6, Jitter = 0.7f, Thickness = 2.4f, Seed = 31,
+                    });
+            }
+            // the name, overlaid — the image is generated with a BLANK label;
+            // below LabelMinPx the name is omitted rather than illegible
+            string company = state != null && !string.IsNullOrEmpty(state.CompanyName)
+                ? state.CompanyName : "the company";
+            float sz = LabelFontSize;
+            float fit = w * LabelRect.width - 10f;
+            while (sz > LabelMinPx && company.Length * sz * 0.44f > fit) sz -= 1f;
+            if (sz >= LabelMinPx)
+            {
+                var nm = DrawnUI.HandLabel(root, company, w * LabelRect.x,
+                                           h * LabelRect.y + h * LabelRect.height * 0.18f,
+                                           sz, DrawnUI.Ink, w * LabelRect.width,
+                                           TextAlignmentOptions.Center);
+                nm.raycastTarget = false;
+            }
+            // the red "!" sticker — the attention feed reaching the scene
+            int worst = 0;
+            if (state != null)
+                foreach (AttentionItem it in SimEngine.AttentionItems(state))
+                    worst = Gd.Maxi(worst, it.Severity);
+            if (worst > 0)
+            {
+                var chip = DrawnUI.Fill(root, "sticker", DeskKit.Alert, w - 40f, 8f, 30f,
+                                        30f);
+                chip.raycastTarget = false;
+                DrawnUI.AddInkEdge(chip.rectTransform, new Vector2(30f, 30f),
+                    new DrawnUI.PaperStyle
+                    {
+                        ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
+                        StepsPerEdge = 5, Jitter = 0.6f, Thickness = 2.2f, Seed = 37,
+                    });
+                DrawnUI.DisplayLabel(root, "!", w - 40f, 8f, 20f, Color.white, 30f,
+                                     TextAlignmentOptions.Center);
+            }
+            GameUi.InkWord(root, "", 0f, 0f, w, h, 19f, DrawnUI.Ink,
+                           onOpen ?? (Action)(() => { }));
+            return root;
+        }
+
+        // ── what a desk may touch (unchanged public hand) ──────────────────
 
         public TextMeshProUGUI L(string text, float x, float y, float size = 30f,
                                  Color? col = null, float w = 1100f)
@@ -336,18 +806,11 @@ namespace Runway.Game
             return outp;
         }
 
-        /// One `_Spark`, whole: the ground wash, the wobbled line, and the hi/lo numbers
-        /// in its corners. The short-series line comes with it, so an empty chart is
-        /// still a panel of the sheet rather than a hole in it.
         public void Spark(string key, float x, float y, float w, float h, Color col)
         {
             DrawnChart.MountSpark(_content, Series(key), col, x, y, w, h);
         }
 
-        /// A vessel with a level — product's tech debt, and any "how full is it" read.
-        /// draw_rect(rect, INK, false, t) is a rect OUTLINE: four bars whose centre
-        /// lines are the rect's own edges, which is where Godot puts a thick unfilled
-        /// rect. Without the outline the level floats and the jar is not a jar.
         public void JarEdge(float x, float y, float w, float h, float t)
         {
             float half = t * 0.5f;
@@ -357,57 +820,6 @@ namespace Runway.Game
             DrawnUI.Fill(_content, "jaredge", DrawnUI.Ink, x + w - half, y - half, t, h + t);
         }
 
-        // ── tab 0: vitals ──────────────────────────────────────────────────────
-
-        void TabVitals()
-        {
-            Icon("cash", 10f, 6f);
-            L("$" + GameUi.Money(_st.Cash) + " in the bank", 100f, 10f, 46f);
-            L(SimEngine.HealthBand(_st), 100f, 66f, 30f,
-              SimEngine.RunwayWeeks(_st) <= 10 ? DrawnUI.Coral : DrawnUI.Sage);
-            L("cash, drawn weekly:", 10f, 140f, 24f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f));
-            Spark("cash", 10f, 172f, 1120f, 190f, DrawnUI.Blue);
-            MetricSnapshot last = _st.MetricHistory.Count > 0
-                ? _st.MetricHistory[_st.MetricHistory.Count - 1] : new MetricSnapshot();
-            L(string.Format("last week: ${0} in · ${1} out",
-                GameUi.Money(last.Revenue), GameUi.Money(last.Burn)), 10f, 386f);
-            int payroll = 0;
-            for (int i = 0; i < _st.Employees.Count; i++) payroll += _st.Employees[i].Salary;
-            int rent;
-            if (!GameState.ERA_RENT.TryGetValue(_st.Era, out rent)) rent = 150;
-            // ONE HONEST DEBT FIGURE across shark, bank and venture notes (06
-            // section 9): the single LoanPrincipal field stopped being the whole
-            // story the week the structured notes landed.
-            int debtOwed = SimBank.DebtTotal(_st);
-            int noteCount = _st.Loans.Count + (_st.LoanPrincipal > 0 ? 1 : 0);
-            L(string.Format("burn: rent ${0} · payroll ${1} · marketing ${2}{3}",
-                GameUi.Money(rent), GameUi.Money(payroll),
-                GameUi.Money(_st.LastPnl != null ? _st.LastPnl.Marketing
-                             : Gd.ToInt(SimFunnel.SpendTotal(_st))),
-                debtOwed > 0
-                    ? "  ·  DEBT $" + GameUi.Money(debtOwed) + " across " + noteCount
-                      + " notes (worst " + Gd.RoundToInt(SimBank.WorstRate(_st) * 100.0) + "%/wk)"
-                    : ""),
-                10f, 432f, 27f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.8f));
-            L("valuation, if anyone asked: $" + GameUi.Money(SimEngine.Valuation(_st)), 10f, 486f);
-            // THE PRICE LINE OWNS 532–566 AT 27px, so the hype caption cannot start
-            // at 556: it was written over the line above it and its own spark's wash
-            // was drawn over it in turn. 574 clears both, and the spark still lands
-            // inside the 760 pane.
-            L(string.Format("price ×{0:0.00}  ·  the market is {1}", _st.PriceMult,
-                _st.MarketTrend > 1.05 ? "warm" : (_st.MarketTrend < 0.95 ? "cold" : "even")),
-                10f, 532f, 27f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.8f));
-            // the hype chart moved here when the roadmap took the product sheet (07)
-            L("hype:", 10f, 574f, 24f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f));
-            Spark("hype", 10f, 606f, 1120f, 120f, DrawnUI.Yellow);
-        }
-
-        // ── tab 1: THE LEDGER — the levers, the math, the truth about the money ──
-
-
-        /// SimEngine parks the week's unit economics on the state as ONE nested map.
-        /// Fresh from the tick it is a Dictionary; loaded back off disk Newtonsoft
-        /// hands it over as a JObject — so this reads both and answers 0 for neither.
         public double UnitEcon(string key)
         {
             object box = _st.GetMeta("unit_econ", null);
@@ -465,39 +877,20 @@ namespace Runway.Game
             return Gd.Mini(LeverSteps[idx], SimEngine.EraSpendCap(_st.Era));
         }
 
-
-        /// `_wrap_h`, WHICH IS NOT preferredHeight. binder.gd advances the street by
-        /// `_font.get_multiline_string_size(...).y`, and that number is a LEADING-FREE
-        /// INTEGER SUM: FreeType hands Godot a whole-pixel ascent and a whole-pixel
-        /// descent, every line box is worth exactly their sum, N lines are worth N of
-        /// them, and the theme's 3px gap never enters because a raw Font call goes
-        /// through no theme at all.
-        ///
-        /// TMP's preferredHeight is a different shape: `1.354 x size` of FRACTIONAL
-        /// first line plus `N - 1` pitches that DO carry the leading. At 26px that is
-        /// 35.2 + 40(N-1) against Godot's 37N — 1.8px SHORT on a one-line block, 1.2
-        /// LONG on two, 4.2 long on three — and the street's `y` carries every one of
-        /// those errors down the page, so the rivals and the money below them drifted
-        /// further the more of them there were.
+        /// `_wrap_h`'s twin — the Godot line box, not preferredHeight (the
+        /// full story lives in the original comment; the math is unchanged).
         public static float Height(TextMeshProUGUI t)
         {
             if (t == null) return 0f;
             t.ForceMeshUpdate();
-            // the lines TMP actually LAID OUT, so the advance can never disagree with
-            // what is on the sheet even where its wrap point differs from Godot's
             int lines = Mathf.Max(1, t.textInfo.lineCount);
             return lines * GodotLineBox(t.font, t.fontSize);
         }
 
-        /// One Godot line box in pixels — ceil(ascent) + ceil(descent) at that size.
-        /// The rounding lives in DrawnUI.GodotLineSpacing, which hands the difference
-        /// between Godot's box and TMP's over as hundredths of the size, so this adds
-        /// TMP's own pitch back rather than keeping a second copy of the font ratios.
-        /// StringLeading, not LabelLeading: `get_multiline_string_size` has no theme.
         static float GodotLineBox(TMP_FontAsset f, float size)
         {
             if (size <= 0f) return 0f;
-            float tmp = size * 1.354f;                  // Patrick Hand's hhea, if asked
+            float tmp = size * 1.354f;
             if (f != null && f.faceInfo.pointSize > 0f)
             {
                 float ps = f.faceInfo.pointSize;
@@ -507,88 +900,7 @@ namespace Runway.Game
             }
             float godot = tmp + DrawnUI.GodotLineSpacing(f, size, DrawnUI.StringLeading)
                                 * size * 0.01f;
-            // two ceilings summed is a whole number of pixels; rounding here clears the
-            // float dust the trip through hundredths-of-the-size leaves behind
             return Mathf.Max(Mathf.Round(godot), 1f);
-        }
-
-        // ── tab 9: threats & promises ──────────────────────────────────────────
-
-        const int ClockSide = 30;         // the footprint the ⏰ had at 30px type
-
-        void TabThreats()
-        {
-            L("threats & promises", 10f, 6f, 40f);
-            float y = 80f;
-            // WHAT NEEDS A HAND, in one place (00-spine sections 4 and 11):
-            // every attention item at warn or above, loudest first. This is the
-            // same list the tab bangs, the garage badge and the pre-roll review
-            // read — so a desk that is shouting can never be shouting only
-            // somewhere the player is not looking.
-            List<AttentionItem> wants = SimEngine.PrerollItems(_st);
-            if (wants.Count > 0)
-            {
-                int shown = 0;
-                foreach (AttentionItem it in wants)
-                {
-                    if (shown >= 12)
-                    {
-                        L(string.Format("+{0} more — the desks have the details", wants.Count - shown),
-                          10f, y, 26f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f));
-                        y += 44f;
-                        break;
-                    }
-                    L(string.Format("! {0}  ·  {1}", it.Label, it.Desk), 10f, y, 28f,
-                      it.Severity >= 3 ? DrawnUI.Coral : DrawnUI.WithAlpha(DrawnUI.Ink, 0.85f));
-                    y += 44f;
-                    shown += 1;
-                }
-                y += 12f;
-            }
-            if (_st.Clocks.Count == 0 && _st.Statuses.Count == 0 && _st.Commitments.Count == 0)
-                L("nothing ticking. that never lasts.", 10f, y, 30f,
-                  DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f));
-            for (int i = 0; i < _st.Clocks.Count; i++)
-            {
-                // THE CLOCK IS DRAWN, NOT TYPED. The original heads this line with ⏰,
-                // a glyph the hand font has never carried; a drawn face is both the
-                // truer style and the one thing that cannot come out a hollow box.
-                DrawnChart.Mount(_content, "clock",
-                    DrawnChart.Clock(ClockSide, DrawnUI.Coral, DrawnUI.Ink),
-                    10f, y + 3f, ClockSide, ClockSide);
-                L(string.Format("in {0} wks: {1}", _st.Clocks[i].WeeksLeft,
-                    _st.Clocks[i].Consequence), 10f + ClockSide + 8f, y, 30f, DrawnUI.Coral);
-                y += 52f;
-            }
-            for (int i = 0; i < _st.Statuses.Count; i++)
-            {
-                Status s = _st.Statuses[i];
-                StatusDef def = SimEngine.StatusEffect(s.Name);
-                bool buff = def != null && def.Kind == "buff";
-                // THE WORD IS THE MARK. ▲/▼/↻ are all absent from the hand and only
-                // render at all through the borrowed face; the word says the same
-                // thing in the same ink on every machine, and §3.3 asks for it anyway
-                // — read the page in grey and every state is still there.
-                L(string.Format("{0} {1} — {2} wks left", buff ? "helping:" : "hurting:",
-                    (s.Name ?? "").Replace("_", " "), s.WeeksLeft), 10f, y, 30f,
-                    buff ? DrawnUI.Sage : DrawnUI.Coral);
-                y += 52f;
-            }
-            for (int i = 0; i < _st.Commitments.Count; i++)
-            {
-                Commitment c = _st.Commitments[i];
-                L(string.Format("standing: {0} — ${1}/wk for {2} more wks",
-                    c.Name, c.CashWk, c.WeeksLeft), 10f, y, 30f, DrawnUI.Blue);
-                y += 52f;
-            }
-            // THE PAGE STATES ITS OWN LAW, like every desk does (2.7). Reading order
-            // ends on the lesson: this sheet is the overflow, and the thing it has to
-            // teach is that these rows are ranked and that the desks hold the
-            // controls.
-            L("the rules of this page: everything the company is shouting about, loudest first · "
-              + "a CLOCK fires on its week · a CONDITION expires on its own · a STANDING cost bills "
-              + "until it runs out · nothing is fixed here, and every row names the desk that owns it",
-              10f, 734f, 21f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 1100f);
         }
     }
 }

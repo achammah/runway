@@ -346,27 +346,13 @@ namespace Runway.Game
             ob.targetGraphic = hit;
             ob.onClick.AddListener(OpenJournal);
 
-            // the binder's doorway: a smaller drawn tab beside the journal button
-            var bb = GameUi.PaperSheet(Rect, 1272f, 936f, 240f, 56f, 4, 3f, null, "bindertab");
-            DrawnUI.DisplayLabel(bb, "THE BINDER (TAB)", 0f, 12f, 24f, DrawnUI.Ink, 240f,
-                                 TextAlignmentOptions.Top);
-            var bh = bb.gameObject.AddComponent<Image>();
-            bh.color = new Color(0f, 0f, 0f, 0f);
-            bh.raycastTarget = true;
-            var bbtn = bb.gameObject.AddComponent<Button>();
-            bbtn.transition = Selectable.Transition.None;
-            bbtn.targetGraphic = bh;
-            bbtn.onClick.AddListener(OpenBinder);
-            // THE WARNING BADGE (owner #211: "not clear enough there is
-            // something to check"): a big cream-outlined coral ! riding the
-            // chip's corner, fully inside the frame — unmissable on any room.
-            _binderBang = DrawnUI.HandLabel(Rect, "!", 1462f, 892f, 52f, DrawnUI.Coral, 52f,
-                                            TMPro.TextAlignmentOptions.Top);
-            var bm = _binderBang.fontMaterial;
-            bm.SetColor(TMPro.ShaderUtilities.ID_OutlineColor,
-                        DrawnUI.WithAlpha(DrawnUI.Cream, 0.95f));
-            bm.SetFloat(TMPro.ShaderUtilities.ID_OutlineWidth, 0.26f);
-            _binderBang.gameObject.SetActive(false);
+            // THE BINDER OBJECT (DECISIONS § THE BINDER PORTRAIT): the diegetic
+            // binder at the scene's calm bottom-left replaces the doorway tab.
+            // Its red "!" sticker rides the object itself, fed by the same
+            // attention list as the binder's own tabs — _binderBang stays null
+            // and the null-guarded updater below is a no-op.
+            var bobj = BinderScreen.MakeObject(Rect, State, OpenBinder, 210f, 250f);
+            DrawnUI.SetTopLeft(bobj, 28f, 742f);
             // THE HUD TICKER (00-spine section 4): one hand-written line under
             // the binder button naming the loudest problem in the company. A
             // bang says "something is wrong"; the ticker says WHAT, in the

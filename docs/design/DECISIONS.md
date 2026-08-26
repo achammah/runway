@@ -684,10 +684,17 @@ controller, retention}, waterfall executor, powers checks
    nature. Cached in user://; the drawn CSS-style kraft cover (the
    already-locked frame art) is the instant placeholder and permanent
    fallback — the binder never waits on an image.
-4. **Where**: (a) the binder screen's COVER STATE — you see the
-   portrait first, and the open transition goes portrait → rail +
-   sheet; (b) a small version wherever the binder appears as an
-   object (HUD button, the room scene if it hosts one).
+4. **Where (owner correction)**: the portrait sits ON THE ROOM
+   PAINTING, composited at the BOTTOM-LEFT of the scene as a nice
+   3D-illustrated object — and it REPLACES the "binder tab" button:
+   pressing the binder object opens the binder. Affordances: slight
+   lift/tilt on hover; when the binder has attention items, the red
+   "!" sticker appears on the object (the red system reaches the
+   scene). The scene prompt already keeps the lower-left calm, so
+   the composite has a home. Style: soft-shaded 3D-illustrated look
+   while staying in the game palette. Fallback: a drawn mini-binder
+   (same silhouette) when no portrait exists. The name overlay
+   applies at this size too (scaled PatrickHand on the label).
 5. **Pipeline split (the "gpt image 2" ruling)**: TRANSPARENT-
    BACKGROUND assets go through the OpenAI images API (the game
    already holds the OpenAI key) — request model "gpt-image-2" and

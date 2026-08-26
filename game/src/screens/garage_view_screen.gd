@@ -345,28 +345,13 @@ func _ready() -> void:
 	_style_button(_open_btn, PALETTE["yellow"], 30)
 	_open_btn.pressed.connect(_open_journal)
 	add_child(_open_btn)
-	# the binder's doorway: a smaller drawn tab beside the journal button
-	var bb := Button.new()
-	bb.text = "THE BINDER (TAB)"
-	bb.position = Vector2(1272, 936)
-	bb.size = Vector2(240, 56)
-	bb.pivot_offset = Vector2(120, 28)
-	_style_button(bb, PALETTE["sage"], 24)
-	bb.pressed.connect(_open_binder)
-	add_child(bb)
-	# THE WARNING BANG (owner): the binder doorway wears a coral ! while any
-	# offer still bills at the going rate — set a price or make it consciously free.
-	_binder_bang = Label.new()
-	_binder_bang.text = "!"
-	_binder_bang.add_theme_font_override("font", _font)
-	_binder_bang.add_theme_font_size_override("font_size", 52)
-	_binder_bang.add_theme_color_override("font_color", PALETTE["coral"])
-	_binder_bang.add_theme_color_override("font_outline_color", PALETTE["cream"])
-	_binder_bang.add_theme_constant_override("outline_size", 12)
-	_binder_bang.position = Vector2(1462, 892)
-	_binder_bang.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_binder_bang.visible = false
-	add_child(_binder_bang)
+	# THE BINDER OBJECT (DECISIONS § THE BINDER PORTRAIT): the diegetic binder
+	# at the scene's calm bottom-left replaces the doorway tab. Its red "!"
+	# sticker is fed by the same attention list as the binder's own tabs, so
+	# _binder_bang stays null and the null-guarded updater below is a no-op.
+	var bobj := Binder.make_object(state, _open_binder)
+	bobj.position = Vector2(28, 742)
+	add_child(bobj)
 	# THE HUD TICKER (docs/design/00-spine.md §4): one hand-written line under
 	# the binder button naming the loudest problem in the company. A bang says
 	# "something is wrong"; the ticker says WHAT, in the business term the

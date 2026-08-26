@@ -24,7 +24,7 @@ namespace Runway.Game
     /// assumed — pass that y to the next one. Nothing here reads a fixed step for
     /// wrapping text (the street stacked on itself the week a thesis wrapped).
     /// </summary>
-    public static class DeskKit
+    public static partial class DeskKit
     {
         /// THE TYPE SCALE (section 1.3) — six bands with roles. A size may flex a
         /// step to fit a measured line; a band never skips (a receipt is never
@@ -53,6 +53,36 @@ namespace Runway.Game
         public const int ListCap = 6;      // six cards, then "+N more" — nothing scrolls
         public const float FooterY = 700f; // the computed-stats line
         public const float RulesY = 734f;  // the desk-law line, or the warning that outranks it
+
+        /// THE REWORK GRAMMAR (docs/design/11-binder-rework.md): hero band, then
+        /// 2-4 paper cards, then the teaching foot. Every number below is
+        /// kit-owned so a desk spends nothing but a y cursor — per-desk
+        /// arithmetic is how nine pages drift apart.
+        public const float HeroBig = 56f;      // the hero band's number (the 44-64 band)
+        public const float HeroSlot = 120f;    // the instrument slot, caller-drawn
+        public const float BandMin = 108f;     // the band is never shorter than its instrument
+        public const float AirRow = 18f;       // >=18px between rows (Law 6 — air is a feature)
+        public const float AirCard = 24f;      // >=24px between cards
+        public const float CardPad = 18f;      // paper edge to content, both sides
+        public const float CardTitle = 24f;    // the card's pen title
+        public const float CardHead = 52f;     // title band: the first row starts this far down
+        public const float CardCtrl = 128f;    // the +/- gutter a card reserves for its rows
+        public const float MoneySize = 26f;    // a card row (Law 5's row band)
+        public const float MoneyPitch = 44f;   // 26px of type + the 18px of air
+        public const float TwoBarH = 30f;      // one pen-stroke bar
+        public const float TwoBarGap = 4f;     // between two segment strokes of one bar
+        public const float TwoBarPitch = 56f;  // between the two bars
+        public const float TwoBarLab = 96f;    // the end-label column, left of the bar
+        public const float TwoBarNum = 220f;   // the value text's room, right of the longest bar
+        public const float FunnelLab = 120f;   // the stage name, left of the mouth
+        public const float FunnelH = 66f;      // one trapezoid
+        public const float FunnelGap = 8f;     // between two mouths
+        public const float FunnelNarrow = 0.18f;  // each stage keeps 18% less width
+        public const float MeterH = 22f;       // the drawn fill (fuse, progress, share)
+        public const float Grid2W = 540f;      // a lever cell: 2 x 540 + 40 = the pane's 1120
+        public const float Grid2Gap = 40f;
+        public const float Grid2H = 120f;
+        public const float SevBox = 26f;       // the severity dot's footprint
 
         /// The keyless path is never a degraded screen — it is the same desk with
         /// a dry footnote (section 2.12).
@@ -768,6 +798,347 @@ namespace Runway.Game
             return DrawnUI.Coral;
         }
 
+        // ══ THE REWORK PRIMITIVES (11-binder-rework) ═══════════════════════════
+        // The owner's verdict on the first binder was "confusing, not clear, not
+        // beautiful": every row the same size, money hidden inside prose, no
+        // paper structure, and nothing DRAWN on the page where the densest
+        // numbers live. These eight are the answer, built once for both engines.
+        // A desk composes them against a single y cursor and does no arithmetic
+        // of its own.
+
+        /// <summary>
+        /// A HAND-DRAWN RULE — the wobbled twin of <see cref="Rule"/>, for the
+        /// rework's own structure. Rule() keeps its dead-straight 2px line
+        /// because eight shipped desks measure themselves against it; a fresh
+        /// page rules itself with the pen.
+        /// </summary>
+        public static float PenRule(BinderScreen b, float y, float x = XId, float w = 1120f,
+                                    Color? col = null, int seed = 5)
+        {
+            DrawnUI.Rule(b.Content, x, y + 3f, w, col ?? Ink(0.25f), 2f, seed, 1.1f, 19);
+            return y + 16f;
+        }
+
+        /// <summary>
+        /// LAW 1 — THE HERO ANSWERS THE TAB'S QUESTION. One big number, one plain
+        /// sentence under it, and an optional drawn instrument beside it: the
+        /// answer to "how is this doing?" in one second, before the eye reaches a
+        /// single card.
+        ///
+        /// `instrument` reserves the left HeroSlot and nothing else — THE CALLER
+        /// DRAWS THE INSTRUMENT (a jar, a meter, a clock, a pie), because only
+        /// the desk knows what shape its own idea has. Returns the band's bottom
+        /// y: hand it to the first card and the page composes itself.
+        /// </summary>
+        public static float HeroBand(BinderScreen b, string bigText, string sentence,
+                                     Color? col = null, float y = 6f, bool instrument = false)
+        {
+            float x = XId + (instrument ? HeroSlot : 0f);
+            float w = PaneW - x - 40f;
+            b.L(bigText, x, y, HeroBig, col ?? DrawnUI.Ink, w);
+            float bottom = y + 74f;
+            if (!string.IsNullOrEmpty(sentence))
+            {
+                // ONE PLAIN SENTENCE, in words a tired founder reads without
+                // decoding — the number said again in English, never a second one.
+                TextMeshProUGUI s = b.L(sentence, x, y + 66f, Row, Ink(0.7f), w);
+                bottom = y + 66f + Mathf.Max(BinderScreen.Height(s), 34f);
+            }
+            bottom = Mathf.Max(bottom, y + BandMin);
+            PenRule(b, bottom + 10f);
+            return bottom + 26f;
+        }
+
+        /// <summary>A card's own geometry, so a row inside it does no arithmetic.</summary>
+        public sealed class CardBox
+        {
+            public float ContentX;    // where a label starts
+            public float ContentY;    // where the first row sits
+            public float Cursor;      // the running y MoneyRow advances
+            public float MoneyX;      // where a value ENDS
+            public float Bottom;      // where the card ends
+            public float X, Y, W, H;
+        }
+
+        /// <summary>
+        /// LAW 3 — CARDS, NOT LISTS. A wobbled paper card cut by the same scissors
+        /// as every other card in the game (the draft-card recipe: shadow
+        /// (7,9)@0.18, an ink edge walked in 13 steps with 2.1 of jitter, seeded
+        /// by the card's own x so neighbours are visibly hand-cut and never
+        /// cloned). The body is the same cream held one shade up to the light,
+        /// which is what makes a card read as lying ON the clipboard rather than
+        /// being a hole cut in it.
+        ///
+        /// `controls` reserves the +/- gutter — pass it and the money column stays
+        /// put whether or not a given row carries a stepper (Law 2: one column,
+        /// always).
+        /// </summary>
+        public static CardBox CardFrame(BinderScreen b, float x, float y, float w, float h,
+                                           string title, bool controls = false)
+        {
+            var root = DrawnUI.Rect(b.Content, "card", x, y, w, h);
+            DrawnUI.Fill(root, "shadow", new Color(0f, 0f, 0f, 0.18f), 7f, 9f, w, h);
+            // THE PAPER SITS INSIDE THE WOBBLE, not behind it. Godot fills the ink
+            // edge's own polygon; Unity's edge is a baked stroke with no interior,
+            // so the fill is pulled in past the wobble's inward swing (inset 4.5 +
+            // jitter 2.1) and the sliver of bare sheet that leaves outside the
+            // stroke is cream on cream — invisible, where four right angles poking
+            // through a hand-drawn edge are not.
+            const float Body = 7f;
+            DrawnUI.Fill(root, "paper", DrawnUI.Cream, Body, Body, w - Body * 2f,
+                         h - Body * 2f);
+            DrawnUI.Fill(root, "lift", new Color(1f, 1f, 1f, 0.07f), Body, Body,
+                         w - Body * 2f, h - Body * 2f);
+            DrawnUI.AddInkEdge(root, new Vector2(w, h), new DrawnUI.PaperStyle
+            {
+                ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 4.5f,
+                StepsPerEdge = 13, Jitter = 2.1f, Thickness = 3f,
+                Seed = 17 + Mathf.Abs((int)x % 5),
+            });
+            if (!string.IsNullOrEmpty(title))
+                // UPPERCASE IS THE BINDER'S BOLD (1.3) — one hand, and emphasis is
+                // size, caps or the pen, never a second font.
+                b.L(title.ToUpper(), x + CardPad, y + 12f, CardTitle, DrawnUI.Ink,
+                    w - CardPad * 2f);
+            float contentY = y + (string.IsNullOrEmpty(title) ? CardPad : CardHead);
+            return new CardBox
+            {
+                ContentX = x + CardPad,
+                ContentY = contentY,
+                Cursor = contentY,
+                MoneyX = x + w - CardPad - (controls ? CardCtrl : 0f),
+                Bottom = y + h,
+                X = x, Y = y, W = w, H = h,
+            };
+        }
+
+        /// <summary>
+        /// LAW 2 — MONEY LIVES IN COLUMNS, NEVER IN SENTENCES. The label at the
+        /// card's left, the value RIGHT-ALIGNED so every dollar on the card ends
+        /// on one line, and — when the row is a lever — the +/- glyphs in the
+        /// gutter the frame reserved.
+        ///
+        /// The frame carries the cursor, so a desk writes four rows in four lines
+        /// and never adds a pitch by hand. Returns the next y as well, for a
+        /// caller that wants to interleave something else.
+        /// </summary>
+        public static float MoneyRow(BinderScreen b, CardBox f, string label, string value,
+                                     Color? col = null, Action onMinus = null,
+                                     Action onPlus = null, bool atMin = false,
+                                     bool atMax = false)
+        {
+            float y = f.Cursor;
+            b.L(label, f.ContentX, y, MoneySize, Ink(0.85f), f.MoneyX - f.ContentX - 8f);
+            TextMeshProUGUI v = b.L(value, f.ContentX, y, MoneySize, col ?? DrawnUI.Ink,
+                                    f.MoneyX - f.ContentX);
+            v.alignment = TextAlignmentOptions.TopRight;
+            if (onMinus != null || onPlus != null)
+            {
+                Glyph(b, "−", f.MoneyX + 16f, y - 6f, atMin, onMinus);
+                Glyph(b, "+", f.MoneyX + 76f, y - 6f, atMax, onPlus);
+            }
+            f.Cursor = y + MoneyPitch;
+            return f.Cursor;
+        }
+
+        /// <summary>
+        /// LAW 4 — DRAW THE SHAPE OF THE IDEA. In and out is not two sentences, it
+        /// is two bars of different length: the SHAPE lands before a single digit
+        /// does. Both bars share one scale (the larger total fills the track), and
+        /// either may be segmented by lane — the segments are separate pen strokes
+        /// with a hair of paper between them, so a reader counts the lanes without
+        /// a legend.
+        ///
+        /// aFracSegments / bFracSegments are the lane MAGNITUDES in one unit; they
+        /// sum to that bar's total. A plain unsegmented bar is a one-item array.
+        /// </summary>
+        public static float TwoBar(BinderScreen b, float x, float y, float w,
+                                   string aLabel, string aValText, IList<float> aFracSegments,
+                                   string bLabel, string bValText, IList<float> bFracSegments,
+                                   Color? aCol = null, Color? bCol = null)
+        {
+            float ta = SumSegs(aFracSegments);
+            float tb = SumSegs(bFracSegments);
+            float hi = Mathf.Max(Mathf.Max(ta, tb), 1f);
+            float track = Mathf.Max(w - TwoBarLab - TwoBarNum, 120f);
+            y = OneBar(b, x, y, track, aLabel, aValText, aFracSegments, ta, hi,
+                       aCol ?? DrawnUI.Sage, 3);
+            y = OneBar(b, x, y, track, bLabel, bValText, bFracSegments, tb, hi,
+                       bCol ?? DrawnUI.Coral, 9);
+            return y;
+        }
+
+        static float SumSegs(IList<float> vals)
+        {
+            float t = 0f;
+            if (vals != null)
+                for (int i = 0; i < vals.Count; i++) t += Mathf.Max(vals[i], 0f);
+            return t;
+        }
+
+        static float OneBar(BinderScreen b, float x, float y, float track, string lab,
+                            string valText, IList<float> segs, float total, float hi,
+                            Color col, int seed)
+        {
+            b.L((lab ?? "").ToUpper(), x, y + 2f, MoneySize, DrawnUI.Ink, TwoBarLab - 8f);
+            float full = track * (total / hi);
+            float bx = x + TwoBarLab;
+            float drawn = 0f;
+            var live = new List<float>();
+            if (segs != null)
+                for (int i = 0; i < segs.Count; i++) if (segs[i] > 0f) live.Add(segs[i]);
+            if (live.Count == 0) live.Add(0f);
+            for (int i = 0; i < live.Count; i++)
+            {
+                // EVERY LANE KEEPS A VISIBLE STROKE: a $12 line beside a $1,400 one
+                // still has to be countable, so no segment is thinner than the pen.
+                float sw = Mathf.Max(full * (live[i] / Mathf.Max(total, 1f)) - TwoBarGap, 6f);
+                var fill = DrawnUI.Fill(b.Content, "seg", DrawnUI.WithAlpha(col, 0.6f),
+                                        bx + drawn, y, sw, TwoBarH);
+                fill.raycastTarget = false;
+                DrawnUI.AddInkEdge(fill.rectTransform, new Vector2(sw, TwoBarH),
+                    new DrawnUI.PaperStyle
+                    {
+                        ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
+                        StepsPerEdge = 6, Jitter = 1f, Thickness = 2.5f, Seed = seed + i * 7,
+                    });
+                drawn += sw + TwoBarGap;
+            }
+            b.L(valText, bx + Mathf.Max(drawn, 8f) + 4f, y + 2f, MoneySize, Ink(0.85f),
+                TwoBarNum - 12f);
+            return y + TwoBarPitch;
+        }
+
+        /// <summary>One narrowing mouth of a funnel.</summary>
+        public sealed class Stage
+        {
+            public string Label = "";
+            public string ValueText = "";
+            public bool Known = true;      // false = the fog, drawn rather than hidden
+            public Color? Col;
+        }
+
+        /// <summary>
+        /// THE FUNNEL IS A FUNNEL — four narrowing pen trapezoids, the number
+        /// written inside each mouth. The SHAPE is the lesson before any figure
+        /// lands, and a stage the company has not earned the eyesight to see keeps
+        /// its mouth and loses its number: Known = false draws the outline faint
+        /// and writes "?", so the fog is visible rather than absent (3.10).
+        /// </summary>
+        public static float FunnelShape(BinderScreen b, float x, float y, float w,
+                                        IList<Stage> stages)
+        {
+            int n = stages == null ? 0 : Mathf.Min(stages.Count, 4);
+            if (n <= 0) return y;
+            float fx = x + FunnelLab;
+            float fw = w - FunnelLab;
+            float fh = n * (FunnelH + FunnelGap) - FunnelGap;
+            DrawnChart.Mount(b.Content, "funnel", FunnelSprite(Mathf.RoundToInt(fw),
+                Mathf.RoundToInt(fh), stages, n), fx, y, fw, fh);
+            for (int i = 0; i < n; i++)
+            {
+                Stage st = stages[i];
+                float sy = y + i * (FunnelH + FunnelGap);
+                b.L((st.Label ?? "").ToUpper(), x, sy + 20f, Detail,
+                    Ink(st.Known ? 0.8f : 0.4f), FunnelLab - 10f);
+                float mouth = fw * (1f - FunnelNarrow * (i + 0.5f));
+                TextMeshProUGUI lbl = b.L(st.Known ? st.ValueText : "?",
+                    fx + (fw - mouth) * 0.5f, sy + 14f, Row,
+                    st.Known ? DrawnUI.Ink : Ink(0.4f), mouth);
+                lbl.alignment = TextAlignmentOptions.Top;
+            }
+            return y + fh + 12f;
+        }
+
+        /// <summary>
+        /// A DRAWN FILL — the fuse, the progress vessel laid flat, any "how far
+        /// along is it". A pen outline round the whole track, a tinted wash to
+        /// `frac`, and the words after it: a chart without its number is
+        /// decoration, and decoration does not ship.
+        /// </summary>
+        public static float Meter(BinderScreen b, float x, float y, float w, float frac,
+                                  Color col, string label = "")
+        {
+            frac = Mathf.Clamp01(frac);
+            var ground = DrawnUI.Fill(b.Content, "meter", Ink(0.06f), x, y, w, MeterH);
+            ground.raycastTarget = false;
+            if (frac > 0f)
+                DrawnUI.Fill(b.Content, "meterfill", DrawnUI.WithAlpha(col, 0.6f),
+                             x, y, w * frac, MeterH).raycastTarget = false;
+            DrawnUI.AddInkEdge(ground.rectTransform, new Vector2(w, MeterH),
+                new DrawnUI.PaperStyle
+                {
+                    ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
+                    StepsPerEdge = 8, Jitter = 0.9f, Thickness = 2.5f, Seed = 19,
+                });
+            if (!string.IsNullOrEmpty(label))
+                b.L(label, x + w + 14f, y - 6f, Detail, Ink(0.8f), 420f);
+            return y + MeterH + 12f;
+        }
+
+        /// <summary>One cell of the 2x2 lever grid.</summary>
+        public sealed class Cell
+        {
+            public string Name = "";
+            public string Value = "";
+            public string Effect = "";
+            public Action OnMinus;
+            public Action OnPlus;
+            public bool AtMin;
+            public bool AtMax;
+        }
+
+        /// <summary>
+        /// THE 2x2 LEVER GRID — eight stacked stepper rows were the ledger's worst
+        /// wall of same-weight text; four compact cells are the same levers read
+        /// in a glance. Each cell: the NAME small, the money big and in the
+        /// founder's own pen, the effect in one word, and the +/- tight against
+        /// the cell's right edge.
+        /// </summary>
+        public static float Grid2(BinderScreen b, float x, float y, IList<Cell> cells)
+        {
+            int n = cells == null ? 0 : Mathf.Min(cells.Count, 4);
+            for (int i = 0; i < n; i++)
+            {
+                Cell c = cells[i];
+                float cx = x + (i % 2) * (Grid2W + Grid2Gap);
+                float cy = y + (i / 2) * Grid2H;
+                b.L((c.Name ?? "").ToUpper(), cx, cy, 22f, DrawnUI.Ink, 320f);
+                b.L(c.Value, cx, cy + 28f, MoneySize, DrawnUI.Coral, 380f);
+                b.L(c.Effect, cx, cy + 62f, 18f, Ink(0.6f), Grid2W - 130f);
+                Glyph(b, "−", cx + Grid2W - 116f, cy + 18f, c.AtMin, c.OnMinus);
+                Glyph(b, "+", cx + Grid2W - 58f, cy + 18f, c.AtMax, c.OnPlus);
+                // the ruled ledger under each cell: structure without a box round it
+                PenRule(b, cy + Grid2H - 18f, cx, Grid2W, Ink(0.14f), 11 + i);
+            }
+            return y + ((n + 1) / 2) * Grid2H + 8f;
+        }
+
+        /// <summary>
+        /// THE ATTENTION DOT — heat as a shape, so the threats list ranks itself
+        /// before a word is read. A note is ink and quiet; a warning is the pen;
+        /// an alarm is the same pen, simply bigger, with a loop drawn round it.
+        /// NOTHING HERE PULSES: the screen is allowed one pulsing element and the
+        /// ticker owns it (2.8).
+        /// </summary>
+        public static void SevDot(BinderScreen b, float x, float y, int severity)
+        {
+            severity = Mathf.Clamp(severity, 1, 3);
+            float r = severity == 1 ? 7f : (severity == 2 ? 8f : 11f);
+            Color col = severity == 1 ? Ink(0.5f) : DrawnUI.Coral;
+            int side = DrawnUI.RingSide(r, 2);
+            float c = SevBox * 0.5f - side * 0.5f;
+            var dot = DrawnChart.Mount(b.Content, "sevdot",
+                DrawnUI.RingSprite(r, 1.5f, 0.7f, 27, 2, true), x + c, y + c, side, side);
+            dot.color = col;
+            if (severity < 3) return;
+            int rs = DrawnUI.RingSide(r + 4f, 2);
+            var halo = DrawnChart.Mount(b.Content, "sevhalo",
+                DrawnUI.RingSprite(r + 4f, 2f, 0.8f, 27, 2, false),
+                x + SevBox * 0.5f - rs * 0.5f, y + SevBox * 0.5f - rs * 0.5f, rs, rs);
+            halo.color = DrawnUI.WithAlpha(DrawnUI.Coral, 0.55f);
+        }
+
         // ── 2.11 the empty states ──────────────────────────────────────────────
 
         /// <summary>
@@ -851,6 +1222,165 @@ namespace Runway.Game
                                       new Vector2(0.5f, 0.5f), 100f);
             _sprites[key] = sp;
             return sp;
+        }
+
+        // ── the funnel, rasterised ─────────────────────────────────────────────
+        // Godot walks four wobbled polylines every frame; Unity has no
+        // immediate-mode canvas, so the whole funnel bakes ONCE into a texture
+        // and is cached by its own values — the same trade DrawnChart makes for
+        // the pie, the spark and the clock. The wobble is seeded, so the same
+        // stages give the same drawing every session.
+
+        /// <summary>
+        /// The four mouths as one sprite: a tinted wash inside each trapezoid, a
+        /// wobbled ink outline round it, and nothing at all inside a fogged stage
+        /// but its faint edge.
+        /// </summary>
+        public static Sprite FunnelSprite(int w, int h, IList<Stage> stages, int n)
+        {
+            var sb = new System.Text.StringBuilder("funnel|");
+            sb.Append(w).Append('|').Append(h);
+            for (int i = 0; i < n; i++)
+                sb.Append('|').Append(stages[i].Known ? '1' : '0')
+                  .Append(ColorUtility.ToHtmlStringRGB(StageCol(stages[i], i)));
+            string key = sb.ToString();
+            Sprite cached;
+            if (_sprites.TryGetValue(key, out cached) && cached != null) return cached;
+
+            w = Mathf.Max(w, 8);
+            h = Mathf.Max(h, 8);
+            var px = new Color32[w * h];
+            var clear = new Color32(255, 255, 255, 0);
+            for (int i = 0; i < px.Length; i++) px[i] = clear;
+
+            for (int i = 0; i < n; i++)
+            {
+                Stage st = stages[i];
+                bool known = st.Known;
+                Color col = StageCol(st, i);
+                float top = w * (1f - FunnelNarrow * i);
+                float bot = w * (1f - FunnelNarrow * (i + 1));
+                float y0 = i * (FunnelH + FunnelGap);
+                float y1 = y0 + FunnelH;
+                var quad = new[]
+                {
+                    new Vector2((w - top) * 0.5f, y0), new Vector2((w + top) * 0.5f, y0),
+                    new Vector2((w + bot) * 0.5f, y1), new Vector2((w - bot) * 0.5f, y1),
+                };
+                if (known) FillQuad(px, w, h, quad, DrawnUI.WithAlpha(col, 0.5f));
+                var rng = new System.Random(41 + i * 3);
+                var pts = new List<Vector2>();
+                for (int k = 0; k < 4; k++)
+                {
+                    Vector2 a = quad[k];
+                    Vector2 bb = quad[(k + 1) % 4];
+                    for (int s = 0; s < 7; s++)
+                    {
+                        Vector2 p = Vector2.Lerp(a, bb, s / 7f);
+                        pts.Add(new Vector2(p.x + Wob(rng, 1.4f), p.y + Wob(rng, 1.4f)));
+                    }
+                }
+                pts.Add(pts[0]);
+                InkStroke(px, w, h, pts, known ? 3f : 2f,
+                          known ? DrawnUI.Ink : Ink(0.35f));
+            }
+
+            // the canvas is built top-left down, the way every .gd file reads;
+            // Unity textures start bottom-left, so the rows flip exactly once
+            var flipped = new Color32[px.Length];
+            for (int y = 0; y < h; y++) Array.Copy(px, y * w, flipped, (h - 1 - y) * w, w);
+            var tex2 = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            tex2.wrapMode = TextureWrapMode.Clamp;
+            tex2.filterMode = FilterMode.Bilinear;
+            tex2.SetPixels32(flipped);
+            tex2.Apply(false, false);
+            Sprite fs = Sprite.Create(tex2, new UnityEngine.Rect(0f, 0f, w, h),
+                                      new Vector2(0.5f, 0.5f), 100f, 0u, SpriteMeshType.FullRect);
+            _sprites[key] = fs;
+            return fs;
+        }
+
+        /// The funnel's own ramp, top to bottom: the world's blue, the heat of a
+        /// lead, then the sage of a customer who actually arrived.
+        static Color StageCol(Stage st, int i)
+        {
+            if (st.Col.HasValue) return st.Col.Value;
+            switch (i)
+            {
+                case 0: return DrawnUI.Blue;
+                case 1: return DrawnUI.Yellow;
+            }
+            return DrawnUI.Sage;
+        }
+
+        static float Wob(System.Random rng, float amount)
+        {
+            return (float)(rng.NextDouble() * 2.0 - 1.0) * amount;
+        }
+
+        /// A trapezoid whose two horizontal edges are its top and bottom — one
+        /// scanline per row, so no polygon rasteriser is needed for the one shape
+        /// this kit draws.
+        static void FillQuad(Color32[] px, int w, int h, Vector2[] q, Color col)
+        {
+            int y0 = Mathf.Max(Mathf.FloorToInt(q[0].y), 0);
+            int y1 = Mathf.Min(Mathf.CeilToInt(q[2].y), h);
+            float span = Mathf.Max(q[2].y - q[0].y, 0.001f);
+            for (int y = y0; y < y1; y++)
+            {
+                float t = Mathf.Clamp01((y + 0.5f - q[0].y) / span);
+                float lx = Mathf.Lerp(q[0].x, q[3].x, t);
+                float rx = Mathf.Lerp(q[1].x, q[2].x, t);
+                int a = Mathf.Max(Mathf.CeilToInt(lx), 0);
+                int b2 = Mathf.Min(Mathf.FloorToInt(rx), w - 1);
+                for (int x = a; x <= b2; x++) Blend(px, y * w + x, col);
+            }
+        }
+
+        /// One wobbled stroke, composited OVER the wash rather than taking the
+        /// brighter alpha: with alpha-max the wash wins wherever the stroke's edge
+        /// is softer than it, and the ink comes out gnawed.
+        static void InkStroke(Color32[] px, int w, int h, List<Vector2> pts,
+                              float thickness, Color col)
+        {
+            float r = Mathf.Max(thickness * 0.5f, 0.5f);
+            for (int i = 0; i + 1 < pts.Count; i++)
+            {
+                float len = Vector2.Distance(pts[i], pts[i + 1]);
+                int steps = Mathf.Max(Mathf.CeilToInt(len * 2f), 1);
+                for (int s = 0; s <= steps; s++)
+                {
+                    Vector2 p = Vector2.Lerp(pts[i], pts[i + 1], (float)s / steps);
+                    int x0 = Mathf.Max(Mathf.FloorToInt(p.x - r - 1f), 0);
+                    int x1 = Mathf.Min(Mathf.CeilToInt(p.x + r + 1f), w - 1);
+                    int yy0 = Mathf.Max(Mathf.FloorToInt(p.y - r - 1f), 0);
+                    int yy1 = Mathf.Min(Mathf.CeilToInt(p.y + r + 1f), h - 1);
+                    for (int y = yy0; y <= yy1; y++)
+                        for (int x = x0; x <= x1; x++)
+                        {
+                            float dx = x + 0.5f - p.x;
+                            float dy = y + 0.5f - p.y;
+                            float a = Mathf.Clamp01(r - Mathf.Sqrt(dx * dx + dy * dy) + 0.5f);
+                            if (a <= 0f) continue;
+                            Blend(px, y * w + x, new Color(col.r, col.g, col.b, a * col.a));
+                        }
+                }
+            }
+        }
+
+        static void Blend(Color32[] px, int idx, Color src)
+        {
+            Color32 dst = px[idx];
+            float sa = Mathf.Clamp01(src.a);
+            float da = dst.a / 255f;
+            float outA = sa + da * (1f - sa);
+            if (outA <= 0.0001f) return;
+            float k = da * (1f - sa);
+            px[idx] = new Color32(
+                (byte)Mathf.Clamp(Mathf.RoundToInt((src.r * 255f * sa + dst.r * k) / outA), 0, 255),
+                (byte)Mathf.Clamp(Mathf.RoundToInt((src.g * 255f * sa + dst.g * k) / outA), 0, 255),
+                (byte)Mathf.Clamp(Mathf.RoundToInt((src.b * 255f * sa + dst.b * k) / outA), 0, 255),
+                (byte)Mathf.Clamp(Mathf.RoundToInt(outA * 255f), 0, 255));
         }
     }
 
