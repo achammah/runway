@@ -77,6 +77,15 @@ emit neither op.
   cash that actually exists — you name the number, the engine does the math.
 - `set_budget` — a RECURRING weekly spend the plan sets ("put 250/week behind
   ads"): v = dollars per week, cat as above. Replaces that lever's old value.
+- THE STANDING-VS-STUNT TEST, because only standing budgets reach the ledger's
+  levers and the acquisition machine: a move that STARTS AN ACTIVITY THAT
+  KEEPS RUNNING — running ads, working a list, writing content, a care line,
+  an R&D push — is `set_budget`, even when the founder names the number once
+  ("run google ads — $800" means $800/wk on the marketing lever until they
+  change it; the binder shows it and the founder can dial it down next week).
+  `spend` is only for TRUE one-shots that end when the receipt prints: a
+  booth, a stunt, gear, a bribe, a party. When a clarify answer supplies the
+  amount for an ads/outreach move, that amount is the STANDING budget.
 - `push_lead` — the founder leans on a NAMED enterprise account: a courtship
   dinner, an exec-sponsor call, a demo rescued in person, a discount walked
   over by hand. v = the heat swing (-40 to 40), cat = the lead's name EXACTLY
