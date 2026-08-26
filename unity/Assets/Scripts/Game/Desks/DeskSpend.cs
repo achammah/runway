@@ -103,7 +103,11 @@ namespace Runway.Game
                         cfg.AtMin = live <= 0;
                         cfg.AtMax = SimSpendBook.AtCap(state, i);
                     }
-                    DeskKit.LedgerRow(b, sheet, new[] { line.Name ?? "", line.Buys ?? "",
+                    // LONG-TEXT LAW: a book row is one line tall — a generated
+                    // buys line (up to 60 chars) trims to its column, never
+                    // wrapping over the rule into the row below
+                    DeskKit.LedgerRow(b, sheet, new[] { line.Name ?? "",
+                        FitBuys(line.Buys ?? ""),
                         "$" + GameUi.Money(live), "" }, cfg);
                     // the EFFECT cell carries the row's ONE control (mutation
                     // law: receipt-priced arm, two taps, Esc disarms)
@@ -242,6 +246,13 @@ namespace Runway.Game
         }
 
         static Color Ink(float a) { return DrawnUI.WithAlpha(DrawnUI.Ink, a); }
+
+        /// LONG-TEXT LAW: the buys cell is one line — ~30 chars fill its
+        /// 218px column at the row hand; longer generated lines trim honestly.
+        static string FitBuys(string s)
+        {
+            return s.Length <= 31 ? s : s.Substring(0, 30).TrimEnd() + "…";
+        }
 
         static string DStr(BinderScreen b, string key)
         {

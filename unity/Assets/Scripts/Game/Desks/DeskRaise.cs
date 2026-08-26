@@ -79,11 +79,22 @@ namespace Runway.Game
         {
             GameState state = b.State;
             List<Dictionary<string, object>> terms = SimOwnership.StagesIn(state, "terms");
-            PitchVignette(b);
-            float y = DeskKit.HeroBand(b,
-                terms.Count + " offer" + (terms.Count == 1 ? "" : "s") + " on the table · "
-                + InMotion(state) + " in motion",
-                "raising is a pipeline, like customers — except the buyer buys a piece of you.");
+            // the hero keeps to its own lane: when the vignette rides the
+            // header (x600..732, left of the x740 banner) the big line wears
+            // its compact form and the sentence trims — no collisions; with
+            // no image the full wording keeps the whole band
+            bool hasVig = PitchVignette(b);
+            string big = terms.Count + " offer" + (terms.Count == 1 ? "" : "s")
+                + " on the table · " + InMotion(state) + " in motion";
+            string sentence =
+                "raising is a pipeline, like customers — except the buyer buys a piece of you.";
+            if (hasVig)
+            {
+                big = terms.Count + " offer" + (terms.Count == 1 ? "" : "s")
+                    + " · " + InMotion(state) + " in motion";
+                sentence = "raising is a pipeline, like customers —";
+            }
+            float y = DeskKit.HeroBand(b, big, sentence);
             if (state.RaiseState != null && state.RaiseState.Active)
             {
                 TextMeshProUGUI t1 = b.L("the raise eats ≈"
@@ -167,8 +178,9 @@ namespace Runway.Game
                 });
                 FoldNote(b, c4, state.Instruments.Count - 1, colW, colH);
             }
+            // the authored empty line sits BELOW the four boxes, never across them
             if (InMotion(state) == 0 && state.Instruments.Count == 0)
-                DeskKit.Empty(b, z1.ContentX + 8f, z1.Cursor + colH - 22f,
+                DeskKit.Empty(b, z1.ContentX + 8f, z1.Cursor + colH + 8f,
                     "", "nobody is knocking yet — traction is the doorbell", true);
             y += 262f + 10f;
 
@@ -265,7 +277,10 @@ namespace Runway.Game
             else
             {
                 string nmv = nm;
-                DeskKit.Arm(b, "sign_" + nm, "SIGN " + Gd.Left(nm.ToUpperInvariant(), 14),
+                // a long name trims with an honest ellipsis, never mid-word blunt
+                string cap = nm.ToUpperInvariant();
+                if (cap.Length > 22) cap = cap.Substring(0, 21).TrimEnd() + "…";
+                DeskKit.Arm(b, "sign_" + nm, "SIGN " + cap,
                     "press again — the cap table redraws", x, endY - 10f,
                     () => SimOwnership.OpSignInstrument(b.State, nmv), 350f, DeskKit.Detail);
             }
@@ -274,15 +289,15 @@ namespace Runway.Game
         /// <summary>THE PITCH ILLUSTRATION: a generated vignette at
         /// user://illus_pitch.png rides the header BEHIND the hero when it
         /// exists; the plain header IS the fallback — numbers never wait.</summary>
-        static void PitchVignette(BinderScreen b)
+        static bool PitchVignette(BinderScreen b)
         {
             try
             {
                 string p = RunwayPaths.User("illus_pitch.png");
-                if (!System.IO.File.Exists(p)) return;
+                if (!System.IO.File.Exists(p)) return false;
                 byte[] bytes = System.IO.File.ReadAllBytes(p);
                 var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!tex.LoadImage(bytes)) return;
+                if (!tex.LoadImage(bytes)) return false;
                 var img = new GameObject("pitch_vignette",
                     typeof(RectTransform), typeof(UnityEngine.UI.RawImage))
                     .GetComponent<UnityEngine.UI.RawImage>();
@@ -292,8 +307,9 @@ namespace Runway.Game
                 img.rectTransform.sizeDelta = new Vector2(132f, 132f);
                 img.color = new Color(1f, 1f, 1f, 0.9f);
                 img.raycastTarget = false;
+                return true;
             }
-            catch (Exception) { }
+            catch (Exception) { return false; }
         }
 
         static void FoldNote(BinderScreen b, DeskKit.WallCol col, int n, float colW, float colH)

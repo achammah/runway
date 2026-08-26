@@ -68,7 +68,7 @@ static func draw(b) -> void:
 	t2.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 	# ── zone 1 · THE OPEN SEATS — every seat priced by the labor market
-	var z1 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 174.0, 1, "the open seats",
+	var z1 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 184.0, 1, "the open seats",
 		"every seat carries the market's band before you advertise")
 	if roles.is_empty():
 		DeskKit.empty(b, Vector2(z1.content_x, z1.cursor + 4.0),
@@ -76,26 +76,30 @@ static func draw(b) -> void:
 	for i in mini(roles.size(), 2):
 		var rd: Dictionary = roles[i]
 		var fx := float(z1.content_x) + float(i) * 552.0
-		var fr := DeskKit.card_frame(b, fx, z1.cursor - 4.0, 532.0, 96.0,
+		# 88 tall: the fold line below keeps its own lane under the cards
+		var fr := DeskKit.card_frame(b, fx, z1.cursor - 4.0, 532.0, 88.0,
 			"%s · band $%s–%s/wk" % [String(rd.get("seat", "?")).to_upper(),
 				SimOwnership.money(int(rd.get("band_lo", 0))), SimOwnership.money(int(rd.get("band_hi", 0)))],
 			true)
 		var rid := String(rd.get("id", ""))
 		var adv := int(rd.get("advert_wk", 0))
 		DeskKit.money_row(b, fr, "advert  -> ≈%.1f applicants/wk" % SimOwnership.arrival_rate_r(state, rd),
-			"$%d/wk" % adv, DeskKit.INK,
+			"$%s/wk" % SimOwnership.money(adv), DeskKit.INK,
 			func() -> void: SimOwnership.set_advert(b.state, rid, adv - CASH_STEP),
 			func() -> void: SimOwnership.set_advert(b.state, rid, adv + CASH_STEP),
 			adv <= 0, adv >= 400)
 	if roles.size() > 2:
-		b.label("+%d more seat(s)" % (roles.size() - 2), Vector2(z1.content_x + 8.0, float(z1.bottom) - 26.0),
-			17, Color(DeskKit.INK, 0.5), 300.0)
+		var extra := roles.size() - 2
+		b.label(("the other %d seat waits below" % extra) if extra == 1
+			else ("the other %d seats wait below" % extra),
+			Vector2(z1.content_x + 8.0, float(z1.bottom) - 24.0),
+			17, Color(DeskKit.INK, 0.5), 400.0)
 	DeskKit.word(b, "open a seat", Vector2(z1.content_x + 940.0, z1.y + 8.0), func() -> void:
 		b.desk["mode"] = "seats", DeskKit.DETAIL, Color(DeskKit.INK, 0.7), 170.0)
-	y += 174.0 + 10.0
+	y += 184.0 + 10.0
 
 	# ── zone 2 · THE CANDIDATES — four columns, the founder's week is a cost
-	var z2 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 258.0, 2, "the candidates",
+	var z2 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 272.0, 2, "the candidates",
 		"interviewing costs your week; ghosting costs your name")
 	var col_w := 268.0
 	var col_h := 162.0
@@ -139,9 +143,11 @@ static func draw(b) -> void:
 			DeskKit.wall_card(b, col, cfg)
 			shown += 1
 		if cands.size() > shown:
+			# the fold note lives BELOW the column box — a tall card (two facts)
+			# never prints through it
 			b.label("+%d more wait behind" % (cands.size() - shown), Vector2(float(col.content_x) + 2.0,
-				float(col.y) + col_h - 26.0), 16, Color(DeskKit.INK, 0.5), col_w - 20.0)
-	y += 258.0 + 10.0
+				float(col.y) + col_h + 4.0), 16, Color(DeskKit.INK, 0.5), col_w - 20.0)
+	y += 272.0 + 10.0
 
 	# ── zone 3 · THE OFFER COMPOSER — comp is a mix you design
 	var z3 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 284.0, 3, "the offer composer",

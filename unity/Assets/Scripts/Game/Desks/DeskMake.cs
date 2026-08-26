@@ -39,13 +39,24 @@ namespace Runway.Game
         const int Rung2Live = 13;   // DECISIONS: rung 1 holds "≤ ~12 live"
         const int FreshWks = 4;
 
+        /// A committed bet that has finished is READY, not BUILDING — the two
+        /// counts and the two columns never show the same bet twice.
+        static List<Bet> BuildingBets(GameState s)
+        {
+            var outp = new List<Bet>();
+            List<Bet> committed = SimRoadmap.CommittedBets(s);
+            for (int i = 0; i < committed.Count; i++)
+                if (!committed[i].Ready) outp.Add(committed[i]);
+            return outp;
+        }
+
         /// The group overview's card IS this page's hero (the quartet law).
         public static string[] HeroSummary(GameState s)
         {
             int creaks = SimFeatures.CreakCount(s);
             string line = string.Format(CultureInfo.InvariantCulture,
                 "{0} live · {1} building · {2} ready", s.Features.Count,
-                SimRoadmap.CommittedBets(s).Count, SimRoadmap.ReadyBets(s).Count);
+                BuildingBets(s).Count, SimRoadmap.ReadyBets(s).Count);
             if (creaks > 0)
                 line += string.Format(CultureInfo.InvariantCulture, " · {0} creak{1}",
                     creaks, creaks == 1 ? "" : "s");
@@ -90,8 +101,12 @@ namespace Runway.Game
             if (line == "") line = "the thing we make";
             string version = "v0." + Math.Max(1, st.Product / 10)
                 .ToString(CultureInfo.InvariantCulture);
-            DeskKit.HeroPlate(b, 10f, 6f, Clip(name, 22), version, "what we make");
-            // THE MAKE illustration — beside the plate; plate alone is the fallback.
+            // the plate's name lane is one line — a 24-char company name trims
+            // with an ellipsis, never wrapping under the version chip
+            string plateName = name.Length > 17 ? name.Substring(0, 16).TrimEnd() + "…" : name;
+            DeskKit.HeroPlate(b, 10f, 6f, plateName, version, "what we make");
+            // THE MAKE illustration — BESIDE the plate (never over its title);
+            // the plate alone is the fallback.
             try
             {
                 string mp = Runway.Llm.PortraitClient.MakePath;
@@ -105,19 +120,20 @@ namespace Runway.Game
                             typeof(UnityEngine.UI.RawImage)).GetComponent<UnityEngine.UI.RawImage>();
                         mi.texture = mt;
                         mi.rectTransform.SetParent(b.Content, false);
-                        DrawnUI.SetTopLeft(mi.rectTransform, 196f, 4f);
+                        DrawnUI.SetTopLeft(mi.rectTransform, 434f, 4f);
                         mi.rectTransform.sizeDelta = new Vector2(84f, 84f);
                         mi.raycastTarget = false;
                     }
                 }
             }
             catch { }
-            b.L(line, 450f, 8f, 32f, DrawnUI.Ink, 660f);
+            b.L(line, 536f, 8f, 32f, DrawnUI.Ink, 574f);
+            // a bet that is READY is no longer BUILDING — each shows once
             string counts = string.Format(CultureInfo.InvariantCulture,
                 "{0} live · {1} building · {2} ready · {3} on the shelf",
-                st.Features.Count, SimRoadmap.CommittedBets(st).Count,
+                st.Features.Count, BuildingBets(st).Count,
                 SimRoadmap.ReadyBets(st).Count, ShelfRows(st).Count);
-            b.L(counts, 450f, 52f, 21f, Ink(0.6f), 660f);
+            b.L(counts, 536f, 52f, 21f, Ink(0.6f), 574f);
             int creaks = SimFeatures.CreakCount(st);
             if (creaks > 0)
             {
@@ -127,7 +143,7 @@ namespace Runway.Game
                 if (tax > 0)
                     cl += string.Format(CultureInfo.InvariantCulture,
                         " — build speed −{0}%", tax);
-                b.L(cl, 450f, 78f, 21f, DrawnUI.Coral, 500f);
+                b.L(cl, 536f, 78f, 21f, DrawnUI.Coral, 420f);
             }
             List<Bet> ready = SimRoadmap.ReadyBets(st);
             if (ready.Count > 0)
@@ -137,8 +153,9 @@ namespace Runway.Game
                     ? string.Format(CultureInfo.InvariantCulture, "self-ships in {0} wk", left)
                     : "self-ships this week");
             }
-            b.L("SHIP rolls the dice · stand-down burns 25%", 830f, 52f, 17f,
-                Ink(0.5f), 300f);
+            // (the wall already teaches the dice and the stand-down burn —
+            // READY says "ship it, or it ships itself", BUILDING owns the
+            // stand-down arm — so the hero keeps no duplicate note)
         }
 
         // ═══════════════════════ THE PIPELINE WALL ═══════════════════════════
@@ -158,7 +175,7 @@ namespace Runway.Game
         {
             List<ShelfRow> shelf = ShelfRows(st);
             List<Bet> queued = SimFeatures.QueuedBets(st);
-            List<Bet> building = SimRoadmap.CommittedBets(st);
+            List<Bet> building = BuildingBets(st);
             List<Bet> ready = SimRoadmap.ReadyBets(st);
             // ── THE SHELF: priced ideas, press one to commit it
             DeskKit.WallCol c1 = DeskKit.WallColumn(b, 10f, ColY, ColW, ColH,

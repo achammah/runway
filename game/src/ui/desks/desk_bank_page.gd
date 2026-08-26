@@ -229,13 +229,21 @@ static func _note_card(b, state: GameState, n: Dictionary, x: float, y: float,
 			split = "$%s/Mon all fee · balloon $%s in %d wks" % [b.fmt(interest), b.fmt(bal), to_balloon]
 		_:
 			split = "$%s/wk in fees — claws above $%s" % [b.fmt(interest), b.fmt(SimBank.CLAW_TRIGGER)]
+	# the attention token leads — a trimmed tail never hides a missed Monday
 	if int(note.get("missed", 0)) > 0:
-		split += " · missed %d" % int(note.get("missed", 0))
-	b.label(split, Vector2(cx, cy + 42.0), 15,
-		Binder.PEN if kind != "bank" else Color(DeskKit.INK, 0.7), w - 36.0)
-	# repay — the existing two-tap op
+		split = ("missed %d · " % int(note.get("missed", 0))) + split
+	# the split line keeps its own lane: it ends before the repay arm and
+	# trims with an ellipsis instead of printing under it
 	var quote: int = mini(state.cash - GameState.RAMEN_PER_WEEK, bal)
-	if idx >= 0 and quote > 0:
+	var has_arm := idx >= 0 and quote > 0
+	var sl: Label = b.label(split, Vector2(cx, cy + 42.0), 15,
+		Binder.PEN if (kind != "bank" or int(note.get("missed", 0)) > 0)
+		else Color(DeskKit.INK, 0.7),
+		(w - 36.0 - 212.0) if has_arm else (w - 36.0))
+	sl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	sl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# repay — the existing two-tap op
+	if has_arm:
 		var fire := func() -> void:
 			SimBank.repay_note(state, idx)
 		DeskKit.arm(b, "repay_%d" % idx, "repay ▸", "−$%s now — sure?" % b.fmt(quote),

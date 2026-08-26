@@ -33,6 +33,18 @@ const Y_RULES := 840.0
 ## (the collapse law — attention rows never fold).
 const FOLD_AT := 6
 
+## LONG-TEXT LAW: a book row is one line tall — a generated buys line (up to
+## 60 chars) is measured and trimmed to its column, never wrapped over the
+## rule into the row below.
+static func _fit(b, s: String, w: float, size: int = 21) -> String:
+	if b.font().get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x <= w:
+		return s
+	var t := s
+	while t.length() > 1 and b.font().get_string_size(t + "…",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > w:
+		t = t.substr(0, t.length() - 1)
+	return t.strip_edges() + "…"
+
 ## The group overview's card reads this: the page's hero verbatim.
 static func hero_summary(state) -> Dictionary:
 	var s: GameState = state
@@ -112,7 +124,7 @@ static func draw(b) -> void:
 				cfg = {"on_minus": press_minus, "on_plus": press_plus,
 					"at_min": live <= 0, "at_max": SimSpendBook.at_cap(state, idx)}
 			DeskKit.ledger_row(b, sheet, [String(line.get("name", "")),
-				String(line.get("buys", "")), "$" + b.fmt(live), ""], cfg)
+				_fit(b, String(line.get("buys", "")), 218.0), "$" + b.fmt(live), ""], cfg)
 			# the EFFECT cell carries the row's ONE control (mutation law:
 			# receipt-priced arm, two taps, Esc disarms)
 			if stopping:

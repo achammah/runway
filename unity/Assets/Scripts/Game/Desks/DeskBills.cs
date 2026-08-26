@@ -242,16 +242,26 @@ namespace Runway.Game
         }
 
         /// Every offer's fixed lines, flattened with their offer's name.
+        /// One line per OFFER at the amount the bank actually bills (fixed_wk)
+        /// — the label names the offer's first tool (+N more when it has
+        /// several). THE ACCOUNTING RULES LAW: the fold's sublines always sum
+        /// to their parent row, even when fixed_lines drifted from fixed_wk.
         static List<BillRow> ToolLines(GameState state)
         {
             var outRows = new List<BillRow>();
             foreach (Offer o in state.Offers)
             {
-                if (o.FixedLines == null) continue;
-                foreach (CostLine fl in o.FixedLines)
-                    outRows.Add(new BillRow { Who = "· " + (fl.Label ?? "a tool"),
-                        What = o.Name ?? "", Kind = "flat",
-                        Amt = (int)Math.Round(fl.Amount) });
+                int amt = (int)Math.Round(Math.Max(0.0, Math.Min(o.FixedWk, 10_000.0)));
+                if (amt <= 0) continue;
+                string label = "the tools";
+                if (o.FixedLines != null && o.FixedLines.Count > 0)
+                {
+                    label = o.FixedLines[0].Label ?? "a tool";
+                    if (o.FixedLines.Count > 1)
+                        label += " +" + (o.FixedLines.Count - 1) + " more";
+                }
+                outRows.Add(new BillRow { Who = "· " + label,
+                    What = o.Name ?? "", Kind = "flat", Amt = amt });
             }
             return outRows;
         }

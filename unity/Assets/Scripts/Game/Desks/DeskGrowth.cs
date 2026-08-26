@@ -115,7 +115,8 @@ namespace Runway.Game
             Dictionary<string, double> f = SimFunnel.Funnel(s);
             if (f.Count == 0)
             {
-                big = "$" + total.ToString(CultureInfo.InvariantCulture) + "/wk into the garden";
+                // money wears its commas everywhere on the desk
+                big = "$" + GameUi.Money(total) + "/wk into the garden";
                 line = "the first locked week measures what a dollar buys in each channel";
                 return;
             }
@@ -123,9 +124,9 @@ namespace Runway.Game
                 + SimFunnel.Num(f, "signed_referrals") + SimFunnel.Num(f, "signed_outbound");
             int cac = Gd.ToInt(SimFunnel.Num(f, "blended_cac"));
             int wom = Gd.RoundToInt(SimFunnel.Num(f, "wom"));
-            big = "$" + total.ToString(CultureInfo.InvariantCulture) + "/wk buys ≈"
+            big = "$" + GameUi.Money(total) + "/wk buys ≈"
                 + Gd.RoundToInt(bought) + " customers";
-            line = (cac > 0 ? "CAC $" + cac.ToString(CultureInfo.InvariantCulture)
+            line = (cac > 0 ? "CAC $" + GameUi.Money(cac)
                 : "CAC not yet knowable") + ", and word of mouth adds ≈" + wom + " more for free";
         }
 

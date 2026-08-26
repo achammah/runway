@@ -109,7 +109,7 @@ namespace Runway.Game
             t2.alignment = TextAlignmentOptions.TopRight;
 
             // ── zone 1 · THE OPEN SEATS
-            DeskKit.CardBox z1 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 174f, 1, "the open seats",
+            DeskKit.CardBox z1 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 184f, 1, "the open seats",
                 "every seat carries the market's band before you advertise");
             if (roles.Count == 0)
                 DeskKit.Empty(b, z1.ContentX, z1.Cursor + 4f, "no seats open.",
@@ -118,7 +118,8 @@ namespace Runway.Game
             {
                 Dictionary<string, object> rd = roles[i];
                 float fx = z1.ContentX + i * 552f;
-                DeskKit.CardBox fr = DeskKit.CardFrame(b, fx, z1.Cursor - 4f, 532f, 96f,
+                // 88 tall: the fold line below keeps its own lane under the cards
+                DeskKit.CardBox fr = DeskKit.CardFrame(b, fx, z1.Cursor - 4f, 532f, 88f,
                     Ds(rd, "seat", "?").ToUpperInvariant() + " · band $"
                     + SimOwnership.Money(Di(rd, "band_lo", 0)) + "–"
                     + SimOwnership.Money(Di(rd, "band_hi", 0)) + "/wk", true);
@@ -126,21 +127,26 @@ namespace Runway.Game
                 int adv = Di(rd, "advert_wk", 0);
                 DeskKit.MoneyRow(b, fr, "advert  -> ≈"
                     + Gd.F(SimOwnership.ArrivalRateR(state, rd), 1) + " applicants/wk",
-                    "$" + adv + "/wk", DrawnUI.Ink,
+                    "$" + SimOwnership.Money(adv) + "/wk", DrawnUI.Ink,
                     () => SimOwnership.SetAdvert(b.State, rid, adv - CashStep),
                     () => SimOwnership.SetAdvert(b.State, rid, adv + CashStep),
                     adv <= 0, adv >= 400);
             }
             if (roles.Count > 2)
-                b.L("+" + (roles.Count - 2) + " more seat(s)", z1.ContentX + 8f, z1.Bottom - 26f,
-                    17f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 300f);
+            {
+                int extra = roles.Count - 2;
+                b.L(extra == 1 ? "the other 1 seat waits below"
+                    : "the other " + extra + " seats wait below",
+                    z1.ContentX + 8f, z1.Bottom - 24f,
+                    17f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 400f);
+            }
             DeskKit.Word(b, "open a seat", z1.ContentX + 940f, z1.Y + 8f,
                 () => { b.Desk["mode"] = "seats"; }, DeskKit.Detail,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f), 170f);
-            y += 174f + 10f;
+            y += 184f + 10f;
 
             // ── zone 2 · THE CANDIDATES
-            DeskKit.CardBox z2 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 258f, 2, "the candidates",
+            DeskKit.CardBox z2 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 272f, 2, "the candidates",
                 "interviewing costs your week; ghosting costs your name");
             const float colW = 268f;
             const float colH = 162f;
@@ -190,11 +196,13 @@ namespace Runway.Game
                     DeskKit.WallCard(b, col, cfg);
                     shown += 1;
                 }
+                // the fold note lives BELOW the column box — a tall card
+                // (two facts) never prints through it
                 if (cands.Count > shown)
                     b.L("+" + (cands.Count - shown) + " more wait behind", col.ContentX + 2f,
-                        col.Y + colH - 26f, 16f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), colW - 20f);
+                        col.Y + colH + 4f, 16f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), colW - 20f);
             }
-            y += 258f + 10f;
+            y += 272f + 10f;
 
             // ── zone 3 · THE OFFER COMPOSER
             DeskKit.CardBox z3 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 284f, 3, "the offer composer",

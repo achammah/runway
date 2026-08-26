@@ -147,7 +147,7 @@ static func draw(b) -> void:
 static func _clean_lines(bo: Dictionary) -> Array:
 	var out: Array = []
 	if not bool(bo.get("retention_carve", false)):
-		out.append("the retention pool is carved from the buyer's side, not from your share — this one is fair.")
+		out.append("retention carved from the buyer's side, not yours — fair.")
 	if int(bo.get("earnout", 0)) > 0 and String(bo.get("earnout_controller", "")) == "neutral":
 		out.append("the earnout's targets are measured by a neutral auditor — as clean as earnouts get.")
 	if int(bo.get("lockup_wks", 0)) > 0 and int(bo.get("lockup_wks", 0)) < 52:

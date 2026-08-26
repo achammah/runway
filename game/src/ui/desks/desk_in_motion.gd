@@ -331,8 +331,10 @@ static func _hot_list(b, s: GameState, f: Dictionary, y: float, show: int) -> fl
 		vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		DeskKit.pen_rule(b, cy + 44.0, 40.0, 1060.0, Color(DeskKit.INK, 0.12), 13 + n)
 		cy += 58.0
-	# the crowd — one honest row, never hidden math
-	var crowd := int(round(SimFunnel.num(f, "leads_total")))
+	# the crowd — one honest row, never hidden math: the named leads past the
+	# face-up cap count here too, so face-up + the other N = the hero's number
+	var crowd := int(round(SimFunnel.num(f, "leads_total"))) \
+		+ maxi(ranked.size() - mini(ranked.size(), show), 0)
 	var lands := int(round(SimFunnel.num(f, "adds")))
 	b.label("the other %d — small shops moving on their own · ≈%d land weekly" % [crowd, lands],
 		Vector2(60.0, cy + 2.0), DeskKit.DETAIL, Color(DeskKit.INK, 0.55), 800.0)

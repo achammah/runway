@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Runway.App;
@@ -254,10 +255,18 @@ namespace Runway.Game
                         + GameUi.Money(SimBank.ClawTrigger);
                     break;
             }
-            if (note.Missed > 0) split += " · missed " + note.Missed;
-            b.L(split, cx, cy + 42f, 15f, kind != "bank" ? DrawnUI.Coral : Ink(0.7f), w - 36f);
+            // the attention token leads — a trimmed tail never hides a missed Monday
+            if (note.Missed > 0) split = "missed " + note.Missed + " · " + split;
+            // the split line keeps its own lane: it ends before the repay arm
+            // and trims with an ellipsis instead of printing under it
             int quote = Math.Min(state.Cash - GameState.RAMEN_PER_WEEK, bal);
-            if (idx >= 0 && quote > 0)
+            bool hasArm = idx >= 0 && quote > 0;
+            TextMeshProUGUI sl = b.L(split, cx, cy + 42f, 15f,
+                (kind != "bank" || note.Missed > 0) ? DrawnUI.Coral : Ink(0.7f),
+                hasArm ? (w - 36f - 212f) : (w - 36f));
+            sl.enableWordWrapping = false;
+            sl.overflowMode = TextOverflowModes.Ellipsis;
+            if (hasArm)
             {
                 int fireIdx = idx;
                 DeskKit.Arm(b, "repay_" + idx, "repay ▸", "−$" + GameUi.Money(quote) + " now — sure?",

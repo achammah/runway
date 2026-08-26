@@ -104,11 +104,11 @@ namespace Runway.Game
             }
             y = z2.Bottom + 12f;
 
-            // 3 · THE WEEK AFTER
+            // 3 · THE WEEK AFTER — ONE measured line, so nothing ever
+            // crosses into zone 4 (LONG-TEXT LAW; the budget stays authored)
             DeskKit.CardBox z3 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 70f, 3,
                 "the week after", "");
-            b.L("demand ramps from zero · the DM narrates the pivot week · new topics "
-                + "and paintings arrive, regenerated — the numbers never wait for art",
+            b.L("demand ramps from zero · the DM narrates the pivot week · topics and paintings regenerate",
                 z3.ContentX, z3.ContentY - 18f, DeskKit.Detail,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f), 1070f);
             y = z3.Bottom + 12f;
@@ -228,11 +228,11 @@ namespace Runway.Game
             {
                 rows.Add(new[] { "customers walk", "all " + pv.CustomersLost });
                 cols.Add(DrawnUI.Coral);
-                rows.Add(new[] { "the content well drains", "$" + pv.Well });
+                rows.Add(new[] { "the content well drains", "$" + GameUi.Money(pv.Well) });
                 cols.Add(DrawnUI.Coral);
                 rows.Add(new[] { "named deals die", pv.DealsDead.ToString() });
                 cols.Add(DrawnUI.Coral);
-                rows.Add(new[] { "the debts stay owed", "$" + pv.Debts });
+                rows.Add(new[] { "the debts stay owed", "$" + GameUi.Money(pv.Debts) });
                 cols.Add(DrawnUI.Coral);
                 return rows;
             }
@@ -247,7 +247,7 @@ namespace Runway.Game
                 pv.DealsKnocked),
                 string.Format("{0} bets · −{1} debt", pv.BetsDead, pv.DebtCleared) });
             cols.Add(DrawnUI.Coral);
-            rows.Add(new[] { "the debts stay owed", "$" + pv.Debts });
+            rows.Add(new[] { "the debts stay owed", "$" + GameUi.Money(pv.Debts) });
             cols.Add(DrawnUI.Coral);
             return rows;
         }

@@ -44,7 +44,11 @@ const UNIT_DEFAULTS := [
 
 static func hero_summary(state) -> Dictionary:
 	var s: GameState = state
-	return {"big": "%d people" % s.employees.size(),
+	# onboarding hires are on the payroll the total shows — the count says so
+	var big := "%d people" % s.employees.size()
+	if s.pipeline.size() > 0:
+		big += " +%d onboarding" % s.pipeline.size()
+	return {"big": big,
 		"line": "$%s/wk on payroll" % _fmt(SimLabor.payroll_wk(s))}
 
 static func draw(b) -> void:
@@ -53,12 +57,14 @@ static func draw(b) -> void:
 	var n := state.employees.size()
 	var rung := SimSpendBook.team_rung(n)
 
-	# ── the hero
+	# ── the hero — onboarding hires are paid, so the money line names them
 	var big: String = "%d people" % n
 	b.label(big, Vector2(SHEET_X, 6.0), DeskKit.HERO, DeskKit.INK, 420.0)
 	var bw: float = b.font().get_string_size(big, HORIZONTAL_ALIGNMENT_LEFT, -1, DeskKit.HERO).x
-	b.label("· $%s a week" % b.fmt(payroll), Vector2(SHEET_X + bw + 14.0, 22.0), DeskKit.ROW,
-		Color(DeskKit.INK, 0.7), 360.0)
+	b.label("· $%s a week%s" % [b.fmt(payroll),
+		(" · +%d onboarding" % state.pipeline.size()) if state.pipeline.size() > 0 else ""],
+		Vector2(SHEET_X + bw + 14.0, 22.0), DeskKit.ROW,
+		Color(DeskKit.INK, 0.7), 420.0)
 	b.label("payroll is the biggest bill in the building — and the easiest to grow carelessly.",
 		Vector2(SHEET_X, 62.0), DeskKit.DETAIL, Color(DeskKit.INK, 0.6), 720.0)
 	if state.applicants.size() > 0:
@@ -102,9 +108,10 @@ static func draw(b) -> void:
 		var waiting := SimLabor.waiting_for(state, role)
 		var go := func() -> void:
 			b.focus_desk("recruitment")
+		# Law 2 — the offered pay rides the money column; the rate is a fact
 		DeskKit.ledger_row(b, sheet, ["%s — open seat" % role, "advertised",
-			"advert $%s" % b.fmt(int(rd.get("offered_salary", 0))),
-			"≈%.1f/wk" % SimLabor.arrival_rate(state, rd),
+			"≈%.1f apply/wk" % SimLabor.arrival_rate(state, rd),
+			"$" + b.fmt(int(rd.get("offered_salary", 0))),
 			"%d waiting -> recruitment ▸" % waiting], {"dim": true, "on_press": go})
 	if state.employees.is_empty() and state.pipeline.is_empty() and state.open_roles.is_empty():
 		var go_hire := func() -> void:

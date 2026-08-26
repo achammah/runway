@@ -167,9 +167,9 @@ namespace Runway.Game
 
             // 2 · THE RIVALS — the record is the tell
             List<Rival> ranked = Ranked(s);
-            float z2H = 74f + Math.Min(ranked.Count, 3) * 80f
+            float z2H = 74f + Math.Min(ranked.Count, 3) * 84f
                         + (ranked.Count > 3 ? 44f : 0f) + 6f;
-            if (ranked.Count == 0) z2H = 74f + 70f;
+            if (ranked.Count == 0) z2H = 74f + 96f;
             DeskKit.CardBox z2 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, z2H, 2,
                 "the rivals", "read the record, not the vibes — the pattern is the tell");
             float ry = z2.Cursor;
@@ -200,10 +200,10 @@ namespace Runway.Game
                 {
                     int from = Math.Max(rd.Log.Count - 3, 0);
                     b.L(string.Join("  ·  ", rd.Log.GetRange(from, rd.Log.Count - from)
-                            .ToArray()), z2.ContentX + 34f, ry + 58f, 17f,
+                            .ToArray()), z2.ContentX + 34f, ry + 60f, 17f,
                         DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), 1040f);
                 }
-                ry += 80f;
+                ry += 84f;
             }
             if (ranked.Count > 3)
                 DeskKit.FoldRow(b, z2.ContentX, ry, ranked.Count - 3, "rivals",
@@ -211,7 +211,7 @@ namespace Runway.Game
             y = z2.Bottom + 12f;
 
             // 3 · THE INVESTORS' MOOD — the raise's radar reads this
-            DeskKit.CardBox z3 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 108f, 3,
+            DeskKit.CardBox z3 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 118f, 3,
                 "the investors' mood", "");
             b.L(string.Format("the street pays ×{0:0.0} the usual  ·  appetite: {1}",
                 SimEngine.ShockValMult(s), Appetite(s)),
@@ -259,18 +259,28 @@ namespace Runway.Game
             double pressure = 0.0;
             for (int i = 0; i < s.Rivals.Count; i++) pressure += s.Rivals[i].Strength;
             pressure = Math.Min(pressure / Math.Max(s.Rivals.Count, 1) / 100.0 * 0.5, 0.45);
+            // the foot rides below the last zone when the stack runs deep
+            float fy = Math.Max(820f, z4.Bottom + 6f);
             DeskKit.Footer(b,
                 string.Format("rival pressure is shaving {0}% off adoption · the trend "
                     + "multiplies every sale ×{1:0.00}",
                     (int)Math.Round(pressure * 100.0), s.MarketTrend),
                 "none of this is yours to change from here — the street acts, the desks answer",
-                "", 820f, 852f);
+                "", fy, fy + 32f);
         }
 
         static void DrawAllRivals(BinderScreen b, GameState s)
         {
             DeskKit.Back(b, "← the street", () => { b.Desk.Remove("mode"); });
-            float y = 64f;
+            // the drill still answers the tab's question before the list starts
+            int came = 0;
+            for (int i = 0; i < s.Rivals.Count; i++)
+                if (CameAtYou(s.Rivals[i])) came += 1;
+            float y = DeskKit.HeroBand(b,
+                s.Rivals.Count + " rival" + (s.Rivals.Count == 1 ? "" : "s") + " on the street",
+                came > 0
+                    ? came + " came at YOU this month — every rap sheet below, loudest first"
+                    : "every rap sheet below, loudest first", DrawnUI.Ink, 44f);
             List<Rival> ranked = Ranked(s);
             for (int i = 0; i < ranked.Count; i++)
             {

@@ -91,19 +91,28 @@ static func handle(_b, _id: String) -> void:
 
 # ─────────────────────────────── the hero ────────────────────────────────────
 
+## Money wears its commas everywhere on the desk (the accounting rules law).
+static func _fmt(n: int) -> String:
+	var s := str(absi(n))
+	var out := ""
+	while s.length() > 3:
+		out = "," + s.substr(s.length() - 3) + out
+		s = s.substr(0, s.length() - 3)
+	return ("-" if n < 0 else "") + s + out
+
 static func _hero_text(s: GameState) -> Dictionary:
 	var total := int(SimFunnel.spend_total(s))
 	var f := SimFunnel.funnel(s)
 	if f.is_empty():
-		return {"big": "$%s/wk into the garden" % String.num_int64(total),
+		return {"big": "$%s/wk into the garden" % _fmt(total),
 			"line": "the first locked week measures what a dollar buys in each channel"}
 	var bought := SimFunnel.num(f, "signed_ads") + SimFunnel.num(f, "signed_content") \
 		+ SimFunnel.num(f, "signed_referrals") + SimFunnel.num(f, "signed_outbound")
 	var cac := int(SimFunnel.num(f, "blended_cac"))
 	var wom := int(round(SimFunnel.num(f, "wom")))
-	return {"big": "$%s/wk buys ≈%d customers" % [String.num_int64(total), int(round(bought))],
+	return {"big": "$%s/wk buys ≈%d customers" % [_fmt(total), int(round(bought))],
 		"line": "%s, and word of mouth adds ≈%d more for free" % [
-			("CAC $%s" % String.num_int64(cac)) if cac > 0 else "CAC not yet knowable", wom]}
+			("CAC $%s" % _fmt(cac)) if cac > 0 else "CAC not yet knowable", wom]}
 
 # ─────────────────────────────── one plot ────────────────────────────────────
 
@@ -179,7 +188,7 @@ static func _yield_line(s: GameState, key: String, pinned: bool) -> String:
 	var f := SimFunnel.funnel(s)
 	var cac := SimFunnel.num(f, "cac_" + key)
 	if cac > 0.0:
-		live += " · CAC $%d" % int(round(cac))
+		live += " · CAC $%s" % _fmt(int(round(cac)))
 	if pinned:
 		live += " · the mix is at the era's ceiling"
 	return live

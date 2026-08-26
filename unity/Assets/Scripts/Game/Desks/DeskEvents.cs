@@ -277,12 +277,26 @@ namespace Runway.Game
                 DeskKit.Empty(b, DeskKit.XId, y,
                     "the tray is empty — the world has not written yet.",
                     "deadlines, applications, filed notes and the street's moves all land here.");
-            // THE UNREAD — bold, newest first, the dot on action letters
-            for (int i = 0; i < Math.Min(unread.Count, UnreadCap); i++)
-                y = LetterRow(b, s, y, unread[i], false);
-            if (unread.Count > UnreadCap)
+            // THE UNREAD — bold, newest first, the dot on action letters.
+            // THE COLLAPSE LAW: a letter that needs an answer never folds away;
+            // the newest quiet letters fill whatever the face-up cap has left.
+            var faceUp = new List<Letter>();
+            var quiet = new List<Letter>();
+            for (int i = 0; i < unread.Count; i++)
             {
-                b.L(string.Format("+{0} more unread below the fold", unread.Count - UnreadCap),
+                if (unread[i].Action) faceUp.Add(unread[i]);
+                else quiet.Add(unread[i]);
+            }
+            int quietSlots = Math.Max(UnreadCap - faceUp.Count, 0);
+            for (int i = 0; i < Math.Min(quiet.Count, quietSlots); i++)
+                faceUp.Add(quiet[i]);
+            faceUp.Sort((a, c) => c.Wk.CompareTo(a.Wk));
+            for (int i = 0; i < faceUp.Count; i++)
+                y = LetterRow(b, s, y, faceUp[i], false);
+            int hidden = unread.Count - faceUp.Count;
+            if (hidden > 0)
+            {
+                b.L(string.Format("+{0} more unread below the fold", hidden),
                     DeskKit.XId + 36f, y, 17f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 500f);
                 y += 30f;
             }

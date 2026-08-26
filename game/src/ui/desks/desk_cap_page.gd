@@ -86,8 +86,9 @@ static func draw(b) -> void:
 	if steps.size() >= 2:
 		DeskKit.dilution_bar(b, z2.content_x, z2.cursor + 2.0, 610.0, steps)
 	else:
+		# no dilution EVENTS on the book yet — say what is true today
 		DeskKit.empty(b, Vector2(z2.content_x, z2.cursor + 8.0),
-			"day 0 — you own all of it.",
+			"no rounds on the book yet — you hold %.0f%% today." % state.founder_pct,
 			"rounds, pools and conversions will draw themselves here")
 	var z3 := DeskKit.zone(b, DeskKit.X_ID + 660.0, y, 470.0, 268.0, 3, "if sold today",
 		"the waterfall — who gets paid, in order")
@@ -182,6 +183,28 @@ static func _slice_rows(state: GameState) -> Array:
 		var free := SimOwnership.pool_free(state)
 		rows.append({"cells": ["the ESOP pool -> team", "options", "—", "%.1f%%" % pool,
 			"%.1f%% granted · %.1f%% free" % [pool - free, free]], "cfg": {}})
+	elif state.option_pool_pct > 0.0:
+		# a pool promised before the esop book opened — still a slice
+		rows.append({"cells": ["the option pool (promised)", "options", "—",
+			"%.1f%%" % state.option_pool_pct, "grants start with the esop book"],
+			"cfg": {}})
+	# THE ACCOUNTING RULES LAW: the named slices + the rest = the whole pie —
+	# whatever the book cannot name is still shown, never silently missing
+	var named := state.founder_pct
+	for cf3 in state.cofounders:
+		var cfd3: Dictionary = cf3
+		named += float(cfd3.get("equity_diluted", cfd3.get("equity", 0.0)))
+	for inst3 in state.instruments:
+		named += maxf(float((inst3 as Dictionary).get("pct", 0.0)), 0.0)
+	if not state.esop.is_empty():
+		named += float(state.esop.get("pool_pct", 0.0))
+	elif state.option_pool_pct > 0.0:
+		named += state.option_pool_pct
+	var rest := 100.0 - named
+	if rest >= 0.5:
+		rows.append({"cells": ["the rest — smaller holders", "mixed", "—",
+			"%.1f%%" % rest, "angels, early paper, rounding"],
+			"cfg": {"col": Color(DeskKit.INK, 0.6)}})
 	return rows
 
 ## THE DILUTION STORY's checkpoints — backward from today (header's math).

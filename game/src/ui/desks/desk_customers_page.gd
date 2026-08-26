@@ -141,8 +141,10 @@ static func _funnel_card(b, s: GameState, an: int) -> void:
 		var why := "invest in analytics to see the funnel" if s.analytics_level <= 0 \
 			else ("the funnel is dark here: attribution needs an office, not a garage."
 				if an < 1 else "no week on the books yet — the funnel is measured, not predicted.")
-		b.label(why, Vector2(fx, fy - 4.0), DeskKit.LAW, DeskKit.PEN if s.analytics_level <= 0
-			else Color(DeskKit.INK, 0.5), LEFT_W - 40.0)
+		# the caption stays INSIDE the card whatever height the funnel drew
+		b.label(why, Vector2(fx, minf(fy - 4.0, CARDS_Y + 384.0 - 56.0)), DeskKit.LAW,
+			DeskKit.PEN if s.analytics_level <= 0
+			else Color(DeskKit.INK, 0.5), LEFT_W - 60.0)
 
 # ─────────────────────────── what one is worth ───────────────────────────────
 
@@ -208,11 +210,12 @@ static func _biggest_five(b, s: GameState, y: float, h: float) -> void:
 	var cx := float(frame.get("content_x", RIGHT_X))
 	var cy := float(frame.get("content_y", y))
 	if s.logos.is_empty():
+		# Law 2 — the amount rides the card's money column, not a sentence
 		var arpu := SimEngine.offers_arpu(s)
-		DeskKit.empty(b, Vector2(cx, cy),
-			"no account big enough to name yet.",
-			"%d small shops pay ≈ $%s/wk each — the biggest earn names as they grow" % [
-				s.traction, b.fmt(int(round(maxf(arpu, 0.0))))])
+		DeskKit.money_row(b, frame, "%d small shops each pay about" % s.traction,
+			"$%s/wk" % b.fmt(int(round(maxf(arpu, 0.0)))), DeskKit.INK)
+		DeskKit.empty(b, Vector2(cx, cy + 48.0),
+			"no account big enough to name yet.", "")
 		return
 	var idx := _logos_by_seats(s)
 	var x := cx
@@ -229,9 +232,10 @@ static func _logo_grid(b, s: GameState, y: float, h: float) -> void:
 	var cx := float(frame.get("content_x", RIGHT_X))
 	var cy := float(frame.get("content_y", y))
 	if s.logos.is_empty():
+		# short enough to live inside the card's width
 		DeskKit.empty(b, Vector2(cx, cy),
-			"no logos yet — a contract is the only way an enterprise customer arrives.",
-			"the board on IN MOTION is where they come from")
+			"no logos yet.",
+			"contracts come from the IN MOTION board", true)
 		return
 	var idx := _logos_by_seats(s)
 	var x := cx

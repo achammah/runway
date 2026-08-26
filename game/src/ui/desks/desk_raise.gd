@@ -43,11 +43,20 @@ static func _stages(s: GameState, stage: String) -> Array:
 static func draw(b) -> void:
 	var state: GameState = b.state
 	var terms := _stages(state, "terms")
-	_pitch_vignette(b)
-	var y := DeskKit.hero_band(b,
-		"%d offer%s on the table · %d in motion" % [terms.size(),
+	var has_vig := _pitch_vignette(b)
+	# the hero keeps to its own lane: when the vignette rides the header
+	# (x600..732, left of the corner banner at x740) the big line wears its
+	# compact form and the sentence trims to the lane — three lanes, no
+	# collisions; with no image the full wording keeps the whole band
+	var big := "%d offer%s on the table · %d in motion" % [terms.size(),
+		"" if terms.size() == 1 else "s", _in_motion_count(state)]
+	var sentence := "raising is a pipeline, like customers — except the buyer buys a piece of you."
+	if has_vig:
+		big = _fit(b, "%d offer%s · %d in motion" % [terms.size(),
 			"" if terms.size() == 1 else "s", _in_motion_count(state)],
-		"raising is a pipeline, like customers — except the buyer buys a piece of you.")
+			560.0, DeskKit.HERO_BIG)
+		sentence = _fit(b, sentence, 560.0, DeskKit.ROW)
+	var y := DeskKit.hero_band(b, big, sentence)
 	# the founder-time banner — fundraising is never free
 	if bool(state.raise_state.get("active", false)):
 		var t1: Label = b.label("the raise eats ≈%.0f%% of your week"
@@ -115,7 +124,8 @@ static func draw(b) -> void:
 				int(idd.get("signed_wk", 0))]]})
 		_fold_note(b, c4, state.instruments.size() - 1, col_w)
 	if _in_motion_count(state) == 0 and state.instruments.is_empty():
-		DeskKit.empty(b, Vector2(z1.content_x + 8.0, z1.cursor + col_h - 22.0),
+		# the authored empty line sits BELOW the four boxes, never across them
+		DeskKit.empty(b, Vector2(z1.content_x + 8.0, z1.cursor + col_h + 8.0),
 			"", "nobody is knocking yet — traction is the doorbell", true)
 	y += 262.0 + 10.0
 
@@ -186,19 +196,30 @@ static func _comparison_ticket(b, state: GameState, x: float, y: float, entry: D
 		b.label("no-shop holds until wk %d — the pens are down" % SimOwnership.no_shop_until(state),
 			Vector2(x, end_y - 8.0), 17, Color(DeskKit.INK, 0.45), 360.0)
 	else:
-		DeskKit.arm(b, "sign_%s" % nm, "SIGN %s" % nm.to_upper().left(14),
+		DeskKit.arm(b, "sign_%s" % nm, _fit(b, "SIGN %s" % nm.to_upper(), 330.0),
 			"press again — the cap table redraws", Vector2(x, end_y - 10.0), func() -> void:
 				SimOwnership.op_sign_instrument(b.state, nm), 350.0, DeskKit.DETAIL)
+
+## LONG-TEXT LAW: a caption is measured and trimmed to its lane, never left
+## to run under a neighbour.
+static func _fit(b, s: String, w: float, size: int = DeskKit.DETAIL) -> String:
+	if b.font().get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x <= w:
+		return s
+	var t := s
+	while t.length() > 1 and b.font().get_string_size(t + "…",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > w:
+		t = t.substr(0, t.length() - 1)
+	return t.strip_edges() + "…"
 
 ## THE PITCH ILLUSTRATION (DECISIONS § THE THREE BINDER ILLUSTRATIONS): a
 ## generated vignette at user://illus_pitch.png rides the header BEHIND the
 ## hero when it exists; the plain header IS the fallback — numbers never wait.
-static func _pitch_vignette(b) -> void:
+static func _pitch_vignette(b) -> bool:
 	if not FileAccess.file_exists("user://illus_pitch.png"):
-		return
+		return false
 	var img := Image.new()
 	if img.load(ProjectSettings.globalize_path("user://illus_pitch.png")) != OK:
-		return
+		return false
 	var tr := TextureRect.new()
 	tr.texture = ImageTexture.create_from_image(img)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -208,6 +229,7 @@ static func _pitch_vignette(b) -> void:
 	tr.position = Vector2(600.0, 2.0)
 	tr.set_deferred("size", Vector2(132.0, 132.0))
 	b.pane().add_child(tr)
+	return true
 
 static func _fold_note(b, col: Dictionary, n: int, col_w: float) -> void:
 	if n > 0:

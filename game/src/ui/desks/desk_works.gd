@@ -107,17 +107,22 @@ static func _house_or_boutique(b, s: GameState, opened_site: String) -> void:
 		big = "%s · %d %ss a week" % [String(rd.get("name", "?")), int(round(served)), unit]
 		line = "this roof's own book — rent, hands and learning under one name"
 	elif s.biz_what == "Software":
-		big = "%d %ss served · room for %d" % [int(round(served)), unit, int(round(float(w.get("ceiling", 0.0))))]
+		# short enough to keep the corner block's lane at any scale
+		big = "%d of %d %ss served" % [int(round(served)),
+			int(round(float(w.get("ceiling", 0.0)))), unit]
 		line = "software doesn't turn people away — it slowly serves everyone worse"
 	else:
 		big = "%d %ss wanted · %s for %d" % [int(round(demand)), unit, String(vw.get("capacity_word", "capacity")), int(round(cap))]
 		line = "each one leaves at its price and costs real hands, rooms and parts"
-	var y := DeskKit.hero_band(b, big, line, DeskKit.INK, 6.0 if not scoped else 44.0, false)
-	# the hero's right corner: margin each + the gap, money in a column
-	var mv: Label = b.label("margin each  " + _money(mrow), Vector2(760.0, 10.0 if not scoped else 48.0), DeskKit.STATUS, DeskKit.INK, 240.0)
+	# the hero big never runs under the corner block (measured, not hoped)
+	var y := DeskKit.hero_band(b, _fit(b, big, 660.0, DeskKit.HERO_BIG), line,
+		DeskKit.INK, 6.0 if not scoped else 44.0, false)
+	# the hero's right corner: margin each + the gap, money in a column —
+	# ending clear of the arrange -> word at X_ID+980
+	var mv: Label = b.label("margin each  " + _money(mrow), Vector2(700.0, 10.0 if not scoped else 48.0), DeskKit.STATUS, DeskKit.INK, 240.0)
 	mv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	if walk >= 1.0:
-		var wv: Label = b.label("%d turned away" % int(round(walk)), Vector2(760.0, 44.0 if not scoped else 82.0), DeskKit.DETAIL, DeskKit.PEN, 240.0)
+		var wv: Label = b.label("%d turned away" % int(round(walk)), Vector2(700.0, 44.0 if not scoped else 82.0), DeskKit.DETAIL, DeskKit.PEN, 240.0)
 		wv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	# ── ZONE 1 · CAN WE SERVE?
 	var house := SimDivisions.rung(s) >= 2 and not scoped
@@ -129,10 +134,13 @@ static func _house_or_boutique(b, s: GameState, opened_site: String) -> void:
 	y = _zone_ticket(b, s, y, house)
 	# ── ZONES 3+4, folded to one honest band each (press opens the DETAIL)
 	y = _capacity_band(b, s, y, opened_site)
-	DeskKit.footer(b, {"y": 806.0,
+	# the foot rides BELOW the last zone when the stack runs deep — the blue
+	# line never prints across zone 4 (the scrolling QA law)
+	var fy := maxf(806.0, y + 4.0)
+	DeskKit.footer(b, {"y": fy,
 		"computed": "the works reads your team for hands, your offers for the ticket — one desk, every cost of delivering",
-		"rules": "" if walk < 1.0 else "", "rules_y": 840.0,
-		"warning": ("$%d/wk walks away — relief valves or hires close it" % int(round(float(w.get("unbilled", 0.0))))) if float(w.get("unbilled", 0.0)) >= 1.0 else ""})
+		"rules": "" if walk < 1.0 else "", "rules_y": fy + 34.0,
+		"warning": ("$%s/wk walks away — relief valves or hires close it" % _m(float(w.get("unbilled", 0.0)))) if float(w.get("unbilled", 0.0)) >= 1.0 else ""})
 	DeskKit.hero_question(b, QUESTION)
 
 ## Zone 1, boutique face: the three drawn bars — they want / we hold / relief.
@@ -183,30 +191,35 @@ static func _zone_demand_mix(b, s: GameState, y: float, w: Dictionary, unit: Str
 	var shown := mini(rows.size(), 4)
 	var folded := rows.size() - shown
 	var h := 88.0 + 34.0 + float(shown) * 40.0 + 48.0 + (44.0 if folded > 0 else 0.0) + 34.0
+	# the unit note rides the lesson — the sheet's own top-right slot would
+	# print it across the GAP column header on this wide sheet
 	var z := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, h, 1, "CAN WE SERVE? — THE DEMAND MIX",
-		"offers share one capacity pool; the gap lands on whatever you deprioritize")
+		"offers share one pool; the gap lands on what you deprioritize — figures in %ss/wk" % unit)
 	var sheet := DeskKit.ledger_sheet(b, float(z.get("content_x", 0.0)), float(z.get("content_y", 0.0)), 1070.0, {
 		"columns": [{"label": "offer", "w": 420.0}, {"label": "wanted", "w": 170.0, "align": "right"},
 			{"label": "served", "w": 170.0, "align": "right"}, {"label": "gap", "w": 170.0, "align": "right"}],
-		"amount": 3, "adjust": false, "unit": "all figures %ss/week" % unit})
-	var want_t := 0.0
-	var served_t := 0.0
+		"amount": 3, "adjust": false, "unit": ""})
+	# THE ACCOUNTING RULES LAW: the totals sum the rounded figures the rows
+	# actually show, so the sheet squares with itself on camera
+	var want_t := 0
+	var served_t := 0
 	for i in shown:
 		var rd: Dictionary = rows[i]
-		var gap := float(rd.get("wanted", 0.0)) - float(rd.get("served", 0.0))
-		want_t += float(rd.get("wanted", 0.0))
-		served_t += float(rd.get("served", 0.0))
+		var wr := int(round(float(rd.get("wanted", 0.0))))
+		var sr := int(round(float(rd.get("served", 0.0))))
+		var gap := wr - sr
+		want_t += wr
+		served_t += sr
 		DeskKit.ledger_row(b, sheet, [String(rd.get("name", "?")),
-			"%d" % int(round(float(rd.get("wanted", 0.0)))),
-			"%d" % int(round(float(rd.get("served", 0.0)))),
-			("−%d" % int(round(gap))) if gap >= 0.5 else "—"],
-			{"col": DeskKit.PEN if gap >= 0.5 else DeskKit.INK})
+			"%d" % wr, "%d" % sr,
+			("−%d" % gap) if gap >= 1 else "—"],
+			{"col": DeskKit.PEN if gap >= 1 else DeskKit.INK})
 	for i2 in range(shown, rows.size()):
-		want_t += float((rows[i2] as Dictionary).get("wanted", 0.0))
-		served_t += float((rows[i2] as Dictionary).get("served", 0.0))
+		want_t += int(round(float((rows[i2] as Dictionary).get("wanted", 0.0))))
+		served_t += int(round(float((rows[i2] as Dictionary).get("served", 0.0))))
 	var gap_t := want_t - served_t
-	DeskKit.ledger_total(b, sheet, "THE WEEK", ("−%d" % int(round(gap_t))) if gap_t >= 0.5 else "0",
-		DeskKit.PEN if gap_t >= 0.5 else DeskKit.INK)
+	DeskKit.ledger_total(b, sheet, "THE WEEK", ("−%d" % gap_t) if gap_t >= 1 else "0",
+		DeskKit.PEN if gap_t >= 1 else DeskKit.INK)
 	var end_y := DeskKit.ledger_end(b, sheet)
 	if folded > 0:
 		end_y = DeskKit.fold_row(b, float(z.get("content_x", 0.0)), end_y - 8.0, folded, "offers share the pool too")
@@ -253,6 +266,13 @@ static func _zone_ticket(b, s: GameState, y: float, house: bool) -> float:
 	var shown := mini(rows.size(), 4)
 	var folded := rows.size() - shown
 	var h2 := 88.0 + 34.0 + float(shown) * 40.0 + 48.0 + (44.0 if folded > 0 else 0.0)
+	# the opened ticket beside the book is often the taller column — the zone
+	# holds whichever is tallest, so the ticket never crosses the zone's edge
+	var pre := SimWorks.unit_ticket(s, clampi(int(b.desk.get("ticket", 0)), 0, s.offers.size() - 1))
+	var pre_raw: Array = pre.get("lines", [])
+	var pre_lines := mini(pre_raw.size(), 3) + (1 if pre_raw.size() > 3 else 0) + 1
+	var pre_foot := float(pre.get("lc", 1.0)) < 0.995
+	h2 = maxf(h2, 84.0 + 46.0 + float(pre_lines) * 32.0 + 44.0 + 30.0 + (14.0 if pre_foot else 0.0) + 12.0)
 	var z2 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, h2, 2, "WHAT ONE COSTS — THE TICKET BOOK",
 		"one row per offer; press a row and its ticket opens itemized")
 	var opened := int(b.desk.get("ticket", 0))
@@ -286,12 +306,20 @@ static func _zone_ticket(b, s: GameState, y: float, house: bool) -> float:
 	for i3 in mini(raw2.size(), 3):
 		tl.append({"label": String((raw2[i3] as Dictionary).get("label", "")),
 			"value": "$%s" % _m(float((raw2[i3] as Dictionary).get("amount", 0.0)))})
+	# the lines past three fold into one honest row — the ticket still squares
+	if raw2.size() > 3:
+		var rest2 := 0.0
+		for j2 in range(3, raw2.size()):
+			rest2 += float((raw2[j2] as Dictionary).get("amount", 0.0))
+		tl.append({"label": "everything else", "value": "$%s" % _m(rest2)})
 	tl.append({"label": "sells for", "value": "$%s" % _m(float(t2.get("sells", 0.0)))})
+	var lc2 := float(t2.get("lc", 1.0))
 	DeskKit.ticket(b, float(z2.get("content_x", 0.0)) + 660.0, float(z2.get("content_y", 0.0)) - 6.0, 400.0, {
 		"title": "%s — OPENED" % String(s.offers[ti].get("name", "?")).to_upper(),
 		"lines": tl, "total_label": "margin, each",
 		"total_value": _money(float(t2.get("margin", 0.0))),
-		"total_col": DeskKit.SAGE if float(t2.get("margin", 0.0)) >= 0.0 else DeskKit.PEN})
+		"total_col": DeskKit.SAGE if float(t2.get("margin", 0.0)) >= 0.0 else DeskKit.PEN,
+		"foot": "learning ×%.2f applied at the total" % lc2 if lc2 < 0.995 else ""})
 	return y + h2 + 10.0
 
 ## Zones 3+4 folded to one band: the capacity assets counted, the valves
@@ -479,9 +507,15 @@ static func _empire(b, s: GameState) -> void:
 	var vw := SimWorks.vocab(s)
 	var unit := String(vw.get("unit_word", "unit"))
 	var w := SimWorks.week_view(s)
-	var served_t := float(w.get("served_units", 0.0))
+	# THE ACCOUNTING RULES LAW: the hero is the sum of the rows the page
+	# shows (every division + relief), so the lineup squares on camera
+	var disp_total := 0
+	for dv in divs:
+		disp_total += int(round(float((dv as Dictionary).get("vol", 0.0))))
+	var relief_t := int(round(float(w.get("relief_used", 0.0))))
+	disp_total += relief_t
 	var y := DeskKit.hero_band(b, "%d %s · %d %ss a week" % [divs.size(),
-		_axis_word(s, slice, divs.size()), int(round(served_t)), unit],
+		_axis_word(s, slice, divs.size()), disp_total, unit],
 		"every line keeps its own books — press one and its whole works opens", DeskKit.INK, 6.0, false)
 	# the slice control: only axes with ≥2 divisions exist to be pressed
 	if axes.size() > 1:
@@ -510,7 +544,15 @@ static func _empire(b, s: GameState) -> void:
 			"sev": int(rd.get("sev", 0)),
 			"on_press": (func() -> void: b.desk["row"] = id) if slice == "site" else Callable()})
 	if divs.size() > shown:
-		y = DeskKit.fold_row(b, DeskKit.X_ID, y, divs.size() - shown, "healthy lines hold steady")
+		var fn := divs.size() - shown
+		y = DeskKit.fold_row(b, DeskKit.X_ID, y, fn,
+			"healthy line holds steady" if fn == 1 else "healthy lines hold steady")
+	# relief serves on top of the roofs — the hero counts it, so the page names it
+	if relief_t >= 1:
+		b.label("+ relief hands — %d %s%s/wk on top of the roofs" % [relief_t, unit,
+			"" if relief_t == 1 else "s"],
+			Vector2(DeskKit.X_ID + 24.0, y + 2.0), DeskKit.DETAIL, DeskKit.BLUE, 700.0)
+		y += 34.0
 	# the ghost row — the priced door into a new roof (site axis only)
 	if slice == "site":
 		DeskKit.word(b, "+ a new roof — the pack quotes ≈$%s (lease · fit-out · hires) ▸" % _m(float(SimDivisions.open_pack_cost(s))),
@@ -584,6 +626,17 @@ static func _axis_word(s: GameState, axis: String, n: int) -> String:
 		"product":
 			return "products" if n != 1 else "product"
 	return "offers" if n != 1 else "offer"
+
+## LONG-TEXT LAW: a line that would run under the hero's corner block or off
+## its column is measured and trimmed, never left to collide.
+static func _fit(b, s: String, w: float, size: int = DeskKit.DETAIL) -> String:
+	if b.font().get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x <= w:
+		return s
+	var t := s
+	while t.length() > 1 and b.font().get_string_size(t + "…",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > w:
+		t = t.substr(0, t.length() - 1)
+	return t.strip_edges() + "…"
 
 ## Signed money for a value column: −$73.54, never $-73.54.
 static func _money(v: float) -> String:

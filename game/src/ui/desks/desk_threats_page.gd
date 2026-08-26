@@ -25,7 +25,13 @@ static func hero_summary(state) -> Dictionary:
 		return {"big": "nothing is shouting", "line": "that never lasts"}
 	var top: Dictionary = rows[0]
 	return {"big": "%d live" % rows.size(),
-		"line": "%s — %s" % [String(top.get("label", "")), String(top.get("desk", ""))]}
+		"line": "%s — %s" % [String(top.get("label", "")), _desk_word(String(top.get("desk", "")))]}
+
+## The engine's attention registry still speaks the old tab names ("crew",
+## "pricing", "the ledger") — the page shows the desk the binder actually
+## opens, through the binder's own legacy map.
+static func _desk_word(d: String) -> String:
+	return String(Binder.LEGACY_TO_DESK.get(d, d))
 
 static func draw(b) -> void:
 	var s: GameState = b.state
@@ -39,7 +45,7 @@ static func draw(b) -> void:
 	else:
 		var top: Dictionary = rows[0]
 		y = DeskKit.hero_band(b,
-			"%s — %s" % [String(top.get("label", "")), String(top.get("desk", ""))],
+			"%s — %s" % [String(top.get("label", "")), _desk_word(String(top.get("desk", "")))],
 			("%d more on the list, loudest first" % (rows.size() - 1))
 				if rows.size() > 1 else "the only thing shouting this week",
 			DeskKit.ALERT if int(top.get("severity", 1)) >= 3 else DeskKit.INK)
@@ -52,7 +58,7 @@ static func draw(b) -> void:
 			28, DeskKit.PEN if int(itd.get("severity", 1)) >= 3
 			else Color(DeskKit.INK, 0.85), 800.0)
 		var dsk := String(itd.get("desk", ""))
-		DeskKit.word(b, dsk + " ->", Vector2(DeskKit.X_ID + 900.0, y - 4.0),
+		DeskKit.word(b, _desk_word(dsk) + " ->", Vector2(DeskKit.X_ID + 900.0, y - 4.0),
 			func() -> void: b.focus_desk(dsk), DeskKit.STATUS, DeskKit.PEN, 220.0)
 		y += 46.0
 	y += 10.0
@@ -89,9 +95,13 @@ static func draw(b) -> void:
 			if y > 780.0:
 				break
 			var cmd: Dictionary = cm
-			b.label("standing: %s — $%d/wk for %d more wks" % [String(cmd.get("name", "")),
-				absi(int(cmd.get("cash_wk", 0))), int(cmd.get("weeks_left", 0))],
-				Vector2(DeskKit.X_ID + 36.0, y), DeskKit.DETAIL, DeskKit.BLUE, 1060.0)
+			# Law 2 — the amount rides its own right-aligned column, not the prose
+			b.label("standing: %s — %d more wks" % [String(cmd.get("name", "")),
+				int(cmd.get("weeks_left", 0))],
+				Vector2(DeskKit.X_ID + 36.0, y), DeskKit.DETAIL, DeskKit.BLUE, 800.0)
+			var cv: Label = b.label("$%s/wk" % b.fmt(absi(int(cmd.get("cash_wk", 0)))),
+				Vector2(DeskKit.X_ID + 860.0, y), DeskKit.DETAIL, DeskKit.BLUE, 200.0)
+			cv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			y += 36.0
 
 	DeskKit.footer(b, {

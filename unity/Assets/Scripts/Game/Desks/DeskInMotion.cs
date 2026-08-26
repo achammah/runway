@@ -418,7 +418,10 @@ namespace Runway.Game
                 DeskKit.PenRule(b, cy + 44f, 40f, 1060f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.12f), 13 + n);
                 cy += 58f;
             }
-            int crowd = Gd.RoundToInt(SimFunnel.Num(f, "leads_total"));
+            // the named leads past the face-up cap count here too, so
+            // face-up + the other N = the hero's number (never hidden math)
+            int crowd = Gd.RoundToInt(SimFunnel.Num(f, "leads_total"))
+                + Math.Max(ranked.Count - Math.Min(ranked.Count, show), 0);
             int lands = Gd.RoundToInt(SimFunnel.Num(f, "adds"));
             b.L("the other " + crowd + " — small shops moving on their own · ≈" + lands
                 + " land weekly", 60f, cy + 2f, DeskKit.Detail,

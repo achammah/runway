@@ -170,9 +170,10 @@ namespace Runway.Game
                     : (an < 1
                         ? "the funnel is dark here: attribution needs an office, not a garage."
                         : "no week on the books yet — the funnel is measured, not predicted.");
-                b.L(why, fx, fy - 4f, DeskKit.Law,
+                // the caption stays INSIDE the card whatever height the funnel drew
+                b.L(why, fx, Math.Min(fy - 4f, CardsY + 384f - 56f), DeskKit.Law,
                     s.AnalyticsLevel <= 0 ? DrawnUI.Coral : DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f),
-                    LeftW - 40f);
+                    LeftW - 60f);
             }
         }
 
@@ -251,12 +252,13 @@ namespace Runway.Game
             float cy = frame.ContentY;
             if (s.Logos.Count == 0)
             {
+                // Law 2 — the amount rides the card's money column, not a sentence
                 double arpu = SimEngine.OffersArpu(s);
-                DeskKit.Empty(b, cx, cy,
-                    "no account big enough to name yet.",
-                    s.Traction + " small shops pay ≈ $"
-                    + GameUi.Money(Gd.RoundToInt(Gd.Maxf(arpu, 0.0)))
-                    + "/wk each — the biggest earn names as they grow");
+                DeskKit.MoneyRow(b, frame, s.Traction + " small shops each pay about",
+                    "$" + GameUi.Money(Gd.RoundToInt(Gd.Maxf(arpu, 0.0))) + "/wk",
+                    DrawnUI.Ink);
+                DeskKit.Empty(b, cx, cy + 48f,
+                    "no account big enough to name yet.", "");
                 return;
             }
             List<int> idx = LogosBySeats(s);
@@ -282,9 +284,10 @@ namespace Runway.Game
             float cy = frame.ContentY;
             if (s.Logos.Count == 0)
             {
+                // short enough to live inside the card's width
                 DeskKit.Empty(b, cx, cy,
-                    "no logos yet — a contract is the only way an enterprise customer arrives.",
-                    "the board on IN MOTION is where they come from");
+                    "no logos yet.",
+                    "contracts come from the IN MOTION board", true);
                 return;
             }
             List<int> idx = LogosBySeats(s);

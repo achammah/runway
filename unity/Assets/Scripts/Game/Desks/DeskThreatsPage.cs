@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using Runway.App;
 using Runway.Core;
@@ -27,7 +28,27 @@ namespace Runway.Game
             if (rows.Count == 0)
                 return new[] { "nothing is shouting", "that never lasts" };
             return new[] { string.Format("{0} live", rows.Count),
-                string.Format("{0} — {1}", rows[0].Label, rows[0].Desk) };
+                string.Format("{0} — {1}", rows[0].Label, DeskWord(rows[0].Desk)) };
+        }
+
+        /// The engine's attention registry still speaks the old tab names
+        /// ("crew", "pricing", "the ledger") — the page shows the desk the
+        /// binder actually opens (FocusDesk translates the jump itself).
+        static readonly Dictionary<string, string> DeskWordMap =
+            new Dictionary<string, string>
+            {
+                { "vitals", "this week" }, { "the ledger", "spend" },
+                { "pricing", "offers" }, { "product", "what we make" },
+                { "crew", "team" }, { "pipeline", "in motion" },
+                { "factory", "the works" }, { "catalog", "offers" },
+                { "bank", "the bank" }, { "cap", "cap table" },
+                { "street", "the street" }, { "ledger", "spend" },
+            };
+
+        static string DeskWord(string d)
+        {
+            string outp;
+            return DeskWordMap.TryGetValue(d ?? "", out outp) ? outp : d;
         }
 
         public static void Draw(BinderScreen b)
@@ -42,7 +63,7 @@ namespace Runway.Game
                     "that never lasts — the clocks below keep ticking", DrawnUI.Ink);
             else
                 y = DeskKit.HeroBand(b,
-                    string.Format("{0} — {1}", rows[0].Label, rows[0].Desk),
+                    string.Format("{0} — {1}", rows[0].Label, DeskWord(rows[0].Desk)),
                     rows.Count > 1
                         ? string.Format("{0} more on the list, loudest first", rows.Count - 1)
                         : "the only thing shouting this week",
@@ -57,7 +78,7 @@ namespace Runway.Game
                     it.Severity >= 3 ? DrawnUI.Coral : DrawnUI.WithAlpha(DrawnUI.Ink, 0.85f),
                     800f);
                 string dsk = it.Desk;
-                DeskKit.Word(b, dsk + " ->", DeskKit.XId + 900f, y - 4f,
+                DeskKit.Word(b, DeskWord(dsk) + " ->", DeskKit.XId + 900f, y - 4f,
                     () => b.FocusDesk(dsk), DeskKit.Status, DrawnUI.Coral, 220f);
                 y += 46f;
             }
@@ -99,9 +120,13 @@ namespace Runway.Game
                 for (int i = 0; i < s.Commitments.Count && y <= 780f; i++)
                 {
                     Commitment cm = s.Commitments[i];
-                    b.L(string.Format("standing: {0} — ${1}/wk for {2} more wks",
-                        cm.Name, Math.Abs(cm.CashWk), cm.WeeksLeft),
-                        DeskKit.XId + 36f, y, DeskKit.Detail, DrawnUI.Blue, 1060f);
+                    // Law 2 — the amount rides its own right-aligned column
+                    b.L(string.Format("standing: {0} — {1} more wks",
+                        cm.Name, cm.WeeksLeft),
+                        DeskKit.XId + 36f, y, DeskKit.Detail, DrawnUI.Blue, 800f);
+                    TextMeshProUGUI cv = b.L("$" + GameUi.Money(Math.Abs(cm.CashWk)) + "/wk",
+                        DeskKit.XId + 860f, y, DeskKit.Detail, DrawnUI.Blue, 200f);
+                    cv.alignment = TextAlignmentOptions.TopRight;
                     y += 36f;
                 }
             }

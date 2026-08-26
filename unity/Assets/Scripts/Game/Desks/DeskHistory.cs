@@ -25,6 +25,12 @@ namespace Runway.Game
         public const int FaceUp = 7;
         public const int FaceUpAll = 14;
 
+        /// Signed money the game's way: −$16,150, never $-16,150.
+        static string Signed(long n)
+        {
+            return (n < 0 ? "−$" : "$") + F(Math.Abs(n));
+        }
+
         static string F(long n)
         {
             return Math.Abs(n).ToString("#,##0", CultureInfo.InvariantCulture)
@@ -38,6 +44,41 @@ namespace Runway.Game
                 return new[] { "a blank book", "the first week writes the first row" };
             return new[] { string.Format("{0} weeks", n),
                 "the run's own ledger — receipts behind each row" };
+        }
+
+        struct EraSpan { public string Era; public int FromWk; }
+
+        /// The engine logs "MOVED UP: garage -> office (reason)" (the Godot
+        /// twin writes a → arrow) — the era word sits between the arrow and
+        /// the parenthesis. {era, from_wk} oldest first, always from wk 1.
+        static List<EraSpan> EraSpans(GameState s)
+        {
+            var moves = new List<EraSpan>();
+            for (int i = 0; i < s.History.Count; i++)
+            {
+                string e = s.History[i].Entry ?? "";
+                if (!e.StartsWith("MOVED UP:", StringComparison.Ordinal)
+                    && !e.StartsWith("MOVED DOWN:", StringComparison.Ordinal)) continue;
+                int arrow = e.IndexOf('→');
+                if (arrow < 0)
+                {
+                    arrow = e.IndexOf("-> ", StringComparison.Ordinal);
+                    if (arrow >= 0) arrow += 1;
+                }
+                if (arrow < 0) continue;
+                string tail = e.Substring(arrow + 1).Trim();
+                int par = tail.IndexOf('(');
+                if (par >= 0) tail = tail.Substring(0, par);
+                tail = tail.Trim();
+                if (tail.Length > 0)
+                    moves.Add(new EraSpan { Era = tail, FromWk = s.History[i].Week });
+            }
+            var spans = new List<EraSpan>
+            {
+                new EraSpan { Era = moves.Count > 0 ? "the early road" : s.Era, FromWk = 1 },
+            };
+            spans.AddRange(moves);
+            return spans;
         }
 
         static int Net(MetricSnapshot row)
@@ -118,16 +159,54 @@ namespace Runway.Game
                     new DeskKit.LedgerCol { Label = "the headline", W = 400f },
                     new DeskKit.LedgerCol { Label = "", W = 100f },
                 }, 2, false, "cash & net in $, at week's end");
-            int older = rows.Count - face;
+            // THE ERA SECTIONS (the collapse law): folded weeks group under the
+            // era stamps the action log wrote; each extra section trades two
+            // face-up rows so the sheet keeps its height budget.
+            List<EraSpan> spans = EraSpans(s);
+            int faceAdj = Math.Max(3, face - 2 * (spans.Count - 1));
+            int older = rows.Count - faceAdj;
             if (older > 0)
             {
-                int subNet = 0;
-                for (int i = 0; i < older; i++) subNet += Net(rows[i]);
-                DeskKit.LedgerSection(b, sheet, string.Format("the road so far — wk {0}–{1}",
-                    rows[0].Wk, rows[older - 1].Wk));
-                DeskKit.LedgerSubtotal(b, sheet,
-                    string.Format("subtotal — {0} folded weeks", older),
-                    "$" + F(subNet), "open the whole book below");
+                if (spans.Count <= 1)
+                {
+                    int subNet = 0;
+                    for (int i = 0; i < older; i++) subNet += Net(rows[i]);
+                    DeskKit.LedgerSection(b, sheet, string.Format("the road so far — wk {0}–{1}",
+                        rows[0].Wk, rows[older - 1].Wk));
+                    DeskKit.LedgerSubtotal(b, sheet,
+                        string.Format("subtotal — {0} folded weeks", older),
+                        Signed(subNet), "open the whole book below");
+                }
+                else
+                {
+                    int spanI = 0;
+                    int secStart = 0;
+                    int sub = 0;
+                    for (int i = 0; i < older; i++)
+                    {
+                        int wkI = rows[i].Wk;
+                        while (spanI + 1 < spans.Count && wkI >= spans[spanI + 1].FromWk)
+                        {
+                            if (i > secStart)
+                            {
+                                DeskKit.LedgerSection(b, sheet, string.Format("{0} — wk {1}–{2}",
+                                    spans[spanI].Era, rows[secStart].Wk, rows[i - 1].Wk));
+                                DeskKit.LedgerSubtotal(b, sheet,
+                                    string.Format("subtotal — {0} weeks", i - secStart),
+                                    Signed(sub), "");
+                                secStart = i;
+                                sub = 0;
+                            }
+                            spanI += 1;
+                        }
+                        sub += Net(rows[i]);
+                    }
+                    DeskKit.LedgerSection(b, sheet, string.Format("{0} — wk {1}–{2}",
+                        spans[spanI].Era, rows[secStart].Wk, rows[older - 1].Wk));
+                    DeskKit.LedgerSubtotal(b, sheet,
+                        string.Format("subtotal — {0} weeks", older - secStart),
+                        Signed(sub), "open the whole book below");
+                }
             }
             int totalNet = 0;
             for (int i = 0; i < rows.Count; i++) totalNet += Net(rows[i]);

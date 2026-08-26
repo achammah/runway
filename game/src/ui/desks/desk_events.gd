@@ -200,12 +200,26 @@ static func draw(b) -> void:
 		DeskKit.empty(b, Vector2(DeskKit.X_ID, y),
 			"the tray is empty — the world has not written yet.",
 			"deadlines, applications, filed notes and the street's moves all land here.")
-	# THE UNREAD — bold, newest first, the dot on action letters
-	for i in mini(unread.size(), UNREAD_CAP):
-		var ld2: Dictionary = unread[i]
-		y = _letter_row(b, s, y, ld2, false)
-	if unread.size() > UNREAD_CAP:
-		b.label("+%d more unread below the fold" % (unread.size() - UNREAD_CAP),
+	# THE UNREAD — bold, newest first, the dot on action letters. THE COLLAPSE
+	# LAW: a letter that needs an answer never folds away; the newest quiet
+	# letters fill whatever the face-up cap has left.
+	var face_up: Array = []
+	var quiet: Array = []
+	for lu in unread:
+		if bool((lu as Dictionary).get("action", false)):
+			face_up.append(lu)
+		else:
+			quiet.append(lu)
+	var quiet_slots := maxi(UNREAD_CAP - face_up.size(), 0)
+	for qi in mini(quiet.size(), quiet_slots):
+		face_up.append(quiet[qi])
+	face_up.sort_custom(func(a, c) -> bool:
+		return int((a as Dictionary).get("wk", 0)) > int((c as Dictionary).get("wk", 0)))
+	for ld2 in face_up:
+		y = _letter_row(b, s, y, ld2 as Dictionary, false)
+	var hidden := unread.size() - face_up.size()
+	if hidden > 0:
+		b.label("+%d more unread below the fold" % hidden,
 			Vector2(DeskKit.X_ID + 36.0, y), 17, Color(DeskKit.INK, 0.5), 500.0)
 		y += 30.0
 

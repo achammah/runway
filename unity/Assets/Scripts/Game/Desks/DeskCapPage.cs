@@ -89,7 +89,9 @@ namespace Runway.Game
             if (steps.Count >= 2)
                 DeskKit.DilutionBar(b, z2.ContentX, z2.Cursor + 2f, 610f, steps);
             else
-                DeskKit.Empty(b, z2.ContentX, z2.Cursor + 8f, "day 0 — you own all of it.",
+                DeskKit.Empty(b, z2.ContentX, z2.Cursor + 8f,
+                    "no rounds on the book yet — you hold "
+                    + Gd.F(state.FounderPct, 0) + "% today.",
                     "rounds, pools and conversions will draw themselves here");
             DeskKit.CardBox z3 = DeskKit.Zone(b, DeskKit.XId + 660f, y, 470f, 268f, 3, "if sold today",
                 "the waterfall — who gets paid, in order");
@@ -195,6 +197,25 @@ namespace Runway.Game
                 rows.Add(new[] { "the ESOP pool -> team", "options", "—", Gd.F(pool, 1) + "%",
                     Gd.F(pool - free, 1) + "% granted · " + Gd.F(free, 1) + "% free" });
             }
+            else if (state.OptionPoolPct > 0.0)
+            {
+                // a pool promised before the esop book opened — still a slice
+                rows.Add(new[] { "the option pool (promised)", "options", "—",
+                    Gd.F(state.OptionPoolPct, 1) + "%", "grants start with the esop book" });
+            }
+            // THE ACCOUNTING RULES LAW: the named slices + the rest = the whole
+            // pie — whatever the book cannot name is still shown
+            double named = state.FounderPct;
+            foreach (Cofounder cf2 in state.Cofounders)
+                named += cf2.EquityDiluted ?? cf2.Equity;
+            foreach (Instrument inst2 in state.Instruments)
+                named += Math.Max(inst2.Pct, 0.0);
+            if (state.Esop != null) named += state.Esop.PoolPct;
+            else if (state.OptionPoolPct > 0.0) named += state.OptionPoolPct;
+            double rest = 100.0 - named;
+            if (rest >= 0.5)
+                rows.Add(new[] { "the rest — smaller holders", "mixed", "—",
+                    Gd.F(rest, 1) + "%", "angels, early paper, rounding" });
             return rows;
         }
 

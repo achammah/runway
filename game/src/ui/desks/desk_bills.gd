@@ -209,13 +209,23 @@ static func _scaling_rows(state: GameState) -> Array:
 
 ## Every offer's fixed lines, flattened with their offer's name.
 static func _tool_lines(state: GameState) -> Array:
+	# One line per OFFER at the amount the bank actually bills (fixed_wk) —
+	# the label names the offer's first tool (+N more when it has several).
+	# THE ACCOUNTING RULES LAW: the fold's sublines always sum to their
+	# parent row, even when an offer's fixed_lines drifted from fixed_wk.
 	var out: Array = []
 	for o in state.offers:
 		var od: Dictionary = o
-		for fl in od.get("fixed_lines", []):
-			var fd: Dictionary = fl
-			out.append({"label": String(fd.get("label", "a tool")),
-				"offer": String(od.get("name", "")), "amount": float(fd.get("amount", 0.0))})
+		var amt := clampf(float(od.get("fixed_wk", 0.0)), 0.0, 10_000.0)
+		if amt <= 0.0:
+			continue
+		var fls: Array = od.get("fixed_lines", [])
+		var label := "the tools"
+		if not fls.is_empty():
+			label = String((fls[0] as Dictionary).get("label", "a tool"))
+			if fls.size() > 1:
+				label += " +%d more" % (fls.size() - 1)
+		out.append({"label": label, "offer": String(od.get("name", "")), "amount": amt})
 	return out
 
 static func _rent_trend(state: GameState) -> String:

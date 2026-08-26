@@ -197,7 +197,7 @@ namespace Runway.Game
         {
             var outp = new List<string>();
             if (!Dbo(bo, "retention_carve", false))
-                outp.Add("the retention pool is carved from the buyer's side, not from your share — this one is fair.");
+                outp.Add("retention carved from the buyer's side, not yours — fair.");
             if (Di(bo, "earnout", 0) > 0 && Ds(bo, "earnout_controller", "") == "neutral")
                 outp.Add("the earnout's targets are measured by a neutral auditor — as clean as earnouts get.");
             if (Di(bo, "lockup_wks", 0) > 0 && Di(bo, "lockup_wks", 0) < 52)

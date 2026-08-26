@@ -37,7 +37,10 @@ namespace Runway.Game
 
         public static string[] HeroSummary(GameState s)
         {
-            return new[] { s.Employees.Count + " people",
+            // onboarding hires are on the payroll the total shows — say so
+            string big = s.Employees.Count + " people";
+            if (s.Pipeline.Count > 0) big += " +" + s.Pipeline.Count + " onboarding";
+            return new[] { big,
                 "$" + GameUi.Money(SimLabor.PayrollWk(s)) + "/wk on payroll" };
         }
 
@@ -48,12 +51,15 @@ namespace Runway.Game
             int n = state.Employees.Count;
             int rung = SimSpendBook.TeamRung(n);
 
-            // ── the hero
+            // ── the hero — onboarding hires are paid, so the money line names them
             string big = n + " people";
             b.L(big, SheetX, 6f, DeskKit.HeroSize, DrawnUI.Ink, 420f);
             float bw = DrawnUI.MeasureWidth(big, DeskKit.HeroSize);
-            b.L("· $" + GameUi.Money(payroll) + " a week", SheetX + bw + 14f, 22f,
-                DeskKit.Row, Ink(0.7f), 360f);
+            b.L("· $" + GameUi.Money(payroll) + " a week"
+                + (state.Pipeline.Count > 0
+                    ? " · +" + state.Pipeline.Count + " onboarding" : ""),
+                SheetX + bw + 14f, 22f,
+                DeskKit.Row, Ink(0.7f), 420f);
             b.L("payroll is the biggest bill in the building — and the easiest to grow carelessly.",
                 SheetX, 62f, DeskKit.Detail, Ink(0.6f), 720f);
             if (state.Applicants.Count > 0)
@@ -100,9 +106,10 @@ namespace Runway.Game
             {
                 string role = r.Role ?? "engineer";
                 int waiting = SimLabor.WaitingFor(state, role);
+                // Law 2 — the offered pay rides the money column; the rate is a fact
                 DeskKit.LedgerRow(b, sheet, new[] { role + " — open seat", "advertised",
-                    "advert $" + GameUi.Money(r.OfferedSalary),
-                    "≈" + SimLabor.ArrivalRate(state, r).ToString("0.0") + "/wk",
+                    "≈" + SimLabor.ArrivalRate(state, r).ToString("0.0") + " apply/wk",
+                    "$" + GameUi.Money(r.OfferedSalary),
                     waiting + " waiting -> recruitment ▸" },
                     new DeskKit.LedgerRowCfg { Dim = true, OnPress = () => b.FocusDesk("recruitment") });
             }

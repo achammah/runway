@@ -30,6 +30,10 @@ static func hero_summary(state) -> Dictionary:
 		return {"big": "a blank book", "line": "the first week writes the first row"}
 	return {"big": "%d weeks" % n, "line": "the run's own ledger — receipts behind each row"}
 
+## Signed money the game's way: −$16,150, never $-16,150.
+static func _signed(b, n: int) -> String:
+	return ("−$" if n < 0 else "$") + b.fmt(absi(n))
+
 ## metric_history rows carry "wk" from the engine (older fixtures wrote
 ## "week"); read both so no book loses its early pages.
 static func _wk(row: Dictionary) -> int:
@@ -81,14 +85,23 @@ static func _era_spans(s: GameState) -> Array:
 		var hd: Dictionary = h
 		var e := String(hd.get("entry", ""))
 		if e.begins_with("MOVED UP:") or e.begins_with("MOVED DOWN:"):
-			var arrow := e.find("-> ")
+			# the engine logs "MOVED UP: garage → office (reason)" — the era
+			# word sits between the arrow and the parenthesis
+			var arrow := e.find("→")
+			if arrow < 0:
+				arrow = e.find("-> ")   # an older book's ASCII arrow
+				if arrow >= 0:
+					arrow += 1          # land on the arrow's closing char
 			if arrow >= 0:
-				var tail := e.substr(arrow + 2)
-				var sp := tail.find(" ")
-				moves.append({"era": tail.substr(0, sp) if sp > 0 else tail.strip_edges(),
-					"from_wk": int(hd.get("week", 0))})
-	var spans: Array = [{"era": (String(moves[0].get("era", s.era)) if false else "the early road")
-		if not moves.is_empty() else s.era, "from_wk": 1}]
+				var tail := e.substr(arrow + 1).strip_edges()
+				var par := tail.find("(")
+				if par >= 0:
+					tail = tail.substr(0, par)
+				if tail.strip_edges() != "":
+					moves.append({"era": tail.strip_edges(),
+						"from_wk": int(hd.get("week", 0))})
+	var spans: Array = [{"era": "the early road" if not moves.is_empty() else s.era,
+		"from_wk": 1}]
 	for m in moves:
 		spans.append(m)
 	return spans
@@ -128,15 +141,44 @@ static func draw(b) -> void:
 			{"label": "the headline", "w": 400.0},
 			{"label": "", "w": 100.0}],
 		"amount": 2, "adjust": false, "unit": "cash & net in $, at week's end"})
-	var older := rows.size() - face
+	# THE ERA SECTIONS (the collapse law): folded weeks group under the era
+	# stamps the action log wrote; each extra section trades two face-up rows
+	# so the sheet keeps its height budget.
+	var spans := _era_spans(s)
+	var face_adj := maxi(3, face - 2 * (spans.size() - 1))
+	var older := rows.size() - face_adj
 	if older > 0:
-		var sub_net := 0
-		for i in older:
-			sub_net += _net(rows[i])
-		DeskKit.ledger_section(b, sheet, "the road so far — wk %d–%d"
-			% [_wk(rows[0]), _wk(rows[older - 1])])
-		DeskKit.ledger_subtotal(b, sheet, "subtotal — %d folded weeks" % older,
-			"$%s" % b.fmt(sub_net), "open the whole book below")
+		if spans.size() <= 1:
+			var sub_net := 0
+			for i in older:
+				sub_net += _net(rows[i])
+			DeskKit.ledger_section(b, sheet, "the road so far — wk %d–%d"
+				% [_wk(rows[0]), _wk(rows[older - 1])])
+			DeskKit.ledger_subtotal(b, sheet, "subtotal — %d folded weeks" % older,
+				_signed(b, sub_net), "open the whole book below")
+		else:
+			var span_i := 0
+			var sec_start := 0
+			var sub := 0
+			for i in older:
+				var wk_i := _wk(rows[i])
+				while span_i + 1 < spans.size() \
+						and wk_i >= int((spans[span_i + 1] as Dictionary).get("from_wk", 1 << 30)):
+					if i > sec_start:
+						DeskKit.ledger_section(b, sheet, "%s — wk %d–%d"
+							% [String((spans[span_i] as Dictionary).get("era", "?")),
+								_wk(rows[sec_start]), _wk(rows[i - 1])])
+						DeskKit.ledger_subtotal(b, sheet, "subtotal — %d weeks" % (i - sec_start),
+							_signed(b, sub), "")
+						sec_start = i
+						sub = 0
+					span_i += 1
+				sub += _net(rows[i])
+			DeskKit.ledger_section(b, sheet, "%s — wk %d–%d"
+				% [String((spans[span_i] as Dictionary).get("era", "?")),
+					_wk(rows[sec_start]), _wk(rows[older - 1])])
+			DeskKit.ledger_subtotal(b, sheet, "subtotal — %d weeks" % (older - sec_start),
+				_signed(b, sub), "open the whole book below")
 	var total_net := 0
 	for r in rows:
 		total_net += _net(r)

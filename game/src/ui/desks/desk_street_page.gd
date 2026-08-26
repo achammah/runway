@@ -153,10 +153,10 @@ static func draw(b) -> void:
 
 	# 2 · THE RIVALS — the record is the tell
 	var ranked := _ranked_rivals(s)
-	var z2_h := 74.0 + float(mini(ranked.size(), 3)) * 80.0 \
+	var z2_h := 74.0 + float(mini(ranked.size(), 3)) * 84.0 \
 		+ (44.0 if ranked.size() > 3 else 0.0) + 6.0
 	if ranked.is_empty():
-		z2_h = 74.0 + 70.0
+		z2_h = 74.0 + 96.0
 	var z2 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, z2_h, 2, "the rivals",
 		"read the record, not the vibes — the pattern is the tell")
 	var ry := float(z2.cursor)
@@ -188,16 +188,16 @@ static func draw(b) -> void:
 		var trail: Array = log_all.slice(maxi(log_all.size() - 3, 0))
 		if not trail.is_empty():
 			b.label("  ·  ".join(PackedStringArray(trail)),
-				Vector2(float(z2.content_x) + 34.0, ry + 58.0), 17,
+				Vector2(float(z2.content_x) + 34.0, ry + 60.0), 17,
 				Color(DeskKit.INK, 0.55), 1040.0)
-		ry += 80.0
+		ry += 84.0
 	if ranked.size() > 3:
 		DeskKit.fold_row(b, float(z2.content_x), ry, ranked.size() - 3, "rivals",
 			func() -> void: b.desk["mode"] = "rivals")
 	y = float(z2.bottom) + 12.0
 
 	# 3 · THE INVESTORS' MOOD — the raise's radar reads this
-	var z3 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 108.0, 3, "the investors' mood", "")
+	var z3 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 118.0, 3, "the investors' mood", "")
 	b.label("the street pays ×%.1f the usual  ·  appetite: %s"
 		% [SimEngine.shock_val_mult(s), _appetite(s)],
 		Vector2(float(z3.content_x), float(z3.content_y)), DeskKit.DETAIL,
@@ -241,17 +241,27 @@ static func draw(b) -> void:
 	for rv in s.rivals:
 		pressure += float((rv as Dictionary).get("strength", 0.0))
 	pressure = minf(pressure / maxf(float(s.rivals.size()), 1.0) / 100.0 * 0.5, 0.45)
+	# the foot rides below the last zone when the stack runs deep
+	var fy := maxf(820.0, float(z4.bottom) + 6.0)
 	DeskKit.footer(b, {
 		"computed": "rival pressure is shaving %d%% off adoption · the trend multiplies every sale ×%.2f"
 			% [int(round(pressure * 100.0)), s.market_trend],
 		"rules": "none of this is yours to change from here — the street acts, the desks answer",
-		"y": 820.0, "rules_y": 852.0})
+		"y": fy, "rules_y": fy + 32.0})
 
 ## THE FULL LIST — every rival's rap sheet, the old street's own grammar.
 static func _draw_all_rivals(b, s: GameState) -> void:
 	DeskKit.back(b, "← the street", func() -> void:
 		b.desk.erase("mode"))
-	var y := 64.0
+	# the drill still answers the tab's question before the list starts
+	var came := 0
+	for rv0 in s.rivals:
+		if _came_at_you(rv0 as Dictionary):
+			came += 1
+	var y := DeskKit.hero_band(b, "%d rival%s on the street"
+		% [s.rivals.size(), "" if s.rivals.size() == 1 else "s"],
+		("%d came at YOU this month — every rap sheet below, loudest first" % came)
+		if came > 0 else "every rap sheet below, loudest first", DeskKit.INK, 44.0)
 	for rv in _ranked_rivals(s):
 		var rd: Dictionary = rv
 		var log_all: Array = rd.get("log", [])

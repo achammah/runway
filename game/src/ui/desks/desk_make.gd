@@ -45,10 +45,27 @@ static func hero_summary(state) -> Dictionary:
 	var s: GameState = state
 	var creaks := SimFeatures.creak_count(s)
 	var line := "%d live · %d building · %d ready" % [s.features.size(),
-		SimRoadmap.committed_bets(s).size(), SimRoadmap.ready_bets(s).size()]
+		_building_bets(s).size(), SimRoadmap.ready_bets(s).size()]
 	if creaks > 0:
 		line += " · %d creak%s" % [creaks, "" if creaks == 1 else "s"]
 	return {"big": "v0.%d" % maxi(1, s.product / 10), "line": line}
+
+## A committed bet that has finished is READY, not BUILDING — the two counts
+## and the two columns never show the same bet twice.
+static func _building_bets(state: GameState) -> Array:
+	return SimRoadmap.committed_bets(state).filter(func(bt) -> bool:
+		return not bool((bt as Dictionary).get("ready", false)))
+
+## LONG-TEXT LAW: a plate title or caption is measured and trimmed to its
+## lane, never wrapped under a neighbour.
+static func _fit(b, s: String, w: float, size: int = DeskKit.DETAIL) -> String:
+	if b.font().get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x <= w:
+		return s
+	var t := s
+	while t.length() > 1 and b.font().get_string_size(t + "…",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > w:
+		t = t.substr(0, t.length() - 1)
+	return t.strip_edges() + "…"
 
 static func draw(b) -> void:
 	var state: GameState = b.state
@@ -86,10 +103,12 @@ static func _hero(b, state: GameState) -> void:
 	if line == "":
 		line = "the thing we make"
 	var version := "v0.%d" % maxi(1, state.product / 10)
-	DeskKit.hero_plate(b, 10.0, 6.0, name.substr(0, 22), version, "what we make")
+	# the plate's name lane is one line (x26..316) — a 24-char company name
+	# is measured and trimmed, never wrapped under the version chip
+	DeskKit.hero_plate(b, 10.0, 6.0, _fit(b, name, 280.0, 30), version, "what we make")
 	# THE MAKE illustration (DECISIONS § THE THREE BINDER ILLUSTRATIONS) —
-	# the thing the company makes, beside the plate; the plate alone is the
-	# fallback and the page never waits.
+	# the thing the company makes, BESIDE the plate (never over its title);
+	# the plate alone is the fallback and the page never waits.
 	if FileAccess.file_exists(PortraitClient.MAKE_PATH):
 		var mimg := Image.new()
 		if mimg.load(PortraitClient.MAKE_PATH) == OK:
@@ -97,37 +116,39 @@ static func _hero(b, state: GameState) -> void:
 			mtr.texture = ImageTexture.create_from_image(mimg)
 			mtr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			mtr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			mtr.position = Vector2(196.0, 4.0)
+			mtr.position = Vector2(434.0, 4.0)
 			mtr.set_deferred("size", Vector2(84.0, 84.0))
 			mtr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			b.pane().add_child(mtr)
-	b.label(line, Vector2(450.0, 8.0), 32, Binder.INK, 660.0)
+	b.label(line, Vector2(536.0, 8.0), 32, Binder.INK, 574.0)
+	# a bet that is READY is no longer BUILDING — each shows once
 	var counts := "%d live · %d building · %d ready · %d on the shelf" % [
-		state.features.size(), SimRoadmap.committed_bets(state).size(),
+		state.features.size(), _building_bets(state).size(),
 		SimRoadmap.ready_bets(state).size(), _shelf_rows(state).size()]
-	b.label(counts, Vector2(450.0, 52.0), 21, Color(Binder.INK, 0.6), 660.0)
+	b.label(counts, Vector2(536.0, 52.0), 21, Color(Binder.INK, 0.6), 574.0)
 	var creaks := SimFeatures.creak_count(state)
 	if creaks > 0:
 		var tax := SimFeatures.creak_tax_pct(state)
 		var cl := "creaks at '%s'" % SimFeatures.worst_creak_name(state)
 		if tax > 0:
 			cl += " — build speed −%d%%" % tax
-		b.label(cl, Vector2(450.0, 78.0), 21, Binder.PEN, 500.0)
+		b.label(cl, Vector2(536.0, 78.0), 21, Binder.PEN, 420.0)
 	var ready := SimRoadmap.ready_bets(state)
 	if not ready.is_empty():
 		var rb: Dictionary = ready[0]
 		var left := SimRoadmap.stall_left(state, rb)
 		DeskKit.clock_chip(b, 956.0, 78.0, ("self-ships in %d wk" % left) if left > 0
 			else "self-ships this week")
-	b.label("SHIP rolls the dice · stand-down burns 25%", Vector2(830.0, 52.0), 17,
-		Color(Binder.INK, 0.5), 300.0)
+	# (the wall already teaches the dice and the stand-down burn — READY says
+	# "ship it, or it ships itself", BUILDING owns the stand-down arm — so the
+	# hero keeps no duplicate note and the counts lane stays clear)
 
 # ═══════════════════════════ THE PIPELINE WALL ═══════════════════════════════
 
 static func _wall(b, state: GameState) -> void:
 	var shelf := _shelf_rows(state)
 	var queued := SimFeatures.queued_bets(state)
-	var building := SimRoadmap.committed_bets(state)
+	var building := _building_bets(state)
 	var ready := SimRoadmap.ready_bets(state)
 	# ── THE SHELF: priced ideas, press one to commit it
 	var c1 := DeskKit.wall_column(b, 10.0, COL_Y, COL_W, COL_H,

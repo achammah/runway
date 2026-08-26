@@ -94,10 +94,10 @@ static func draw(b) -> void:
 			py += 26.0
 	y = float(z2.bottom) + 12.0
 
-	# 3 · THE WEEK AFTER
+	# 3 · THE WEEK AFTER — ONE measured line, so nothing ever crosses into
+	# zone 4 (LONG-TEXT LAW; the vertical budget stays the authored one)
 	var z3 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 70.0, 3, "the week after", "")
-	b.label("demand ramps from zero · the DM narrates the pivot week · new topics "
-		+ "and paintings arrive, regenerated — the numbers never wait for art",
+	b.label("demand ramps from zero · the DM narrates the pivot week · topics and paintings regenerate",
 		Vector2(float(z3.content_x), float(z3.content_y) - 18.0), DeskKit.DETAIL,
 		Color(DeskKit.INK, 0.7), 1070.0)
 	y = float(z3.bottom) + 12.0
@@ -188,9 +188,9 @@ static func _preview_lines(s: GameState, door: String, pv: Dictionary) -> Array:
 	if door == "audience":
 		return [
 			{"label": "customers walk", "value": "all %d" % int(pv.get("customers_lost", 0))},
-			{"label": "the content well drains", "value": "$%d" % int(pv.get("well", 0))},
+			{"label": "the content well drains", "value": "$%s" % _fmt(int(pv.get("well", 0)))},
 			{"label": "named deals die", "value": str(int(pv.get("deals_dead", 0)))},
-			{"label": "the debts stay owed", "value": "$%d" % int(pv.get("debts", 0)),
+			{"label": "the debts stay owed", "value": "$%s" % _fmt(int(pv.get("debts", 0))),
 				"col": DeskKit.PEN},
 		]
 	return [
@@ -201,9 +201,18 @@ static func _preview_lines(s: GameState, door: String, pv: Dictionary) -> Array:
 		{"label": "bets die on the wall · debt clears · %d deals knock back"
 			% int(pv.get("deals_knocked", 0)), "value": "%d bets · −%d debt"
 			% [int(pv.get("bets_dead", 0)), int(pv.get("debt_cleared", 0))]},
-		{"label": "the debts stay owed", "value": "$%d" % int(pv.get("debts", 0)),
+		{"label": "the debts stay owed", "value": "$%s" % _fmt(int(pv.get("debts", 0))),
 			"col": DeskKit.PEN},
 	]
+
+## Money wears its commas everywhere on the desk (the accounting rules law).
+static func _fmt(n: int) -> String:
+	var t := str(absi(n))
+	var out := ""
+	while t.length() > 3:
+		out = "," + t.substr(t.length() - 3) + out
+		t = t.substr(0, t.length() - 3)
+	return ("-" if n < 0 else "") + t + out
 
 ## The armed caption — the second tap carries the full price in coral.
 static func _arm_caption(s: GameState, door: String, target: String) -> String:

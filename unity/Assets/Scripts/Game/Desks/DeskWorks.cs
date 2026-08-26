@@ -130,8 +130,9 @@ namespace Runway.Game
             }
             else if (s.BizWhat == "Software")
             {
-                big = string.Format("{0} {1}s served · room for {2}", Gd.RoundToInt(served),
-                    unit, Gd.RoundToInt(SimWorks.Num(w, "ceiling")));
+                // short enough to keep the corner block's lane at any scale
+                big = string.Format("{0} of {1} {2}s served", Gd.RoundToInt(served),
+                    Gd.RoundToInt(SimWorks.Num(w, "ceiling")), unit);
                 line = "software doesn't turn people away — it slowly serves everyone worse";
             }
             else
@@ -140,13 +141,16 @@ namespace Runway.Game
                     unit, vw["capacity_word"], Gd.RoundToInt(cap));
                 line = "each one leaves at its price and costs real hands, rooms and parts";
             }
-            float y = DeskKit.HeroBand(b, big, line, DrawnUI.Ink, scoped ? 44f : 6f);
-            TextMeshProUGUI mv = b.L("margin each  " + Money(mrow), 760f, scoped ? 48f : 10f,
+            // the hero big never runs under the corner block (measured, not hoped)
+            float y = DeskKit.HeroBand(b, Fit(big, 660f, DeskKit.HeroBig), line,
+                DrawnUI.Ink, scoped ? 44f : 6f);
+            // the corner block ends clear of the arrange -> word at XId+980
+            TextMeshProUGUI mv = b.L("margin each  " + Money(mrow), 700f, scoped ? 48f : 10f,
                 DeskKit.Status, DrawnUI.Ink, 240f);
             mv.alignment = TextAlignmentOptions.TopRight;
             if (walk >= 1.0)
             {
-                TextMeshProUGUI wv = b.L(Gd.RoundToInt(walk) + " turned away", 760f,
+                TextMeshProUGUI wv = b.L(Gd.RoundToInt(walk) + " turned away", 700f,
                     scoped ? 82f : 44f, DeskKit.Detail, DrawnUI.Coral, 240f);
                 wv.alignment = TextAlignmentOptions.TopRight;
             }
@@ -155,11 +159,14 @@ namespace Runway.Game
             y = ZoneTicket(b, s, y, house);
             y = CapacityBand(b, s, y, openedSite);
             double unbilled = SimWorks.Num(w, "unbilled");
+            // the foot rides BELOW the last zone when the stack runs deep —
+            // the blue line never prints across zone 4 (the scrolling QA law)
+            float fy = Math.Max(806f, y + 4f);
             DeskKit.Footer(b,
                 "the works reads your team for hands, your offers for the ticket — one desk, every cost of delivering",
                 "", unbilled >= 1.0
                     ? string.Format("${0}/wk walks away — relief valves or hires close it",
-                        Gd.RoundToInt(unbilled)) : "", 806f, 840f);
+                        M(unbilled)) : "", fy, fy + 34f);
             DeskKit.HeroQuestion(b, Question);
         }
 
@@ -225,9 +232,11 @@ namespace Runway.Game
             int shown = Gd.Mini(rows.Count, 4);
             int folded = rows.Count - shown;
             float h = 88f + 34f + shown * 40f + 48f + (folded > 0 ? 44f : 0f) + 34f;
+            // the unit note rides the lesson — the sheet's own top-right slot
+            // would print it across the GAP column header on this wide sheet
             DeskKit.CardBox z = DeskKit.Zone(b, DeskKit.XId, y, 1120f, h, 1,
                 "CAN WE SERVE? — THE DEMAND MIX",
-                "offers share one capacity pool; the gap lands on whatever you deprioritize");
+                string.Format("offers share one pool; the gap lands on what you deprioritize — figures in {0}s/wk", unit));
             DeskKit.LedgerBox sheet = DeskKit.LedgerSheet(b, z.ContentX, z.ContentY, 1070f,
                 new List<DeskKit.LedgerCol>
                 {
@@ -235,35 +244,38 @@ namespace Runway.Game
                     new DeskKit.LedgerCol { Label = "wanted", W = 170f, Align = "right" },
                     new DeskKit.LedgerCol { Label = "served", W = 170f, Align = "right" },
                     new DeskKit.LedgerCol { Label = "gap", W = 170f, Align = "right" },
-                }, 3, false, string.Format("all figures {0}s/week", unit));
-            double wantT = 0.0, servedT = 0.0;
+                }, 3, false, "");
+            // THE ACCOUNTING RULES LAW: the totals sum the rounded figures the
+            // rows actually show, so the sheet squares with itself on camera
+            int wantT = 0, servedT = 0;
             for (int i = 0; i < shown; i++)
             {
                 Dictionary<string, object> rd = rows[i];
-                double gap = SimWorks.Num(rd, "wanted") - SimWorks.Num(rd, "served");
-                wantT += SimWorks.Num(rd, "wanted");
-                servedT += SimWorks.Num(rd, "served");
+                int wr = Gd.RoundToInt(SimWorks.Num(rd, "wanted"));
+                int sr = Gd.RoundToInt(SimWorks.Num(rd, "served"));
+                int gap = wr - sr;
+                wantT += wr;
+                servedT += sr;
                 DeskKit.LedgerRow(b, sheet, new[] { (string)rd["name"],
-                        Gd.RoundToInt(SimWorks.Num(rd, "wanted")).ToString(),
-                        Gd.RoundToInt(SimWorks.Num(rd, "served")).ToString(),
-                        gap >= 0.5 ? "−" + Gd.RoundToInt(gap) : "—" },
-                    new DeskKit.LedgerRowCfg { Col = gap >= 0.5 ? DrawnUI.Coral : DrawnUI.Ink });
+                        wr.ToString(), sr.ToString(),
+                        gap >= 1 ? "−" + gap : "—" },
+                    new DeskKit.LedgerRowCfg { Col = gap >= 1 ? DrawnUI.Coral : DrawnUI.Ink });
             }
             for (int i2 = shown; i2 < rows.Count; i2++)
             {
-                wantT += SimWorks.Num(rows[i2], "wanted");
-                servedT += SimWorks.Num(rows[i2], "served");
+                wantT += Gd.RoundToInt(SimWorks.Num(rows[i2], "wanted"));
+                servedT += Gd.RoundToInt(SimWorks.Num(rows[i2], "served"));
             }
-            double gapT = wantT - servedT;
+            int gapT = wantT - servedT;
             DeskKit.LedgerTotal(b, sheet, "THE WEEK",
-                gapT >= 0.5 ? "−" + Gd.RoundToInt(gapT) : "0",
-                gapT >= 0.5 ? DrawnUI.Coral : DrawnUI.Ink);
+                gapT >= 1 ? "−" + gapT : "0",
+                gapT >= 1 ? DrawnUI.Coral : DrawnUI.Ink);
             float endY = DeskKit.LedgerEnd(b, sheet);
             if (folded > 0)
                 endY = DeskKit.FoldRow(b, z.ContentX, endY - 8f, folded, "offers share the pool too");
             DeskKit.Meter(b, z.ContentX, endY - 6f, 560f,
                 (float)Gd.Clampf(servedT / Gd.Maxf(wantT, 0.001), 0.0, 1.0), DrawnUI.Sage,
-                string.Format("the shared pool — {0} of {1}", Gd.RoundToInt(servedT), Gd.RoundToInt(wantT)));
+                string.Format("the shared pool — {0} of {1}", servedT, wantT));
             return y + h + 10f;
         }
 
@@ -307,10 +319,19 @@ namespace Runway.Game
             int shown2 = Gd.Mini(rows2.Count, 4);
             int folded2 = rows2.Count - shown2;
             float h2 = 88f + 34f + shown2 * 40f + 48f + (folded2 > 0 ? 44f : 0f);
+            int opened = DI(b, "ticket");
+            // the opened ticket beside the book is often the taller column —
+            // the zone holds whichever is tallest, so the ticket never
+            // crosses the zone's edge
+            Dictionary<string, object> pre = SimWorks.UnitTicket(s,
+                Gd.Clampi(opened, 0, s.Offers.Count - 1));
+            var preRaw = (List<Dictionary<string, object>>)pre["lines"];
+            int preLines = Gd.Mini(preRaw.Count, 3) + (preRaw.Count > 3 ? 1 : 0) + 1;
+            bool preFoot = SimWorks.Num(pre, "lc") < 0.995;
+            h2 = Mathf.Max(h2, 84f + 46f + preLines * 32f + 44f + 30f + (preFoot ? 14f : 0f) + 12f);
             DeskKit.CardBox z2 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, h2, 2,
                 "WHAT ONE COSTS — THE TICKET BOOK",
                 "one row per offer; press a row and its ticket opens itemized");
-            int opened = DI(b, "ticket");
             DeskKit.LedgerBox sheet2 = DeskKit.LedgerSheet(b, z2.ContentX, z2.ContentY, 620f,
                 new List<DeskKit.LedgerCol>
                 {
@@ -351,11 +372,22 @@ namespace Runway.Game
             for (int i3 = 0; i3 < raw2.Count && i3 < 3; i3++)
                 tl.Add(new DeskKit.TicketLine { Label = (string)raw2[i3]["label"],
                     Value = "$" + M(SimWorks.Num(raw2[i3], "amount")) });
+            // the lines past three fold into one honest row — the ticket still squares
+            if (raw2.Count > 3)
+            {
+                double rest2 = 0.0;
+                for (int j2 = 3; j2 < raw2.Count; j2++)
+                    rest2 += SimWorks.Num(raw2[j2], "amount");
+                tl.Add(new DeskKit.TicketLine { Label = "everything else", Value = "$" + M(rest2) });
+            }
             tl.Add(new DeskKit.TicketLine { Label = "sells for", Value = "$" + M(SimWorks.Num(t2, "sells")) });
             double margin2 = SimWorks.Num(t2, "margin");
+            double lc2 = SimWorks.Num(t2, "lc");
             DeskKit.Ticket(b, z2.ContentX + 660f, z2.ContentY - 6f, 400f,
                 ((string)s.Offers[ti].Name).ToUpper() + " — OPENED", tl, "margin, each",
-                Money(margin2), "", margin2 >= 0.0 ? DrawnUI.Sage : DrawnUI.Coral);
+                Money(margin2),
+                lc2 < 0.995 ? string.Format("learning ×{0:0.00} applied at the total", lc2) : "",
+                margin2 >= 0.0 ? DrawnUI.Sage : DrawnUI.Coral);
             return y + h2 + 10f;
         }
 
@@ -593,9 +625,15 @@ namespace Runway.Game
             Dictionary<string, string> vw = SimWorks.Vocab(s);
             string unit = vw["unit_word"];
             Dictionary<string, object> w = SimWorks.WeekView(s);
-            double servedT = SimWorks.Num(w, "served_units");
+            // THE ACCOUNTING RULES LAW: the hero is the sum of the rows the
+            // page shows (every division + relief), so the lineup squares
+            int dispTotal = 0;
+            foreach (Dictionary<string, object> dv in divs)
+                dispTotal += Gd.RoundToInt(SimWorks.Num(dv, "vol"));
+            int reliefT = Gd.RoundToInt(SimWorks.Num(w, "relief_used"));
+            dispTotal += reliefT;
             float y = DeskKit.HeroBand(b, string.Format("{0} {1} · {2} {3}s a week", divs.Count,
-                    AxisWord(slice, divs.Count), Gd.RoundToInt(servedT), unit),
+                    AxisWord(slice, divs.Count), dispTotal, unit),
                 "every line keeps its own books — press one and its whole works opens");
             if (axes.Count > 1)
             {
@@ -630,7 +668,19 @@ namespace Runway.Game
                 });
             }
             if (divs.Count > shown)
-                y = DeskKit.FoldRow(b, DeskKit.XId, y, divs.Count - shown, "healthy lines hold steady");
+            {
+                int fn = divs.Count - shown;
+                y = DeskKit.FoldRow(b, DeskKit.XId, y, fn,
+                    fn == 1 ? "healthy line holds steady" : "healthy lines hold steady");
+            }
+            // relief serves on top of the roofs — the hero counts it, name it
+            if (reliefT >= 1)
+            {
+                b.L("+ relief hands — " + reliefT + " " + unit + (reliefT == 1 ? "" : "s")
+                    + "/wk on top of the roofs",
+                    DeskKit.XId + 24f, y + 2f, DeskKit.Detail, DrawnUI.Blue, 700f);
+                y += 34f;
+            }
             if (slice == "site")
             {
                 DeskKit.Word(b, string.Format(
@@ -714,6 +764,17 @@ namespace Runway.Game
         static string Left(string s, int n)
         {
             return s.Length > n ? s.Substring(0, n) : s;
+        }
+
+        /// LONG-TEXT LAW: a line that would run under the hero's corner block
+        /// is measured and trimmed, never left to collide.
+        internal static string Fit(string s, float w, float size)
+        {
+            if (DrawnUI.MeasureWidth(s, size) <= w) return s;
+            string t = s;
+            while (t.Length > 1 && DrawnUI.MeasureWidth(t + "…", size) > w)
+                t = t.Substring(0, t.Length - 1);
+            return t.TrimEnd() + "…";
         }
 
         /// Signed money for a value column: −$73.54, never $-73.54.

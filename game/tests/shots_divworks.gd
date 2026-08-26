@@ -159,9 +159,10 @@ func _go() -> void:
 	b.desk["mode"] = "arrange"
 	b.refresh()
 	await _shot("works_arrange_bins")
-	# a staged person move: chip June (index 4 in the empire fixture) → Geneva
-	b.desk["staged2"] = {"kind": "e", "idx": 4, "to": "site_2",
-		"quote": SimDivisions.reassign_quote(b.state, 4, "site_2")}
+	# a staged person move: chip June Park (employee index 2 — the boutique
+	# seeds two before the empire adds her) → Geneva
+	b.desk["staged2"] = {"kind": "e", "idx": 2, "to": "site_2",
+		"quote": SimDivisions.reassign_quote(b.state, 2, "site_2")}
 	b.refresh()
 	await _shot("works_arrange_staged_move")
 	b.desk.erase("staged2")
