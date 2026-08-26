@@ -43,7 +43,8 @@ extends RefCounted
 ## The spine calls (docs/design/HOOKS.md): tick_pre §7i (the week's dice are
 ## drawn and parked — capacity jitter, freelancer availability), tick_money
 ## (the served/walked math runs on SETTLED traction; owns ONLY m["relief"]
-## and the un-billing against m["revenue"]), tick_post (software's churn tax
+## and the un-billing against m["revenue"] AND m["cogs"] — a walked unit
+## takes its serving cost with it), tick_post (software's churn tax
 ## + the receipts), directives(), attention().
 ##
 ## SALTS: SALT_WORKS_CAPACITY (160) capacity jitter · SALT_WORKS_RELIEF (161)
@@ -391,6 +392,18 @@ static func tick_money(state: GameState, rep: Dictionary, m: Dictionary) -> void
 	if unbilled >= 1.0:
 		m["revenue"] = float(m.get("revenue", 0.0)) - unbilled
 		w["unbilled"] = unbilled
+	# UNDELIVERED UNITS COST NOTHING TO DELIVER (W4 — the overflow law made
+	# whole; the factory's stockout math is the precedent). The engine books
+	# cogs per CUSTOMER on the books, but a walked unit's serving cost never
+	# happened: un-bill the walked share of the cogs line beside the walked
+	# revenue. Wherever revenue walks, its serving cost walks with it.
+	var walk_u := float(w.get("walk_units", 0.0))
+	var wanted_u := maxf(float(w.get("demand_units", 0.0)), 0.001)
+	if walk_u >= 0.01 and float(m.get("cogs", 0.0)) > 0.0:
+		var cogs_unbilled := minf(float(m["cogs"]) * walk_u / wanted_u, float(m["cogs"]))
+		if cogs_unbilled >= 1.0:
+			m["cogs"] = float(m["cogs"]) - cogs_unbilled
+			w["cogs_unbilled"] = cogs_unbilled
 
 ## After the record: software's overload collects its churn (the factory's
 ## `walked` idiom — extra churn = traction × 0.4%/wk × how far past the
@@ -422,9 +435,17 @@ static func tick_post(state: GameState, rep: Dictionary) -> void:
 				int(round(float(w.get("relief_used", 0.0)))), unit_word])
 	var walk := float(w.get("walk_units", 0.0))
 	if walk >= 1.0 and float(w.get("unbilled", 0.0)) >= 1.0:
-		lines.append("%d %ss turned away — $%d/wk walks (hands for %d of %d)" % [
-			int(round(walk)), unit_word, int(round(float(w.get("unbilled", 0.0)))),
-			int(round(float(w.get("served_units", 0.0)))), int(round(float(w.get("demand_units", 0.0))))])
+		# the receipt carries BOTH halves of a walked unit: the revenue that
+		# walked and the serving cost that never happened
+		var cu := float(w.get("cogs_unbilled", 0.0))
+		if cu >= 1.0:
+			lines.append("%d %ss turned away — $%d revenue and $%d serving costs never happened (hands for %d of %d)" % [
+				int(round(walk)), unit_word, int(round(float(w.get("unbilled", 0.0)))), int(round(cu)),
+				int(round(float(w.get("served_units", 0.0)))), int(round(float(w.get("demand_units", 0.0))))])
+		else:
+			lines.append("%d %ss turned away — $%d/wk walks (hands for %d of %d)" % [
+				int(round(walk)), unit_word, int(round(float(w.get("unbilled", 0.0)))),
+				int(round(float(w.get("served_units", 0.0)))), int(round(float(w.get("demand_units", 0.0))))])
 	var used := float(w.get("relief_used", 0.0))
 	if used >= 1.0 and state.biz_what != "Software" and state.biz_what != "Hardware":
 		var rw := String(vw.get("relief_word", "outside help"))

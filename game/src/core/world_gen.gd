@@ -16,6 +16,15 @@ const NAME_SEEDS := ["vanta", "loomly", "brightside", "koda", "meridian", "fluxo
 	"maple", "cinder", "bluefin", "orchard", "signal", "lumen", "basalt"]
 const FUND_SUFFIX := ["Capital", "Ventures", "Partners", "Collective", "Fund", "Syndicate"]
 
+## THE SERVICE CONSUMER FLOOR (W4 balance). C5's flat 0.25 Consumer multiplier
+## priced a consumer session at $11-21 while the garage burn floor stayed
+## $650/wk, so a fully-served founder (26 bookable hours) billed ~$416/wk —
+## structurally insolvent at ANY capacity: 20/20 scripted runs died. A consumer
+## session is a real price in the world ($26-34 at 0.4), so Service alone bills
+## Consumer at 0.4; unit costs scale WITH the price (the C5 margin law holds).
+## Every other type and audience keeps the C5 multiplier untouched.
+const SERVICE_CONSUMER_AUD := 0.4
+
 ## People are not companies: hires, cofounders and walk-ons draw from these.
 const FIRST_NAMES := ["Mara", "Nico", "Priya", "Jonas", "Aiko", "Sam", "Lena",
 	"Ravi", "Ines", "Theo", "Dana", "Milo", "Zara", "Owen", "Nadia", "Felix",
@@ -134,15 +143,17 @@ static func default_offers(what: String, who: String, rng: RandomNumberGenerator
 	var aud := 0.25 if who == "Consumer" else (4.0 if who == "Enterprise" else 1.0)
 	match what:
 		"Service":
+			# Service bills Consumer at its own floor (SERVICE_CONSUMER_AUD above)
+			var s_aud := SERVICE_CONSUMER_AUD if who == "Consumer" else aud
 			return [
 				{"name": "standard session", "unit": "per session",
-				 "fair_price": float(rng.randi_range(45, 85)) * aud, "elasticity": 2.6,
-				 "unit_cost": 18.0 * aud, "price": 0.0, "weight": 0.7},
+				 "fair_price": float(rng.randi_range(45, 85)) * s_aud, "elasticity": 2.6,
+				 "unit_cost": 18.0 * s_aud, "price": 0.0, "weight": 0.7},
 				# the premium lane is INELASTIC (C5 audit D2): pricing above
 				# fair must be a real strategy somewhere, not a cliff
 				{"name": "premium package", "unit": "per package",
-				 "fair_price": float(rng.randi_range(140, 260)) * aud, "elasticity": 0.8,
-				 "unit_cost": 55.0 * aud, "price": 0.0, "weight": 0.3}]
+				 "fair_price": float(rng.randi_range(140, 260)) * s_aud, "elasticity": 0.8,
+				 "unit_cost": 55.0 * s_aud, "price": 0.0, "weight": 0.3}]
 		"Hardware":
 			return [
 				{"name": "the device", "unit": "per unit",

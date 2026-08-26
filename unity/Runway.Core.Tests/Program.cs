@@ -129,6 +129,36 @@ namespace Runway.CoreTests
             // ── the day-one bank: the draft's promise IS the engine's grant
             Ok(GameState.START_CASH == 8000, "day-one bank pinned at $8,000");
 
+            // ── the service consumer floor: a consumer session is a real price
+            List<Offer> scOffers = WorldGen.DefaultOffers("Service", "Consumer", new Rng(7));
+            Ok(WorldGen.SERVICE_CONSUMER_AUD == 0.4 && scOffers[0].FairPrice >= 18.0
+                && scOffers[0].FairPrice <= 34.0,
+                "service consumer floor: sessions bill in the 0.4 band");
+
+            // ── the works un-bills BOTH halves of a walked unit (W4: a walked
+            // unit takes its serving cost with it, by exactly the walked share)
+            GameState wu = new GameState();
+            wu.SimSeed = 99;
+            wu.Week = 6;
+            wu.BizWhat = "Service";
+            wu.BizWho = "SMB";
+            wu.Theta = SimEngine.DefaultTheta("Service", "SMB");
+            wu.Offers.Add(new Offer { Name = "session", Unit = "per session", FairPrice = 60.0,
+                Elasticity = 2.6, UnitCost = 20.0, Price = 60.0, PriceSet = true, Weight = 1.0 });
+            wu.SetFlag("launched");
+            wu.Traction = 200;   // 200 sessions wanted vs the founder's ~26 hands
+            MoneyWork wm = new MoneyWork { Revenue = 12000.0, Cogs = 4000.0 };
+            SimWorks.TickPre(wu, new WeeklyReport());
+            SimWorks.TickMoney(wu, new WeeklyReport(), wm);
+            var wrec = wu.GetMeta("works") as Dictionary<string, object>
+                ?? new Dictionary<string, object>();
+            double wWalk = wrec.ContainsKey("walk_units") ? Convert.ToDouble(wrec["walk_units"]) : 0.0;
+            double wWant = wrec.ContainsKey("demand_units") ? Convert.ToDouble(wrec["demand_units"]) : 1.0;
+            double wShare = wWalk / System.Math.Max(wWant, 0.001);
+            Ok(wm.Cogs < 4000.0 && wm.Revenue < 12000.0
+                && System.Math.Abs((4000.0 - wm.Cogs) - 4000.0 * wShare) < 1.0,
+                "the works un-bills serving costs by exactly the walked share");
+
             // ── determinism: same seed+week = identical tick
             GameState a = NewState();
             GameState b = NewState();

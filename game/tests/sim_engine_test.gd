@@ -40,6 +40,35 @@ func _go() -> void:
 	# ── the day-one bank: the draft's promise IS the engine's grant
 	_ok(GameState.START_CASH == 8000, "day-one bank pinned at $8,000")
 
+	# ── the service consumer floor: a consumer session is a real price
+	var sc_rng := RandomNumberGenerator.new()
+	sc_rng.seed = 7
+	var sc0: Dictionary = WorldGen.default_offers("Service", "Consumer", sc_rng)[0]
+	_ok(WorldGen.SERVICE_CONSUMER_AUD == 0.4 and float(sc0["fair_price"]) >= 18.0
+		and float(sc0["fair_price"]) <= 34.0,
+		"service consumer floor: sessions bill in the 0.4 band")
+
+	# ── the works un-bills BOTH halves of a walked unit (W4: a walked unit
+	# takes its serving cost with it, by exactly the walked share)
+	var wu := GameState.new()
+	wu.sim_seed = 99
+	wu.week = 6
+	wu.biz_what = "Service"
+	wu.biz_who = "SMB"
+	wu.theta = SimEngine.default_theta("Service", "SMB")
+	wu.offers = [{"name": "session", "unit": "per session", "fair_price": 60.0,
+		"elasticity": 2.6, "unit_cost": 20.0, "price": 60.0, "price_set": true, "weight": 1.0}]
+	wu.set_flag("launched")
+	wu.traction = 200   # 200 sessions wanted vs the founder's ~26 hands
+	var wm := {"revenue": 12000.0, "cogs": 4000.0, "relief": 0.0}
+	SimWorks.tick_pre(wu, {})
+	SimWorks.tick_money(wu, {}, wm)
+	var wrec: Dictionary = wu.get_meta("works", {})
+	var wshare := float(wrec.get("walk_units", 0.0)) / maxf(float(wrec.get("demand_units", 1.0)), 0.001)
+	_ok(float(wm["cogs"]) < 4000.0 and float(wm["revenue"]) < 12000.0
+		and absf((4000.0 - float(wm["cogs"])) - 4000.0 * wshare) < 1.0,
+		"the works un-bills serving costs by exactly the walked share")
+
 	# ── determinism: same seed+week = identical tick
 	var a := _state()
 	var b := _state()

@@ -34,7 +34,8 @@ namespace Runway.Core
     ///
     /// The spine calls: TickPre §7i (the week's dice drawn and parked),
     /// TickMoney (the serving math on SETTLED traction; owns ONLY m.Relief +
-    /// the un-billing against m.Revenue), TickPost (software's churn tax +
+    /// the un-billing against m.Revenue AND m.Cogs — a walked unit takes its
+    /// serving cost with it), TickPost (software's churn tax +
     /// receipts), Directives, Attention.
     ///
     /// SALTS: SALT_WORKS_CAPACITY (160) capacity jitter · SALT_WORKS_RELIEF
@@ -461,8 +462,9 @@ namespace Runway.Core
         }
 
         /// <summary>The money section — traction settled, the works serves the
-        /// week now. Owns ONLY m.Relief; the un-billing rides m.Revenue the
-        /// same way the factory's lost billing does.</summary>
+        /// week now. Owns ONLY m.Relief; the un-billing rides m.Revenue AND
+        /// m.Cogs (a walked unit takes its serving cost with it) the same way
+        /// the factory's lost billing does.</summary>
         public static void TickMoney(GameState state, WeeklyReport rep, MoneyWork m)
         {
             if (!Active(state)) return;
@@ -479,6 +481,23 @@ namespace Runway.Core
             {
                 m.Revenue -= unbilled;
                 w["unbilled"] = unbilled;
+            }
+            // UNDELIVERED UNITS COST NOTHING TO DELIVER (W4 — the overflow law
+            // made whole; the factory's stockout math is the precedent). The
+            // engine books cogs per CUSTOMER on the books, but a walked unit's
+            // serving cost never happened: un-bill the walked share of the cogs
+            // line beside the walked revenue. Wherever revenue walks, its
+            // serving cost walks with it.
+            double walkU = Num(w, "walk_units");
+            double wantedU = Gd.Maxf(Num(w, "demand_units"), 0.001);
+            if (walkU >= 0.01 && m.Cogs > 0.0)
+            {
+                double cogsUnbilled = Gd.Minf(m.Cogs * walkU / wantedU, m.Cogs);
+                if (cogsUnbilled >= 1.0)
+                {
+                    m.Cogs -= cogsUnbilled;
+                    w["cogs_unbilled"] = cogsUnbilled;
+                }
             }
         }
 
@@ -523,10 +542,21 @@ namespace Runway.Core
             }
             double walk = Num(w, "walk_units");
             if (walk >= 1.0 && Num(w, "unbilled") >= 1.0)
-                lines.Add(string.Format(
-                    "{0} {1}s turned away — ${2}/wk walks (hands for {3} of {4})",
-                    Gd.RoundToInt(walk), unitWord, Gd.RoundToInt(Num(w, "unbilled")),
-                    Gd.RoundToInt(Num(w, "served_units")), Gd.RoundToInt(Num(w, "demand_units"))));
+            {
+                // the receipt carries BOTH halves of a walked unit: the revenue
+                // that walked and the serving cost that never happened
+                double cu = Num(w, "cogs_unbilled");
+                if (cu >= 1.0)
+                    lines.Add(string.Format(
+                        "{0} {1}s turned away — ${2} revenue and ${3} serving costs never happened (hands for {4} of {5})",
+                        Gd.RoundToInt(walk), unitWord, Gd.RoundToInt(Num(w, "unbilled")), Gd.RoundToInt(cu),
+                        Gd.RoundToInt(Num(w, "served_units")), Gd.RoundToInt(Num(w, "demand_units"))));
+                else
+                    lines.Add(string.Format(
+                        "{0} {1}s turned away — ${2}/wk walks (hands for {3} of {4})",
+                        Gd.RoundToInt(walk), unitWord, Gd.RoundToInt(Num(w, "unbilled")),
+                        Gd.RoundToInt(Num(w, "served_units")), Gd.RoundToInt(Num(w, "demand_units"))));
+            }
             double used = Num(w, "relief_used");
             if (used >= 1.0 && state.BizWhat != "Software" && state.BizWhat != "Hardware")
                 lines.Add(string.Format(

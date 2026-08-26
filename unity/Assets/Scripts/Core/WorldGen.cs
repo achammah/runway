@@ -153,6 +153,16 @@ namespace Runway.Core
         public static readonly string[] FUND_SUFFIX = {
             "Capital", "Ventures", "Partners", "Collective", "Fund", "Syndicate" };
 
+        /// <summary>THE SERVICE CONSUMER FLOOR (W4 balance). C5's flat 0.25 Consumer
+        /// multiplier priced a consumer session at $11-21 while the garage burn floor
+        /// stayed $650/wk, so a fully-served founder (26 bookable hours) billed
+        /// ~$416/wk — structurally insolvent at ANY capacity: 20/20 scripted runs
+        /// died. A consumer session is a real price in the world ($26-34 at 0.4), so
+        /// Service alone bills Consumer at 0.4; unit costs scale WITH the price (the
+        /// C5 margin law holds). Every other type and audience keeps the C5
+        /// multiplier untouched. Twin of world_gen.gd.</summary>
+        public const double SERVICE_CONSUMER_AUD = 0.4;
+
         /// <summary>People are not companies: hires, cofounders and walk-ons draw from these.</summary>
         public static readonly string[] FIRST_NAMES = {
             "Mara", "Nico", "Priya", "Jonas", "Aiko", "Sam", "Lena",
@@ -366,17 +376,21 @@ namespace Runway.Core
             switch (what)
             {
                 case "Service":
+                {
+                    // Service bills Consumer at its own floor (SERVICE_CONSUMER_AUD above)
+                    double sAud = who == "Consumer" ? SERVICE_CONSUMER_AUD : aud;
                     return new List<Offer>
                     {
                         new Offer { Name = "standard session", Unit = "per session",
-                            FairPrice = rng.RandiRange(45, 85) * aud, Elasticity = 2.6,
-                            UnitCost = 18.0 * aud, Price = 0.0, Weight = 0.7 },
+                            FairPrice = rng.RandiRange(45, 85) * sAud, Elasticity = 2.6,
+                            UnitCost = 18.0 * sAud, Price = 0.0, Weight = 0.7 },
                         // the premium lane is INELASTIC (C5 D2): pricing above
                         // fair must be a real strategy somewhere, not a cliff
                         new Offer { Name = "premium package", Unit = "per package",
-                            FairPrice = rng.RandiRange(140, 260) * aud, Elasticity = 0.8,
-                            UnitCost = 55.0 * aud, Price = 0.0, Weight = 0.3 },
+                            FairPrice = rng.RandiRange(140, 260) * sAud, Elasticity = 0.8,
+                            UnitCost = 55.0 * sAud, Price = 0.0, Weight = 0.3 },
                     };
+                }
                 case "Hardware":
                     {
                         // GDScript evaluates a dictionary literal's values in written order:

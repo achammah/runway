@@ -907,8 +907,12 @@ namespace Runway.Core
             SimFeatures.TickMoney(state, rep, m);
             SimWorks.TickMoney(state, rep, m);
             // the record answers back (09: a lane may honestly reduce what got
-            // billed — no-op while every lane leaves m untouched)
+            // billed — no-op while every lane leaves m untouched). Cogs answers
+            // back too (W4): the works un-bills the serving costs of walked
+            // units, and the cash math below must burn the HONEST cogs, not the
+            // per-customer booking.
             revenue = m.Revenue;
+            cogs = m.Cogs;
 
             // THE UNFORESEEN (owner: running a business includes what nobody
             // planned): some weeks a small real cost lands — seeded, receipted.
