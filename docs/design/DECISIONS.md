@@ -702,3 +702,50 @@ controller, retention}, waterfall executor, powers checks
    `background: transparent`, PNG. Scene paintings (rooms, garden
    plots) stay on the Atlas/Seedream v2 path. One new pure-transport
    client call, same no-Core-types law as the rest of the LLM layer.
+
+## THE THREE BINDER ILLUSTRATIONS (owner, 2026-08-26; refined: "3
+## images that are more illustration than logo")
+
+Three DISTINCT transparent-background ILLUSTRATIONS — vignette style
+is correct, not a defect; never stark logo marks — generated once at
+run start with the portrait (same OpenAI ladder, same client), NO TEXT
+in any image (names are always engine-overlaid), regenerated only on
+rename/nature-pivot:
+1. **THE LABEL illustration** (user://company_logo.png, name kept for
+   compat): a small scene of the business itself — sits on the binder
+   object's taped label above the overlaid company name.
+2. **THE MAKE illustration** (user://illus_make.png): the thing the
+   company makes, as an illustrated object/scene — sits on the WHAT
+   WE MAKE hero plate.
+3. **THE PITCH illustration** (user://illus_pitch.png): the company
+   as a venture — an optimistic little scene for THE RAISE desk's
+   header.
+Fallbacks so identity never waits: label → drawn MONOGRAM (initials
+in Baloo on a drawn chip); make → the version plate alone; pitch →
+plain header. One getter per surface returns texture-or-fallback.
+QA law (owner): generated images are TESTED, not assumed — the QA
+wave verifies portrait + all three illustrations (exists, PNG-valid,
+alpha true, silhouette non-empty), fires the garden/room generation
+live at least once, and captures every fallback rendering in both
+engines.
+
+## PROMPT QUALITY PASS (owner: "prompt update WITH PA help")
+
+Before ship, the updated prompts (world-gen birth blocks, adjudicator
+structural-ops section, clarify) get a prompt-assistant review pass:
+current text + observed failure modes in, improvements applied, then
+byte-twin re-copy. Known failure modes to feed it: stray non-Latin
+characters near maxLength boundaries, the leaked commentary tail at
+the end of adjudicator.txt (delete first), op-choice ambiguity between
+set_budget and the structural ops, price-book law adherence.
+
+## LONG-TEXT + SCROLLING QA LAW (owner)
+
+The QA wave tests long content explicitly, in both engines: max-length
+generated strings everywhere they render (topics one-liners at 110,
+spend lines at 28/60, company names on the label/plates), a 10-line
+spend book, rung-2/3 states (40 employees, 12 sites, 34 features),
+an 80-week history, a full events inbox — asserting: sheets scroll
+while hero + total stay pinned, panes never clip mid-glyph, nothing
+overflows its card, fold rows appear at their thresholds, and the
+label overlay truncates gracefully.

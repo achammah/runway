@@ -498,6 +498,9 @@ namespace Runway.Core
             {
                 Id = id, Name = e.Name, CapacityAdd = e.CapacityAdd,
                 UpkeepWk = e.UpkeepWk, BoughtWeek = state.Week,
+                // DAG2: machines are born under the home roof; the divisions
+                // lane moves them via move_machine (twin of the Godot stamp).
+                Site = "",
             });
             state.LogAction(string.Format(CultureInfo.InvariantCulture,
                 "BOUGHT {0} (${1}, +{2} units/wk, ${3}/wk upkeep)",

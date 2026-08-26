@@ -330,7 +330,10 @@ static func buy_equipment(state: GameState, id: String) -> Dictionary:
 		"id": id, "name": String(e.get("name", id)),
 		"capacity_add": float(e.get("capacity_add", 0.0)),
 		"upkeep_wk": float(e.get("upkeep_wk", 0.0)),
-		"bought_week": state.week})
+		"bought_week": state.week,
+		# DAG2: which roof the machine stands under. "" = the home roof; the
+		# divisions lane moves it via move_machine (C# twin: EquipmentItem.Site).
+		"site": ""})
 	state.log_action("BOUGHT %s ($%d, +%d units/wk, $%d/wk upkeep)" % [
 		String(e.get("name", id)), int(e.get("price", 0)),
 		int(e.get("capacity_add", 0)), int(e.get("upkeep_wk", 0))])
