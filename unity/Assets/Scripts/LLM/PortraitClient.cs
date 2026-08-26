@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Newtonsoft.Json;
@@ -31,6 +32,12 @@ namespace Runway.Llm
     public sealed class PortraitClient : MonoBehaviour
     {
         public const string OutFileName = "binder_portrait.png";
+        /// THE COMPANY LOGO (DECISIONS § THE COMPANY LOGO): the second asset
+        /// on the same ladder — a small flat emblem fitted to the business,
+        /// blank of text (names are always engine-overlaid), bold enough to
+        /// read at 48px. The UI's drawn monogram is the instant placeholder
+        /// and the permanent fallback.
+        public const string LogoFileName = "company_logo.png";
         public const string ImagesUrl = "https://api.openai.com/v1/images/generations";
         public static readonly string[] Models = { "gpt-image-2", "gpt-image-1" };
 
@@ -57,9 +64,10 @@ namespace Runway.Llm
         const float RequestWallSeconds = 260f;
         const float DownloadWallSeconds = 150f;
 
-        bool _inflight;
+        readonly HashSet<string> _inflight = new HashSet<string>();
 
         public static string OutPath { get { return RunwayPaths.User(OutFileName); } }
+        public static string LogoPath { get { return RunwayPaths.User(LogoFileName); } }
 
         /// Fire the portrait. payload (all optional): {"force": bool}. cb gets
         /// {"path": "..."} on success, null on failure. Cached: an existing PNG
@@ -68,48 +76,88 @@ namespace Runway.Llm
         /// the file, so nobody is left waiting.
         public void Generate(JObject payload, Action<JObject> cb)
         {
-            bool force = payload != null && payload.Value<bool?>("force") == true;
-            if (!force && File.Exists(OutPath))
+            GenerateTo(PROMPT, OutPath, payload, cb);
+        }
+
+        /// Fire the logo mark. payload: {"idea", "what", "who", "force"?} —
+        /// the company name is never put in the prompt: letters are exactly
+        /// what the image must not contain. Same cache, force and coalescing
+        /// semantics as the portrait.
+        public void GenerateLogo(JObject payload, Action<JObject> cb)
+        {
+            GenerateTo(LogoPrompt(payload), LogoPath, payload, cb);
+        }
+
+        static string LogoPrompt(JObject payload)
+        {
+            string idea = payload != null ? (payload.Value<string>("idea") ?? "").Trim() : "";
+            string fit = "a small honest business";
+            if (idea.Length > 0)
             {
-                if (cb != null) cb(new JObject { ["path"] = OutPath });
+                string what = payload.Value<string>("what");
+                string who = payload.Value<string>("who");
+                fit = string.Format("{0} ({1} for {2})", idea,
+                    string.IsNullOrEmpty(what) ? "a business" : what,
+                    string.IsNullOrEmpty(who) ? "its customers" : who);
+            }
+            return "A small flat logo mark for a game: one simple bold emblem "
+                + "representing " + fit + ". "
+                + "ONE central pictorial symbol, thick simple shapes, a bold clean "
+                + "silhouette that stays readable at 48 pixels, flat fills, no "
+                + "gradients, no outlines thinner than a pencil. Palette only: ink "
+                + "#1E1E1E, coral #E86A5C, yellow #F4B942, sage #8FA582, blue "
+                + "#6E8CA0, cream #F2EAD3. NO TEXT anywhere: no letters, no numbers, "
+                + "no letterforms, no wordmark — a pure pictorial mark. Transparent "
+                + "background: nothing behind or around the emblem at all.";
+        }
+
+        /// The shared ladder: one prompt, one target file, the two-model
+        /// fall-through, per-target coalescing.
+        void GenerateTo(string prompt, string outPath, JObject payload, Action<JObject> cb)
+        {
+            bool force = payload != null && payload.Value<bool?>("force") == true;
+            if (!force && File.Exists(outPath))
+            {
+                if (cb != null) cb(new JObject { ["path"] = outPath });
                 return;
             }
-            if (_inflight) return;
+            if (_inflight.Contains(outPath)) return;
             string key = Env.Get("OPENAI_API_KEY", "").Trim();
             if (key.Length == 0)
             {
                 if (cb != null) cb(null);
                 return;
             }
-            _inflight = true;
-            StartCoroutine(Ladder(key, cb));
+            _inflight.Add(outPath);
+            StartCoroutine(Ladder(key, prompt, outPath, cb));
         }
 
-        IEnumerator Ladder(string key, Action<JObject> cb)
+        IEnumerator Ladder(string key, string prompt, string outPath, Action<JObject> cb)
         {
             foreach (string model in Models)
             {
                 string verdict = "";
-                yield return Attempt(model, key, v => verdict = v);
+                yield return Attempt(model, key, prompt, outPath, v => verdict = v);
                 if (verdict == "ok")
                 {
-                    _inflight = false;
-                    if (cb != null) cb(new JObject { ["path"] = OutPath });
+                    _inflight.Remove(outPath);
+                    if (cb != null) cb(new JObject { ["path"] = outPath });
                     yield break;
                 }
                 if (verdict != "model_missing") break;
             }
-            _inflight = false;
+            _inflight.Remove(outPath);
             if (cb != null) cb(null);
         }
 
         /// One request against one model. Hands back "ok" | "model_missing" | "failed".
-        IEnumerator Attempt(string model, string key, Action<string> onDone)
+        IEnumerator Attempt(string model, string key, string prompt, string outPath,
+                            Action<string> onDone)
         {
             var body = new JObject
             {
                 ["model"] = model,
-                ["prompt"] = PROMPT,
+                ["prompt"] = prompt,
                 ["background"] = "transparent",
                 ["output_format"] = "png",
                 ["size"] = "1024x1024",
@@ -166,12 +214,12 @@ namespace Runway.Llm
                 byte[] bytes;
                 try { bytes = Convert.FromBase64String(b64); }
                 catch (Exception) { onDone("failed"); yield break; }
-                onDone(SavePng(bytes) ? "ok" : "failed");
+                onDone(SavePng(bytes, outPath) ? "ok" : "failed");
                 yield break;
             }
             string url = first != null ? EventGenerator.Str(first, "url") : "";
             if (url.Length == 0) { onDone("failed"); yield break; }
-            yield return Download(url, onDone);
+            yield return Download(url, outPath, onDone);
         }
 
         /// "no such model" wears several coats; every one mentions the model.
@@ -186,7 +234,7 @@ namespace Runway.Llm
                 || low.Contains("invalid model"));
         }
 
-        IEnumerator Download(string url, Action<string> onDone)
+        IEnumerator Download(string url, string outPath, Action<string> onDone)
         {
             var dl = UnityWebRequest.Get(url);
             dl.timeout = 120;
@@ -211,12 +259,12 @@ namespace Runway.Llm
             catch (Exception) { bytes = null; }
             dl.Dispose();
             if (code < 200L || code >= 300L || bytes == null) { onDone("failed"); yield break; }
-            onDone(SavePng(bytes) ? "ok" : "failed");
+            onDone(SavePng(bytes, outPath) ? "ok" : "failed");
         }
 
         /// A partial body written as a file is how truncated art shipped before:
         /// a PNG that does not open with the PNG magic and end in IEND is not a PNG.
-        static bool SavePng(byte[] bytes)
+        static bool SavePng(byte[] bytes, string outPath)
         {
             if (bytes == null || bytes.Length < 4096) return false;
             if (bytes[0] != 0x89 || bytes[1] != 0x50 || bytes[2] != 0x4E || bytes[3] != 0x47)
@@ -225,7 +273,7 @@ namespace Runway.Llm
             if (tail != "IEND") return false;
             try
             {
-                File.WriteAllBytes(OutPath, bytes);
+                File.WriteAllBytes(outPath, bytes);
                 return true;
             }
             catch (Exception) { return false; }

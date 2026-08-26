@@ -360,6 +360,16 @@ namespace Runway.Game
                         if (portrait == null)
                             portrait = Boot.Instance.gameObject.AddComponent<PortraitClient>();
                         portrait.Generate(null, null);
+                        // …and the company logo mark on the same ladder
+                        // (DECISIONS § THE COMPANY LOGO): fitted to the idea,
+                        // no text, transparent; the drawn monogram is the
+                        // fallback and nothing waits on it.
+                        portrait.GenerateLogo(new JObject
+                        {
+                            ["idea"] = State.CompanyIdea ?? "",
+                            ["what"] = State.BizWhat ?? "",
+                            ["who"] = State.BizWho ?? "",
+                        }, null);
                     }
                     JObject market = _worldgenRes["market"] as JObject;
                     string oneLiner = ContentDb.Str(market, "one_liner");

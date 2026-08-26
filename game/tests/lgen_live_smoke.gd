@@ -16,6 +16,13 @@ extends SceneTree
 ## live failures print [LIVE FAIL ...] and the fallback proof stands instead.
 
 var _fails := 0
+## LGEN_SMOKE_SECTIONS picks the sections to run ("0,1,2,3" default):
+## 0 offline invariants · 1 birth call · 2 portrait · 3 logo. Lets the QA
+## wave re-prove one asset without re-paying the whole ladder.
+var _sections := PackedStringArray()
+
+func _want(n: int) -> bool:
+	return _sections.has(str(n))
 
 func _check(cond: bool, label: String) -> void:
 	if cond:
@@ -28,6 +35,8 @@ func _init() -> void:
 	_run()
 
 func _run() -> void:
+	var wanted := OS.get_environment("LGEN_SMOKE_SECTIONS")
+	_sections = ("0,1,2,3" if wanted.strip_edges() == "" else wanted).split(",")
 	print("── 0 · offline: deterministic fallback + clamps ──")
 	var s := GameState.new()
 	s.sim_seed = 777
@@ -87,11 +96,20 @@ func _run() -> void:
 		print("── no OPENAI_API_KEY in the environment: offline half only ──")
 		quit(1 if _fails > 0 else 0)
 		return
-
-	print("── 1 · live: one birth-generation call ──")
 	# in a --script SceneTree, children added during _init are not yet inside
 	# the tree — HTTPRequest refuses to fire until the first frame has run
 	await process_frame
+	if _want(1):
+		await _live_worldgen(s, key)
+	if _want(2):
+		await _live_portrait()
+	if _want(3):
+		await _live_logo(s)
+	print("── live smoke done: %d offline fails ──" % _fails)
+	quit(1 if _fails > 0 else 0)
+
+func _live_worldgen(s: GameState, key: String) -> void:
+	print("── 1 · live: one birth-generation call ──")
 	var llm := LlmClient.new()
 	root.add_child(llm)
 	llm.setup({"OPENAI_API_KEY": key})
@@ -132,6 +150,7 @@ func _run() -> void:
 		_check(s.features.size() >= 3 and s.features.size() <= 7, "3-7 features after apply")
 		print("  (open_site_pack default %d -> generated %d)" % [before_psp, int(s.price_book["open_site_pack"])])
 
+func _live_portrait() -> void:
 	print("── 2 · live: one binder-portrait generation (60-150s) ──")
 	var pc := PortraitClient.new(self)
 	var p_box: Array = []
@@ -151,5 +170,31 @@ func _run() -> void:
 		if lerr == OK:
 			print("  size %dx%d, format %d (alpha checked by the wrapper via sips)" % [
 				img.get_width(), img.get_height(), img.get_format()])
-	print("── live smoke done: %d offline fails ──" % _fails)
-	quit(1 if _fails > 0 else 0)
+
+func _live_logo(s: GameState) -> void:
+	print("── 3 · live: one company-logo generation ──")
+	var pc := PortraitClient.new(self)
+	var l_box: Array = []
+	pc.generate_logo({"idea": s.company_idea, "what": s.biz_what, "who": s.biz_who},
+		func(path: String) -> void: l_box.append(path), true)
+	var l_waited := 0.0
+	while l_box.is_empty() and l_waited < 300.0:
+		await create_timer(0.5).timeout
+		l_waited += 0.5
+	if l_box.is_empty() or String(l_box[0]) == "":
+		print("[LIVE FAIL logo] no PNG in %.0fs — the drawn monogram stands" % l_waited)
+		return
+	var lpath := ProjectSettings.globalize_path(String(l_box[0]))
+	print("  logo in %.0fs -> %s" % [l_waited, lpath])
+	var img := Image.new()
+	var lerr := img.load(lpath)
+	_check(lerr == OK, "the logo PNG loads")
+	if lerr != OK:
+		return
+	var w := img.get_width()
+	var h := img.get_height()
+	var maxa := 0.0
+	for p in [Vector2i(2, 2), Vector2i(w - 3, 2), Vector2i(2, h - 3), Vector2i(w - 3, h - 3)]:
+		maxa = maxf(maxa, img.get_pixelv(p).a)
+	_check(maxa < 0.06, "logo corners transparent (max corner alpha %.2f)" % maxa)
+	print("  size %dx%d" % [w, h])

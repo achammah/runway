@@ -16,8 +16,19 @@ extends RefCounted
 ## same request, so the retry would fail the same way.
 
 const OUT_PATH := "user://binder_portrait.png"
+## THE COMPANY LOGO (DECISIONS § THE COMPANY LOGO): the second asset on the
+## same ladder — a small flat emblem fitted to the business, blank of text
+## (names are always engine-overlaid), bold enough to read at 48px. The UI's
+## drawn monogram is the instant placeholder and the permanent fallback.
+const LOGO_PATH := "user://company_logo.png"
 const IMAGES_URL := "https://api.openai.com/v1/images/generations"
 const MODELS := ["gpt-image-2", "gpt-image-1"]
+
+static func portrait_path() -> String:
+	return OUT_PATH
+
+static func logo_path() -> String:
+	return LOGO_PATH
 
 ## The look (owner-amended): a NICE 3D-ILLUSTRATED object — soft-shaded,
 ## gently dimensional, a chunky real binder prop — still inside the game
@@ -38,7 +49,7 @@ const PROMPT := ("A single chunky, well-used ring binder as a game prop, "
 	+ "background: nothing behind or around the binder at all.")
 
 var _tree: SceneTree
-var _inflight := false
+var _inflight := {}   # out_path -> true while that asset is painting
 
 func _init(tree: SceneTree) -> void:
 	_tree = tree
@@ -48,40 +59,66 @@ func _init(tree: SceneTree) -> void:
 ## regenerate. Coalesced: a second call while one is painting is dropped
 ## (the binder polls the file, so nobody is left waiting).
 func generate(cb: Callable = Callable(), force := false) -> void:
-	if not force and FileAccess.file_exists(OUT_PATH):
+	_generate_to(PROMPT, OUT_PATH, cb, force)
+
+## Fire the logo mark. `company` carries {idea, what, who} (the name is never
+## put in the prompt — letters are exactly what the image must not contain).
+## Same cache, force and coalescing semantics as the portrait.
+func generate_logo(company: Dictionary, cb: Callable = Callable(), force := false) -> void:
+	_generate_to(_logo_prompt(company), LOGO_PATH, cb, force)
+
+func _logo_prompt(company: Dictionary) -> String:
+	var idea := String(company.get("idea", "")).strip_edges()
+	var fit := "a small honest business"
+	if idea != "":
+		fit = "%s (%s for %s)" % [idea, String(company.get("what", "a business")),
+			String(company.get("who", "its customers"))]
+	return ("A small flat logo mark for a game: one simple bold emblem "
+		+ "representing " + fit + ". "
+		+ "ONE central pictorial symbol, thick simple shapes, a bold clean "
+		+ "silhouette that stays readable at 48 pixels, flat fills, no "
+		+ "gradients, no outlines thinner than a pencil. Palette only: ink "
+		+ "#1E1E1E, coral #E86A5C, yellow #F4B942, sage #8FA582, blue "
+		+ "#6E8CA0, cream #F2EAD3. NO TEXT anywhere: no letters, no numbers, "
+		+ "no letterforms, no wordmark — a pure pictorial mark. Transparent "
+		+ "background: nothing behind or around the emblem at all.")
+
+## The shared ladder: one prompt, one target file, the two-model fall-through.
+func _generate_to(prompt: String, out_path: String, cb: Callable, force: bool) -> void:
+	if not force and FileAccess.file_exists(out_path):
 		if cb.is_valid():
-			cb.call(OUT_PATH)
+			cb.call(out_path)
 		return
-	if _inflight:
+	if _inflight.has(out_path):
 		return
-	_inflight = true
+	_inflight[out_path] = true
 	var key := _openai_key()
 	if key == "":
-		_inflight = false
+		_inflight.erase(out_path)
 		if cb.is_valid():
 			cb.call("")
 		return
 	for model in MODELS:
-		var verdict := await _attempt(String(model), key)
+		var verdict := await _attempt(String(model), key, prompt, out_path)
 		if verdict == "ok":
-			_inflight = false
+			_inflight.erase(out_path)
 			if cb.is_valid():
-				cb.call(OUT_PATH)
+				cb.call(out_path)
 			return
 		if verdict != "model_missing":
 			break
-	_inflight = false
+	_inflight.erase(out_path)
 	if cb.is_valid():
 		cb.call("")
 
 ## One request against one model. Returns "ok" | "model_missing" | "failed".
-func _attempt(model: String, key: String) -> String:
+func _attempt(model: String, key: String, prompt: String, out_path: String) -> String:
 	var http := HTTPRequest.new()
 	http.timeout = 240.0
 	_tree.root.add_child(http)
 	var body := {
 		"model": model,
-		"prompt": PROMPT,
+		"prompt": prompt,
 		"background": "transparent",
 		"output_format": "png",
 		"size": "1024x1024",
@@ -127,10 +164,10 @@ func _attempt(model: String, key: String) -> String:
 		return "failed"
 	var b64 := String((data[0] as Dictionary).get("b64_json", ""))
 	if b64 != "":
-		return "ok" if _save_png(Marshalls.base64_to_raw(b64)) else "failed"
+		return "ok" if _save_png(Marshalls.base64_to_raw(b64), out_path) else "failed"
 	var url := String((data[0] as Dictionary).get("url", ""))
 	if url != "":
-		return "ok" if await _download(url) else "failed"
+		return "ok" if await _download(url, out_path) else "failed"
 	return "failed"
 
 ## "no such model" wears several coats; every one mentions the model. Any
@@ -145,7 +182,7 @@ func _looks_like_missing_model(code: int, body_txt: String) -> bool:
 		or low.contains("does not exist") or low.contains("unknown")
 		or low.contains("invalid model"))
 
-func _download(url: String) -> bool:
+func _download(url: String, out_path: String) -> bool:
 	var http := HTTPRequest.new()
 	http.timeout = 120.0
 	_tree.root.add_child(http)
@@ -156,18 +193,18 @@ func _download(url: String) -> bool:
 	http.queue_free()
 	if int(res[1]) < 200 or int(res[1]) >= 300:
 		return false
-	return _save_png(res[3] as PackedByteArray)
+	return _save_png(res[3] as PackedByteArray, out_path)
 
 ## A partial body written as a file is how truncated art shipped before: a
 ## PNG that does not open with the PNG magic and end in IEND is not a PNG.
-func _save_png(bytes: PackedByteArray) -> bool:
+func _save_png(bytes: PackedByteArray, out_path: String) -> bool:
 	if bytes.size() < 4096:
 		return false
 	if bytes[0] != 0x89 or bytes[1] != 0x50 or bytes[2] != 0x4E or bytes[3] != 0x47:
 		return false
 	if bytes.slice(bytes.size() - 8, bytes.size() - 4).get_string_from_ascii() != "IEND":
 		return false
-	var f := FileAccess.open(OUT_PATH, FileAccess.WRITE)
+	var f := FileAccess.open(out_path, FileAccess.WRITE)
 	if f == null:
 		return false
 	f.store_buffer(bytes)
