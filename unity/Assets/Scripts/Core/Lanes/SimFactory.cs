@@ -876,18 +876,18 @@ namespace Runway.Core
             Dictionary<string, object> w = WeekBlock(state);
             if (WI(w, "lost_adds", 0) > 0)
             {
-                rows.Add(new AttentionItem { Desk = "product", Key = "stockout", Severity = 3,
+                rows.Add(new AttentionItem { Desk = "the works", Key = "stockout", Severity = 3,
                     Label = "stockout — " + WI(w, "lost_adds", 0) + " sales lost" });
             }
             if (Overstock(state))
             {
-                rows.Add(new AttentionItem { Desk = "product", Key = "overstock", Severity = 2,
+                rows.Add(new AttentionItem { Desk = "the works", Key = "overstock", Severity = 2,
                     Label = "overstock — cash parked on shelves" });
             }
             string downName = WS(w, "down_name", "");
             if (!string.IsNullOrEmpty(downName))
             {
-                rows.Add(new AttentionItem { Desk = "product", Key = "machine_down", Severity = 2,
+                rows.Add(new AttentionItem { Desk = "the works", Key = "machine_down", Severity = 2,
                     Label = "machine down: " + Gd.Left(downName, 26) });
             }
             return rows;

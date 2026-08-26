@@ -475,7 +475,7 @@ namespace Runway.Game
                 GameUi.InkWord(_rail, "", RailX, y, RailBoxW, 48f, 19f, DrawnUI.Ink,
                                () => PressGroup(gidx));
                 DrawnUI.HandLabel(_rail, GroupNames[gi], RailX + 12f, y + 10f, 19f,
-                                  DrawnUI.Ink, RailBoxW - 70f);
+                                  DrawnUI.Ink, RailBoxW - 110f);
                 var cnt = DrawnUI.HandLabel(_rail, GroupCount(gi), RailX + RailBoxW - 66f,
                                             y + 14f, 15f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f),
                                             58f, TextAlignmentOptions.TopRight);

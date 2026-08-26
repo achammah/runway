@@ -480,7 +480,7 @@ namespace Runway.Game
                         ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
                         StepsPerEdge = 6, Jitter = 1f, Thickness = 2.5f, Seed = (int)y,
                     });
-                b.L(pct.ToString("0.0") + "%", x + 260f + bw + 10f, y, Detail,
+                b.L(pct.ToString("0.0") + "%", x + 260f + bw + 16f, y, Detail,
                     Ink(0.85f), 90f);
                 if (!string.IsNullOrEmpty(r.Note)) b.L(r.Note, x + w - 200f, y + 2f, 17f,
                                                        Ink(0.5f), 200f);

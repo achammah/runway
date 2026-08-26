@@ -29,7 +29,10 @@ const POOL_STEP := 2.0   ## the expansion door's one honest increment
 ## The group overview's card reads this: the page's hero, verbatim.
 static func hero_summary(state) -> Dictionary:
 	var s: GameState = state
-	var paper := int(SimEngine.valuation(s) * s.founder_pct / 100.0)
+	# ONE BASIS with zone 3 (W4 package): the paper worth is the waterfall's
+	# own answer at today's valuation — the two numbers can never disagree.
+	var wf := SimOwnership.waterfall(s, SimEngine.valuation(s))
+	var paper := int(wf.get("your_take", 0))
 	return {"big": "you own %.0f%%" % s.founder_pct,
 		"line": "≈ $%s on paper — paper, not cash" % SimOwnership.money_short(paper).lstrip("$")}
 

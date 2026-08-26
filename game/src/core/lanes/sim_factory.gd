@@ -643,13 +643,13 @@ static func attention(state: GameState) -> Array:
 		return rows
 	var w := week_block(state)
 	if int(w.get("lost_adds", 0)) > 0:
-		rows.append({"desk": "product", "key": "stockout", "severity": 3,
+		rows.append({"desk": "the works", "key": "stockout", "severity": 3,
 			"label": "stockout — %d sales lost" % int(w.get("lost_adds", 0))})
 	if overstock(state):
-		rows.append({"desk": "product", "key": "overstock", "severity": 2,
+		rows.append({"desk": "the works", "key": "overstock", "severity": 2,
 			"label": "overstock — cash parked on shelves"})
 	var down_name := String(w.get("down_name", ""))
 	if down_name != "":
-		rows.append({"desk": "product", "key": "machine_down", "severity": 2,
+		rows.append({"desk": "the works", "key": "machine_down", "severity": 2,
 			"label": "machine down: %s" % down_name.left(26)})
 	return rows

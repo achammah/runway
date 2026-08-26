@@ -23,7 +23,9 @@ namespace Runway.Game
 
         public static string[] HeroSummary(GameState s)
         {
-            int paper = Gd.ToInt(SimEngine.Valuation(s) * s.FounderPct / 100.0);
+            var wfHero = SimOwnership.Waterfall(s, SimEngine.Valuation(s));
+            object tkO; wfHero.TryGetValue("your_take", out tkO);
+            int paper = tkO != null ? Convert.ToInt32(tkO) : 0;
             return new[] { "you own " + s.FounderPct.ToString("0") + "%",
                 "≈ $" + SimOwnership.MoneyShort(paper).TrimStart('$') + " on paper — paper, not cash" };
         }

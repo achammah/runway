@@ -454,6 +454,12 @@ func _build_rail() -> void:
 		name_l.add_theme_font_size_override("font_size", 19)
 		name_l.add_theme_color_override("font_color", INK)
 		name_l.position = Vector2(RAIL_X + 12.0, y + 10.0)
+		# the label ends before the bang-chip slot — a long group name
+		# ellipsizes instead of running under the red "!" (W4 package)
+		name_l.custom_minimum_size = Vector2(RAIL_BOX_W - 110.0, 0)
+		name_l.size = Vector2(RAIL_BOX_W - 110.0, 0)
+		name_l.clip_text = true
+		name_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		name_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_rail.add_child(name_l)
 		# the live count/total on the header (closed carries it; open keeps it)

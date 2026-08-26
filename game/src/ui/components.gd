@@ -1322,7 +1322,7 @@ static func capbars(b, x: float, y: float, w: float, rows: Array) -> float:
 		bar.position = Vector2(x + 260.0, y + 2.0)
 		bar.set_deferred("size", Vector2(maxf(track * pct / 100.0, 8.0), 24.0))
 		b.pane().add_child(bar)
-		b.label("%.1f%%" % pct, Vector2(x + 260.0 + maxf(track * pct / 100.0, 8.0) + 10.0,
+		b.label("%.1f%%" % pct, Vector2(x + 260.0 + maxf(track * pct / 100.0, 8.0) + 16.0,
 			y), DETAIL, Color(INK, 0.85), 90.0)
 		var note := String(d.get("note", ""))
 		if note != "":

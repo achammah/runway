@@ -145,7 +145,7 @@ namespace Runway.Game
             float y = DeskKit.HeroBand(b, Fit(big, 660f, DeskKit.HeroBig), line,
                 DrawnUI.Ink, scoped ? 44f : 6f);
             // the corner block ends clear of the arrange -> word at XId+980
-            TextMeshProUGUI mv = b.L("margin each  " + Money(mrow), 700f, scoped ? 48f : 10f,
+            TextMeshProUGUI mv = b.L("blended margin  " + Money(mrow), 700f, scoped ? 48f : 10f,
                 DeskKit.Status, DrawnUI.Ink, 240f);
             mv.alignment = TextAlignmentOptions.TopRight;
             if (walk >= 1.0)

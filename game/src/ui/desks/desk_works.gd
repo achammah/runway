@@ -119,7 +119,7 @@ static func _house_or_boutique(b, s: GameState, opened_site: String) -> void:
 		DeskKit.INK, 6.0 if not scoped else 44.0, false)
 	# the hero's right corner: margin each + the gap, money in a column —
 	# ending clear of the arrange -> word at X_ID+980
-	var mv: Label = b.label("margin each  " + _money(mrow), Vector2(700.0, 10.0 if not scoped else 48.0), DeskKit.STATUS, DeskKit.INK, 240.0)
+	var mv: Label = b.label("blended margin  " + _money(mrow), Vector2(700.0, 10.0 if not scoped else 48.0), DeskKit.STATUS, DeskKit.INK, 240.0)
 	mv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	if walk >= 1.0:
 		var wv: Label = b.label("%d turned away" % int(round(walk)), Vector2(700.0, 44.0 if not scoped else 82.0), DeskKit.DETAIL, DeskKit.PEN, 240.0)
