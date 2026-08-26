@@ -1,0 +1,387 @@
+<title>The Factory, Unit by Unit</title>
+<style>
+@font-face{font-family:'Patrick';src:url(../../../game/assets/fonts/PatrickHand-Regular.ttf) format('truetype');font-display:block}
+@font-face{font-family:'Baloo';src:url(../../../game/assets/fonts/Baloo2-Bold.ttf) format('truetype');font-weight:700;font-display:block}
+:root{
+  --wall:#2A2722; --wall2:#332F28; --paper:#F2EAD3; --paper2:#F6F0DE; --card:#EFE6CE;
+  --kraft:#DDBE8C; --kraft2:#CBA96F; --alert:#D93425;
+  --ink:#2B2823; --ink6:rgba(43,40,35,.6); --ink4:rgba(43,40,35,.42); --ink25:rgba(43,40,35,.25); --ink12:rgba(43,40,35,.12);
+  --coral:#E86A5C; --sage:#8FA582; --blue:#6E8CA0; --yell:#F4B942;
+  --chrome:#D8D2C4; --chrome-dim:#A69E8D;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--wall);color:var(--chrome);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 0 90px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 26px}
+.topbar{position:sticky;top:0;z-index:50;background:linear-gradient(var(--wall) 82%,transparent);padding:18px 0 10px}
+.topbar .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-family:'Baloo';color:var(--paper);font-size:28px}
+.crumb{font-size:12.5px;color:var(--chrome-dim);letter-spacing:.08em}
+.lede{padding:24px 0 6px;max-width:940px}
+.lede p{margin:0 0 12px}
+.lede .how{border-left:4px solid var(--yell);padding:10px 16px;background:var(--wall2);border-radius:6px;margin-top:12px}
+.lede .how b{color:var(--paper)}
+.opt-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.badge{font-family:'Baloo';color:var(--wall);background:var(--yell);border:3px solid var(--ink);border-radius:12px 15px 13px 14px;padding:0 14px;line-height:1.45;transform:rotate(-1.2deg)}
+.opt-head h2{font-family:'Baloo';color:var(--paper)}
+.optnote{font-size:14.5px;color:var(--chrome-dim);margin:10px 0 0;max-width:900px}
+.optnote b{color:var(--chrome)}
+.binder{position:relative;max-width:100%;display:flex;font-family:'Patrick';color:var(--ink);filter:drop-shadow(0 14px 30px rgba(0,0,0,.5))}
+.cover{flex:none;width:50px;background:var(--kraft);border:3px solid var(--ink);border-right:none;border-radius:16px 0 0 14px;position:relative;background-image:repeating-linear-gradient(115deg, rgba(43,40,35,.05) 0 3px, transparent 3px 9px)}
+.cover .sticker{position:absolute;top:26px;left:50%;transform:translateX(-50%) rotate(-90deg);white-space:nowrap;background:var(--paper2);border:2.2px solid var(--ink);border-radius:6px;padding:2px 12px;font-size:15px}
+.ringbar{flex:none;width:44px;background:var(--kraft2);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);display:flex;flex-direction:column;justify-content:space-around;align-items:center;padding:20px 0}
+.ring{width:32px;height:32px;border-radius:50%;border:3.4px solid var(--ink);position:relative}
+.ring::after{content:"";position:absolute;inset:6px;border-radius:50%;border:2.6px solid var(--ink);opacity:.45}
+.stack{flex:1;background:var(--paper);border:3px solid var(--ink);border-left:2.6px solid var(--ink);border-radius:0 14px 12px 0;display:flex;min-width:0;position:relative}
+.rail{flex:none;width:196px;padding:18px 8px 18px 22px}
+.divider{position:relative;margin:10px 0;border:2.6px solid var(--ink);border-radius:10px;background:var(--paper2)}
+.divider .tab{position:absolute;top:-2.6px;bottom:-2.6px;left:-16px;width:13px;border:2.6px solid var(--ink);border-radius:8px 0 0 8px}
+.tab.sage{background:var(--sage)}.tab.coral{background:var(--coral)}.tab.blue{background:var(--blue)}.tab.yell{background:var(--yell)}
+.divider .dh{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:15px}
+.divider .dh .cnt{margin-left:auto;font-size:12.5px;color:var(--ink4)}
+.divider.closed{background:var(--kraft);box-shadow:0 3px 0 -1px var(--kraft2), 0 6px 0 -2px rgba(43,40,35,.35)}
+.divider.open{background:var(--paper)}
+.divider.open .dh{border-bottom:2px solid var(--ink25)}
+.divider .pages{padding:6px 6px 9px}
+.ptab{display:flex;align-items:center;gap:7px;font-size:16.5px;padding:4px 9px;border-radius:8px;margin:2px 0}
+.ptab.on{background:var(--paper2);border:2.4px solid var(--ink);box-shadow:1.5px 1.5px 0 rgba(43,40,35,.18)}
+.sheet{flex:1;min-width:0;padding:20px 24px 22px;border-left:2.4px solid var(--ink25);background:var(--paper);border-radius:0 12px 10px 0}
+.money{font-variant-numeric:tabular-nums}
+.big{font-family:'Baloo';line-height:1.05}
+.pos{color:#5D7A50}.neg{color:#C0392B}
+.dim{color:var(--ink6)}.dimmer{color:var(--ink4)}
+.footrules{font-size:14.5px;color:var(--ink4)}
+.pcard{background:var(--card);border:2.4px solid var(--ink);border-radius:10px 8px 11px 9px;padding:12px 16px 14px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.pcard h5{font-size:14.5px;letter-spacing:.09em;color:var(--ink6);margin-bottom:8px;font-weight:400;display:flex;align-items:center;gap:8px}
+.bstep{display:inline-flex;gap:7px;vertical-align:middle;margin-left:8px}
+.bstep span{width:27px;height:27px;border:2.4px solid var(--ink);border-radius:8px 7px 9px 8px;background:var(--paper2);font-family:'Baloo';font-size:17px;line-height:1;display:inline-flex;align-items:center;justify-content:center;box-shadow:1.5px 1.5px 0 rgba(43,40,35,.2)}
+.zone{margin:14px 0 0;border:2.4px solid var(--ink);border-radius:10px;background:var(--paper2);padding:12px 16px 14px}
+.zonehead{display:flex;align-items:center;gap:10px;font-size:15px;letter-spacing:.07em;color:var(--ink);margin-bottom:10px}
+.znum{font-family:'Baloo';width:26px;height:26px;border:2.4px solid var(--ink);border-radius:50%;background:var(--yell);display:inline-flex;align-items:center;justify-content:center;font-size:15px;flex:none}
+.zlesson{font-size:13.5px;color:var(--ink4);letter-spacing:0}
+.capbars .cbrow{display:flex;align-items:center;gap:12px;margin:7px 0}
+.cbl{width:150px;font-size:16px}
+.cbtrack{flex:1;height:22px;border:2.6px solid var(--ink);border-radius:7px;background:var(--paper);position:relative;overflow:hidden}
+.cbfill{position:absolute;top:0;bottom:0;left:0}
+.cbfill.want{background:var(--kraft)}
+.cbfill.make{background:var(--sage);opacity:.85}
+.cbfill.out{background:var(--blue);opacity:.85;left:auto}
+.cbv{width:70px;font-size:15px;color:var(--ink6);text-align:right}
+.ticket{background:#FBF6E8;border:2.6px solid var(--ink);border-radius:4px;padding:10px 14px;box-shadow:2px 3px 0 rgba(43,40,35,.2);min-width:230px}
+.tickhead{text-align:center;font-size:12.5px;letter-spacing:.12em;color:var(--ink6);border-bottom:2px dashed var(--ink25);padding-bottom:5px;margin-bottom:5px}
+.trow{display:flex;justify-content:space-between;font-size:15.5px;padding:3px 0}
+.trow.tot{border-top:2px solid var(--ink6)}
+.trow.price{border-top:7px double var(--ink);font-size:16.5px}
+.mach h5{justify-content:center}
+.mach.offer{border-style:dashed;background:var(--paper2)}
+.mrow2{display:flex;justify-content:space-between;font-size:16px;padding:2.5px 0}
+.signbtn{font-family:'Baloo';font-size:17px;background:var(--yell);border:2.6px solid var(--ink);border-radius:9px;padding:2px 14px;box-shadow:1.5px 2px 0 rgba(43,40,35,.25);display:inline-block}
+.crow{display:flex;align-items:center;gap:8px;border:2.4px solid var(--ink);border-radius:9px;background:var(--card);padding:8px 14px;font-size:17px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.stn{flex:1;border:2.6px solid var(--ink);border-radius:9px;background:var(--card);padding:8px 10px;text-align:center;display:flex;flex-direction:column;gap:2px;position:relative;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.stn .stt{font-size:12px;letter-spacing:.08em;color:var(--ink6)}
+.stn b{font-size:16px}
+.stn.dash{border-style:dashed;background:var(--paper2)}
+.stn.sold{background:var(--sage);color:#fff}
+.stn.sold .stt{color:rgba(255,255,255,.85)}
+.hotchip{position:absolute;top:-10px;right:-6px;background:var(--coral);color:#fff;border:2.2px solid var(--ink);border-radius:7px;font-size:11.5px;padding:0 6px;transform:rotate(6deg)}
+.clip{border:3px solid var(--ink);border-radius:12px;background:var(--paper2);position:relative;padding-top:6px}
+.cliphead{display:flex;align-items:center;gap:14px;padding:10px 18px 8px;border-bottom:2.6px solid var(--ink)}
+.cliphead b{font-size:17px;letter-spacing:.06em}
+.clipclip{width:70px;height:16px;border:2.6px solid var(--ink);border-radius:8px;background:var(--kraft2);position:absolute;top:-9px;left:50%;transform:translateX(-50%)}
+.clipcell{padding:2px 12px 10px}
+.clipcell .zone{border:none;background:transparent;padding:10px 4px 4px}
+.cbl2{border-left:2px dashed var(--ink25)}
+.cbt2{border-top:2px dashed var(--ink25)}
+.footer{margin-top:64px;border-top:1px solid var(--wall2);padding-top:20px;color:var(--chrome-dim);font-size:14.5px}
+.footer b{color:var(--paper)}
+</style>
+
+<div class="topbar"><div class="wrap">
+<h1>The Factory, Unit by Unit</h1><span class="crumb">TAB 9 / 16 · LAST OF THE COSTS PAGES · PICK ONE LETTER</span>
+</div></div>
+
+<div class="wrap">
+<div class="lede">
+<p><b style="color:var(--paper)">THE BANK is locked: THE MEETING</b> — and its numbered-zone grammar (badge number + title + the lesson in the header) is now the standing pattern for concept-heavy desks. <b style="color:var(--paper)">THE FACTORY</b> uses it for four lessons: <b style="color:var(--paper)">1 CAN WE MAKE ENOUGH?</b> (demand vs floor vs outside shop as three bars — unserved demand walks away un-billed), <b style="color:var(--paper)">2 WHAT A UNIT COSTS</b> (the learning curve drawn — your 500th unit is cheaper than your 5th — beside a UNIT TICKET: parts + hands + wear = $14, sells $40, margin $26), <b style="color:var(--paper)">3 THE FLOOR</b> (machines as cash-turned-into-capacity, resale honestly at half — "worth tomorrow: $4,500"), <b style="color:var(--paper)">4 WHEN THE FLOOR IS FULL</b> (the outside shop: dearer per unit, but dearer beats un-billed).</p>
+<p>Machine names and the floor's look are written for YOUR product once at run start (roasters for a coffee company, presses for drone kits). Software runs sleep this tab entirely.</p>
+<div class="how"><b>Answer with a letter.</b> This closes COSTS — next: THE COMPANY group (product, cap table, the street, threats, pivot).</div>
+</div>
+
+<div class="opt-head" style="margin-top:40px"><span class="badge" style="font-size:30px">A</span><h2 style="font-size:27px">The Shop Floor Meeting</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">≈$5.6k/wk</span></div></div>
+      <div class="divider open"><span class="tab coral"></span><div class="dh">COSTS<span class="cnt">$9.1k/wk</span></div>
+        <div class="pages"><div class="ptab">spend</div><div class="ptab">team</div><div class="ptab">bills</div><div class="ptab">the bank</div><div class="ptab on">the factory</div></div>
+      </div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:44px">140 wanted <span style="font-size:23px">· we make 120, buy 20 outside</span></div>
+    <div class="dim" style="font-size:17px">every unit leaves at $40 and costs $14 to make — practice keeps making it cheaper.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">margin per unit <b class="big" style="font-size:22px">$26</b></div>
+    <div class="dim" style="font-size:14.5px">if the outside shop closed: <b class="neg">$800/wk walks away</b></div>
+  </div>
+</div><div class="zone"><div class="zonehead"><span class="znum">1</span>CAN WE MAKE ENOUGH? <span class="zlesson">— demand you cannot serve is revenue that walks away un-billed</span></div>
+  <div class="capbars">
+    <div class="cbrow"><span class="cbl">they want</span><div class="cbtrack"><div class="cbfill want" style="width:100%"></div></div><span class="cbv money">140/wk</span></div>
+    <div class="cbrow"><span class="cbl">our floor makes</span><div class="cbtrack"><div class="cbfill make" style="width:86%"></div></div><span class="cbv money">120/wk</span></div>
+    <div class="cbrow"><span class="cbl">the outside shop adds</span><div class="cbtrack"><div class="cbfill out" style="width:14%;margin-left:86%"></div></div><span class="cbv money">20/wk</span></div>
+  </div>
+  <div class="dimmer" style="font-size:14px;margin-top:6px">met this week — but demand grows ≈4/wk; the gap re-opens in ~5 weeks</div>
+</div><div class="zone"><div class="zonehead"><span class="znum">2</span>WHAT A UNIT COSTS <span class="zlesson">— the 500th unit is cheaper than the 5th; practice is a discount you earn</span></div>
+  <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+    <div style="flex:1.3;min-width:300px">
+      <svg width="100%" height="110" viewBox="0 0 520 110" preserveAspectRatio="none">
+        <path d="M10 16 C 120 22, 200 52, 300 66 C 400 78, 470 82, 510 84" fill="none" stroke="#6E8CA0" stroke-width="4"/>
+        <circle cx="300" cy="66" r="6" fill="#6E8CA0"/>
+        <line x1="300" y1="66" x2="300" y2="104" stroke="#2B2823" stroke-width="2" stroke-dasharray="4 5"/>
+        <text x="16" y="14" font-size="14" font-family="Patrick" fill="rgba(43,40,35,.6)">first unit: $31</text>
+        <text x="308" y="98" font-size="14" font-family="Patrick" fill="rgba(43,40,35,.6)">you are here: $14 (unit #520)</text>
+        <text x="392" y="72" font-size="14" font-family="Patrick" fill="rgba(43,40,35,.42)">at #1,000: ≈$12.40</text>
+      </svg>
+    </div>
+    <div class="ticket">
+      <div class="tickhead">UNIT TICKET — one drone kit</div>
+      <div class="trow"><span>parts</span><b class="money">$9.00</b></div>
+      <div class="trow"><span>hands &amp; hours</span><b class="money">$3.50</b></div>
+      <div class="trow"><span>wear on the machines</span><b class="money">$1.50</b></div>
+      <div class="trow tot"><span>makes for</span><b class="money">$14.00</b></div>
+      <div class="trow"><span>sells for</span><b class="money">$40.00</b></div>
+      <div class="trow price"><span>margin, each</span><b class="money pos">$26.00</b></div>
+    </div>
+  </div>
+</div><div class="zone"><div class="zonehead"><span class="znum">3</span>THE FLOOR <span class="zlesson">— machines are cash turned into capacity; they lose half their value crossing the door</span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1.1fr;gap:12px">
+    <div class="pcard mach"><h5>THE SMALL PRESS</h5>
+      <div class="mrow2"><span class="dim">makes</span><b class="money">40/wk</b></div>
+      <div class="mrow2"><span class="dim">paid</span><span class="money">$4,000</span></div>
+      <div class="mrow2"><span class="dim">sells back for</span><span class="money neg">$2,000</span></div>
+      <div class="dimmer" style="font-size:13px">[sell ▸] frees cash, kills 40/wk</div>
+    </div>
+    <div class="pcard mach"><h5>THE BIG PRESS</h5>
+      <div class="mrow2"><span class="dim">makes</span><b class="money">80/wk</b></div>
+      <div class="mrow2"><span class="dim">paid</span><span class="money">$9,000</span></div>
+      <div class="mrow2"><span class="dim">sells back for</span><span class="money neg">$4,500</span></div>
+      <div class="dimmer" style="font-size:13px">running hot — 100% booked</div>
+    </div>
+    <div class="pcard mach offer"><h5>ON OFFER — A SECOND BIG PRESS</h5>
+      <div class="mrow2"><span class="dim">cash now</span><b class="money neg">−$9,000</b></div>
+      <div class="mrow2"><span class="dim">adds</span><b class="money pos">+80/wk</b></div>
+      <div class="mrow2"><span class="dim">worth tomorrow</span><span class="money">$4,500</span></div>
+      <div style="margin-top:4px"><span class="signbtn" style="font-size:15px">BUY — TWO-TAP ▸</span></div>
+    </div>
+  </div>
+</div><div class="zone"><div class="zonehead"><span class="znum">4</span>WHEN THE FLOOR IS FULL <span class="zlesson">— the outside shop is dearer per unit, but dearer beats un-billed</span></div>
+  <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+    <div class="crow" style="flex:none">outsource up to <b class="money" style="font-size:20px">30 units/wk</b><span class="bstep"><span>−</span><span>+</span></span></div>
+    <div class="ticket" style="flex:1;min-width:250px">
+      <div class="trow"><span>their price, each</span><b class="money">$22.00</b></div>
+      <div class="trow"><span>your floor, each</span><b class="money">$14.00</b></div>
+      <div class="trow price"><span>margin on outside units</span><b class="money pos">$18.00 <span class="dim" style="font-size:13px">(vs $26)</span></b></div>
+    </div>
+    <div class="dim" style="font-size:14.5px;max-width:230px">this week: 20 outside → nothing walked away. Without them, <b class="neg">$800/wk un-billed</b>.</div>
+  </div>
+</div><div style="margin-top:12px" class="footrules">machine names and the floor's painting are written for YOUR product, once at run start — a coffee company runs roasters, not presses. Software runs sleep this tab: "no factory — you ship code."</div></div>
+  </div>
+</div>
+<p class="optnote"><b>The four zones top-to-bottom</b> — the same guided grammar as the bank. Calm, didactic, nothing competes with the current lesson.</p>
+<div class="opt-head" style="margin-top:40px"><span class="badge" style="font-size:30px">B</span><h2 style="font-size:27px">The Production Line</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">≈$5.6k/wk</span></div></div>
+      <div class="divider open"><span class="tab coral"></span><div class="dh">COSTS<span class="cnt">$9.1k/wk</span></div>
+        <div class="pages"><div class="ptab">spend</div><div class="ptab">team</div><div class="ptab">bills</div><div class="ptab">the bank</div><div class="ptab on">the factory</div></div>
+      </div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:44px">140 wanted <span style="font-size:23px">· we make 120, buy 20 outside</span></div>
+    <div class="dim" style="font-size:17px">every unit leaves at $40 and costs $14 to make — practice keeps making it cheaper.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">margin per unit <b class="big" style="font-size:22px">$26</b></div>
+    <div class="dim" style="font-size:14.5px">if the outside shop closed: <b class="neg">$800/wk walks away</b></div>
+  </div>
+</div>
+<div class="pcard" style="padding:14px 18px"><h5>THE LINE — parts flow left to right; follow a unit to the door</h5>
+  <div style="display:flex;align-items:center;gap:0">
+    <div class="stn"><span class="stt">PARTS IN</span><b class="money">$9/unit</b></div>
+    <svg width="34" height="20" viewBox="0 0 34 20"><path d="M2 10 h24 M20 4 l8 6 -8 6" stroke="#2B2823" stroke-width="2.6" fill="none"/></svg>
+    <div class="stn"><span class="stt">SMALL PRESS</span><b class="money">40/wk</b></div>
+    <div class="stn"><span class="stt">BIG PRESS</span><b class="money">80/wk</b><span class="hotchip">hot</span></div>
+    <div class="stn dash"><span class="stt">OUTSIDE SHOP</span><b class="money">20/wk</b><span class="dim" style="font-size:12px">$22/unit</span></div>
+    <svg width="34" height="20" viewBox="0 0 34 20"><path d="M2 10 h24 M20 4 l8 6 -8 6" stroke="#2B2823" stroke-width="2.6" fill="none"/></svg>
+    <div class="stn sold"><span class="stt">OUT THE DOOR</span><b class="money">140/wk · $40 each</b></div>
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px"><div class="zone"><div class="zonehead"><span class="znum">2</span>WHAT A UNIT COSTS <span class="zlesson">— the 500th unit is cheaper than the 5th; practice is a discount you earn</span></div>
+  <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+    <div style="flex:1.3;min-width:300px">
+      <svg width="100%" height="110" viewBox="0 0 520 110" preserveAspectRatio="none">
+        <path d="M10 16 C 120 22, 200 52, 300 66 C 400 78, 470 82, 510 84" fill="none" stroke="#6E8CA0" stroke-width="4"/>
+        <circle cx="300" cy="66" r="6" fill="#6E8CA0"/>
+        <line x1="300" y1="66" x2="300" y2="104" stroke="#2B2823" stroke-width="2" stroke-dasharray="4 5"/>
+        <text x="16" y="14" font-size="14" font-family="Patrick" fill="rgba(43,40,35,.6)">first unit: $31</text>
+        <text x="308" y="98" font-size="14" font-family="Patrick" fill="rgba(43,40,35,.6)">you are here: $14 (unit #520)</text>
+        <text x="392" y="72" font-size="14" font-family="Patrick" fill="rgba(43,40,35,.42)">at #1,000: ≈$12.40</text>
+      </svg>
+    </div>
+    <div class="ticket">
+      <div class="tickhead">UNIT TICKET — one drone kit</div>
+      <div class="trow"><span>parts</span><b class="money">$9.00</b></div>
+      <div class="trow"><span>hands &amp; hours</span><b class="money">$3.50</b></div>
+      <div class="trow"><span>wear on the machines</span><b class="money">$1.50</b></div>
+      <div class="trow tot"><span>makes for</span><b class="money">$14.00</b></div>
+      <div class="trow"><span>sells for</span><b class="money">$40.00</b></div>
+      <div class="trow price"><span>margin, each</span><b class="money pos">$26.00</b></div>
+    </div>
+  </div>
+</div><div class="zone"><div class="zonehead"><span class="znum">4</span>WHEN THE FLOOR IS FULL <span class="zlesson">— the outside shop is dearer per unit, but dearer beats un-billed</span></div>
+  <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+    <div class="crow" style="flex:none">outsource up to <b class="money" style="font-size:20px">30 units/wk</b><span class="bstep"><span>−</span><span>+</span></span></div>
+    <div class="ticket" style="flex:1;min-width:250px">
+      <div class="trow"><span>their price, each</span><b class="money">$22.00</b></div>
+      <div class="trow"><span>your floor, each</span><b class="money">$14.00</b></div>
+      <div class="trow price"><span>margin on outside units</span><b class="money pos">$18.00 <span class="dim" style="font-size:13px">(vs $26)</span></b></div>
+    </div>
+    <div class="dim" style="font-size:14.5px;max-width:230px">this week: 20 outside → nothing walked away. Without them, <b class="neg">$800/wk un-billed</b>.</div>
+  </div>
+</div></div>
+<div style="margin-top:12px"><div class="zone"><div class="zonehead"><span class="znum">3</span>THE FLOOR <span class="zlesson">— machines are cash turned into capacity; they lose half their value crossing the door</span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1.1fr;gap:12px">
+    <div class="pcard mach"><h5>THE SMALL PRESS</h5>
+      <div class="mrow2"><span class="dim">makes</span><b class="money">40/wk</b></div>
+      <div class="mrow2"><span class="dim">paid</span><span class="money">$4,000</span></div>
+      <div class="mrow2"><span class="dim">sells back for</span><span class="money neg">$2,000</span></div>
+      <div class="dimmer" style="font-size:13px">[sell ▸] frees cash, kills 40/wk</div>
+    </div>
+    <div class="pcard mach"><h5>THE BIG PRESS</h5>
+      <div class="mrow2"><span class="dim">makes</span><b class="money">80/wk</b></div>
+      <div class="mrow2"><span class="dim">paid</span><span class="money">$9,000</span></div>
+      <div class="mrow2"><span class="dim">sells back for</span><span class="money neg">$4,500</span></div>
+      <div class="dimmer" style="font-size:13px">running hot — 100% booked</div>
+    </div>
+    <div class="pcard mach offer"><h5>ON OFFER — A SECOND BIG PRESS</h5>
+      <div class="mrow2"><span class="dim">cash now</span><b class="money neg">−$9,000</b></div>
+      <div class="mrow2"><span class="dim">adds</span><b class="money pos">+80/wk</b></div>
+      <div class="mrow2"><span class="dim">worth tomorrow</span><span class="money">$4,500</span></div>
+      <div style="margin-top:4px"><span class="signbtn" style="font-size:15px">BUY — TWO-TAP ▸</span></div>
+    </div>
+  </div>
+</div></div>
+<div style="margin-top:12px" class="footrules">machine names and the floor's painting are written for YOUR product, once at run start — a coffee company runs roasters, not presses. Software runs sleep this tab: "no factory — you ship code."</div></div>
+  </div>
+</div>
+<p class="optnote"><b>The page opens on the line itself</b> — parts flow left to right through your machines and the outside shop to the door. The flow drawing carries zone 1; the other lessons hang beneath it. The most factory-feeling.</p>
+<div class="opt-head" style="margin-top:40px"><span class="badge" style="font-size:30px">C</span><h2 style="font-size:27px">The Foreman's Clipboard</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">≈$5.6k/wk</span></div></div>
+      <div class="divider open"><span class="tab coral"></span><div class="dh">COSTS<span class="cnt">$9.1k/wk</span></div>
+        <div class="pages"><div class="ptab">spend</div><div class="ptab">team</div><div class="ptab">bills</div><div class="ptab">the bank</div><div class="ptab on">the factory</div></div>
+      </div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:44px">140 wanted <span style="font-size:23px">· we make 120, buy 20 outside</span></div>
+    <div class="dim" style="font-size:17px">every unit leaves at $40 and costs $14 to make — practice keeps making it cheaper.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">margin per unit <b class="big" style="font-size:22px">$26</b></div>
+    <div class="dim" style="font-size:14.5px">if the outside shop closed: <b class="neg">$800/wk walks away</b></div>
+  </div>
+</div>
+<div class="clip">
+  <div class="cliphead"><span class="clipclip"></span><b>THE FOREMAN'S SHEET — WEEK 30</b><span class="dim" style="font-size:13.5px">signed: R. Okafor</span></div>
+  <div style="display:grid;grid-template-columns:1.15fr 1fr;gap:0">
+    <div class="clipcell"><div class="zone"><div class="zonehead"><span class="znum">1</span>CAN WE MAKE ENOUGH? <span class="zlesson">— demand you cannot serve is revenue that walks away un-billed</span></div>
+  <div class="capbars">
+    <div class="cbrow"><span class="cbl">they want</span><div class="cbtrack"><div class="cbfill want" style="width:100%"></div></div><span class="cbv money">140/wk</span></div>
+    <div class="cbrow"><span class="cbl">our floor makes</span><div class="cbtrack"><div class="cbfill make" style="width:86%"></div></div><span class="cbv money">120/wk</span></div>
+    <div class="cbrow"><span class="cbl">the outside shop adds</span><div class="cbtrack"><div class="cbfill out" style="width:14%;margin-left:86%"></div></div><span class="cbv money">20/wk</span></div>
+  </div>
+  <div class="dimmer" style="font-size:14px;margin-top:6px">met this week — but demand grows ≈4/wk; the gap re-opens in ~5 weeks</div>
+</div></div>
+    <div class="clipcell cbl2"><div class="zone"><div class="zonehead"><span class="znum">2</span>WHAT A UNIT COSTS <span class="zlesson">— the 500th unit is cheaper than the 5th; practice is a discount you earn</span></div>
+  <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+    <div style="flex:1.3;min-width:300px">
+      <svg width="100%" height="110" viewBox="0 0 520 110" preserveAspectRatio="none">
+        <path d="M10 16 C 120 22, 200 52, 300 66 C 400 78, 470 82, 510 84" fill="none" stroke="#6E8CA0" stroke-width="4"/>
+        <circle cx="300" cy="66" r="6" fill="#6E8CA0"/>
+        <line x1="300" y1="66" x2="300" y2="104" stroke="#2B2823" stroke-width="2" stroke-dasharray="4 5"/>
+        <text x="16" y="14" font-size="14" font-family="Patrick" fill="rgba(43,40,35,.6)">first unit: $31</text>
+        <text x="308" y="98" font-size="14" font-family="Patrick" fill="rgba(43,40,35,.6)">you are here: $14 (unit #520)</text>
+        <text x="392" y="72" font-size="14" font-family="Patrick" fill="rgba(43,40,35,.42)">at #1,000: ≈$12.40</text>
+      </svg>
+    </div>
+    <div class="ticket">
+      <div class="tickhead">UNIT TICKET — one drone kit</div>
+      <div class="trow"><span>parts</span><b class="money">$9.00</b></div>
+      <div class="trow"><span>hands &amp; hours</span><b class="money">$3.50</b></div>
+      <div class="trow"><span>wear on the machines</span><b class="money">$1.50</b></div>
+      <div class="trow tot"><span>makes for</span><b class="money">$14.00</b></div>
+      <div class="trow"><span>sells for</span><b class="money">$40.00</b></div>
+      <div class="trow price"><span>margin, each</span><b class="money pos">$26.00</b></div>
+    </div>
+  </div>
+</div></div>
+    <div class="clipcell cbt2"><div class="zone"><div class="zonehead"><span class="znum">3</span>THE FLOOR <span class="zlesson">— machines are cash turned into capacity; they lose half their value crossing the door</span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1.1fr;gap:12px">
+    <div class="pcard mach"><h5>THE SMALL PRESS</h5>
+      <div class="mrow2"><span class="dim">makes</span><b class="money">40/wk</b></div>
+      <div class="mrow2"><span class="dim">paid</span><span class="money">$4,000</span></div>
+      <div class="mrow2"><span class="dim">sells back for</span><span class="money neg">$2,000</span></div>
+      <div class="dimmer" style="font-size:13px">[sell ▸] frees cash, kills 40/wk</div>
+    </div>
+    <div class="pcard mach"><h5>THE BIG PRESS</h5>
+      <div class="mrow2"><span class="dim">makes</span><b class="money">80/wk</b></div>
+      <div class="mrow2"><span class="dim">paid</span><span class="money">$9,000</span></div>
+      <div class="mrow2"><span class="dim">sells back for</span><span class="money neg">$4,500</span></div>
+      <div class="dimmer" style="font-size:13px">running hot — 100% booked</div>
+    </div>
+    <div class="pcard mach offer"><h5>ON OFFER — A SECOND BIG PRESS</h5>
+      <div class="mrow2"><span class="dim">cash now</span><b class="money neg">−$9,000</b></div>
+      <div class="mrow2"><span class="dim">adds</span><b class="money pos">+80/wk</b></div>
+      <div class="mrow2"><span class="dim">worth tomorrow</span><span class="money">$4,500</span></div>
+      <div style="margin-top:4px"><span class="signbtn" style="font-size:15px">BUY — TWO-TAP ▸</span></div>
+    </div>
+  </div>
+</div></div>
+    <div class="clipcell cbl2 cbt2"><div class="zone"><div class="zonehead"><span class="znum">4</span>WHEN THE FLOOR IS FULL <span class="zlesson">— the outside shop is dearer per unit, but dearer beats un-billed</span></div>
+  <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+    <div class="crow" style="flex:none">outsource up to <b class="money" style="font-size:20px">30 units/wk</b><span class="bstep"><span>−</span><span>+</span></span></div>
+    <div class="ticket" style="flex:1;min-width:250px">
+      <div class="trow"><span>their price, each</span><b class="money">$22.00</b></div>
+      <div class="trow"><span>your floor, each</span><b class="money">$14.00</b></div>
+      <div class="trow price"><span>margin on outside units</span><b class="money pos">$18.00 <span class="dim" style="font-size:13px">(vs $26)</span></b></div>
+    </div>
+    <div class="dim" style="font-size:14.5px;max-width:230px">this week: 20 outside → nothing walked away. Without them, <b class="neg">$800/wk un-billed</b>.</div>
+  </div>
+</div></div>
+  </div>
+</div>
+<div style="margin-top:12px" class="footrules">machine names and the floor's painting are written for YOUR product, once at run start — a coffee company runs roasters, not presses. Software runs sleep this tab: "no factory — you ship code."</div></div>
+  </div>
+</div>
+<p class="optnote"><b>All four zones on one clipped sheet</b>, quadrants under the foreman's header — the whole factory in a single glance, signed like a shift report. The densest.</p>
+<div class="footer">
+<p><b>All three:</b> the capacity gap in honest un-billed dollars, the learning curve with "you are here", the unit ticket with a double-ruled margin, the 50% resale stated on every machine, capex behind a two-tap, the outsource stepper with separate −/+ buttons. Answer with a letter — then THE COMPANY group opens with PRODUCT.</p>
+</div>
+</div>

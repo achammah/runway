@@ -1,0 +1,375 @@
+<title>The Bank, Taught Properly</title>
+<style>
+@font-face{font-family:'Patrick';src:url(../../../game/assets/fonts/PatrickHand-Regular.ttf) format('truetype');font-display:block}
+@font-face{font-family:'Baloo';src:url(../../../game/assets/fonts/Baloo2-Bold.ttf) format('truetype');font-weight:700;font-display:block}
+:root{
+  --wall:#2A2722; --wall2:#332F28; --paper:#F2EAD3; --paper2:#F6F0DE; --card:#EFE6CE;
+  --kraft:#DDBE8C; --kraft2:#CBA96F; --alert:#D93425;
+  --ink:#2B2823; --ink6:rgba(43,40,35,.6); --ink4:rgba(43,40,35,.42); --ink25:rgba(43,40,35,.25); --ink12:rgba(43,40,35,.12);
+  --coral:#E86A5C; --sage:#8FA582; --blue:#6E8CA0; --yell:#F4B942;
+  --chrome:#D8D2C4; --chrome-dim:#A69E8D;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--wall);color:var(--chrome);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 0 90px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 26px}
+.topbar{position:sticky;top:0;z-index:50;background:linear-gradient(var(--wall) 82%,transparent);padding:18px 0 10px}
+.topbar .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-family:'Baloo';color:var(--paper);font-size:28px}
+.crumb{font-size:12.5px;color:var(--chrome-dim);letter-spacing:.08em}
+.lede{padding:24px 0 6px;max-width:940px}
+.lede p{margin:0 0 12px}
+.lede .how{border-left:4px solid var(--yell);padding:10px 16px;background:var(--wall2);border-radius:6px;margin-top:12px}
+.lede .how b{color:var(--paper)}
+.opt-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.badge{font-family:'Baloo';color:var(--wall);background:var(--yell);border:3px solid var(--ink);border-radius:12px 15px 13px 14px;padding:0 14px;line-height:1.45;transform:rotate(-1.2deg)}
+.opt-head h2{font-family:'Baloo';color:var(--paper)}
+.optnote{font-size:14.5px;color:var(--chrome-dim);margin:10px 0 0;max-width:900px}
+.optnote b{color:var(--chrome)}
+.binder{position:relative;max-width:100%;display:flex;font-family:'Patrick';color:var(--ink);filter:drop-shadow(0 14px 30px rgba(0,0,0,.5))}
+.cover{flex:none;width:50px;background:var(--kraft);border:3px solid var(--ink);border-right:none;border-radius:16px 0 0 14px;position:relative;background-image:repeating-linear-gradient(115deg, rgba(43,40,35,.05) 0 3px, transparent 3px 9px)}
+.cover .sticker{position:absolute;top:26px;left:50%;transform:translateX(-50%) rotate(-90deg);white-space:nowrap;background:var(--paper2);border:2.2px solid var(--ink);border-radius:6px;padding:2px 12px;font-size:15px}
+.ringbar{flex:none;width:44px;background:var(--kraft2);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);display:flex;flex-direction:column;justify-content:space-around;align-items:center;padding:20px 0}
+.ring{width:32px;height:32px;border-radius:50%;border:3.4px solid var(--ink);position:relative}
+.ring::after{content:"";position:absolute;inset:6px;border-radius:50%;border:2.6px solid var(--ink);opacity:.45}
+.stack{flex:1;background:var(--paper);border:3px solid var(--ink);border-left:2.6px solid var(--ink);border-radius:0 14px 12px 0;display:flex;min-width:0;position:relative}
+.rail{flex:none;width:196px;padding:18px 8px 18px 22px}
+.divider{position:relative;margin:10px 0;border:2.6px solid var(--ink);border-radius:10px;background:var(--paper2)}
+.divider .tab{position:absolute;top:-2.6px;bottom:-2.6px;left:-16px;width:13px;border:2.6px solid var(--ink);border-radius:8px 0 0 8px}
+.tab.sage{background:var(--sage)}.tab.coral{background:var(--coral)}.tab.blue{background:var(--blue)}.tab.yell{background:var(--yell)}
+.divider .dh{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:15px}
+.divider .dh .cnt{margin-left:auto;font-size:12.5px;color:var(--ink4)}
+.divider.closed{background:var(--kraft);box-shadow:0 3px 0 -1px var(--kraft2), 0 6px 0 -2px rgba(43,40,35,.35)}
+.divider.open{background:var(--paper)}
+.divider.open .dh{border-bottom:2px solid var(--ink25)}
+.divider .pages{padding:6px 6px 9px}
+.ptab{display:flex;align-items:center;gap:7px;font-size:16.5px;padding:4px 9px;border-radius:8px;margin:2px 0}
+.ptab.on{background:var(--paper2);border:2.4px solid var(--ink);box-shadow:1.5px 1.5px 0 rgba(43,40,35,.18)}
+.sheet{flex:1;min-width:0;padding:20px 24px 22px;border-left:2.4px solid var(--ink25);background:var(--paper);border-radius:0 12px 10px 0}
+.money{font-variant-numeric:tabular-nums}
+.big{font-family:'Baloo';line-height:1.05}
+.pos{color:#5D7A50}.neg{color:#C0392B}
+.dim{color:var(--ink6)}.dimmer{color:var(--ink4)}
+.footrules{font-size:14.5px;color:var(--ink4)}
+.clock{display:inline-block;background:var(--alert);color:#fff;border:2.2px solid var(--ink);border-radius:8px;padding:0 8px;font-size:13.5px}
+.pcard{background:var(--card);border:2.4px solid var(--ink);border-radius:10px 8px 11px 9px;padding:12px 16px 14px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.pcard h5{font-size:14.5px;letter-spacing:.09em;color:var(--ink6);margin-bottom:8px;font-weight:400;display:flex;align-items:center;gap:8px}
+.bstep{display:inline-flex;gap:7px;vertical-align:middle;margin-left:6px}
+.bstep span{width:27px;height:27px;border:2.4px solid var(--ink);border-radius:8px 7px 9px 8px;background:var(--paper2);font-family:'Baloo';font-size:17px;line-height:1;display:inline-flex;align-items:center;justify-content:center;box-shadow:1.5px 1.5px 0 rgba(43,40,35,.2)}
+/* didactic zones */
+.zone{margin:14px 0 0;border:2.4px solid var(--ink);border-radius:10px;background:var(--paper2);padding:12px 16px 14px}
+.zonehead{display:flex;align-items:center;gap:10px;font-size:15px;letter-spacing:.07em;color:var(--ink);margin-bottom:10px}
+.znum{font-family:'Baloo';width:26px;height:26px;border:2.4px solid var(--ink);border-radius:50%;background:var(--yell);display:inline-flex;align-items:center;justify-content:center;font-size:15px;flex:none}
+.zlesson{font-size:13.5px;color:var(--ink4);letter-spacing:0}
+.ratebox{border:2.6px solid var(--ink);border-radius:10px;background:var(--card);padding:8px 16px;text-align:center;display:flex;flex-direction:column;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.rrow{display:flex;align-items:center;gap:10px;padding:3.5px 0;border-bottom:1.6px solid var(--ink12);font-size:16px}
+.rrow .rlab{flex:1}
+.rrow .rval{width:64px;text-align:right}
+.abar{position:relative;height:30px;border:2.6px solid var(--ink);border-radius:8px;background:var(--paper2);overflow:hidden;display:flex;align-items:center}
+.afill{position:absolute;left:0;top:0;bottom:0;background:var(--sage);opacity:.8}
+.afill.zero{width:3px;background:var(--coral)}
+.apaid{position:relative;font-size:13.5px;padding-left:10px;color:var(--ink6)}
+.aowe{position:relative;margin-left:auto;padding-right:10px;font-size:15px}
+.asplit{font-size:15.5px;margin-top:7px}
+.kchip{font-size:12.5px;border:2.2px solid var(--ink);border-radius:8px;padding:0 8px;background:var(--sage);color:#fff;letter-spacing:0}
+.kchip.bad{background:var(--coral)}
+.crow{display:flex;align-items:center;gap:12px;border:2.4px solid var(--ink);border-radius:9px;background:var(--card);padding:8px 14px;font-size:17px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.crow.dim2{opacity:.8;box-shadow:none}
+.crow span:first-child{flex:1}
+.receipt{flex:1;min-width:250px;background:#FBF6E8;border:2.6px solid var(--ink);border-radius:4px;padding:12px 16px;box-shadow:2px 3px 0 rgba(43,40,35,.2)}
+.rcpthead{text-align:center;font-size:13.5px;letter-spacing:.14em;color:var(--ink6);border-bottom:2px dashed var(--ink25);padding-bottom:6px;margin-bottom:6px}
+.rcptrow{display:flex;justify-content:space-between;font-size:16.5px;padding:4px 0}
+.rcptrow.price{border-top:2px dashed var(--ink25);font-size:17px}
+.rcptrow b{font-size:18px}
+.rcptfoot{font-size:13px;color:var(--ink4);text-align:center;border-top:2px dashed var(--ink25);padding-top:6px;margin-top:4px}
+.signbtn{font-family:'Baloo';font-size:17px;background:var(--yell);border:2.6px solid var(--ink);border-radius:9px;padding:2px 14px;box-shadow:1.5px 2px 0 rgba(43,40,35,.25);display:inline-block}
+.stairs{display:flex;align-items:flex-end;gap:0}
+.stair{flex:1;border:2.6px solid var(--ink);border-bottom-width:3px;background:var(--paper2);padding:8px 12px;display:flex;flex-direction:column;gap:2px}
+.stair b{font-size:16px}
+.stair span{font-size:13.5px;color:var(--ink6)}
+.stair.s1{height:74px;border-radius:8px 0 0 4px}
+.stair.s2{height:94px;background:#F2D6B8;border-left:none}
+.stair.s3{height:114px;background:var(--alert);border-left:none;border-radius:0 8px 4px 0}
+.stair.s3 b, .stair.s3 span{color:#fff}
+.fcell{border:2.4px solid var(--ink);border-radius:8px;background:var(--paper2);text-align:center;padding:4px 10px;display:flex;flex-direction:column}
+.fcell .dim{font-size:12px}
+.fcell b{font-size:16px}
+.dotk{display:inline-block;width:12px;height:12px;border:2px solid var(--ink);border-radius:4px;vertical-align:-2px}
+.passbook{border:3px solid var(--ink);border-radius:10px;overflow:hidden;background:var(--paper2)}
+.pbhead{display:flex;align-items:center;gap:14px;background:var(--card);border-bottom:2.6px solid var(--ink);padding:10px 16px}
+.pbhead b{font-size:19px;letter-spacing:.08em}
+.stamp2{margin-left:auto;border:2.2px solid var(--ink);border-radius:8px;padding:0 10px;font-size:13px;color:var(--ink6);transform:rotate(-2deg)}
+.pbpage{padding:4px 14px 12px}
+.pbpage .zone{border:none;background:transparent;padding:8px 0 0}
+.pbr{border-left:2px dashed var(--ink25)}
+.pbt{border-top:2px dashed var(--ink25)}
+.footer{margin-top:64px;border-top:1px solid var(--wall2);padding-top:20px;color:var(--chrome-dim);font-size:14.5px}
+.footer b{color:var(--paper)}
+</style>
+
+<div class="topbar"><div class="wrap">
+<h1>The Bank, Taught Properly</h1><span class="crumb">TAB 8 / 16 · REWORK · PICK ONE LETTER</span>
+</div></div>
+
+<div class="wrap">
+<div class="lede">
+<p>You're right — the five showed the bank's furniture and taught nothing. The rework is built on a <b style="color:var(--paper)">didactic spine of four numbered zones</b>, present in every option: <b style="color:var(--paper)">1 YOUR STANDING</b> (the rate DERIVED line by line: era base 3.0% + thin runway +1.2% − steady revenue −0.8% = 3.4% — the rate is an opinion, and you see why), <b style="color:var(--paper)">2 WHAT YOU OWE</b> (each loan cut open: the paid-off bar, and every Monday split into "pays the debt down" vs "the bank's fee" — the shark's bar never moves, and that IS the lesson about interest-only money), <b style="color:var(--paper)">3 NEW MONEY</b> (steppers plus a paper RECEIPT that prints the whole truth before you sign: $243 a Monday, $6,318 handed back in all, <i>the price of the money: $1,318</i>), <b style="color:var(--paper)">4 IF A MONDAY IS MISSED</b> (the ladder drawn as three climbing stairs, the third one red).</p>
+<p>Bank-proper dress everywhere — letterhead, receipt paper, stamps, a signature to give — but every sentence in plain words.</p>
+<div class="how"><b>The three options are the same spine in three arrangements.</b> Answer with a letter — then THE FACTORY.</div>
+</div>
+
+<div class="opt-head" style="margin-top:40px"><span class="badge" style="font-size:30px">A</span><h2 style="font-size:27px">The Meeting</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">≈21/wk</span></div></div>
+      <div class="divider open"><span class="tab coral"></span><div class="dh">COSTS<span class="cnt">$8.4k/wk</span></div>
+        <div class="pages"><div class="ptab">spend</div><div class="ptab">team</div><div class="ptab">bills</div><div class="ptab on">the bank</div><div class="ptab">the factory</div></div>
+      </div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:44px">we owe $7,350 <span style="font-size:23px">· $376 leaves every Monday</span></div>
+    <div class="dim" style="font-size:17px">two loans: one is shrinking as you pay it, one never will.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">the bank's opinion of you: <b class="big" style="font-size:21px">3.4%/wk</b></div>
+    <div class="dim" style="font-size:14.5px">why? — see YOUR STANDING</div>
+  </div>
+</div><div class="zone"><div class="zonehead"><span class="znum">1</span>YOUR STANDING <span class="zlesson">— the rate is not a constant; it is what the bank thinks of your books</span></div>
+  <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+    <div class="ratebox"><span class="dim" style="font-size:13.5px">they would charge you</span><b class="big" style="font-size:34px">3.4%</b><span class="dim" style="font-size:13.5px">a week</span></div>
+    <div style="flex:1;min-width:300px">
+      <div class="rrow"><span class="rlab">an office-era company starts at</span><span class="money rval">3.0%</span></div>
+      <div class="rrow"><span class="rlab">only 7 weeks of runway <span class="neg">worries them</span></span><span class="money rval neg">+1.2%</span></div>
+      <div class="rrow"><span class="rlab">steady revenue, 22 weeks <span class="pos">reassures them</span></span><span class="money rval pos">−0.8%</span></div>
+      <div class="rrow" style="border-top:2px solid var(--ink6);border-bottom:none"><span class="rlab"><b>your rate — repriced as your books change</b></span><span class="money rval"><b>3.4%</b></span></div>
+    </div>
+    <div class="dim" style="font-size:14.5px;max-width:170px">they would lend you up to <b class="money">$12,000</b> today</div>
+  </div>
+</div><div class="zone"><div class="zonehead"><span class="znum">2</span>WHAT YOU OWE <span class="zlesson">— a loan is a bar you are painting over; watch which loans never shrink</span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px"><div class="pcard" >
+    <h5>MERIDIAN SAVINGS — TERM LOAN <span class="kchip">shrinks as you pay</span></h5>
+    <div class="abar"><div class="afill" style="width:34%"></div><span class="apaid">paid off $2,050</span><span class="aowe">still owe <b>$3,950</b></span></div>
+    <div class="asplit"><b class="money">$258 every Monday</b> <span class="dim">=</span> <span class="pos">$170 pays the debt down</span> + <span class="neg">$88 is the bank's fee</span></div>
+    <div class="dimmer" style="font-size:13.5px">17 Mondays left — the fee share shrinks every week you pay</div>
+  </div><div class="pcard" style="border-color:var(--alert);border-width:2.8px">
+    <h5>THE SHARK'S MONEY — INTEREST ONLY <span class="kchip bad">never shrinks</span></h5>
+    <div class="abar"><div class="afill zero"></div><span class="apaid">paid off $0</span><span class="aowe">still owe <b>$3,400</b></span></div>
+    <div class="asplit"><b class="money">$118 every Monday</b> <span class="dim">=</span> <span class="neg">all of it is fee — the debt stays whole</span></div>
+    <div class="dimmer" style="font-size:13.5px">cheap on Monday, dear forever — roll-up demanded in 3 weeks</div>
+  </div>
+  </div>
+</div><div class="zone"><div class="zonehead"><span class="znum">3</span>NEW MONEY <span class="zlesson">— before you sign, the receipt shows what the money truly costs</span></div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap">
+    <div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:10px">
+      <div class="crow"><span>borrow</span><b class="money" style="font-size:22px">$5,000</b><span class="bstep"><span>−</span><span>+</span></span></div>
+      <div class="crow"><span>pay it back over</span><b class="money" style="font-size:22px">26 weeks</b><span class="bstep"><span>−</span><span>+</span></span></div>
+      <div class="crow dim2"><span>at your rate</span><b class="money" style="font-size:20px">3.4%/wk</b><span class="dim" style="font-size:13px">set by your standing</span></div>
+    </div>
+    <div class="receipt">
+      <div class="rcpthead">THE RECEIPT</div>
+      <div class="rcptrow"><span>every Monday</span><b class="money">$243</b></div>
+      <div class="rcptrow"><span>you will hand back, in all</span><b class="money">$6,318</b></div>
+      <div class="rcptrow price"><span>the price of the money</span><b class="money neg">$1,318</b></div>
+      <div class="rcptfoot">shorter term → smaller price, heavier Mondays</div>
+      <div style="text-align:center;margin-top:8px"><span class="signbtn">SIGN FOR IT ▸</span></div>
+    </div>
+  </div>
+</div><div class="zone"><div class="zonehead"><span class="znum">4</span>IF A MONDAY IS MISSED <span class="zlesson">— the ladder is written into every loan; read it before you need it</span></div>
+  <div class="stairs">
+    <div class="stair s1"><b>1st miss</b><span>rate +1% — the bank frowns</span></div>
+    <div class="stair s2"><b>2nd miss</b><span>+1% more — a letter arrives</span></div>
+    <div class="stair s3"><b>3rd miss</b><span>the note is CALLED — all of it, now</span></div>
+  </div>
+</div><div style="margin-top:12px"><div style="display:flex;gap:10px;align-items:center"><span class="dim" style="font-size:14px;flex:none">cash ahead, if nothing changes:</span>
+  <div class="fcell"><span class="dim">wk 26</span><b class="money">$8.1k</b></div>
+  <div class="fcell"><span class="dim">wk 30</span><b class="money">$6.4k</b></div>
+  <div class="fcell"><span class="dim">wk 34</span><b class="money">$5.1k</b></div>
+  <div class="fcell"><span class="dim">wk 38</span><b class="money">$4.2k</b></div>
+  <span class="dim" style="font-size:14px">BOOKS ▸ full statement</span></div></div></div>
+  </div>
+</div>
+<p class="optnote"><b>The four zones as a guided appointment, top to bottom</b> — standing, then what you owe, then new money, then the rules. Reads like sitting down at the branch; nothing competes with the current step.</p>
+<div class="opt-head" style="margin-top:40px"><span class="badge" style="font-size:30px">B</span><h2 style="font-size:27px">The Passbook</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">≈21/wk</span></div></div>
+      <div class="divider open"><span class="tab coral"></span><div class="dh">COSTS<span class="cnt">$8.4k/wk</span></div>
+        <div class="pages"><div class="ptab">spend</div><div class="ptab">team</div><div class="ptab">bills</div><div class="ptab on">the bank</div><div class="ptab">the factory</div></div>
+      </div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:44px">we owe $7,350 <span style="font-size:23px">· $376 leaves every Monday</span></div>
+    <div class="dim" style="font-size:17px">two loans: one is shrinking as you pay it, one never will.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">the bank's opinion of you: <b class="big" style="font-size:21px">3.4%/wk</b></div>
+    <div class="dim" style="font-size:14.5px">why? — see YOUR STANDING</div>
+  </div>
+</div>
+<div class="passbook">
+  <div class="pbhead"><b>MERIDIAN SAVINGS</b><span class="dim">your file, kept honest · all figures $/week</span><span class="stamp2">est. wk 0</span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+    <div class="pbpage"><div class="zone"><div class="zonehead"><span class="znum">1</span>YOUR STANDING <span class="zlesson">— the rate is not a constant; it is what the bank thinks of your books</span></div>
+  <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+    <div class="ratebox"><span class="dim" style="font-size:13.5px">they would charge you</span><b class="big" style="font-size:34px">3.4%</b><span class="dim" style="font-size:13.5px">a week</span></div>
+    <div style="flex:1;min-width:300px">
+      <div class="rrow"><span class="rlab">an office-era company starts at</span><span class="money rval">3.0%</span></div>
+      <div class="rrow"><span class="rlab">only 7 weeks of runway <span class="neg">worries them</span></span><span class="money rval neg">+1.2%</span></div>
+      <div class="rrow"><span class="rlab">steady revenue, 22 weeks <span class="pos">reassures them</span></span><span class="money rval pos">−0.8%</span></div>
+      <div class="rrow" style="border-top:2px solid var(--ink6);border-bottom:none"><span class="rlab"><b>your rate — repriced as your books change</b></span><span class="money rval"><b>3.4%</b></span></div>
+    </div>
+    <div class="dim" style="font-size:14.5px;max-width:170px">they would lend you up to <b class="money">$12,000</b> today</div>
+  </div>
+</div></div>
+    <div class="pbpage pbr"><div class="zone"><div class="zonehead"><span class="znum">3</span>NEW MONEY <span class="zlesson">— before you sign, the receipt shows what the money truly costs</span></div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap">
+    <div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:10px">
+      <div class="crow"><span>borrow</span><b class="money" style="font-size:22px">$5,000</b><span class="bstep"><span>−</span><span>+</span></span></div>
+      <div class="crow"><span>pay it back over</span><b class="money" style="font-size:22px">26 weeks</b><span class="bstep"><span>−</span><span>+</span></span></div>
+      <div class="crow dim2"><span>at your rate</span><b class="money" style="font-size:20px">3.4%/wk</b><span class="dim" style="font-size:13px">set by your standing</span></div>
+    </div>
+    <div class="receipt">
+      <div class="rcpthead">THE RECEIPT</div>
+      <div class="rcptrow"><span>every Monday</span><b class="money">$243</b></div>
+      <div class="rcptrow"><span>you will hand back, in all</span><b class="money">$6,318</b></div>
+      <div class="rcptrow price"><span>the price of the money</span><b class="money neg">$1,318</b></div>
+      <div class="rcptfoot">shorter term → smaller price, heavier Mondays</div>
+      <div style="text-align:center;margin-top:8px"><span class="signbtn">SIGN FOR IT ▸</span></div>
+    </div>
+  </div>
+</div></div>
+    <div class="pbpage pbt"><div class="zone"><div class="zonehead"><span class="znum">2</span>WHAT YOU OWE <span class="zlesson">— a loan is a bar you are painting over; watch which loans never shrink</span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px"><div class="pcard" >
+    <h5>MERIDIAN SAVINGS — TERM LOAN <span class="kchip">shrinks as you pay</span></h5>
+    <div class="abar"><div class="afill" style="width:34%"></div><span class="apaid">paid off $2,050</span><span class="aowe">still owe <b>$3,950</b></span></div>
+    <div class="asplit"><b class="money">$258 every Monday</b> <span class="dim">=</span> <span class="pos">$170 pays the debt down</span> + <span class="neg">$88 is the bank's fee</span></div>
+    <div class="dimmer" style="font-size:13.5px">17 Mondays left — the fee share shrinks every week you pay</div>
+  </div><div class="pcard" style="border-color:var(--alert);border-width:2.8px">
+    <h5>THE SHARK'S MONEY — INTEREST ONLY <span class="kchip bad">never shrinks</span></h5>
+    <div class="abar"><div class="afill zero"></div><span class="apaid">paid off $0</span><span class="aowe">still owe <b>$3,400</b></span></div>
+    <div class="asplit"><b class="money">$118 every Monday</b> <span class="dim">=</span> <span class="neg">all of it is fee — the debt stays whole</span></div>
+    <div class="dimmer" style="font-size:13.5px">cheap on Monday, dear forever — roll-up demanded in 3 weeks</div>
+  </div>
+  </div>
+</div></div>
+    <div class="pbpage pbr pbt"><div class="zone"><div class="zonehead"><span class="znum">4</span>IF A MONDAY IS MISSED <span class="zlesson">— the ladder is written into every loan; read it before you need it</span></div>
+  <div class="stairs">
+    <div class="stair s1"><b>1st miss</b><span>rate +1% — the bank frowns</span></div>
+    <div class="stair s2"><b>2nd miss</b><span>+1% more — a letter arrives</span></div>
+    <div class="stair s3"><b>3rd miss</b><span>the note is CALLED — all of it, now</span></div>
+  </div>
+</div><div style="margin-top:10px"><div style="display:flex;gap:10px;align-items:center"><span class="dim" style="font-size:14px;flex:none">cash ahead, if nothing changes:</span>
+  <div class="fcell"><span class="dim">wk 26</span><b class="money">$8.1k</b></div>
+  <div class="fcell"><span class="dim">wk 30</span><b class="money">$6.4k</b></div>
+  <div class="fcell"><span class="dim">wk 34</span><b class="money">$5.1k</b></div>
+  <div class="fcell"><span class="dim">wk 38</span><b class="money">$4.2k</b></div>
+  <span class="dim" style="font-size:14px">BOOKS ▸ full statement</span></div></div></div>
+  </div>
+</div></div>
+  </div>
+</div>
+<p class="optnote"><b>The same four zones as a bank passbook spread</b> — one booklet under the Meridian letterhead, four quadrant pages with dashed folds. The most bank-like object; all four lessons visible at once.</p>
+<div class="opt-head" style="margin-top:40px"><span class="badge" style="font-size:30px">C</span><h2 style="font-size:27px">The Loan, Cut Open</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">≈21/wk</span></div></div>
+      <div class="divider open"><span class="tab coral"></span><div class="dh">COSTS<span class="cnt">$8.4k/wk</span></div>
+        <div class="pages"><div class="ptab">spend</div><div class="ptab">team</div><div class="ptab">bills</div><div class="ptab on">the bank</div><div class="ptab">the factory</div></div>
+      </div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:44px">we owe $7,350 <span style="font-size:23px">· $376 leaves every Monday</span></div>
+    <div class="dim" style="font-size:17px">two loans: one is shrinking as you pay it, one never will.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">the bank's opinion of you: <b class="big" style="font-size:21px">3.4%/wk</b></div>
+    <div class="dim" style="font-size:14.5px">why? — see YOUR STANDING</div>
+  </div>
+</div>
+<div class="pcard" style="padding:14px 18px"><h5>EVERY MONDAY $258 GOES TO MERIDIAN — WATCH WHAT IT BECOMES</h5>
+  <svg width="100%" height="150" viewBox="0 0 900 150" preserveAspectRatio="none">
+    <polygon points="0,20 900,20 900,130 0,130" fill="#F6F0DE" stroke="none"/>
+    <polygon points="0,130 0,64 150,70 300,78 450,88 600,100 750,114 900,128 900,130" fill="#E86A5C" opacity=".75"/>
+    <polygon points="0,64 150,70 300,78 450,88 600,100 750,114 900,128 900,20 0,20" fill="#8FA582" opacity=".75"/>
+    <line x1="300" y1="20" x2="300" y2="130" stroke="#2B2823" stroke-width="2.6" stroke-dasharray="6 6"/>
+    <rect x="0" y="20" width="900" height="110" fill="none" stroke="#2B2823" stroke-width="3"/>
+  </svg>
+  <div style="display:flex;justify-content:space-between" class="dimmer">
+    <span><span class="dotk" style="background:var(--sage)"></span> pays the debt down — grows every week</span>
+    <span>◀ you are here, week 9 of 26</span>
+    <span><span class="dotk" style="background:var(--coral)"></span> the bank's fee — shrinks as you owe less</span>
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:12px"><div class="pcard" >
+    <h5>MERIDIAN — TERM <span class="kchip">shrinks</span></h5>
+    <div class="abar"><div class="afill" style="width:34%"></div><span class="apaid">paid off $2,050</span><span class="aowe">still owe <b>$3,950</b></span></div>
+    <div class="asplit"><b class="money">$258/Mon</b> <span class="dim">=</span> <span class="pos">$170 down</span> + <span class="neg">$88 fee</span></div>
+    <div class="dimmer" style="font-size:13.5px">17 Mondays left</div>
+  </div><div class="pcard" style="border-color:var(--alert);border-width:2.8px">
+    <h5>THE SHARK <span class="kchip bad">never shrinks</span></h5>
+    <div class="abar"><div class="afill zero"></div><span class="apaid">paid off $0</span><span class="aowe">still owe <b>$3,400</b></span></div>
+    <div class="asplit"><b class="money">$118/Mon</b> <span class="dim">=</span> <span class="neg">all fee, forever</span></div>
+    <div class="dimmer" style="font-size:13.5px">roll-up in 3 weeks</div>
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:1.15fr 1fr;gap:13px;margin-top:12px">
+  <div><div class="zone"><div class="zonehead"><span class="znum">3</span>NEW MONEY <span class="zlesson">— before you sign, the receipt shows what the money truly costs</span></div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap">
+    <div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:10px">
+      <div class="crow"><span>borrow</span><b class="money" style="font-size:22px">$5,000</b><span class="bstep"><span>−</span><span>+</span></span></div>
+      <div class="crow"><span>pay it back over</span><b class="money" style="font-size:22px">26 weeks</b><span class="bstep"><span>−</span><span>+</span></span></div>
+      <div class="crow dim2"><span>at your rate</span><b class="money" style="font-size:20px">3.4%/wk</b><span class="dim" style="font-size:13px">set by your standing</span></div>
+    </div>
+    <div class="receipt">
+      <div class="rcpthead">THE RECEIPT</div>
+      <div class="rcptrow"><span>every Monday</span><b class="money">$243</b></div>
+      <div class="rcptrow"><span>you will hand back, in all</span><b class="money">$6,318</b></div>
+      <div class="rcptrow price"><span>the price of the money</span><b class="money neg">$1,318</b></div>
+      <div class="rcptfoot">shorter term → smaller price, heavier Mondays</div>
+      <div style="text-align:center;margin-top:8px"><span class="signbtn">SIGN FOR IT ▸</span></div>
+    </div>
+  </div>
+</div></div>
+  <div><div class="zone"><div class="zonehead"><span class="znum">1</span>YOUR STANDING <span class="zlesson">— the rate is not a constant; it is what the bank thinks of your books</span></div>
+  <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+    <div class="ratebox"><span class="dim" style="font-size:13.5px">they would charge you</span><b class="big" style="font-size:34px">3.4%</b><span class="dim" style="font-size:13.5px">a week</span></div>
+    <div style="flex:1;min-width:300px">
+      <div class="rrow"><span class="rlab">an office-era company starts at</span><span class="money rval">3.0%</span></div>
+      <div class="rrow"><span class="rlab">only 7 weeks of runway <span class="neg">worries them</span></span><span class="money rval neg">+1.2%</span></div>
+      <div class="rrow"><span class="rlab">steady revenue, 22 weeks <span class="pos">reassures them</span></span><span class="money rval pos">−0.8%</span></div>
+      <div class="rrow" style="border-top:2px solid var(--ink6);border-bottom:none"><span class="rlab"><b>your rate — repriced as your books change</b></span><span class="money rval"><b>3.4%</b></span></div>
+    </div>
+    <div class="dim" style="font-size:14.5px;max-width:170px">they would lend you up to <b class="money">$12,000</b> today</div>
+  </div>
+</div><div class="zone"><div class="zonehead"><span class="znum">4</span>IF A MONDAY IS MISSED <span class="zlesson">— the ladder is written into every loan; read it before you need it</span></div>
+  <div class="stairs">
+    <div class="stair s1"><b>1st miss</b><span>rate +1% — the bank frowns</span></div>
+    <div class="stair s2"><b>2nd miss</b><span>+1% more — a letter arrives</span></div>
+    <div class="stair s3"><b>3rd miss</b><span>the note is CALLED — all of it, now</span></div>
+  </div>
+</div></div>
+</div></div>
+  </div>
+</div>
+<p class="optnote"><b>Anatomy-first</b> — the page opens on the amortization drawing (every $258 Monday splitting green/coral over 26 weeks, the fee shrinking as you repay), then the two loans, then the calculator beside your standing and the stairs. The deepest single lesson up top.</p>
+<div class="footer">
+<p><b>All three:</b> the rate derived, never asserted · every Monday dollar split into debt-down vs fee · the receipt prints the price of the money before the SIGN · the shark teaches interest-only by its unmoving bar · the miss ladder drawn as stairs · separate −/+ buttons everywhere · BOOKS keeps the full statement on the ledger sheet. Answer with a letter — then THE FACTORY closes the COSTS group.</p>
+</div>
+</div>

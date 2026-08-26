@@ -1,0 +1,376 @@
+<title>Growth, Four Characters</title>
+<style>
+@font-face{font-family:'Patrick';src:url(../../../game/assets/fonts/PatrickHand-Regular.ttf) format('truetype');font-display:block}
+@font-face{font-family:'Baloo';src:url(../../../game/assets/fonts/Baloo2-Bold.ttf) format('truetype');font-weight:700;font-display:block}
+:root{
+  --wall:#2A2722; --wall2:#332F28; --paper:#F2EAD3; --paper2:#F6F0DE; --card:#EFE6CE;
+  --kraft:#DDBE8C; --kraft2:#CBA96F; --alert:#D93425;
+  --ink:#2B2823; --ink6:rgba(43,40,35,.6); --ink4:rgba(43,40,35,.42); --ink25:rgba(43,40,35,.25);
+  --coral:#E86A5C; --sage:#8FA582; --blue:#6E8CA0; --yell:#F4B942;
+  --chrome:#D8D2C4; --chrome-dim:#A69E8D;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--wall);color:var(--chrome);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 0 90px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 26px}
+.topbar{position:sticky;top:0;z-index:50;background:linear-gradient(var(--wall) 82%,transparent);padding:18px 0 10px}
+.topbar .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-family:'Baloo';color:var(--paper);font-size:28px}
+.crumb{font-size:12.5px;color:var(--chrome-dim);letter-spacing:.08em}
+.lede{padding:24px 0 6px;max-width:940px}
+.lede p{margin:0 0 12px}
+.lede .how{border-left:4px solid var(--yell);padding:10px 16px;background:var(--wall2);border-radius:6px;margin-top:12px}
+.lede .how b{color:var(--paper)}
+.worlds{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0 8px}
+.world{background:var(--wall2);border-radius:10px;padding:12px 16px;font-size:14px}
+.world h4{font-family:'Baloo';font-size:17px;margin-bottom:6px}
+.world.cw h4{color:var(--sage)}.world.sw h4{color:var(--yell)}.world.ew h4{color:var(--blue)}
+.world div{color:var(--chrome-dim);margin:2px 0}
+.world b{color:var(--chrome)}
+.opt-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.badge{font-family:'Baloo';color:var(--wall);background:var(--yell);border:3px solid var(--ink);border-radius:12px 15px 13px 14px;padding:0 14px;line-height:1.45;transform:rotate(-1.2deg)}
+.opt-head h2{font-family:'Baloo';color:var(--paper)}
+.optnote{font-size:14.5px;color:var(--chrome-dim);margin:10px 0 0;max-width:900px}
+.optnote b{color:var(--chrome)}
+.binder{position:relative;max-width:100%;display:flex;font-family:'Patrick';color:var(--ink);filter:drop-shadow(0 14px 30px rgba(0,0,0,.5))}
+.cover{flex:none;width:50px;background:var(--kraft);border:3px solid var(--ink);border-right:none;border-radius:16px 0 0 14px;position:relative;background-image:repeating-linear-gradient(115deg, rgba(43,40,35,.05) 0 3px, transparent 3px 9px)}
+.cover .sticker{position:absolute;top:26px;left:50%;transform:translateX(-50%) rotate(-90deg);white-space:nowrap;background:var(--paper2);border:2.2px solid var(--ink);border-radius:6px;padding:2px 12px;font-size:15px}
+.ringbar{flex:none;width:44px;background:var(--kraft2);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);display:flex;flex-direction:column;justify-content:space-around;align-items:center;padding:20px 0}
+.ring{width:32px;height:32px;border-radius:50%;border:3.4px solid var(--ink);position:relative}
+.ring::after{content:"";position:absolute;inset:6px;border-radius:50%;border:2.6px solid var(--ink);opacity:.45}
+.stack{flex:1;background:var(--paper);border:3px solid var(--ink);border-left:2.6px solid var(--ink);border-radius:0 14px 12px 0;display:flex;min-width:0;position:relative}
+.rail{flex:none;width:196px;padding:18px 8px 18px 22px}
+.divider{position:relative;margin:10px 0;border:2.6px solid var(--ink);border-radius:10px;background:var(--paper2)}
+.divider .tab{position:absolute;top:-2.6px;bottom:-2.6px;left:-16px;width:13px;border:2.6px solid var(--ink);border-radius:8px 0 0 8px}
+.tab.sage{background:var(--sage)}.tab.coral{background:var(--coral)}.tab.blue{background:var(--blue)}.tab.yell{background:var(--yell)}
+.divider .dh{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:15px}
+.divider .dh .cnt{margin-left:auto;font-size:12.5px;color:var(--ink4)}
+.divider.closed{background:var(--kraft);box-shadow:0 3px 0 -1px var(--kraft2), 0 6px 0 -2px rgba(43,40,35,.35)}
+.divider.open{background:var(--paper)}
+.divider.open .dh{border-bottom:2px solid var(--ink25)}
+.divider .pages{padding:6px 6px 9px}
+.ptab{display:flex;align-items:center;gap:7px;font-size:16.5px;padding:4px 9px;border-radius:8px;margin:2px 0}
+.ptab.on{background:var(--paper2);border:2.4px solid var(--ink);box-shadow:1.5px 1.5px 0 rgba(43,40,35,.18)}
+.sheet{flex:1;min-width:0;padding:20px 24px 22px;border-left:2.4px solid var(--ink25);background:var(--paper);border-radius:0 12px 10px 0}
+.money{font-variant-numeric:tabular-nums;text-align:right}
+.big{font-family:'Baloo';line-height:1.05}
+.pos{color:#5D7A50}.neg{color:var(--coral)}
+.dim{color:var(--ink6)}.dimmer{color:var(--ink4)}
+.footrules{font-size:14.5px;color:var(--ink4)}
+.pcard{background:var(--card);border:2.4px solid var(--ink);border-radius:10px 8px 11px 9px;padding:12px 16px 14px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.pcard h5{font-size:14.5px;letter-spacing:.09em;color:var(--ink6);margin-bottom:8px;font-weight:400;display:flex;align-items:center}
+.mrow{display:flex;align-items:center;gap:10px;padding:4.5px 0}
+.mrow .lab{flex:1}.mrow .val{min-width:64px}
+.step{font-family:'Baloo';font-size:15px;border:2.2px solid var(--ink);border-radius:7px;background:var(--paper2);padding:0 7px;font-style:normal}
+.vchip{font-size:13.5px;border:2.2px solid var(--ink);border-radius:8px;padding:0 8px;background:var(--paper2);font-style:normal}
+.vgood{background:var(--sage);color:#fff}
+.vwarn{background:var(--yell)}
+.jar{width:40px;height:56px;border:3px solid var(--ink);border-radius:6px 6px 10px 10px;position:relative;overflow:hidden;background:var(--paper2);flex:none}
+.jfill{position:absolute;bottom:0;left:0;right:0;background:var(--sage);opacity:.85}
+.fadwrap{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:16px}
+.fad{width:16px;height:150px;border:2.6px solid var(--ink);border-radius:9px;background:var(--paper2);position:relative}
+.knob{position:absolute;left:-9px;width:30px;height:14px;background:var(--yell);border:2.6px solid var(--ink);border-radius:6px}
+.fyield{font-size:14px;color:var(--ink4)}
+.capline{position:absolute;left:0;right:0;border-top:3px dashed var(--alert);z-index:2}
+.capline span{position:absolute;right:0;top:-24px;font-size:13.5px;color:var(--alert)}
+.drow6{display:grid;grid-template-columns:1.35fr 1.1fr 1fr .9fr .8fr 1.15fr;align-items:center;font-size:17.5px;padding:8px 0;border-bottom:2px solid var(--ink25)}
+.chr{font-size:13.5px;color:var(--ink4);font-style:normal;margin-left:6px}
+.streamlab{border:2.4px solid var(--ink);border-radius:9px;background:var(--card);padding:6px 10px;font-size:15.5px;display:flex;align-items:center;gap:8px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.streamlab .dim{margin-left:auto;font-size:13.5px}
+.plot h5{justify-content:center}
+.scorebox{border:2.6px solid var(--ink);border-radius:10px;background:var(--card);text-align:center;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.footer{margin-top:64px;border-top:1px solid var(--wall2);padding-top:20px;color:var(--chrome-dim);font-size:14.5px}
+.footer b{color:var(--paper)}
+</style>
+
+<div class="topbar"><div class="wrap">
+<h1>Growth, Four Characters</h1><span class="crumb">TAB 4 / 15 · PICK ONE LETTER</span>
+</div></div>
+
+<div class="wrap">
+<div class="lede">
+<p><b style="color:var(--paper)">IN MOTION is locked</b> — Consumer = River×Sources mix, SMB = Hot List, Enterprise = Stage Board, each with its collapse ladder (top-5 + "the other N" expands; ≤3 cards per column + "+N", column press opens the focused list; past ~8 deals the cards slim down). Now <b style="color:var(--paper)">GROWTH</b>: the page that answers <i>"what does a dollar buy in each channel — and where does the next customer come from?"</i></p>
+<p>The engine gives the four levers real characters: <b style="color:var(--paper)">ads</b> pour instantly and saturate, <b style="color:var(--paper)">content</b> fills a well that compounds funded and rots starved, <b style="color:var(--paper)">referrals</b> multiply word of mouth only while the product is liked, <b style="color:var(--paper)">outbound</b> knocks doors with quota math. One design below, five ways to draw it. Same levers in every world — only the verdicts flip:</p>
+<div class="worlds">
+  <div class="world cw"><h4>CONSUMER</h4><div>ads <b>the engine</b> · CAC $9</div><div>content compounds huge</div><div>outbound <b>absurd</b> — greyed, "nobody door-knocks a consumer"</div></div>
+  <div class="world sw"><h4>SMB</h4><div>the balanced world — shown full-size below</div><div>every lever plausible, none dominant</div></div>
+  <div class="world ew"><h4>ENTERPRISE</h4><div>ads <b>a drop in the ocean</b> · reach ≈2/wk</div><div>content = the whitepaper well, long game</div><div>outbound <b>the engine</b> · 2 reps → 3 named leads</div></div>
+</div>
+<div class="how"><b>Every option keeps:</b> hero (spend → customers · CAC · free word-of-mouth line), the era cap on the SUM, per-channel steppers, verdict words, and the audience flips above. <b>Answer with a letter.</b> Next: the COSTS pages.</div>
+</div>
+
+<div class="opt-head" style="margin-top:40px"><span class="badge" style="font-size:30px">A</span><h2 style="font-size:27px">The Four Engines</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">≈21/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers</div>
+          <div class="ptab">customers</div>
+          <div class="ptab">in motion</div>
+          <div class="ptab on">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:46px">$1,050/wk <span style="font-size:24px">buys ≈21 customers</span></div>
+    <div class="dim" style="font-size:17.5px">SMB, week 22 — CAC $50, and word of mouth adds ≈9 more for free.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">the office era allows <b class="big" style="font-size:22px">$1,600/wk</b></div>
+    <div class="dim" style="font-size:14.5px">1 marketing head sharpens it all ×1.12</div>
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:13px">
+  <div class="pcard"><h5>ADS — the faucet <span class="vchip vwarn" style="margin-left:auto">near the knee</span></h5>
+    <div style="display:flex;align-items:center;gap:14px">
+      <svg width="74" height="56" viewBox="0 0 74 56"><path d="M4 14 h34 v12 h-12" fill="none" stroke="#2B2823" stroke-width="3.4"/><circle cx="21" cy="8" r="7" fill="#F4B942" stroke="#2B2823" stroke-width="3"/><path d="M30 32 l-2 7 M36 30 l-1 9 M42 33 l-3 8" stroke="#6E8CA0" stroke-width="3" stroke-linecap="round"/></svg>
+      <div style="flex:1">
+        <div class="mrow"><span class="lab">spend</span><span class="val money big" style="font-size:21px">$400/wk</span><span class="step">− +</span></div>
+        <div class="dim" style="font-size:15px">→ 210 reach → <b>≈6 join</b> · CAC $67 and rising</div>
+      </div>
+    </div>
+  </div>
+  <div class="pcard"><h5>CONTENT — the well <span class="vchip vgood" style="margin-left:auto">compounding</span></h5>
+    <div style="display:flex;align-items:center;gap:14px">
+      <div class="jar"><div class="jfill" style="height:62%"></div></div>
+      <div style="flex:1">
+        <div class="mrow"><span class="lab">spend</span><span class="val money big" style="font-size:21px">$250/wk</span><span class="step">− +</span></div>
+        <div class="dim" style="font-size:15px">the well is 62% full → 130 reach/wk, <b>rots if starved</b></div>
+      </div>
+    </div>
+  </div>
+  <div class="pcard"><h5>REFERRALS — the megaphone <span class="vchip vgood" style="margin-left:auto">×1.4 word of mouth</span></h5>
+    <div style="display:flex;align-items:center;gap:14px">
+      <svg width="74" height="52" viewBox="0 0 74 52"><path d="M8 20 L38 8 L38 44 L8 32 Z" fill="#EFE6CE" stroke="#2B2823" stroke-width="3.2"/><path d="M46 14 q8 12 0 24 M54 8 q12 18 0 36" fill="none" stroke="#2B2823" stroke-width="2.8" opacity=".55"/></svg>
+      <div style="flex:1">
+        <div class="mrow"><span class="lab">program</span><span class="val money big" style="font-size:21px">$150/wk</span><span class="step">− +</span></div>
+        <div class="dim" style="font-size:15px">gate open — the product is liked enough to have promoters</div>
+      </div>
+    </div>
+  </div>
+  <div class="pcard"><h5>OUTBOUND — the doors <span class="vchip vwarn" style="margin-left:auto">sure but dear</span></h5>
+    <div style="display:flex;align-items:center;gap:14px">
+      <svg width="74" height="52" viewBox="0 0 74 52"><rect x="6" y="10" width="16" height="34" rx="3" fill="#DDBE8C" stroke="#2B2823" stroke-width="3"/><rect x="30" y="10" width="16" height="34" rx="3" fill="#DDBE8C" stroke="#2B2823" stroke-width="3"/><rect x="54" y="10" width="16" height="34" rx="3" fill="#DDBE8C" stroke="#2B2823" stroke-width="3"/><path d="M12 4 l4 4 M40 2 l3 5" stroke="#2B2823" stroke-width="2.6" stroke-linecap="round"/></svg>
+      <div style="flex:1">
+        <div class="mrow"><span class="lab">spend</span><span class="val money big" style="font-size:21px">$250/wk</span><span class="step">− +</span></div>
+        <div class="dim" style="font-size:15px">→ 40 doors → 5 talks → <b>≈2 signed</b> · CAC $125</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div style="margin-top:12px" class="footrules">four levers, four characters — ads pour, content compounds, referrals multiply, outbound knocks</div></div>
+  </div>
+</div>
+<p class="optnote"><b>One card per channel, each with its own drawn instrument</b> — faucet, well, megaphone, doors. The characters are unmissable; steppers live on the card. The most teaching.</p>
+<div class="opt-head" style="margin-top:40px"><span class="badge" style="font-size:30px">B</span><h2 style="font-size:27px">The Mixing Desk</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">≈21/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers</div>
+          <div class="ptab">customers</div>
+          <div class="ptab">in motion</div>
+          <div class="ptab on">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:46px">$1,050/wk <span style="font-size:24px">buys ≈21 customers</span></div>
+    <div class="dim" style="font-size:17.5px">SMB, week 22 — CAC $50, and word of mouth adds ≈9 more for free.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">the office era allows <b class="big" style="font-size:22px">$1,600/wk</b></div>
+    <div class="dim" style="font-size:14.5px">1 marketing head sharpens it all ×1.12</div>
+  </div>
+</div>
+<div style="display:flex;gap:18px">
+  <div class="pcard" style="flex:1.5;padding:16px 20px 12px"><h5>THE CONSOLE — slide the mix; the dashed line is the era's cap</h5>
+    <div style="position:relative;display:flex;gap:26px;justify-content:space-around;align-items:flex-end;height:180px;padding:0 8px">
+      <div class="capline" style="bottom:150px"><span>cap $1,600/wk</span></div>
+      <div class="fadwrap"><div class="fad"><div class="knob" style="bottom:88px"></div></div><b>ads</b><span class="money dim">$400</span><span class="fyield">≈6</span></div>
+      <div class="fadwrap"><div class="fad"><div class="knob" style="bottom:58px"></div></div><b>content</b><span class="money dim">$250</span><span class="fyield">≈5+</span></div>
+      <div class="fadwrap"><div class="fad"><div class="knob" style="bottom:36px"></div></div><b>referrals</b><span class="money dim">$150</span><span class="fyield">×1.4</span></div>
+      <div class="fadwrap"><div class="fad"><div class="knob" style="bottom:58px"></div></div><b>outbound</b><span class="money dim">$250</span><span class="fyield">≈2</span></div>
+    </div>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;gap:12px">
+    <div class="pcard"><h5>THE TAKE</h5>
+      <div class="mrow"><span class="lab">bought</span><span class="val money">≈12/wk</span></div>
+      <div class="mrow"><span class="lab">word of mouth</span><span class="val money">≈9/wk</span></div>
+      <div class="mrow" style="border-top:2px solid var(--ink25)"><span class="lab">blended CAC</span><span class="val money big" style="font-size:20px">$50</span></div>
+    </div>
+    <div class="pcard"><h5>THE CHARACTERS</h5>
+      <div style="font-size:15px">ads <span class="dim">pour now, sate fast</span></div>
+      <div style="font-size:15px">content <span class="dim">fills a well</span></div>
+      <div style="font-size:15px">referrals <span class="dim">multiply the liked</span></div>
+      <div style="font-size:15px">outbound <span class="dim">knocks, surely</span></div>
+    </div>
+  </div>
+</div>
+<div style="margin-top:12px" class="footrules">four levers, four characters — ads pour, content compounds, referrals multiply, outbound knocks</div></div>
+  </div>
+</div>
+<p class="optnote"><b>Four faders under one dashed cap line.</b> Growth as setting a MIX with a hard sum — which is exactly what the engine clamps. The most instrumental; characters live in a side card.</p>
+<div class="opt-head" style="margin-top:40px"><span class="badge" style="font-size:30px">C</span><h2 style="font-size:27px">The Channel Ledger</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">≈21/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers</div>
+          <div class="ptab">customers</div>
+          <div class="ptab">in motion</div>
+          <div class="ptab on">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:46px">$1,050/wk <span style="font-size:24px">buys ≈21 customers</span></div>
+    <div class="dim" style="font-size:17.5px">SMB, week 22 — CAC $50, and word of mouth adds ≈9 more for free.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">the office era allows <b class="big" style="font-size:22px">$1,600/wk</b></div>
+    <div class="dim" style="font-size:14.5px">1 marketing head sharpens it all ×1.12</div>
+  </div>
+</div>
+<div class="pcard" style="padding:14px 18px">
+  <div style="display:grid;grid-template-columns:1.35fr 1.1fr 1fr .9fr .8fr 1.15fr;font-size:13.5px;color:var(--ink4);letter-spacing:.06em;border-bottom:2px solid var(--ink25);padding-bottom:6px">
+    <span>CHANNEL</span><span class="money">$/WK</span><span class="money">BUYS</span><span class="money">≈NEW</span><span class="money">CAC</span><span style="text-align:right">VERDICT</span>
+  </div>
+  <div class="drow6"><span><b>ads</b> <i class="chr">the faucet</i></span><span class="money big" style="font-size:19px">$400 <i class="step">−+</i></span><span class="money dim">210 reach</span><span class="money">6</span><span class="money">$67</span><span style="text-align:right"><span class="vchip vwarn">near the knee</span></span></div>
+  <div class="drow6"><span><b>content</b> <i class="chr">the well</i></span><span class="money big" style="font-size:19px">$250 <i class="step">−+</i></span><span class="money dim">well 62%</span><span class="money">5</span><span class="money">$42↓</span><span style="text-align:right"><span class="vchip vgood">compounding</span></span></div>
+  <div class="drow6"><span><b>referrals</b> <i class="chr">the megaphone</i></span><span class="money big" style="font-size:19px">$150 <i class="step">−+</i></span><span class="money dim">×1.4 wom</span><span class="money">—</span><span class="money">—</span><span style="text-align:right"><span class="vchip vgood">gate open</span></span></div>
+  <div class="drow6"><span><b>outbound</b> <i class="chr">the doors</i></span><span class="money big" style="font-size:19px">$250 <i class="step">−+</i></span><span class="money dim">40 doors</span><span class="money">2</span><span class="money">$125</span><span style="text-align:right"><span class="vchip vwarn">sure but dear</span></span></div>
+  <div class="drow6" style="border-bottom:none;opacity:.75"><span><b>word of mouth</b></span><span class="money dim" style="font-size:16px">not for sale</span><span class="money dim">earned</span><span class="money">9</span><span class="money">$0</span><span style="text-align:right"><span class="vchip">the prize</span></span></div>
+</div>
+<div style="display:flex;gap:14px;margin-top:12px;align-items:center">
+  <div class="scorebox" style="flex:none;padding:8px 18px"><div class="big" style="font-size:22px">$1,050 <span class="dim" style="font-size:15px">of $1,600 cap</span></div></div>
+  <div class="footrules">the rate card's cousin — every dollar's job in one sortable page</div>
+</div></div>
+  </div>
+</div>
+<p class="optnote"><b>The rate-card family table</b> — spend, buys, new, CAC, verdict on one grid, word of mouth as the honest unbuyable row. The most comparable; drawings retreat to words.</p>
+<div class="opt-head" style="margin-top:40px"><span class="badge" style="font-size:30px">D</span><h2 style="font-size:27px">The Headwaters</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">≈21/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers</div>
+          <div class="ptab">customers</div>
+          <div class="ptab">in motion</div>
+          <div class="ptab on">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:46px">$1,050/wk <span style="font-size:24px">buys ≈21 customers</span></div>
+    <div class="dim" style="font-size:17.5px">SMB, week 22 — CAC $50, and word of mouth adds ≈9 more for free.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">the office era allows <b class="big" style="font-size:22px">$1,600/wk</b></div>
+    <div class="dim" style="font-size:14.5px">1 marketing head sharpens it all ×1.12</div>
+  </div>
+</div>
+<div class="pcard" style="padding:14px 18px 10px"><h5>FOUR STREAMS FEED THE RIVER — width is what the money actually buys</h5>
+  <svg width="100%" height="190" viewBox="0 0 900 190" preserveAspectRatio="none">
+    <path d="M20 22 C 300 22, 560 78, 880 88" fill="none" stroke="#6E8CA0" stroke-width="13" opacity=".8"/>
+    <path d="M20 66 C 300 66, 560 86, 880 94" fill="none" stroke="#8FA582" stroke-width="11" opacity=".8"/>
+    <path d="M20 110 C 300 110, 560 96, 880 100" fill="none" stroke="#F4B942" stroke-width="7" opacity=".85"/>
+    <path d="M20 152 C 300 152, 560 104, 880 106" fill="none" stroke="#E86A5C" stroke-width="6" opacity=".8"/>
+    <path d="M880 80 L900 97 L880 114 Z" fill="#2B2823"/>
+  </svg>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:4px">
+    <div class="streamlab"><b>ads</b> $400 <i class="step">−+</i><span class="dim">≈6 join</span></div>
+    <div class="streamlab"><b>content</b> $250 <i class="step">−+</i><span class="dim">≈5, growing</span></div>
+    <div class="streamlab"><b>referrals</b> $150 <i class="step">−+</i><span class="dim">×1.4 wom</span></div>
+    <div class="streamlab"><b>outbound</b> $250 <i class="step">−+</i><span class="dim">≈2 signed</span></div>
+  </div>
+</div>
+<div style="margin-top:12px" class="footrules">the same river IN MOTION drinks from — growth is its headwaters, one page upstream</div></div>
+  </div>
+</div>
+<p class="optnote"><b>Four streams feeding the river IN MOTION drinks from</b> — width is what the money buys, not what you spend. Beautiful continuity with the consumer river; controls sit below the drawing.</p>
+<div class="opt-head" style="margin-top:40px"><span class="badge" style="font-size:30px">E</span><h2 style="font-size:27px">The Market Garden</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">≈21/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers</div>
+          <div class="ptab">customers</div>
+          <div class="ptab">in motion</div>
+          <div class="ptab on">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:46px">$1,050/wk <span style="font-size:24px">buys ≈21 customers</span></div>
+    <div class="dim" style="font-size:17.5px">SMB, week 22 — CAC $50, and word of mouth adds ≈9 more for free.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">the office era allows <b class="big" style="font-size:22px">$1,600/wk</b></div>
+    <div class="dim" style="font-size:14.5px">1 marketing head sharpens it all ×1.12</div>
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:13px">
+  <div class="pcard plot"><h5>ADS</h5>
+    <svg width="100%" height="64" viewBox="0 0 120 64"><g stroke="#2B2823" stroke-width="2.6" fill="none"><path d="M20 60 V30 M50 60 V26 M80 60 V32 M104 60 V28"/><circle cx="20" cy="24" r="7" fill="#E86A5C"/><circle cx="50" cy="20" r="7" fill="#E86A5C"/><circle cx="80" cy="26" r="7" fill="#E86A5C"/><circle cx="104" cy="22" r="7" fill="#E86A5C" opacity=".5"/></g></svg>
+    <div class="dim" style="font-size:14px">cut flowers — bloom now, wilt fast</div>
+    <div class="mrow"><span class="lab money big" style="font-size:18px">$400</span><span class="step">−+</span><span class="val dim">≈6</span></div>
+  </div>
+  <div class="pcard plot"><h5>CONTENT</h5>
+    <svg width="100%" height="64" viewBox="0 0 120 64"><g stroke="#2B2823" stroke-width="2.8" fill="none"><path d="M60 60 V22 M60 34 L42 22 M60 30 L80 18"/><circle cx="60" cy="14" r="10" fill="#8FA582"/><circle cx="38" cy="20" r="7" fill="#8FA582"/><circle cx="84" cy="15" r="7" fill="#8FA582"/></g></svg>
+    <div class="dim" style="font-size:14px">an orchard — slow, then generous</div>
+    <div class="mrow"><span class="lab money big" style="font-size:18px">$250</span><span class="step">−+</span><span class="val dim">≈5+</span></div>
+  </div>
+  <div class="pcard plot"><h5>REFERRALS</h5>
+    <svg width="100%" height="64" viewBox="0 0 120 64"><g stroke="#2B2823" stroke-width="2.4"><ellipse cx="40" cy="30" rx="9" ry="6" fill="#F4B942"/><ellipse cx="76" cy="18" rx="9" ry="6" fill="#F4B942"/><ellipse cx="88" cy="42" rx="9" ry="6" fill="#F4B942"/><path d="M30 40 q-8 8 2 14 M66 28 q-10 2 -8 12" fill="none" opacity=".5"/></g></svg>
+    <div class="dim" style="font-size:14px">bees — multiply what's healthy</div>
+    <div class="mrow"><span class="lab money big" style="font-size:18px">$150</span><span class="step">−+</span><span class="val dim">×1.4</span></div>
+  </div>
+  <div class="pcard plot"><h5>OUTBOUND</h5>
+    <svg width="100%" height="64" viewBox="0 0 120 64"><g stroke="#2B2823" stroke-width="2.8" fill="none"><rect x="30" y="20" width="60" height="34" rx="4" fill="#DDBE8C"/><path d="M30 20 L60 6 L90 20" fill="#CBA96F"/><path d="M46 54 V38 h12 v16"/></g></svg>
+    <div class="dim" style="font-size:14px">the stall — staffed, certain, dear</div>
+    <div class="mrow"><span class="lab money big" style="font-size:18px">$250</span><span class="step">−+</span><span class="val dim">≈2</span></div>
+  </div>
+</div>
+<div style="margin-top:12px" class="footrules">four levers, four characters — ads pour, content compounds, referrals multiply, outbound knocks</div></div>
+  </div>
+</div>
+<p class="optnote"><b>Cut flowers, orchard, bees, the stall</b> — the boldest metaphor set. Charming and memorable; the riskiest for at-a-glance numbers.</p>
+<div class="footer">
+<p><b>All five:</b> money in columns, one coral story max, teaching foot, era cap visible, and the CONSUMER/ENTERPRISE verdict flips shown at the top render in-game as the same page with different verdicts and greyed-out levers. Answer with a letter — then the COSTS group.</p>
+</div>
+</div>

@@ -1,0 +1,320 @@
+<title>The Group Overviews</title>
+<style>
+@font-face{font-family:'Patrick';src:url(../../../game/assets/fonts/PatrickHand-Regular.ttf) format('truetype');font-display:block}
+@font-face{font-family:'Baloo';src:url(../../../game/assets/fonts/Baloo2-Bold.ttf) format('truetype');font-weight:700;font-display:block}
+:root{
+  --wall:#2A2722; --wall2:#332F28; --paper:#F2EAD3; --paper2:#F6F0DE; --card:#EFE6CE;
+  --kraft:#DDBE8C; --kraft2:#CBA96F; --alert:#D93425;
+  --ink:#2B2823; --ink6:rgba(43,40,35,.6); --ink4:rgba(43,40,35,.42); --ink25:rgba(43,40,35,.25);
+  --coral:#E86A5C; --sage:#8FA582; --blue:#6E8CA0; --yell:#F4B942;
+  --chrome:#D8D2C4; --chrome-dim:#A69E8D;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--wall);color:var(--chrome);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 0 90px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 26px}
+.topbar{position:sticky;top:0;z-index:50;background:linear-gradient(var(--wall) 82%,transparent);padding:18px 0 10px}
+.topbar .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-family:'Baloo';color:var(--paper);font-size:28px}
+.crumb{font-size:13px;color:var(--chrome-dim);letter-spacing:.1em}
+.jump{display:flex;gap:8px;margin-left:auto}
+.jump a{font-family:'Baloo';text-decoration:none;color:var(--wall);background:var(--paper);border-radius:10px 14px 11px 13px;padding:4px 13px;font-size:17px;border:2px solid var(--ink)}
+.jump a:hover{background:var(--yell)}
+.jump a:focus-visible{outline:3px solid var(--yell);outline-offset:2px}
+.lede{padding:24px 0 6px;max-width:900px}
+.lede p{margin:0 0 12px}
+.lede .how{border-left:4px solid var(--yell);padding:10px 16px;background:var(--wall2);border-radius:6px;margin-top:12px}
+.lede .how b{color:var(--paper)}
+section{margin:58px 0 0}
+.opt-head{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+.badge{font-family:'Baloo';font-size:38px;color:var(--wall);background:var(--yell);border:3px solid var(--ink);border-radius:14px 18px 15px 17px;padding:0 17px;line-height:1.45;transform:rotate(-1.2deg)}
+.opt-head h2{font-family:'Baloo';font-size:32px;color:var(--paper)}
+.thesis{font-family:'Patrick';font-size:20px;color:var(--yell);margin:2px 0 16px}
+.offs{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:20px 0 8px}
+.off{background:var(--wall2);border-radius:8px;padding:13px 16px}
+.off h4{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--chrome-dim);margin-bottom:6px}
+.off p{font-size:14.5px;color:var(--chrome)}
+.off.win h4{color:var(--sage)} .off.cost h4{color:var(--coral)} .off.pick h4{color:var(--yell)}
+@media(max-width:1100px){.offs{grid-template-columns:1fr}}
+.binder{position:relative;max-width:100%;display:flex;font-family:'Patrick';color:var(--ink);filter:drop-shadow(0 16px 34px rgba(0,0,0,.5))}
+.cover{flex:none;width:50px;background:var(--kraft);border:3px solid var(--ink);border-right:none;border-radius:16px 0 0 14px;position:relative;background-image:repeating-linear-gradient(115deg, rgba(43,40,35,.05) 0 3px, transparent 3px 9px)}
+.cover .sticker{position:absolute;top:26px;left:50%;transform:translateX(-50%) rotate(-90deg);white-space:nowrap;background:var(--paper2);border:2.2px solid var(--ink);border-radius:6px;padding:2px 12px;font-size:15px}
+.ringbar{flex:none;width:44px;background:var(--kraft2);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);display:flex;flex-direction:column;justify-content:space-around;align-items:center;padding:20px 0}
+.ring{width:32px;height:32px;border-radius:50%;border:3.4px solid var(--ink);position:relative}
+.ring::after{content:"";position:absolute;inset:6px;border-radius:50%;border:2.6px solid var(--ink);opacity:.45}
+.stack{flex:1;background:var(--paper);border:3px solid var(--ink);border-left:2.6px solid var(--ink);border-radius:0 14px 12px 0;display:flex;min-width:0;position:relative}
+.rail{flex:none;width:208px;padding:18px 8px 18px 22px}
+.divider{position:relative;margin:10px 0;border:2.6px solid var(--ink);border-radius:10px;background:var(--paper2)}
+.divider .tab{position:absolute;top:-2.6px;bottom:-2.6px;left:-16px;width:13px;border:2.6px solid var(--ink);border-radius:8px 0 0 8px}
+.tab.sage{background:var(--sage)}.tab.coral{background:var(--coral)}.tab.blue{background:var(--blue)}.tab.yell{background:var(--yell)}
+.tab.alerted{background:var(--alert)}
+.divider .dh{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:15.5px}
+.divider .dh .cnt{margin-left:auto;font-size:13px;color:var(--ink4);font-variant-numeric:tabular-nums}
+.divider.closed{background:var(--kraft);box-shadow:0 3px 0 -1px var(--kraft2), 0 6px 0 -2px rgba(43,40,35,.35)}
+.divider.open{background:var(--paper)}
+.divider.open .dh{border-bottom:2px solid var(--ink25);font-size:16.5px}
+.divider.sel .dh{background:var(--paper2);border-radius:7px 7px 0 0;box-shadow:inset 0 0 0 2.2px var(--ink)}
+.divider .pages{padding:6px 6px 9px}
+.ptab{display:flex;align-items:center;gap:7px;font-size:17px;padding:4px 9px;border-radius:8px;margin:2px 0}
+.ptab.on{background:var(--paper2);border:2.4px solid var(--ink);font-size:17.5px;box-shadow:1.5px 1.5px 0 rgba(43,40,35,.18)}
+.ptab .n{margin-left:auto;font-size:13px;color:var(--ink4);font-variant-numeric:tabular-nums}
+.abang{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--alert);border:2.4px solid var(--ink);color:#fff;font-family:'Baloo';font-size:15px;line-height:1;flex:none}
+.sheet{flex:1;min-width:0;padding:20px 24px 22px;border-left:2.4px solid var(--ink25);background:var(--paper);border-radius:0 12px 10px 0}
+.money{font-variant-numeric:tabular-nums;text-align:right}
+.big{font-family:'Baloo';line-height:1.05}
+.pos{color:#5D7A50}.neg{color:var(--coral)}
+.dim{color:var(--ink6)}.dimmer{color:var(--ink4)}.dim2{opacity:.6}
+.footrules{font-size:14.5px;color:var(--ink4)}
+.pcard{background:var(--card);border:2.4px solid var(--ink);border-radius:10px 8px 11px 9px;padding:12px 16px 14px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.pcard h5{font-size:14.5px;letter-spacing:.09em;color:var(--ink6);margin-bottom:8px;font-weight:400;display:flex}
+.pcard.go{cursor:default}
+.pcard.go:hover{box-shadow:2.5px 3px 0 rgba(43,40,35,.28)}
+.chev{margin-left:auto;color:var(--ink4);font-size:17px}
+.btnrow{border:2.4px solid var(--ink);border-radius:10px 8px 9px 11px;background:var(--paper2);padding:6px 14px;font-size:17px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.btnrow b{font-family:'Baloo';margin-left:6px}
+.flowbox{flex:1;border:2.6px solid var(--ink);border-radius:10px;background:var(--card);padding:12px 10px;text-align:center;display:flex;flex-direction:column;gap:2px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.flowbox b{font-family:'Baloo';font-size:20px}
+.flowbox span{font-size:15px;color:var(--ink6)}
+.arrow{width:34px;text-align:center;font-size:22px;color:var(--ink4)}
+.toc .tocrow{display:flex;align-items:baseline;gap:12px;padding:12px 4px;font-size:22px;border-bottom:2px solid var(--ink25)}
+.toc .tocname{font-size:24px}
+.toc .tocline{flex:1;border-bottom:3px dotted var(--ink25);transform:translateY(-6px)}
+.toc .tocstat{color:var(--ink6);font-size:18px;font-variant-numeric:tabular-nums}
+.footer{margin-top:64px;border-top:1px solid var(--wall2);padding-top:20px;color:var(--chrome-dim);font-size:14.5px}
+.footer b{color:var(--paper)}
+</style>
+
+<div class="topbar"><div class="wrap">
+<h1>The Group Overviews</h1><span class="crumb">NEW PAGE TYPE · offers = RATE CARD ✓ · customers = SCOREBOARD ✓</span>
+<nav class="jump"><a href="#ta">A</a><a href="#tb">B</a><a href="#tc">C</a><a href="#td">D</a><a href="#te">E</a></nav>
+</div></div>
+
+<div class="wrap">
+<div class="lede">
+<p>Your addition, designed: <b style="color:var(--paper)">pressing a divider's header opens the GROUP OVERVIEW</b> — the group's summary and graphs, with a button to every page inside (the rail highlights the header, no page tab selected). One pattern will serve all four groups: REVENUE demoed here; COSTS/COMPANY/LOG get the same treatment with their own numbers. Five ways to build it.</p>
+<div class="how"><b>Answer with a letter.</b> Then we resume the pages: pipeline next.</div>
+</div>
+
+<section id="ta">
+<div class="opt-head"><span class="badge">A</span><h2>The Dashboard Quartet</h2></div>
+<p class="thesis">One card per page, each card = that page's hero kept warm (big number + one line + micro-chart) — and the card IS the button.</p>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open sel"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">$2,140/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers<span class="n">2</span></div>
+          <div class="ptab">customers<span class="n">52</span></div>
+          <div class="ptab dim">pipeline</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral alerted"></span><div class="dh">COSTS <span class="abang">!</span><span class="cnt">$2,358/wk</span></div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY<span class="cnt">4</span></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG<span class="cnt">wk 14</span></div></div>
+    </div>
+    <div class="sheet"><div style="margin:2px 0 14px">
+  <div class="big pos" style="font-size:50px">$2,140 <span style="font-size:22px">a week in</span></div>
+  <div class="dim" style="font-size:18px">everything that brings money — press a card to work its page.</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div class="pcard go"><h5>OFFERS <span class="chev">→</span></h5>
+    <div class="big" style="font-size:32px">$35<span style="font-size:17px" class="dim"> margin / customer / wk</span></div>
+    <div class="dim" style="font-size:15px;margin-top:4px">2 on the shelf · both priced about fair</div>
+  </div>
+  <div class="pcard go"><h5>CUSTOMERS <span class="chev">→</span></h5>
+    <div style="display:flex;align-items:baseline;gap:12px"><span class="big" style="font-size:32px">52</span><span class="pos" style="font-size:19px">+8</span><span class="neg" style="font-size:19px">−2</span></div>
+    <div style="margin-top:2px"><svg width="100%" height="46" viewBox="0 0 300 46" preserveAspectRatio="none"><polyline points="0,36 40,35 80,36 120,30 160,26 200,27 240,18 300,12" fill="none" stroke="#6E8CA0" stroke-width="3"/><circle cx="300" cy="12" r="4.5" fill="#6E8CA0"/></svg></div>
+  </div>
+  <div class="pcard go" style="opacity:.66"><h5>PIPELINE <span class="chev">→</span></h5>
+    <div class="dim" style="font-size:17px;padding:10px 0">no named deals — enterprise runs only</div>
+  </div>
+  <div class="pcard go"><h5>GROWTH <span class="chev">→</span></h5>
+    <div class="big" style="font-size:32px">$81<span style="font-size:17px" class="dim"> to win a customer</span></div>
+    <div class="dim" style="font-size:15px;margin-top:4px">ads $400 + content $250 · pays back in 2 wks</div>
+  </div>
+</div>
+<div style="margin-top:12px" class="footrules">each card is its page's hero, kept warm — the group total lives up top</div></div>
+  </div>
+</div>
+<div class="offs">
+<div class="off win"><h4>What it wins</h4><p>Summary and navigation are the same object: read the group in four glances, press the one that needs you. Generalizes perfectly (COSTS: spend/team/bills/bank cards).</p></div>
+<div class="off cost"><h4>What it costs</h4><p>Four heroes compete; no single group-level chart gets real size.</p></div>
+<div class="off pick"><h4>Choose if</h4><p>You want the overview to be a true dashboard — every page's pulse visible at once.</p></div>
+</div>
+</section>
+<section id="tb">
+<div class="opt-head"><span class="badge">B</span><h2>The One Chart</h2></div>
+<p class="thesis">The group's own graph is the hero at full width; the pages ride below as buttons carrying their single number.</p>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open sel"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">$2,140/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers<span class="n">2</span></div>
+          <div class="ptab">customers<span class="n">52</span></div>
+          <div class="ptab dim">pipeline</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral alerted"></span><div class="dh">COSTS <span class="abang">!</span><span class="cnt">$2,358/wk</span></div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY<span class="cnt">4</span></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG<span class="cnt">wk 14</span></div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:baseline;gap:18px;margin:2px 0 6px">
+  <div class="big pos" style="font-size:48px">$2,140<span style="font-size:22px"> a week in</span></div>
+  <span class="pos" style="font-size:18px">▲ +$310 vs last week</span>
+</div>
+<div class="pcard" style="padding:14px 18px 10px">
+  <svg width="100%" height="120" viewBox="0 0 900 120" preserveAspectRatio="none">
+    <polyline points="0,104 70,100 140,102 210,88 280,74 350,76 420,58 490,44 560,46 630,34 720,24 900,14" fill="none" stroke="#8FA582" stroke-width="4"/>
+    <circle cx="900" cy="14" r="6" fill="#8FA582"/>
+  </svg>
+  <div class="dimmer" style="font-size:13px">revenue, all 14 weeks — the endpoint is this week</div>
+</div>
+<div style="display:flex;gap:14px;margin-top:14px">
+  <span class="btnrow">offers <b>$35/cust</b></span>
+  <span class="btnrow">customers <b>52 +8</b></span>
+  <span class="btnrow dim2">pipeline <b>—</b></span>
+  <span class="btnrow">growth <b>CAC $81</b></span>
+</div>
+<div style="margin-top:12px" class="footrules">the group graph first; the buttons carry each page's one number</div></div>
+  </div>
+</div>
+<div class="offs">
+<div class="off win"><h4>What it wins</h4><p>The group's TREND gets the size no page can give it — revenue over the whole run, endpoint marked. Cleanest hierarchy of the five.</p></div>
+<div class="off cost"><h4>What it costs</h4><p>Page summaries compress to one number each; a second glance costs a press.</p></div>
+<div class="off pick"><h4>Choose if</h4><p>Trend-first thinking should greet every group — the graphs are why the overview exists.</p></div>
+</div>
+</section>
+<section id="tc">
+<div class="opt-head"><span class="badge">C</span><h2>The Flow Summary</h2></div>
+<p class="thesis">The group drawn as its own machine: spend → customers → offers → revenue, each box live with its numbers — press a box to open its page.</p>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open sel"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">$2,140/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers<span class="n">2</span></div>
+          <div class="ptab">customers<span class="n">52</span></div>
+          <div class="ptab dim">pipeline</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral alerted"></span><div class="dh">COSTS <span class="abang">!</span><span class="cnt">$2,358/wk</span></div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY<span class="cnt">4</span></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG<span class="cnt">wk 14</span></div></div>
+    </div>
+    <div class="sheet"><div style="margin:2px 0 14px">
+  <div class="big pos" style="font-size:46px">$2,140 <span style="font-size:22px">a week in</span></div>
+  <div class="dim" style="font-size:17px">how the money happens — press any box.</div>
+</div>
+<div style="display:flex;align-items:center;gap:0;margin:10px 0">
+  <div class="flowbox go"><b>GROWTH</b><span>$650 buys ≈10 leads</span><span class="dimmer" style="font-size:13px">CAC $81</span></div>
+  <div class="arrow">→</div>
+  <div class="flowbox go"><b>CUSTOMERS</b><span>52 on the books</span><span class="dimmer" style="font-size:13px">+8 · −2 this week</span></div>
+  <div class="arrow">→</div>
+  <div class="flowbox go"><b>OFFERS</b><span>pay $41/wk each</span><span class="dimmer" style="font-size:13px">margin $35</span></div>
+  <div class="arrow">→</div>
+  <div class="flowbox" style="background:var(--sage);color:#fff"><b>$2,140</b><span style="color:rgba(255,255,255,.85)">a week in</span></div>
+</div>
+<div style="display:flex;justify-content:center"><span class="btnrow dim2">pipeline — no named deals yet</span></div>
+<div style="margin-top:12px" class="footrules">the machine drawn: spend makes customers, customers × offers make revenue</div></div>
+  </div>
+</div>
+<div class="offs">
+<div class="off win"><h4>What it wins</h4><p>Teaches how the pages RELATE — the overview becomes the mental model of the group, not just its totals. COSTS version: levers → bills → burn.</p></div>
+<div class="off cost"><h4>What it costs</h4><p>The diagram must be authored per group (four bespoke drawings); hardest to extend when a group gains a page.</p></div>
+<div class="off pick"><h4>Choose if</h4><p>The north star is understanding the machine, and you'll spend the craft on four drawings.</p></div>
+</div>
+</section>
+<section id="td">
+<div class="opt-head"><span class="badge">D</span><h2>The Table of Contents</h2></div>
+<p class="thesis">A chapter TOC: the group number and spark up top, then a dotted-rule index — page name, its one stat, a chevron.</p>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open sel"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">$2,140/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers<span class="n">2</span></div>
+          <div class="ptab">customers<span class="n">52</span></div>
+          <div class="ptab dim">pipeline</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral alerted"></span><div class="dh">COSTS <span class="abang">!</span><span class="cnt">$2,358/wk</span></div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY<span class="cnt">4</span></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG<span class="cnt">wk 14</span></div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:baseline;gap:18px;margin:2px 0 16px">
+  <div class="big pos" style="font-size:48px">$2,140<span style="font-size:22px"> a week in</span></div>
+  <div style="margin-left:auto;width:250px"><svg width="100%" height="46" viewBox="0 0 300 46" preserveAspectRatio="none"><polyline points="0,40 40,38 75,39 110,32 145,27 180,28 215,20 260,14 300,9" fill="none" stroke="#8FA582" stroke-width="3"/><circle cx="300" cy="9" r="4.5" fill="#8FA582"/></svg></div>
+</div>
+<div class="toc">
+  <div class="tocrow go"><span class="tocname">offers</span><span class="tocline"></span><span class="tocstat">$35 margin / customer</span><span class="chev">→</span></div>
+  <div class="tocrow go"><span class="tocname">customers</span><span class="tocline"></span><span class="tocstat">52 · +8 −2</span><span class="chev">→</span></div>
+  <div class="tocrow go dim2"><span class="tocname">pipeline</span><span class="tocline"></span><span class="tocstat">enterprise only</span><span class="chev">→</span></div>
+  <div class="tocrow go"><span class="tocname">growth</span><span class="tocline"></span><span class="tocstat">CAC $81 · pays back 2 wks</span><span class="chev">→</span></div>
+</div>
+<div style="margin-top:14px" class="footrules">a chapter's table of contents: name, dotted rule, the page's one number</div></div>
+  </div>
+</div>
+<div class="offs">
+<div class="off win"><h4>What it wins</h4><p>Calmest and most binder-native (a section's index page); scales to any page count; fastest to scan as a list.</p></div>
+<div class="off cost"><h4>What it costs</h4><p>No drawn shapes beyond the spark — the least dashboard of the five.</p></div>
+<div class="off pick"><h4>Choose if</h4><p>You want the overview quiet and bookish, a real index page in the binder fantasy.</p></div>
+</div>
+</section>
+<section id="te">
+<div class="opt-head"><span class="badge">E</span><h2>The Briefing</h2></div>
+<p class="thesis">The founder's own paragraph: two sentences where every number is big, bold and live — then the page buttons.</p>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open sel"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">$2,140/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers<span class="n">2</span></div>
+          <div class="ptab">customers<span class="n">52</span></div>
+          <div class="ptab dim">pipeline</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral alerted"></span><div class="dh">COSTS <span class="abang">!</span><span class="cnt">$2,358/wk</span></div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY<span class="cnt">4</span></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG<span class="cnt">wk 14</span></div></div>
+    </div>
+    <div class="sheet"><div style="margin:2px 0 12px">
+  <div class="big pos" style="font-size:46px">$2,140 <span style="font-size:22px">a week in</span></div>
+</div>
+<div style="font-size:22px;line-height:1.65;max-width:820px">
+  <b class="big" style="font-size:26px">52 customers</b> pay about <b class="big" style="font-size:26px">$41</b> each —
+  <b class="big" style="font-size:26px">$35</b> of it is margin after serving. You spend
+  <b class="big" style="font-size:26px">$650</b> a week finding more; each new one costs
+  <b class="big" style="font-size:26px">$81</b> and pays that back in
+  <b class="big" style="font-size:26px">2 weeks</b>. Six more and the whole company breaks even.
+</div>
+<div style="display:flex;gap:14px;margin-top:18px">
+  <span class="btnrow">offers →</span><span class="btnrow">customers →</span><span class="btnrow dim2">pipeline →</span><span class="btnrow">growth →</span>
+</div>
+<div style="margin-top:12px" class="footrules">the brief reads like the founder explaining their own numbers — every bold number is live</div></div>
+  </div>
+</div>
+<div class="offs">
+<div class="off win"><h4>What it wins</h4><p>The most teaching-native: the overview literally SAYS what the numbers mean, in the game's voice. Weekly change rewrites the sentence.</p></div>
+<div class="off cost"><h4>What it costs</h4><p>Prose ages fast if numbers are flat; hardest to keep short with big groups.</p></div>
+<div class="off pick"><h4>Choose if</h4><p>The narrative voice is the product — the binder should talk to the founder.</p></div>
+</div>
+</section>
+<div class="footer">
+<p><b>Wiring, all five:</b> divider header press = overview (header shows a pressed inset); the group's bang items surface on the overview with their red tabs; the overview is also where the tour lands per section. After your letter: <b>pipeline</b>, then growth, then the COSTS pages.</p>
+</div>
+</div>

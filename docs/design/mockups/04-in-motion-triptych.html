@@ -1,0 +1,525 @@
+<title>In Motion, Three Worlds</title>
+<style>
+@font-face{font-family:'Patrick';src:url(../../../game/assets/fonts/PatrickHand-Regular.ttf) format('truetype');font-display:block}
+@font-face{font-family:'Baloo';src:url(../../../game/assets/fonts/Baloo2-Bold.ttf) format('truetype');font-weight:700;font-display:block}
+:root{
+  --wall:#2A2722; --wall2:#332F28; --paper:#F2EAD3; --paper2:#F6F0DE; --card:#EFE6CE;
+  --kraft:#DDBE8C; --kraft2:#CBA96F; --alert:#D93425;
+  --ink:#2B2823; --ink6:rgba(43,40,35,.6); --ink4:rgba(43,40,35,.42); --ink25:rgba(43,40,35,.25);
+  --coral:#E86A5C; --sage:#8FA582; --blue:#6E8CA0; --yell:#F4B942;
+  --chrome:#D8D2C4; --chrome-dim:#A69E8D;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--wall);color:var(--chrome);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 0 90px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 26px}
+.topbar{position:sticky;top:0;z-index:50;background:linear-gradient(var(--wall) 82%,transparent);padding:18px 0 10px}
+.topbar .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-family:'Baloo';color:var(--paper);font-size:28px}
+.crumb{font-size:12.5px;color:var(--chrome-dim);letter-spacing:.08em}
+.jump{display:flex;gap:8px;margin-left:auto}
+.jump a{font-family:'Baloo';text-decoration:none;color:var(--wall);background:var(--paper);border-radius:10px 14px 11px 13px;padding:4px 13px;font-size:16px;border:2px solid var(--ink)}
+.jump a:hover{background:var(--yell)}
+.jump a:focus-visible{outline:3px solid var(--yell);outline-offset:2px}
+.lede{padding:24px 0 6px;max-width:920px}
+.lede p{margin:0 0 12px}
+.lede .how{border-left:4px solid var(--yell);padding:10px 16px;background:var(--wall2);border-radius:6px;margin-top:12px}
+.lede .how b{color:var(--paper)}
+.audhead{margin:64px 0 0;padding:14px 20px;border-radius:10px;background:var(--wall2);display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+.audhead h2{font-family:'Baloo';font-size:30px}
+.audhead .q{font-family:'Patrick';font-size:19px;color:var(--yell)}
+.audhead.cons h2{color:var(--sage)}.audhead.smb h2{color:var(--yell)}.audhead.ent h2{color:var(--blue)}
+.opt-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.badge{font-family:'Baloo';color:var(--wall);background:var(--yell);border:3px solid var(--ink);border-radius:12px 15px 13px 14px;padding:0 14px;line-height:1.45;transform:rotate(-1.2deg)}
+.opt-head h2{font-family:'Baloo';color:var(--paper)}
+.optnote{font-size:14.5px;color:var(--chrome-dim);margin:10px 0 0;max-width:900px}
+.optnote b{color:var(--chrome)}
+.binder{position:relative;max-width:100%;display:flex;font-family:'Patrick';color:var(--ink);filter:drop-shadow(0 14px 30px rgba(0,0,0,.5))}
+.cover{flex:none;width:50px;background:var(--kraft);border:3px solid var(--ink);border-right:none;border-radius:16px 0 0 14px;position:relative;background-image:repeating-linear-gradient(115deg, rgba(43,40,35,.05) 0 3px, transparent 3px 9px)}
+.cover .sticker{position:absolute;top:26px;left:50%;transform:translateX(-50%) rotate(-90deg);white-space:nowrap;background:var(--paper2);border:2.2px solid var(--ink);border-radius:6px;padding:2px 12px;font-size:15px}
+.ringbar{flex:none;width:44px;background:var(--kraft2);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);display:flex;flex-direction:column;justify-content:space-around;align-items:center;padding:20px 0}
+.ring{width:32px;height:32px;border-radius:50%;border:3.4px solid var(--ink);position:relative}
+.ring::after{content:"";position:absolute;inset:6px;border-radius:50%;border:2.6px solid var(--ink);opacity:.45}
+.stack{flex:1;background:var(--paper);border:3px solid var(--ink);border-left:2.6px solid var(--ink);border-radius:0 14px 12px 0;display:flex;min-width:0;position:relative}
+.rail{flex:none;width:196px;padding:18px 8px 18px 22px}
+.divider{position:relative;margin:10px 0;border:2.6px solid var(--ink);border-radius:10px;background:var(--paper2)}
+.divider .tab{position:absolute;top:-2.6px;bottom:-2.6px;left:-16px;width:13px;border:2.6px solid var(--ink);border-radius:8px 0 0 8px}
+.tab.sage{background:var(--sage)}.tab.coral{background:var(--coral)}.tab.blue{background:var(--blue)}.tab.yell{background:var(--yell)}
+.divider .dh{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:15px}
+.divider .dh .cnt{margin-left:auto;font-size:12.5px;color:var(--ink4)}
+.divider.closed{background:var(--kraft);box-shadow:0 3px 0 -1px var(--kraft2), 0 6px 0 -2px rgba(43,40,35,.35)}
+.divider.open{background:var(--paper)}
+.divider.open .dh{border-bottom:2px solid var(--ink25)}
+.divider .pages{padding:6px 6px 9px}
+.ptab{display:flex;align-items:center;gap:7px;font-size:16.5px;padding:4px 9px;border-radius:8px;margin:2px 0}
+.ptab.on{background:var(--paper2);border:2.4px solid var(--ink);box-shadow:1.5px 1.5px 0 rgba(43,40,35,.18)}
+.sheet{flex:1;min-width:0;padding:20px 24px 22px;border-left:2.4px solid var(--ink25);background:var(--paper);border-radius:0 12px 10px 0}
+.money{font-variant-numeric:tabular-nums;text-align:right}
+.big{font-family:'Baloo';line-height:1.05}
+.pos{color:#5D7A50}.neg{color:var(--coral)}
+.dim{color:var(--ink6)}.dimmer{color:var(--ink4)}.dim2{opacity:.62}.dim3{opacity:.5}
+.footrules{font-size:14.5px;color:var(--ink4)}
+.pcard{background:var(--card);border:2.4px solid var(--ink);border-radius:10px 8px 11px 9px;padding:12px 16px 14px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.pcard h5{font-size:14.5px;letter-spacing:.09em;color:var(--ink6);margin-bottom:8px;font-weight:400;display:flex;align-items:center}
+.mrow{display:flex;align-items:center;gap:10px;padding:4.5px 0}
+.mrow .lab{flex:1}.mrow .val{width:104px}
+.hw{color:#B8860B;font-style:normal}.hh{color:#5D7A50;font-style:normal}.hc{color:var(--blue);font-style:normal}
+.clock{display:inline-block;background:var(--alert);color:#fff;border:2.2px solid var(--ink);border-radius:8px;padding:0 8px;font-size:13.5px}
+.srow{display:flex;align-items:center;gap:12px;margin:8px 0}
+.sl{width:150px;font-size:16.5px}
+.sbar{flex:1;display:flex;height:18px}
+.sfill{background:var(--sage);border:2.2px solid var(--ink);border-radius:5px}
+.sv{width:36px;font-size:16px;color:var(--ink6);text-align:right;font-variant-numeric:tabular-nums}
+.wk{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
+.wk.now .wkl{color:var(--ink)}
+.wkbar{width:100%;display:flex;flex-direction:column-reverse;border:2.3px solid var(--ink);border-radius:5px;overflow:hidden}
+.wkbar span{display:block}
+.seg1{background:var(--sage)}.seg2{background:var(--yell)}.seg3{background:var(--blue)}
+.wkl{font-size:14px;color:var(--ink6)}
+.dotk{display:inline-block;width:12px;height:12px;border:2px solid var(--ink);border-radius:4px;vertical-align:-2px}
+.scorebox{flex:1;border:2.6px solid var(--ink);border-radius:10px;background:var(--card);text-align:center;padding:10px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.hrow{display:flex;align-items:center;gap:12px;font-size:18px;padding:8px 2px;border-bottom:2px solid var(--ink25)}
+.hrow:last-child{border-bottom:none}
+.hn{font-family:'Baloo';width:22px;color:var(--ink4)}
+.hrow b{font-family:'Patrick';font-size:19px}
+.hd{color:var(--ink6);font-size:15px;flex:1}
+.hval{width:104px;font-size:16px;color:var(--ink6)}
+.fmouth{border:2.8px solid var(--ink);border-radius:8px;background:var(--paper2);padding:7px 12px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.fmlab{font-size:13px;letter-spacing:.08em;color:var(--ink4);flex:none}
+.fdeal{border:2.3px solid var(--ink);border-radius:9px;background:var(--card);padding:2px 10px;font-size:15.5px;box-shadow:1.5px 1.5px 0 rgba(43,40,35,.18)}
+.fdeal.alerted2{border-color:var(--alert);border-width:2.6px}
+.fdeal.dimchip{background:var(--paper2);box-shadow:none;color:var(--ink6)}
+.door{width:44px;height:64px;border:2.8px solid var(--ink);border-radius:8px 8px 0 0;background:var(--kraft);position:relative;flex:none}
+.door::after{content:"";position:absolute;right:6px;top:50%;width:6px;height:6px;border-radius:50%;background:var(--ink)}
+.shop{border:2.5px solid var(--ink);border-radius:7px 7px 0 0;background:var(--card);padding:6px 10px 4px;font-size:14.5px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.shop.big2{font-size:16.5px;padding:12px 12px 8px}
+.shop.sm3{color:var(--ink6)}
+.crowd{color:var(--ink4);font-size:15px;padding-bottom:4px}
+.stagedots{display:flex;align-items:center;gap:6px;margin-top:8px}
+.sd{width:15px;height:15px;border-radius:50%;border:2.4px solid var(--ink);background:var(--paper2)}
+.sd.done{background:var(--sage)}.sd.on{background:var(--yell)}
+.colhead{border:2.6px solid var(--ink);background:var(--paper2);border-radius:6px;text-align:center;font-size:14.5px;padding:4px 0;margin-bottom:8px;letter-spacing:.06em;width:100%}
+.deal{border:2.4px solid var(--ink);border-radius:9px;background:var(--card);padding:8px 10px;margin:6px 0;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.deal b{font-size:17.5px;display:block}
+.deal span{font-size:14px;color:var(--ink6);display:block;margin-top:2px}
+.deal.cold{opacity:.72}
+.deal.alertd{border-color:var(--alert);border-width:2.8px}
+.drow{display:grid;grid-template-columns:1.8fr 1fr .8fr .8fr .8fr 1fr;align-items:center;font-size:18px;padding:9px 0;border-bottom:2px solid var(--ink25)}
+.footer{margin-top:64px;border-top:1px solid var(--wall2);padding-top:20px;color:var(--chrome-dim);font-size:14.5px}
+.footer b{color:var(--paper)}
+</style>
+
+<div class="topbar"><div class="wrap">
+<h1>In Motion, Three Worlds</h1><span class="crumb">TAB 3 / 15 · ONE PICK PER AUDIENCE</span>
+<nav class="jump"><a href="#cons">Consumer</a><a href="#smb">SMB</a><a href="#ent">Enterprise</a></nav>
+</div></div>
+
+<div class="wrap">
+<div class="lede">
+<p>Agreed — density-scaling was still one-size-fits-all. The tab is now <b style="color:var(--paper)">audience-specialized</b>: when a run is born Consumer, SMB or Enterprise, IN MOTION is built as that world's own page — sharing only the hero grammar, the rail and the red system. Below: three candidates per world. <b style="color:var(--paper)">Pick one letter per audience</b> (e.g. "C1 · S1 · E3"). This triptych ruling will guide the later desks too — wherever a page's truth differs by audience, it gets native variants, not a stretched one.</p>
+<div class="how"><b>Answer like "C2 · S1 · E1".</b> Then: growth (also a triptych candidate), then COSTS.</div>
+</div>
+
+<div class="audhead cons" id="cons"><h2>CONSUMER</h2><span class="q">nobody has a name until they pay — the page is about rates, sources and word of mouth</span></div>
+
+<div class="opt-head" style="margin-top:34px"><span class="badge" style="font-size:30px">C1</span><h2 style="font-size:27px">The Sources Board</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">38/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers</div>
+          <div class="ptab">customers</div>
+          <div class="ptab on">in motion</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:48px">38 <span style="font-size:23px">joining a week</span> <span class="pos" style="font-size:22px">▲ +6</span></div>
+    <div class="dim" style="font-size:17.5px">consumer, week 22 — the free week converts 15%, and joiners bring friends.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">each joiner brings <b class="big" style="font-size:23px">0.3</b> more</div>
+    <div class="dim" style="font-size:14.5px">word of mouth, measured</div>
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:1.25fr 1fr;gap:16px">
+  <div class="pcard"><h5>WHERE THEY COME FROM — this week's 38</h5>
+    <div class="srow"><span class="sl">the campus post</span><div class="sbar"><span style="flex:16" class="sfill"></span></div><span class="sv">16</span></div>
+    <div class="srow"><span class="sl">friends' invites</span><div class="sbar"><span style="flex:11" class="sfill" ></span></div><span class="sv">11</span></div>
+    <div class="srow"><span class="sl">the ads</span><div class="sbar"><span style="flex:8" class="sfill"></span></div><span class="sv">8</span></div>
+    <div class="srow"><span class="sl">wandered in</span><div class="sbar"><span style="flex:3" class="sfill dim3"></span></div><span class="sv">3</span></div>
+  </div>
+  <div class="pcard"><h5>THE TASTE TEST</h5>
+    <div class="mrow" style="font-size:18px"><span class="lab">tried the free week</span><span class="val money">260</span></div>
+    <div class="mrow" style="font-size:18px"><span class="lab">stayed when it ended</span><span class="val money">15%</span></div>
+    <div class="mrow" style="font-size:18px;border-top:2px solid var(--ink25)"><span class="lab">a point of conversion ≈</span><span class="val money pos">+2.6/wk</span></div>
+    <div class="dimmer" style="font-size:13.5px;margin-top:6px">care and product quality move this number — ads can't</div>
+  </div>
+</div>
+<div style="margin-top:12px" class="footrules">a consumer pipeline is sources × conversion — nobody has a name until they pay</div></div>
+  </div>
+</div>
+<p class="optnote"><b>Where they come from + the taste test.</b> Sources ranked as drawn bars; conversion isolated in its own card with the honest note that ads can't move it. The most explanatory.</p>
+<div class="opt-head" style="margin-top:34px"><span class="badge" style="font-size:30px">C2</span><h2 style="font-size:27px">The Cohort River</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">38/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers</div>
+          <div class="ptab">customers</div>
+          <div class="ptab on">in motion</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:48px">38 <span style="font-size:23px">joining a week</span> <span class="pos" style="font-size:22px">▲ +6</span></div>
+    <div class="dim" style="font-size:17.5px">consumer, week 22 — the free week converts 15%, and joiners bring friends.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">each joiner brings <b class="big" style="font-size:23px">0.3</b> more</div>
+    <div class="dim" style="font-size:14.5px">word of mouth, measured</div>
+  </div>
+</div>
+<div class="pcard" style="padding:14px 18px"><h5>THE WEEKS FLOW IN — each bar is one week's joiners, colored by where they came from</h5>
+  <div style="display:flex;align-items:flex-end;gap:9px;height:130px;padding:6px 2px 0">
+    <div class="wk"><div class="wkbar" style="height:44px"><span style="flex:5" class="seg1"></span><span style="flex:3" class="seg2"></span><span style="flex:2" class="seg3"></span></div><span class="wkl">19</span></div>
+    <div class="wk"><div class="wkbar" style="height:52px"><span style="flex:6" class="seg1"></span><span style="flex:4" class="seg2"></span><span style="flex:2" class="seg3"></span></div><span class="wkl">22</span></div>
+    <div class="wk"><div class="wkbar" style="height:64px"><span style="flex:7" class="seg1"></span><span style="flex:5" class="seg2"></span><span style="flex:3" class="seg3"></span></div><span class="wkl">26</span></div>
+    <div class="wk"><div class="wkbar" style="height:60px"><span style="flex:6" class="seg1"></span><span style="flex:6" class="seg2"></span><span style="flex:2" class="seg3"></span></div><span class="wkl">25</span></div>
+    <div class="wk"><div class="wkbar" style="height:76px"><span style="flex:8" class="seg1"></span><span style="flex:7" class="seg2"></span><span style="flex:3" class="seg3"></span></div><span class="wkl">32</span></div>
+    <div class="wk"><div class="wkbar" style="height:86px"><span style="flex:9" class="seg1"></span><span style="flex:8" class="seg2"></span><span style="flex:3" class="seg3"></span></div><span class="wkl">35</span></div>
+    <div class="wk now"><div class="wkbar" style="height:94px"><span style="flex:16" class="seg1"></span><span style="flex:11" class="seg2"></span><span style="flex:11" class="seg3"></span></div><span class="wkl"><b>38</b></span></div>
+  </div>
+  <div class="dimmer" style="font-size:13.5px;margin-top:8px"><span class="dotk seg1"></span> posts &amp; press · <span class="dotk seg2"></span> friends · <span class="dotk seg3"></span> ads &amp; walk-ins</div>
+</div>
+<div style="margin-top:12px" class="footrules">the river rises when word of mouth does — friends are the middle color</div></div>
+  </div>
+</div>
+<p class="optnote"><b>Weekly joiner bars, colored by origin.</b> The river rising (and the friends-color widening) IS the story of a consumer app; trend and mix in one drawing. The most beautiful.</p>
+<div class="opt-head" style="margin-top:34px"><span class="badge" style="font-size:30px">C3</span><h2 style="font-size:27px">The Pulse</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">38/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers</div>
+          <div class="ptab">customers</div>
+          <div class="ptab on">in motion</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:48px">38 <span style="font-size:23px">joining a week</span> <span class="pos" style="font-size:22px">▲ +6</span></div>
+    <div class="dim" style="font-size:17.5px">consumer, week 22 — the free week converts 15%, and joiners bring friends.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">each joiner brings <b class="big" style="font-size:23px">0.3</b> more</div>
+    <div class="dim" style="font-size:14.5px">word of mouth, measured</div>
+  </div>
+</div>
+<div class="pcard" style="padding:14px 18px 10px">
+  <svg width="100%" height="110" viewBox="0 0 900 110" preserveAspectRatio="none">
+    <polyline points="0,92 90,88 180,90 270,78 360,66 450,68 540,52 630,40 720,42 810,26 900,18" fill="none" stroke="#8FA582" stroke-width="4"/>
+    <circle cx="900" cy="18" r="6" fill="#8FA582"/>
+  </svg>
+  <div class="dimmer" style="font-size:13px">joiners a week, the whole run — the pulse of the app</div>
+</div>
+<div style="display:flex;gap:14px;margin-top:14px">
+  <div class="scorebox"><div class="big" style="font-size:30px">28%</div><div class="dim" style="font-size:13.5px">curious → try</div></div>
+  <div class="scorebox"><div class="big" style="font-size:30px">15%</div><div class="dim" style="font-size:13.5px">try → pay</div></div>
+  <div class="scorebox"><div class="big" style="font-size:30px">0.3</div><div class="dim" style="font-size:13.5px">friends brought</div></div>
+  <div class="pcard" style="flex:2;padding:8px 14px"><h5 style="margin-bottom:3px">WORKING / STALLING</h5>
+    <div style="font-size:15.5px"><span class="pos">▲</span> the campus post — 16 this week alone</div>
+    <div style="font-size:15.5px"><span class="neg">▼</span> ads bring the curious, not the convinced (12% try)</div>
+  </div>
+</div>
+<div style="margin-top:12px" class="footrules">one pulse line, three rates, one verdict — a consumer growth page in a glance</div></div>
+  </div>
+</div>
+<p class="optnote"><b>One pulse line + three rates + working/stalling.</b> The most dashboard-like; rhymes with customers=Scoreboard. The fastest read.</p>
+<div class="audhead smb" id="smb"><h2>SMB</h2><span class="q">a hybrid world — name the five worth a dinner, count the forty that aren't</span></div>
+
+<div class="opt-head" style="margin-top:34px"><span class="badge" style="font-size:30px">S1</span><h2 style="font-size:27px">The Hot List</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">44 live</span></div>
+        <div class="pages">
+          <div class="ptab">offers</div>
+          <div class="ptab">customers</div>
+          <div class="ptab on">in motion</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:46px">44 in motion <span style="font-size:22px" class="dim">· ≈9 will land</span></div>
+    <div class="dim" style="font-size:17.5px">SMB, week 22 — dozens of small shops, a handful worth chasing by name.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">close rate <b class="big" style="font-size:22px">29%</b> · takes <b class="big" style="font-size:22px">3 wks</b></div>
+  </div>
+</div>
+<div class="pcard" style="padding:12px 18px"><h5>CLOSEST TO MONEY</h5>
+  <div class="hrow"><span class="hn">1</span><b>Hotel Lys</b><span class="hd">6 seats · closing</span><span class="clock">1 wk</span><span class="hval money">≈$246/wk</span></div>
+  <div class="hrow"><span class="hn">2</span><b>Café Verde</b><span class="hd">2 seats · talking, <i class="hh">hot</i></span><span></span><span class="hval money">≈$82/wk</span></div>
+  <div class="hrow"><span class="hn">3</span><b>Ferry Books</b><span class="hd">3 seats · in trial</span><span></span><span class="hval money">≈$123/wk</span></div>
+  <div class="hrow"><span class="hn">4</span><b>Studio Nord</b><span class="hd">5 seats · talking, <i class="hw">warm</i></span><span></span><span class="hval money">≈$205/wk</span></div>
+  <div class="hrow dim2"><span class="hn">·</span><b>the other 40</b><span class="hd">small shops moving on their own — ≈5 land weekly</span><span></span><span class="hval money">≈$210/wk</span></div>
+</div>
+<div style="margin-top:12px" class="footrules">SMB is a hybrid: name the five that deserve a dinner, count the forty that don't</div></div>
+  </div>
+</div>
+<p class="optnote"><b>Ranked by revenue-if-landed × closeness.</b> Rank 1 is this week's journal move; the unnamed crowd is honestly one row. The most actionable.</p>
+<div class="opt-head" style="margin-top:34px"><span class="badge" style="font-size:30px">S2</span><h2 style="font-size:27px">The Mixed Funnel</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">44 live</span></div>
+        <div class="pages">
+          <div class="ptab">offers</div>
+          <div class="ptab">customers</div>
+          <div class="ptab on">in motion</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:46px">44 in motion <span style="font-size:22px" class="dim">· ≈9 will land</span></div>
+    <div class="dim" style="font-size:17.5px">SMB, week 22 — dozens of small shops, a handful worth chasing by name.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">close rate <b class="big" style="font-size:22px">29%</b> · takes <b class="big" style="font-size:22px">3 wks</b></div>
+  </div>
+</div>
+<div style="display:flex;flex-direction:column;gap:7px;align-items:center">
+  <div class="fmouth" style="width:100%"><span class="fmlab">TALKING · 31</span>
+    <span class="fdeal">Café Verde <i class="hh">hot</i></span><span class="fdeal">Studio Nord <i class="hw">warm</i></span><span class="fdeal dimchip">+29 smaller</span></div>
+  <div class="fmouth" style="width:72%"><span class="fmlab">TRYING · 9</span><span class="fdeal">Ferry Books</span><span class="fdeal dimchip">+8 in trials</span></div>
+  <div class="fmouth" style="width:44%"><span class="fmlab">CLOSING · 4</span><span class="fdeal alerted2">Hotel Lys <span class="clock">1 wk</span></span><span class="fdeal dimchip">+3</span></div>
+  <div class="fmouth" style="width:28%;background:var(--sage)"><span class="fmlab" style="color:#fff">LANDED · 11 last wk</span></div>
+</div>
+<div style="margin-top:12px" class="footrules">the funnel carries both kinds: chips for the named, counts for the crowd</div></div>
+  </div>
+</div>
+<p class="optnote"><b>Stage mouths holding chips AND counts.</b> Structure visible, names where they matter. The most systematic.</p>
+<div class="opt-head" style="margin-top:34px"><span class="badge" style="font-size:30px">S3</span><h2 style="font-size:27px">The High Street</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">44 live</span></div>
+        <div class="pages">
+          <div class="ptab">offers</div>
+          <div class="ptab">customers</div>
+          <div class="ptab on">in motion</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:46px">44 in motion <span style="font-size:22px" class="dim">· ≈9 will land</span></div>
+    <div class="dim" style="font-size:17.5px">SMB, week 22 — dozens of small shops, a handful worth chasing by name.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">close rate <b class="big" style="font-size:22px">29%</b> · takes <b class="big" style="font-size:22px">3 wks</b></div>
+  </div>
+</div>
+<div class="pcard" style="padding:16px 20px"><h5>OUTSIDE THE DOOR</h5>
+<div style="display:flex;align-items:flex-end;gap:10px">
+  <div class="door"></div>
+  <span class="shop big2" style="border-color:var(--alert)">Hotel Lys<span class="clock" style="font-size:11px">1wk</span></span>
+  <span class="shop">Café Verde</span><span class="shop">Ferry Books</span><span class="shop">Studio Nord</span>
+  <span class="shop sm3">×7 more</span><span class="crowd">+29 in line</span>
+</div>
+<div class="dimmer" style="font-size:14px;margin-top:8px">closest to the door = closest to money · the crowd lands ≈5 a week on its own</div>
+</div>
+<div style="margin-top:12px" class="footrules">a high street of little shops — the ones at the door get your week</div></div>
+  </div>
+</div>
+<p class="optnote"><b>Shopfronts queued at your door.</b> The most charming; size and closeness carry the data. Art-directed density.</p>
+<div class="audhead ent" id="ent"><h2>ENTERPRISE</h2><span class="q">four buyers, four names, four dinners — every deal is a relationship</span></div>
+
+<div class="opt-head" style="margin-top:34px"><span class="badge" style="font-size:30px">E1</span><h2 style="font-size:27px">The Courtship Cards</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">126 seats</span></div>
+        <div class="pages">
+          <div class="ptab">offers</div>
+          <div class="ptab">customers</div>
+          <div class="ptab on">in motion</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:46px">4 deals <span style="font-size:22px" class="dim">· ≈126 seats in motion</span></div>
+    <div class="dim" style="font-size:17.5px">enterprise, week 41 — every buyer has a name and a dinner budget.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">win rate <b class="big" style="font-size:22px">58%</b> · cycle <b class="big" style="font-size:22px">5 wks</b></div>
+    <div class="dim" style="font-size:14.5px">6 logos · 103 seats live</div>
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+  <div class="pcard"><h5>ARDENT RAIL <span class="clock" style="margin-left:auto">dies in 2 wk</span></h5>
+    <div style="display:flex;align-items:baseline;gap:12px"><span class="big" style="font-size:29px">65 seats</span><i class="hw" style="font-size:17px">warm</i></div>
+    <div class="stagedots"><span class="sd done"></span><span class="sd done"></span><span class="sd on"></span><span class="sd"></span><span class="dimmer" style="font-size:13.5px;margin-left:8px">procurement</span></div>
+    <div class="dim" style="font-size:14.5px;margin-top:6px">security review is the wall — a push this week could save it.</div>
+  </div>
+  <div class="pcard"><h5>MERIDIAN LOGISTICS</h5>
+    <div style="display:flex;align-items:baseline;gap:12px"><span class="big" style="font-size:29px">40 seats</span><i class="hh" style="font-size:17px">hot</i></div>
+    <div class="stagedots"><span class="sd done"></span><span class="sd on"></span><span class="sd"></span><span class="sd"></span><span class="dimmer" style="font-size:13.5px;margin-left:8px">pilot, wk 3</span></div>
+    <div class="dim" style="font-size:14.5px;margin-top:6px">the pilot is landing well — keep the champion warm.</div>
+  </div>
+  <div class="pcard"><h5>QUILL HEALTH</h5>
+    <div style="display:flex;align-items:baseline;gap:12px"><span class="big" style="font-size:29px">9 seats</span><i class="hw" style="font-size:17px">warm</i></div>
+    <div class="stagedots"><span class="sd on"></span><span class="sd"></span><span class="sd"></span><span class="sd"></span><span class="dimmer" style="font-size:13.5px;margin-left:8px">meeting, wk 2</span></div>
+  </div>
+  <div class="pcard" style="opacity:.75"><h5>BEXLEY FOODS</h5>
+    <div style="display:flex;align-items:baseline;gap:12px"><span class="big" style="font-size:29px">12 seats</span><i class="hc" style="font-size:17px">cold</i></div>
+    <div class="stagedots"><span class="sd on"></span><span class="sd"></span><span class="sd"></span><span class="sd"></span><span class="dimmer" style="font-size:13.5px;margin-left:8px">going quiet, wk 5</span></div>
+  </div>
+</div>
+<div style="margin-top:12px" class="footrules">every deal is a relationship with advice — the hint line whispers the journal move</div></div>
+  </div>
+</div>
+<p class="optnote"><b>One card per deal with stage dots and a hint line.</b> Advice built in; consistent with the overview quartet. The most personal.</p>
+<div class="opt-head" style="margin-top:34px"><span class="badge" style="font-size:30px">E2</span><h2 style="font-size:27px">The Stage Board</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">126 seats</span></div>
+        <div class="pages">
+          <div class="ptab">offers</div>
+          <div class="ptab">customers</div>
+          <div class="ptab on">in motion</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:46px">4 deals <span style="font-size:22px" class="dim">· ≈126 seats in motion</span></div>
+    <div class="dim" style="font-size:17.5px">enterprise, week 41 — every buyer has a name and a dinner budget.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">win rate <b class="big" style="font-size:22px">58%</b> · cycle <b class="big" style="font-size:22px">5 wks</b></div>
+    <div class="dim" style="font-size:14.5px">6 logos · 103 seats live</div>
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:1.12fr 1fr .9fr .78fr;gap:12px">
+  <div><div class="colhead">MEETING</div>
+    <div class="deal"><b>Quill Health</b><span>9 seats · <i class="hw">warm</i> · wk 2</span></div>
+    <div class="deal cold"><b>Bexley Foods</b><span>12 · <i class="hc">cold</i> · wk 5</span></div>
+  </div>
+  <div><div class="colhead" style="width:92%">PILOT</div>
+    <div class="deal"><b>Meridian Logistics</b><span>40 · <i class="hh">hot</i> · wk 3</span></div>
+  </div>
+  <div><div class="colhead" style="width:84%">PROCUREMENT</div>
+    <div class="deal alertd"><b>Ardent Rail</b><span>65 · <i class="hw">warm</i></span><span class="clock">dies in 2 wk</span></div>
+  </div>
+  <div><div class="colhead" style="width:76%">CONTRACT</div>
+    <div class="dimmer" style="font-size:14px;padding:10px 4px">signed deals join the logos</div>
+  </div>
+</div>
+<div style="margin-top:12px" class="footrules">the sales board every rep knows — columns narrow like the funnel</div></div>
+  </div>
+</div>
+<p class="optnote"><b>The kanban every rep knows,</b> columns narrowing like the funnel, the dying deal in red. The most familiar.</p>
+<div class="opt-head" style="margin-top:34px"><span class="badge" style="font-size:30px">E3</span><h2 style="font-size:27px">The Deal Ledger</h2></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">126 seats</span></div>
+        <div class="pages">
+          <div class="ptab">offers</div>
+          <div class="ptab">customers</div>
+          <div class="ptab on">in motion</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral"></span><div class="dh">COSTS</div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 14px">
+  <div>
+    <div class="big" style="font-size:46px">4 deals <span style="font-size:22px" class="dim">· ≈126 seats in motion</span></div>
+    <div class="dim" style="font-size:17.5px">enterprise, week 41 — every buyer has a name and a dinner budget.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:18px">win rate <b class="big" style="font-size:22px">58%</b> · cycle <b class="big" style="font-size:22px">5 wks</b></div>
+    <div class="dim" style="font-size:14.5px">6 logos · 103 seats live</div>
+  </div>
+</div>
+<div class="pcard" style="padding:14px 18px">
+  <div style="display:grid;grid-template-columns:1.8fr 1fr .8fr .8fr .8fr 1fr;font-size:13.5px;color:var(--ink4);letter-spacing:.06em;border-bottom:2px solid var(--ink25);padding-bottom:6px">
+    <span>DEAL</span><span>STAGE</span><span class="money">SEATS</span><span style="text-align:center">HEAT</span><span class="money">AGE</span><span style="text-align:right">CLOCK</span>
+  </div>
+  <div class="drow"><span><b>Ardent Rail</b></span><span>procurement</span><span class="money big" style="font-size:20px">65</span><span style="text-align:center"><i class="hw">warm</i></span><span class="money dim">6 wk</span><span style="text-align:right"><span class="clock">2 wk</span></span></div>
+  <div class="drow"><span><b>Meridian Logistics</b></span><span>pilot</span><span class="money big" style="font-size:20px">40</span><span style="text-align:center"><i class="hh">hot</i></span><span class="money dim">3 wk</span><span style="text-align:right" class="dimmer">—</span></div>
+  <div class="drow"><span><b>Quill Health</b></span><span>meeting</span><span class="money big" style="font-size:20px">9</span><span style="text-align:center"><i class="hw">warm</i></span><span class="money dim">2 wk</span><span style="text-align:right" class="dimmer">—</span></div>
+  <div class="drow" style="border-bottom:none"><span><b>Bexley Foods</b></span><span>meeting</span><span class="money big" style="font-size:20px">12</span><span style="text-align:center"><i class="hc">cold</i></span><span class="money dim">5 wk</span><span style="text-align:right" class="dimmer">—</span></div>
+</div>
+<div style="margin-top:12px" class="footrules">the rate card's sister for the biggest checks — sortable truths in columns</div></div>
+  </div>
+</div>
+<p class="optnote"><b>The rate-card table for the biggest checks.</b> Matches offers=Rate Card; sortable truths, built for big boards. The most comparable.</p>
+<div class="footer">
+<p><b>Shared by all nine:</b> the hero (what's in motion · what will land · the record), alarm-red clocks inside 2 weeks, heat words in ramp colors, pushes through the journal. The engine already computes all three worlds; this choice is display only. Answer like <b>"C2 · S1 · E1"</b> — then growth.</p>
+</div>
+</div>

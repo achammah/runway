@@ -1,0 +1,404 @@
+<title>Customers, Five Ways</title>
+<style>
+@font-face{font-family:'Patrick';src:url(../../../game/assets/fonts/PatrickHand-Regular.ttf) format('truetype');font-display:block}
+@font-face{font-family:'Baloo';src:url(../../../game/assets/fonts/Baloo2-Bold.ttf) format('truetype');font-weight:700;font-display:block}
+:root{
+  --wall:#2A2722; --wall2:#332F28; --paper:#F2EAD3; --paper2:#F6F0DE; --card:#EFE6CE;
+  --kraft:#DDBE8C; --kraft2:#CBA96F; --alert:#D93425;
+  --ink:#2B2823; --ink6:rgba(43,40,35,.6); --ink4:rgba(43,40,35,.42); --ink25:rgba(43,40,35,.25);
+  --coral:#E86A5C; --sage:#8FA582; --blue:#6E8CA0; --yell:#F4B942;
+  --chrome:#D8D2C4; --chrome-dim:#A69E8D;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--wall);color:var(--chrome);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 0 90px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 26px}
+.topbar{position:sticky;top:0;z-index:50;background:linear-gradient(var(--wall) 82%,transparent);padding:18px 0 10px}
+.topbar .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-family:'Baloo';color:var(--paper);font-size:28px}
+.crumb{font-size:13px;color:var(--chrome-dim);letter-spacing:.1em}
+.jump{display:flex;gap:8px;margin-left:auto}
+.jump a{font-family:'Baloo';text-decoration:none;color:var(--wall);background:var(--paper);border-radius:10px 14px 11px 13px;padding:4px 13px;font-size:17px;border:2px solid var(--ink)}
+.jump a:hover{background:var(--yell)}
+.jump a:focus-visible{outline:3px solid var(--yell);outline-offset:2px}
+.lede{padding:24px 0 6px;max-width:900px}
+.lede p{margin:0 0 12px}
+.lede .how{border-left:4px solid var(--yell);padding:10px 16px;background:var(--wall2);border-radius:6px;margin-top:12px}
+.lede .how b{color:var(--paper)}
+section{margin:58px 0 0}
+.opt-head{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+.badge{font-family:'Baloo';font-size:38px;color:var(--wall);background:var(--yell);border:3px solid var(--ink);border-radius:14px 18px 15px 17px;padding:0 17px;line-height:1.45;transform:rotate(-1.2deg)}
+.opt-head h2{font-family:'Baloo';font-size:32px;color:var(--paper)}
+.thesis{font-family:'Patrick';font-size:20px;color:var(--yell);margin:2px 0 16px}
+.offs{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:20px 0 8px}
+.off{background:var(--wall2);border-radius:8px;padding:13px 16px}
+.off h4{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--chrome-dim);margin-bottom:6px}
+.off p{font-size:14.5px;color:var(--chrome)}
+.off.win h4{color:var(--sage)} .off.cost h4{color:var(--coral)} .off.pick h4{color:var(--yell)}
+@media(max-width:1100px){.offs{grid-template-columns:1fr}}
+.binder{position:relative;max-width:100%;display:flex;font-family:'Patrick';color:var(--ink);filter:drop-shadow(0 16px 34px rgba(0,0,0,.5))}
+.cover{flex:none;width:50px;background:var(--kraft);border:3px solid var(--ink);border-right:none;border-radius:16px 0 0 14px;position:relative;background-image:repeating-linear-gradient(115deg, rgba(43,40,35,.05) 0 3px, transparent 3px 9px)}
+.cover .sticker{position:absolute;top:26px;left:50%;transform:translateX(-50%) rotate(-90deg);white-space:nowrap;background:var(--paper2);border:2.2px solid var(--ink);border-radius:6px;padding:2px 12px;font-size:15px}
+.ringbar{flex:none;width:44px;background:var(--kraft2);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);display:flex;flex-direction:column;justify-content:space-around;align-items:center;padding:20px 0}
+.ring{width:32px;height:32px;border-radius:50%;border:3.4px solid var(--ink);position:relative}
+.ring::after{content:"";position:absolute;inset:6px;border-radius:50%;border:2.6px solid var(--ink);opacity:.45}
+.stack{flex:1;background:var(--paper);border:3px solid var(--ink);border-left:2.6px solid var(--ink);border-radius:0 14px 12px 0;display:flex;min-width:0;position:relative}
+.rail{flex:none;width:208px;padding:18px 8px 18px 22px}
+.divider{position:relative;margin:10px 0;border:2.6px solid var(--ink);border-radius:10px;background:var(--paper2)}
+.divider .tab{position:absolute;top:-2.6px;bottom:-2.6px;left:-16px;width:13px;border:2.6px solid var(--ink);border-radius:8px 0 0 8px}
+.tab.sage{background:var(--sage)}.tab.coral{background:var(--coral)}.tab.blue{background:var(--blue)}.tab.yell{background:var(--yell)}
+.tab.alerted{background:var(--alert)}
+.divider .dh{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:15.5px}
+.divider .dh .cnt{margin-left:auto;font-size:13px;color:var(--ink4);font-variant-numeric:tabular-nums}
+.divider.closed{background:var(--kraft);box-shadow:0 3px 0 -1px var(--kraft2), 0 6px 0 -2px rgba(43,40,35,.35)}
+.divider.open{background:var(--paper)}
+.divider.open .dh{border-bottom:2px solid var(--ink25);font-size:16.5px}
+.divider .pages{padding:6px 6px 9px}
+.ptab{display:flex;align-items:center;gap:7px;font-size:17px;padding:4px 9px;border-radius:8px;margin:2px 0}
+.ptab.on{background:var(--paper2);border:2.4px solid var(--ink);font-size:17.5px;box-shadow:1.5px 1.5px 0 rgba(43,40,35,.18)}
+.ptab .n{margin-left:auto;font-size:13px;color:var(--ink4);font-variant-numeric:tabular-nums}
+.ptab.alert{background:var(--alert);border:2.6px solid var(--ink);color:#fff}
+.ptab.alert .n{color:rgba(255,255,255,.85)}
+.abang{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--alert);border:2.4px solid var(--ink);color:#fff;font-family:'Baloo';font-size:15px;line-height:1;flex:none}
+.sheet{flex:1;min-width:0;padding:20px 24px 22px;border-left:2.4px solid var(--ink25);background:var(--paper);border-radius:0 12px 10px 0}
+.money{font-variant-numeric:tabular-nums;text-align:right}
+.big{font-family:'Baloo';line-height:1.05}
+.pos{color:#5D7A50}.neg{color:var(--coral)}
+.dim{color:var(--ink6)}.dimmer{color:var(--ink4)}
+.footrules{font-size:14.5px;color:var(--ink4)}
+.pill{display:inline-block;border:2.2px solid var(--ink);border-radius:10px 8px 9px 11px;padding:0 8px;font-size:14.5px;background:var(--paper2)}
+.pcard{background:var(--card);border:2.4px solid var(--ink);border-radius:10px 8px 11px 9px;padding:12px 16px 14px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.pcard h5{font-size:14.5px;letter-spacing:.09em;color:var(--ink6);margin-bottom:8px;font-weight:400}
+.mrow{display:flex;align-items:center;gap:10px;padding:4.5px 0}
+.mrow .lab{flex:1}.mrow .val{width:110px}
+.fstage{border:2.6px solid var(--ink);background:var(--paper2);text-align:center;font-size:17px;padding:5px 0;border-radius:6px}
+.pipe{border:2.6px solid var(--ink);border-radius:8px;background:var(--paper2);text-align:center;padding:8px 0}
+.pipe b{font-family:'Baloo';font-size:26px;display:block}
+.pipe span{font-size:14px;color:var(--ink6)}
+.pipe.keep{background:var(--sage);color:#fff}.pipe.keep span{color:rgba(255,255,255,.85)}
+.arrow{width:34px;text-align:center;font-size:22px;color:var(--ink4)}
+.leak{font-size:13px;color:var(--coral);text-align:center}
+.corow{display:flex;align-items:center;gap:12px;margin:7px 0}
+.colab{width:220px;font-size:16.5px}
+.cobar{flex:1;display:flex;gap:3px;height:19px}
+.coseg{background:var(--sage);border:2.2px solid var(--ink);border-radius:5px}
+.coseg.lost{background:var(--coral);opacity:.8}
+.coval{width:104px;font-size:15px;color:var(--ink6);text-align:right;font-variant-numeric:tabular-nums}
+.head{display:inline-block;width:16px;height:20px;border:2.2px solid var(--ink);border-radius:7px 7px 3px 3px;background:var(--sage)}
+.head.new{background:var(--yell)}
+.head.gone{background:var(--paper);position:relative}
+.head.gone::after{content:"×";position:absolute;inset:-6px 0 0 1px;color:var(--coral);font-weight:bold;font-size:17px}
+.scorebox{flex:1;border:2.6px solid var(--ink);border-radius:10px;background:var(--card);text-align:center;padding:10px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.tourcard{background:var(--paper2);border:2.6px solid var(--ink);border-radius:10px;padding:12px 16px;box-shadow:2px 3px 0 rgba(43,40,35,.25);font-size:16px}
+.footer{margin-top:64px;border-top:1px solid var(--wall2);padding-top:20px;color:var(--chrome-dim);font-size:14.5px}
+.footer b{color:var(--paper)}
+</style>
+
+<div class="topbar"><div class="wrap">
+<h1>Customers, Five Ways</h1><span class="crumb">TAB 2 / 15 · REVENUE · offers = RATE CARD ✓</span>
+<nav class="jump"><a href="#ta">A</a><a href="#tb">B</a><a href="#tc">C</a><a href="#td">D</a><a href="#te">E</a></nav>
+</div></div>
+
+<div class="wrap">
+<div class="lede">
+<p>Locked so far: <b style="color:var(--paper)">Ring Binder</b> · smooth fan-out opening · alarm-red "!" system · <b style="color:var(--paper)">offers = the Rate Card</b>. New decided piece below: <b style="color:var(--paper)">the first-open tour</b>. Then the CUSTOMERS desk — <b style="color:var(--paper)">it answers: who is coming, who is staying, and what is each worth?</b></p>
+<div class="how"><b>Answer with a letter</b> for CUSTOMERS. Next after your pick: pipeline.</div>
+</div>
+
+<section id="tour" style="margin-top:34px">
+<div class="opt-head"><h2 style="font-size:26px">The first-open tour — decided</h2></div>
+<p class="thesis" style="font-size:18px">The first time the binder opens, six steps: one per section, one for the red, one to hand over. Click advances, Esc skips, never repeats.</p>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;font-family:'Patrick';color:var(--ink)">
+  <div class="tourcard"><b>1 · REVENUE</b> <span class="dim">— the section opens, its pages fan out, one line each:</span><br><span class="dim" style="font-size:14.5px">"offers — what you sell and charge · customers — who pays · pipeline — big deals in motion · growth — how they find you"</span></div>
+  <div class="tourcard"><b>2 · COSTS</b> <span class="dim">— same fan, one line per page: "spend — dollars you choose · team — people · bills — what arrives anyway · the bank — debt · the factory — hardware only"</span></div>
+  <div class="tourcard"><b>3 · THE COMPANY</b> <span class="dim">— "product — what you're building · cap table — who owns it · the street — rivals · threats — what could kill you"</span></div>
+  <div class="tourcard"><b>4 · THE LOG</b> <span class="dim">— "this week's receipts, the whole history, the clocks that are ticking"</span></div>
+  <div class="tourcard" style="border-color:var(--alert)"><b style="color:var(--alert)">5 · THE RED</b> <span class="dim">— a mock tab flashes alarm red: "when a tab looks like THIS, it needs a decision — the ! climbs onto closed sections so nothing hides."</span></div>
+  <div class="tourcard"><b>6 · YOURS</b> <span class="dim">— "that's the whole binder. Esc closes it; TAB reopens it. The week won't roll while something red is unanswered — unless you tell it to."</span></div>
+</div>
+<p class="dimmer" style="margin-top:10px;font-size:14px;color:var(--chrome-dim)">Mechanics: dimmed ink wash over everything but the focused element · runs once per install (its own marker) · replayable from the how-to screen.</p>
+</section>
+
+<section id="ta">
+<div class="opt-head"><span class="badge">A</span><h2>The Funnel Poster</h2></div>
+<p class="thesis">The funnel drawn big, center stage — four narrowing mouths with plain-word labels; the worth card beneath.</p>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">$2,140/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers<span class="n">2</span></div>
+          <div class="ptab on">customers<span class="n">52</span></div>
+          <div class="ptab dim">pipeline</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral alerted"></span><div class="dh">COSTS <span class="abang">!</span><span class="cnt">$2,358/wk</span></div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY<span class="cnt">4</span></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG<span class="cnt">wk 14</span></div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 16px">
+  <div>
+    <div class="big" style="font-size:52px">52 <span style="font-size:24px" class="pos">+8 in</span> <span style="font-size:24px" class="neg">−2 out</span></div>
+    <div class="dim" style="font-size:18px">growing on ads and word of mouth — six more breaks even.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div class="dimmer" style="font-size:13px">customers, weekly</div>
+    <svg width="240" height="54" viewBox="0 0 240 54"><polyline points="0,46 30,44 60,45 90,38 120,33 150,34 180,25 210,19 240,14" fill="none" stroke="#6E8CA0" stroke-width="3"/></svg>
+  </div>
+</div>
+<div style="display:flex;justify-content:center;margin:6px 0 2px">
+<div style="width:640px;display:flex;flex-direction:column;align-items:center;gap:6px">
+  <div class="fstage" style="width:100%">reach — 410 people heard of you</div>
+  <div class="fstage" style="width:72%">leads — 31 came close enough to ask</div>
+  <div class="fstage" style="width:44%">signed — 8 paid</div>
+  <div class="fstage" style="width:28%;background:var(--sage);color:#fff">kept — 6 stayed</div>
+</div>
+</div>
+<div class="dimmer" style="text-align:center;font-size:14px;margin-top:6px">drop-offs are named between stages when analytics ≥ 1 · below that the lower mouths read "?"</div>
+<div class="pcard" style="margin-top:14px"><h5>WHAT ONE IS WORTH</h5>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);column-gap:30px">
+    <div class="mrow" style="font-size:18px"><span class="lab">pays, weekly</span><span class="val money">$41</span></div>
+    <div class="mrow" style="font-size:18px"><span class="lab">costs to win</span><span class="val money">$81</span></div>
+    <div class="mrow" style="font-size:18px"><span class="lab">stays about</span><span class="val money">36 wks</span></div>
+    <div class="mrow" style="font-size:18px"><span class="lab">worth, lifetime</span><span class="val money pos">$1,480</span></div>
+  </div>
+</div>
+<div style="margin-top:12px" class="footrules">the funnel narrows — every stage you widen is customers next week</div></div>
+  </div>
+</div>
+<div class="offs">
+<div class="off win"><h4>What it wins</h4><p>The clearest single lesson on any desk: acquisition IS a narrowing. Nothing competes with it.</p></div>
+<div class="off cost"><h4>What it costs</h4><p>One drawing owns the pane; cohorts and channel detail live a level deeper.</p></div>
+<div class="off pick"><h4>Choose if</h4><p>The funnel is the one thing every player must internalize.</p></div>
+</div>
+</section>
+<section id="tb">
+<div class="opt-head"><span class="badge">B</span><h2>The Flow</h2></div>
+<p class="thesis">Left-to-right pipework: reach flows into leads into signed into kept, with the losses annotated under every joint — churn drips out the end.</p>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">$2,140/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers<span class="n">2</span></div>
+          <div class="ptab on">customers<span class="n">52</span></div>
+          <div class="ptab dim">pipeline</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral alerted"></span><div class="dh">COSTS <span class="abang">!</span><span class="cnt">$2,358/wk</span></div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY<span class="cnt">4</span></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG<span class="cnt">wk 14</span></div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 16px">
+  <div>
+    <div class="big" style="font-size:52px">52 <span style="font-size:24px" class="pos">+8 in</span> <span style="font-size:24px" class="neg">−2 out</span></div>
+    <div class="dim" style="font-size:18px">growing on ads and word of mouth — six more breaks even.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div class="dimmer" style="font-size:13px">customers, weekly</div>
+    <svg width="240" height="54" viewBox="0 0 240 54"><polyline points="0,46 30,44 60,45 90,38 120,33 150,34 180,25 210,19 240,14" fill="none" stroke="#6E8CA0" stroke-width="3"/></svg>
+  </div>
+</div>
+<div class="pcard" style="padding:18px 20px">
+<div style="display:flex;align-items:center;gap:0">
+  <div class="pipe" style="flex:1.6"><b>410</b><span>reach</span></div>
+  <div class="arrow">→</div>
+  <div class="pipe" style="flex:1.2"><b>31</b><span>leads</span></div>
+  <div class="arrow">→</div>
+  <div class="pipe" style="flex:.9"><b>8</b><span>signed</span></div>
+  <div class="arrow">→</div>
+  <div class="pipe keep" style="flex:.7"><b>6</b><span>kept</span></div>
+</div>
+<div style="display:flex;gap:0;margin-top:6px">
+  <div style="flex:1.6"></div><div class="leak" style="flex:1.2">−379 never asked</div>
+  <div class="leak" style="flex:.9">−23 didn't buy</div><div class="leak" style="flex:.7">−2 leaked out ↓</div>
+</div>
+</div>
+<div class="dim" style="font-size:15.5px;margin-top:10px">the leak at the end is churn — care money tightens that joint (up to −30%).</div>
+<div class="pcard" style="margin-top:14px"><h5>WHAT ONE IS WORTH</h5>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);column-gap:30px">
+    <div class="mrow" style="font-size:18px"><span class="lab">pays, weekly</span><span class="val money">$41</span></div>
+    <div class="mrow" style="font-size:18px"><span class="lab">costs to win</span><span class="val money">$81</span></div>
+    <div class="mrow" style="font-size:18px"><span class="lab">stays about</span><span class="val money">36 wks</span></div>
+    <div class="mrow" style="font-size:18px"><span class="lab">worth, lifetime</span><span class="val money pos">$1,480</span></div>
+  </div>
+</div></div>
+  </div>
+</div>
+<div class="offs">
+<div class="off win"><h4>What it wins</h4><p>Reads like a machine diagram — where the pipe narrows sharply, that's your problem stage, named with a number.</p></div>
+<div class="off cost"><h4>What it costs</h4><p>Horizontal layout holds 4 stages max; Enterprise's extra stage would crowd it.</p></div>
+<div class="off pick"><h4>Choose if</h4><p>You want players diagnosing WHERE the loss is, not just that there is one.</p></div>
+</div>
+</section>
+<section id="tc">
+<div class="opt-head"><span class="badge">C</span><h2>The Cohort Ledger</h2></div>
+<p class="thesis">Retention as rows: each week's class as a sage/coral bar — who joined, who's still here. The funnel steps aside.</p>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">$2,140/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers<span class="n">2</span></div>
+          <div class="ptab on">customers<span class="n">52</span></div>
+          <div class="ptab dim">pipeline</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral alerted"></span><div class="dh">COSTS <span class="abang">!</span><span class="cnt">$2,358/wk</span></div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY<span class="cnt">4</span></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG<span class="cnt">wk 14</span></div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 16px">
+  <div>
+    <div class="big" style="font-size:52px">52 <span style="font-size:24px" class="pos">+8 in</span> <span style="font-size:24px" class="neg">−2 out</span></div>
+    <div class="dim" style="font-size:18px">growing on ads and word of mouth — six more breaks even.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div class="dimmer" style="font-size:13px">customers, weekly</div>
+    <svg width="240" height="54" viewBox="0 0 240 54"><polyline points="0,46 30,44 60,45 90,38 120,33 150,34 180,25 210,19 240,14" fill="none" stroke="#6E8CA0" stroke-width="3"/></svg>
+  </div>
+</div>
+<div class="pcard"><h5>THE COHORTS — who joined, who stayed</h5>
+  <div class="corow"><span class="colab">wk 11 — first customers</span><div class="cobar"><span class="coseg" style="flex:5"></span><span class="coseg lost" style="flex:3"></span></div><span class="coval">5 of 8 left*</span></div>
+  <div class="corow"><span class="colab">wk 12 — after launch week</span><div class="cobar"><span class="coseg" style="flex:9"></span><span class="coseg lost" style="flex:2"></span></div><span class="coval">9 of 11</span></div>
+  <div class="corow"><span class="colab">wk 13 — the ads arrive</span><div class="cobar"><span class="coseg" style="flex:14"></span><span class="coseg lost" style="flex:3"></span></div><span class="coval">14 of 17</span></div>
+  <div class="corow"><span class="colab">wk 14 — this week</span><div class="cobar"><span class="coseg" style="flex:8"></span></div><span class="coval">8 of 8</span></div>
+  <div class="dimmer" style="font-size:13.5px;margin-top:6px">*sage = still here · coral = gone · unlocks at analytics 2 — below that this card reads "invest in analytics to see who stays"</div>
+</div>
+<div class="pcard" style="margin-top:14px"><h5>WHAT ONE IS WORTH</h5>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);column-gap:30px">
+    <div class="mrow" style="font-size:18px"><span class="lab">pays, weekly</span><span class="val money">$41</span></div>
+    <div class="mrow" style="font-size:18px"><span class="lab">costs to win</span><span class="val money">$81</span></div>
+    <div class="mrow" style="font-size:18px"><span class="lab">stays about</span><span class="val money">36 wks</span></div>
+    <div class="mrow" style="font-size:18px"><span class="lab">worth, lifetime</span><span class="val money pos">$1,480</span></div>
+  </div>
+</div>
+<div style="margin-top:12px" class="footrules">retention is the business: a cohort that holds is worth more than a bigger one that leaks</div></div>
+  </div>
+</div>
+<div class="offs">
+<div class="off win"><h4>What it wins</h4><p>Teaches the deepest truth (retention beats acquisition) with real cohorts; the analytics-2 unlock gives fog of war a visible prize.</p></div>
+<div class="off cost"><h4>What it costs</h4><p>Weakest at the top of the funnel; new players see retention before they understand acquisition.</p></div>
+<div class="off pick"><h4>Choose if</h4><p>The teaching aim is LTV-thinking, and you like a desk that rewards analytics investment.</p></div>
+</div>
+</section>
+<section id="td">
+<div class="opt-head"><span class="badge">D</span><h2>The Headcount Wall</h2></div>
+<p class="thesis">Every customer drawn — 52 little heads: sage staying, yellow new, coral crossed out. Churn becomes personal.</p>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">$2,140/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers<span class="n">2</span></div>
+          <div class="ptab on">customers<span class="n">52</span></div>
+          <div class="ptab dim">pipeline</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral alerted"></span><div class="dh">COSTS <span class="abang">!</span><span class="cnt">$2,358/wk</span></div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY<span class="cnt">4</span></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG<span class="cnt">wk 14</span></div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 16px">
+  <div>
+    <div class="big" style="font-size:52px">52 <span style="font-size:24px" class="pos">+8 in</span> <span style="font-size:24px" class="neg">−2 out</span></div>
+    <div class="dim" style="font-size:18px">growing on ads and word of mouth — six more breaks even.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div class="dimmer" style="font-size:13px">customers, weekly</div>
+    <svg width="240" height="54" viewBox="0 0 240 54"><polyline points="0,46 30,44 60,45 90,38 120,33 150,34 180,25 210,19 240,14" fill="none" stroke="#6E8CA0" stroke-width="3"/></svg>
+  </div>
+</div>
+<div class="pcard" style="padding:16px 20px"><h5>EVERYONE, COUNTED — 52 on the books</h5>
+<div style="display:flex;flex-wrap:wrap;gap:7px;padding:4px 0">
+<span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head kept"></span><span class="head new"></span><span class="head new"></span><span class="head new"></span><span class="head new"></span><span class="head new"></span><span class="head new"></span><span class="head new"></span><span class="head new"></span><span class="head gone"></span><span class="head gone"></span>
+</div>
+<div class="dimmer" style="font-size:14px;margin-top:4px"><span class="head kept" style="vertical-align:-3px"></span> staying · <span class="head new" style="vertical-align:-3px"></span> new this week · <span class="head gone" style="vertical-align:-3px"></span> left this week</div>
+</div>
+<div class="pcard" style="margin-top:14px"><h5>WHAT ONE IS WORTH</h5>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);column-gap:30px">
+    <div class="mrow" style="font-size:18px"><span class="lab">pays, weekly</span><span class="val money">$41</span></div>
+    <div class="mrow" style="font-size:18px"><span class="lab">costs to win</span><span class="val money">$81</span></div>
+    <div class="mrow" style="font-size:18px"><span class="lab">stays about</span><span class="val money">36 wks</span></div>
+    <div class="mrow" style="font-size:18px"><span class="lab">worth, lifetime</span><span class="val money pos">$1,480</span></div>
+  </div>
+</div>
+<div style="margin-top:12px" class="footrules">every mark is a person paying you $41 a week — churn crosses them out where you can see it</div></div>
+  </div>
+</div>
+<div class="offs">
+<div class="off win"><h4>What it wins</h4><p>The most visceral: losing a customer is watching a head get crossed out. Scales as a wall of tallies to ~200, then groups by tens.</p></div>
+<div class="off cost"><h4>What it costs</h4><p>Cute risk at hq scale; the funnel and cohorts both live a press away, not on the pane.</p></div>
+<div class="off pick"><h4>Choose if</h4><p>Emotional weight should carry this desk — the game is about PEOPLE paying you.</p></div>
+</div>
+</section>
+<section id="te">
+<div class="opt-head"><span class="badge">E</span><h2>The Scoreboard</h2></div>
+<p class="thesis">Three score boxes (have / won / lost) and the run-long chart AS the hero, endpoint marked; funnel and worth as two small cards.</p>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">$2,140/wk</span></div>
+        <div class="pages">
+          <div class="ptab">offers<span class="n">2</span></div>
+          <div class="ptab on">customers<span class="n">52</span></div>
+          <div class="ptab dim">pipeline</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral alerted"></span><div class="dh">COSTS <span class="abang">!</span><span class="cnt">$2,358/wk</span></div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY<span class="cnt">4</span></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG<span class="cnt">wk 14</span></div></div>
+    </div>
+    <div class="sheet">
+<div style="display:flex;gap:20px;align-items:stretch;margin:2px 0 14px">
+  <div class="scorebox"><div class="big" style="font-size:44px">52</div><div class="dim" style="font-size:15px">have</div></div>
+  <div class="scorebox"><div class="big pos" style="font-size:44px">+8</div><div class="dim" style="font-size:15px">won this week</div></div>
+  <div class="scorebox"><div class="big neg" style="font-size:44px">−2</div><div class="dim" style="font-size:15px">lost this week</div></div>
+  <div class="scorebox" style="flex:2.2;text-align:left;padding:10px 16px">
+    <div class="dimmer" style="font-size:13px">the whole run</div>
+    <svg width="100%" height="64" viewBox="0 0 340 64" preserveAspectRatio="none"><polyline points="0,56 40,54 75,55 110,46 145,40 180,41 215,30 260,22 340,14" fill="none" stroke="#6E8CA0" stroke-width="3.4"/><circle cx="340" cy="14" r="5" fill="#6E8CA0"/></svg>
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div class="pcard"><h5>THE FUNNEL, SMALL</h5>
+    <div style="display:flex;flex-direction:column;gap:4px;align-items:center">
+      <div class="fstage" style="width:100%;font-size:15px;padding:3px 0">reach 410</div>
+      <div class="fstage" style="width:70%;font-size:15px;padding:3px 0">leads 31</div>
+      <div class="fstage" style="width:44%;font-size:15px;padding:3px 0">signed 8</div>
+      <div class="fstage" style="width:28%;font-size:15px;padding:3px 0;background:var(--sage);color:#fff">kept 6</div>
+    </div>
+  </div>
+  <div class="pcard"><h5>WHAT ONE IS WORTH</h5>
+    <div class="mrow" style="font-size:18px"><span class="lab">pays weekly / costs to win</span><span class="val money">$41 / $81</span></div>
+    <div class="mrow" style="font-size:18px"><span class="lab">stays about</span><span class="val money">36 wks</span></div>
+    <div class="mrow" style="font-size:18px"><span class="lab">worth, lifetime</span><span class="val money pos">$1,480</span></div>
+    <div class="mrow" style="font-size:18px;border-top:2px solid var(--ink25)"><span class="lab">pays back the win cost in</span><span class="val money">2 wks</span></div>
+  </div>
+</div>
+<div style="margin-top:12px" class="footrules">the chart is the hero: fourteen weeks of the only line that matters, endpoint marked</div></div>
+  </div>
+</div>
+<div class="offs">
+<div class="off win"><h4>What it wins</h4><p>The chart finally gets the size it deserves — trend is the first thing read; the three boxes make weekly change unmissable.</p></div>
+<div class="off cost"><h4>What it costs</h4><p>Least novel of the five; the funnel is small.</p></div>
+<div class="off pick"><h4>Choose if</h4><p>You want trend-first reading and the calmest, most dashboard-like desk in the group.</p></div>
+</div>
+</section>
+<div class="footer">
+<p><b>Constant across all five:</b> the hero count with +in/−out, fog of war by analytics level (below 1 the funnel mouths read "?", the cohort card locks), the worth block (pays/CAC/stays/LTV), and the alarm-red rail. After your letter: <b>pipeline</b> (Enterprise's named deals).</p>
+</div>
+</div>

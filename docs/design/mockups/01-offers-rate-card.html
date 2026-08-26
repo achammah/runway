@@ -1,0 +1,471 @@
+<title>Offers, Five Ways</title>
+<style>
+@font-face{font-family:'Patrick';src:url(../../../game/assets/fonts/PatrickHand-Regular.ttf) format('truetype');font-display:block}
+@font-face{font-family:'Baloo';src:url(../../../game/assets/fonts/Baloo2-Bold.ttf) format('truetype');font-weight:700;font-display:block}
+:root{
+  --wall:#2A2722; --wall2:#332F28; --paper:#F2EAD3; --paper2:#F6F0DE; --card:#EFE6CE;
+  --kraft:#DDBE8C; --kraft2:#CBA96F;
+  --ink:#2B2823; --ink6:rgba(43,40,35,.6); --ink4:rgba(43,40,35,.42); --ink25:rgba(43,40,35,.25);
+  --coral:#E86A5C; --sage:#8FA582; --blue:#6E8CA0; --yell:#F4B942;
+  --chrome:#D8D2C4; --chrome-dim:#A69E8D;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--wall);color:var(--chrome);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 0 90px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 26px}
+.topbar{position:sticky;top:0;z-index:50;background:linear-gradient(var(--wall) 82%,transparent);padding:18px 0 10px}
+.topbar .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-family:'Baloo';color:var(--paper);font-size:28px}
+.crumb{font-size:13px;color:var(--chrome-dim);letter-spacing:.1em}
+.jump{display:flex;gap:8px;margin-left:auto}
+.jump a{font-family:'Baloo';text-decoration:none;color:var(--wall);background:var(--paper);border-radius:10px 14px 11px 13px;padding:4px 13px;font-size:17px;border:2px solid var(--ink)}
+.jump a:hover{background:var(--yell)}
+.jump a:focus-visible{outline:3px solid var(--yell);outline-offset:2px}
+.lede{padding:24px 0 6px;max-width:880px}
+.lede p{margin:0 0 12px}
+.lede .how{border-left:4px solid var(--yell);padding:10px 16px;background:var(--wall2);border-radius:6px;margin-top:12px}
+.lede .how b{color:var(--paper)}
+section{margin:60px 0 0}
+.opt-head{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+.badge{font-family:'Baloo';font-size:38px;color:var(--wall);background:var(--yell);border:3px solid var(--ink);border-radius:14px 18px 15px 17px;padding:0 17px;line-height:1.45;transform:rotate(-1.2deg)}
+.opt-head h2{font-family:'Baloo';font-size:32px;color:var(--paper)}
+.thesis{font-family:'Patrick';font-size:20px;color:var(--yell);margin:2px 0 16px}
+.offs{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:20px 0 8px}
+.off{background:var(--wall2);border-radius:8px;padding:13px 16px}
+.off h4{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--chrome-dim);margin-bottom:6px}
+.off p{font-size:14.5px;color:var(--chrome)}
+.off.win h4{color:var(--sage)} .off.cost h4{color:var(--coral)} .off.pick h4{color:var(--yell)}
+@media(max-width:1100px){.offs{grid-template-columns:1fr}}
+
+.binder{position:relative;max-width:100%;display:flex;font-family:'Patrick';color:var(--ink);filter:drop-shadow(0 16px 34px rgba(0,0,0,.5))}
+.cover{flex:none;width:50px;background:var(--kraft);border:3px solid var(--ink);border-right:none;border-radius:16px 0 0 14px;position:relative;background-image:repeating-linear-gradient(115deg, rgba(43,40,35,.05) 0 3px, transparent 3px 9px)}
+.cover .sticker{position:absolute;top:26px;left:50%;transform:translateX(-50%) rotate(-90deg);white-space:nowrap;background:var(--paper2);border:2.2px solid var(--ink);border-radius:6px;padding:2px 12px;font-size:15px}
+.ringbar{flex:none;width:44px;background:var(--kraft2);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);display:flex;flex-direction:column;justify-content:space-around;align-items:center;padding:20px 0}
+.ring{width:32px;height:32px;border-radius:50%;border:3.4px solid var(--ink);position:relative}
+.ring::after{content:"";position:absolute;inset:6px;border-radius:50%;border:2.6px solid var(--ink);opacity:.45}
+.stack{flex:1;background:var(--paper);border:3px solid var(--ink);border-left:2.6px solid var(--ink);border-radius:0 14px 12px 0;display:flex;min-width:0;position:relative}
+.rail{flex:none;width:208px;padding:18px 8px 18px 22px}
+.divider{position:relative;margin:10px 0;border:2.6px solid var(--ink);border-radius:10px;background:var(--paper2)}
+.divider .tab{position:absolute;top:-2.6px;bottom:-2.6px;left:-16px;width:13px;border:2.6px solid var(--ink);border-radius:8px 0 0 8px}
+.tab.sage{background:var(--sage)}.tab.coral{background:var(--coral)}.tab.blue{background:var(--blue)}.tab.yell{background:var(--yell)}
+.divider .dh{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:15.5px;letter-spacing:.04em}
+.divider .dh .cnt{margin-left:auto;font-size:13px;color:var(--ink4);font-variant-numeric:tabular-nums}
+.divider.closed{background:var(--kraft);box-shadow:0 3px 0 -1px var(--kraft2), 0 6px 0 -2px rgba(43,40,35,.35)}
+.divider.open{background:var(--paper)}
+.divider.open .dh{border-bottom:2px solid var(--ink25);font-size:16.5px}
+.divider .pages{padding:6px 6px 9px}
+.ptab{display:flex;align-items:center;gap:7px;font-size:17px;padding:4px 9px;border-radius:8px;margin:2px 0}
+.ptab.on{background:var(--paper2);border:2.4px solid var(--ink);font-size:17.5px;box-shadow:1.5px 1.5px 0 rgba(43,40,35,.18)}
+.ptab .n{margin-left:auto;font-size:13px;color:var(--ink4);font-variant-numeric:tabular-nums}
+.bang{display:inline-block;min-width:16px;text-align:center;color:var(--coral);font-weight:bold}
+:root{--alert:#D93425}
+.ptab.alert{background:var(--alert);border:2.6px solid var(--ink);color:#fff;font-size:17.5px;box-shadow:1.5px 1.5px 0 rgba(43,40,35,.3)}
+.ptab.alert .n{color:rgba(255,255,255,.85)}
+.abang{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;
+  background:var(--alert);border:2.4px solid var(--ink);color:#fff;font-family:'Baloo';font-size:15px;line-height:1;flex:none}
+.abang.big{width:26px;height:26px;font-size:17px}
+.divider .tab.alerted{background:var(--alert)}
+.railnote{font-size:13px;color:var(--ink4)}
+.sheet{flex:1;min-width:0;padding:20px 24px 22px;border-left:2.4px solid var(--ink25);background:var(--paper);border-radius:0 12px 10px 0}
+.money{font-variant-numeric:tabular-nums;text-align:right}
+.big{font-family:'Baloo';line-height:1.05}
+.pos{color:#5D7A50}.neg{color:var(--coral)}
+.dim{color:var(--ink6)}.dimmer{color:var(--ink4)}
+.footrules{font-size:14.5px;color:var(--ink4)}
+.footcomp{font-size:16px;color:var(--blue)}
+.glyph{display:inline-block;width:30px;text-align:center;border:2.4px solid var(--ink);border-radius:9px 7px 8px 9px;font-size:19px;line-height:1.25;background:var(--paper2)}
+.pill{display:inline-block;border:2.2px solid var(--ink);border-radius:10px 8px 9px 11px;padding:0 8px;font-size:14.5px;background:var(--paper2)}
+.pcard{background:var(--card);border:2.4px solid var(--ink);border-radius:10px 8px 11px 9px;padding:12px 16px 14px;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.pcard h5{font-size:14.5px;letter-spacing:.09em;color:var(--ink6);margin-bottom:8px;font-weight:400}
+.mrow{display:flex;align-items:center;gap:10px;padding:4.5px 0;font-size:19px}
+.mrow .lab{flex:1}.mrow .val{width:110px}
+.ctl{display:flex}
+.tb .tbrow{display:flex;align-items:center;gap:12px;margin:7px 0}
+.tb .tblab{font-size:16px}
+.tb .tbbar{flex:1;display:flex;gap:3px}
+.tb .seg{border:2.2px solid var(--ink);border-radius:6px 4px 5px 6px}
+.tb .tbval{width:74px}
+.seg.sage{background:var(--sage)}.seg.coral{background:var(--coral)}
+.coralc{color:var(--coral)}
+.tag{width:250px;background:var(--paper2);border:2.6px solid var(--ink);border-radius:6px 6px 14px 14px;padding:12px 16px 16px;position:relative;transform:rotate(-1deg);box-shadow:2px 3px 0 rgba(43,40,35,.2)}
+.tag .taghole{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:var(--paper);border:2.6px solid var(--ink)}
+.tag.ghost{border-style:dashed;background:var(--paper);box-shadow:none;min-height:250px}
+.rung{width:22px;background:var(--paper2);border:2.2px solid var(--ink);border-radius:4px 4px 0 0;display:inline-block}
+.rung.on{background:var(--yell)}
+.footer{margin-top:64px;border-top:1px solid var(--wall2);padding-top:20px;color:var(--chrome-dim);font-size:14.5px}
+.footer b{color:var(--paper)}
+</style>
+
+<div class="topbar"><div class="wrap">
+<h1>Offers, Five Ways</h1><span class="crumb">TAB 1 / 15 · REVENUE</span>
+<nav class="jump"><a href="#ta">A</a><a href="#tb">B</a><a href="#tc">C</a><a href="#td">D</a><a href="#te">E</a></nav>
+</div></div>
+
+<div class="wrap">
+<div class="lede">
+<p>The Ring Binder is locked — with the opening choreographed: a pressed divider eases from kraft to paper over ~0.3s while its pages fan out with a 40ms stagger; the sheet slides in from under the tab. Now the desks, one at a time. <b style="color:var(--paper)">OFFERS answers: what do we sell, and what does each sale actually earn?</b> Same hero on all five (the per-customer margin), same two-offer shelf, five bodies.</p>
+<div class="how"><b>Answer with a letter</b> — detail notes welcome. Next up after you pick: customers.</div>
+</div>
+
+<section id="alerts" style="margin-top:34px">
+<div class="opt-head"><h2 style="font-size:26px">The attention rail — decided into every layout</h2></div>
+<p class="thesis" style="font-size:18px">A desk that needs you turns BRIGHT RED with a "!". Collapsing a group can never hide it: the alarm climbs onto the divider.</p>
+<div class="binder" style="width:760px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack"><div class="rail" style="width:236px">
+      <div class="divider open"><span class="tab coral"></span><div class="dh">COSTS<span class="cnt">$2,358/wk</span></div>
+        <div class="pages">
+          <div class="ptab">spend<span class="n">$650</span></div>
+          <div class="ptab alert">team <span class="abang" style="border-color:#fff;background:transparent">!</span><span class="n">quit risk</span></div>
+          <div class="ptab">bills<span class="n">$738</span></div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab sage alerted"></span><div class="dh">REVENUE <span class="abang">!</span><span class="cnt">$2,140/wk</span></div></div>
+      <div class="railnote" style="padding:6px 4px 0">↑ closed, but its "offers" page has no price set —<br>the red climbs the divider and its index tab.</div>
+    </div>
+    <div class="sheet" style="display:flex;flex-direction:column;justify-content:center;gap:14px">
+      <div style="font-size:19px"><span class="abang big" style="vertical-align:-4px">!</span>&nbsp; <b style="font-family:'Baloo'">The rules of red:</b></div>
+      <div style="font-size:17px" class="dim">· a page needing you = the whole tab fills <b style="color:var(--alert);font-family:'Patrick'">alarm red</b> with a white !</div>
+      <div style="font-size:17px" class="dim">· its group closed = the divider header AND its colored index tab carry the !</div>
+      <div style="font-size:17px" class="dim">· one alarm color in the whole binder — coral stays for money-out; red means "act"</div>
+      <div style="font-size:17px" class="dim">· severity 3 pulses on the 12fps breath; severity 2 holds still</div>
+      <div style="font-size:17px" class="dim">· the pre-roll review lists the same items before any die — press one to jump here</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section id="ta">
+<div class="opt-head"><span class="badge">A</span><h2>The Menu</h2></div>
+<p class="thesis">A café menu card: each offer one confident entry — name left, price big right, the economics as fine print under it.</p>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">$2,140/wk</span></div>
+        <div class="pages">
+          <div class="ptab on">offers<span class="n">2</span></div>
+          <div class="ptab">customers<span class="n">52</span></div>
+          <div class="ptab dim">pipeline</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral alerted"></span><div class="dh">COSTS <span class="abang">!</span><span class="cnt">$2,358/wk</span></div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY<span class="cnt">4</span></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG<span class="cnt">wk 14</span></div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 16px">
+  <div>
+    <div class="big" style="font-size:50px">$41 in · $6 out <span class="pos">→ $35</span></div>
+    <div class="dim" style="font-size:18px">what one customer's week earns you, across two offers on the shelf.</div>
+  </div>
+  <div style="margin-left:auto;width:270px">
+    <div class="tb">
+      <div class="tbrow"><span class="tblab pos" style="width:56px">pays</span><div class="tbbar" style="height:15px"><div class="seg sage" style="flex:1"></div></div><span class="tbval money" style="font-size:17px">$41</span></div>
+      <div class="tbrow"><span class="tblab neg" style="width:56px">serve</span><div class="tbbar" style="height:15px;width:15%"><div class="seg coral" style="flex:1"></div></div><span class="tbval money" style="font-size:17px">$6</span></div>
+    </div>
+  </div>
+</div>
+<div class="pcard" style="padding:16px 22px">
+  <div style="display:flex;align-items:baseline;gap:14px;border-bottom:2px solid var(--ink25);padding-bottom:12px">
+    <span style="font-size:27px">STANDARD SESSION</span><span class="dim" style="font-size:15px">per session · sells most weeks</span>
+    <span class="money big" style="margin-left:auto;font-size:34px">$70</span>
+    <span class="ctl" style="display:flex;gap:6px"><span class="glyph">−</span><span class="glyph">+</span></span>
+  </div>
+  <div class="dim" style="font-size:15.5px;padding:6px 0 14px">street charges ≈ $72 · costs you $17 a session · <b class="pos" style="font-family:'Patrick'">margin $53</b> · demand: <span class="pill">about fair</span></div>
+  <div style="display:flex;align-items:baseline;gap:14px;border-bottom:2px solid var(--ink25);padding-bottom:12px">
+    <span style="font-size:27px">PREMIUM PACKAGE</span><span class="dim" style="font-size:15px">per package · the flagship's big brother</span>
+    <span class="money big" style="margin-left:auto;font-size:34px">$180</span>
+    <span class="ctl" style="display:flex;gap:6px"><span class="glyph">−</span><span class="glyph">+</span></span>
+  </div>
+  <div class="dim" style="font-size:15.5px;padding:6px 0 2px">street ≈ $185 · costs $38 · <b class="pos" style="font-family:'Patrick'">margin $142</b> · demand: <span class="pill">about fair</span></div>
+</div>
+<div style="display:flex;gap:14px;margin-top:14px;align-items:center">
+  <span class="pill" style="font-size:17px;padding:4px 14px">+ sell something new</span>
+  <span class="dimmer" style="font-size:15px">the shelf holds 3 at coworking — one slot free</span>
+</div>
+<div style="margin-top:12px" class="footrules">price at the street's level and demand is fair · overprice and the invoice reminds people to leave</div></div>
+  </div>
+</div>
+<div class="offs">
+<div class="off win"><h4>What it wins</h4><p>Calmest and most in-world (a garage startup's laminated menu). Scales to 8 offers by rows without redesign.</p></div>
+<div class="off cost"><h4>What it costs</h4><p>The margin — the lesson — lives in the fine print rather than a drawn shape.</p></div>
+<div class="off pick"><h4>Choose if</h4><p>You want elegance and density, with pricing as the single act per row.</p></div>
+</div>
+</section>
+<section id="tb">
+<div class="opt-head"><span class="badge">B</span><h2>The Price Tags</h2></div>
+<p class="thesis">Every offer is a hanging shop tag — price huge, ladder on the string, the flip side carrying street, serve and demand.</p>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">$2,140/wk</span></div>
+        <div class="pages">
+          <div class="ptab on">offers<span class="n">2</span></div>
+          <div class="ptab">customers<span class="n">52</span></div>
+          <div class="ptab dim">pipeline</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral alerted"></span><div class="dh">COSTS <span class="abang">!</span><span class="cnt">$2,358/wk</span></div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY<span class="cnt">4</span></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG<span class="cnt">wk 14</span></div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 16px">
+  <div>
+    <div class="big" style="font-size:50px">$41 in · $6 out <span class="pos">→ $35</span></div>
+    <div class="dim" style="font-size:18px">what one customer's week earns you, across two offers on the shelf.</div>
+  </div>
+  <div style="margin-left:auto;width:270px">
+    <div class="tb">
+      <div class="tbrow"><span class="tblab pos" style="width:56px">pays</span><div class="tbbar" style="height:15px"><div class="seg sage" style="flex:1"></div></div><span class="tbval money" style="font-size:17px">$41</span></div>
+      <div class="tbrow"><span class="tblab neg" style="width:56px">serve</span><div class="tbbar" style="height:15px;width:15%"><div class="seg coral" style="flex:1"></div></div><span class="tbval money" style="font-size:17px">$6</span></div>
+    </div>
+  </div>
+</div>
+<div style="display:flex;gap:26px;align-items:flex-start;margin-top:4px">
+  <div class="tag">
+    <span class="taghole"></span>
+    <div style="font-size:21px;margin-top:10px">STANDARD SESSION</div>
+    <div class="dim" style="font-size:14px">per session</div>
+    <div class="big money" style="font-size:46px;text-align:center;margin:8px 0 2px">$70</div>
+    <div style="display:flex;justify-content:center;gap:8px"><span class="glyph">−</span><span class="glyph">+</span></div>
+    <div style="border-top:2px dashed var(--ink25);margin-top:12px;padding-top:8px;font-size:14.5px" class="dim">
+      street ≈ $72<br>serve $17 → <b class="pos" style="font-family:'Patrick'">margin $53</b><br>demand <b style="font-family:'Patrick';color:var(--ink)">about fair</b>
+    </div>
+  </div>
+  <div class="tag" style="transform:rotate(1.4deg)">
+    <span class="taghole"></span>
+    <div style="font-size:21px;margin-top:10px">PREMIUM PACKAGE</div>
+    <div class="dim" style="font-size:14px">per package</div>
+    <div class="big money" style="font-size:46px;text-align:center;margin:8px 0 2px">$180</div>
+    <div style="display:flex;justify-content:center;gap:8px"><span class="glyph">−</span><span class="glyph">+</span></div>
+    <div style="border-top:2px dashed var(--ink25);margin-top:12px;padding-top:8px;font-size:14.5px" class="dim">
+      street ≈ $185<br>serve $38 → <b class="pos" style="font-family:'Patrick'">margin $142</b><br>demand <b style="font-family:'Patrick';color:var(--ink)">about fair</b>
+    </div>
+  </div>
+  <div class="tag ghost">
+    <span class="taghole" style="opacity:.4"></span>
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px">
+      <div style="font-size:38px;color:var(--ink4)">+</div>
+      <div class="dim" style="font-size:16px;text-align:center">sell something<br>new</div>
+    </div>
+  </div>
+</div>
+<div style="margin-top:14px" class="footrules">a tag flips when you press it — the fine print is the flip side · the empty tag is your open shelf slot</div></div>
+  </div>
+</div>
+<div class="offs">
+<div class="off win"><h4>What it wins</h4><p>The most charming object on any desk so far; a price press feels like re-inking a tag. The empty tag makes the free shelf slot irresistible.</p></div>
+<div class="off cost"><h4>What it costs</h4><p>3 tags per row max — an hq shelf of 8 needs a second row and the desk gets tall. Fine print is small by design.</p></div>
+<div class="off pick"><h4>Choose if</h4><p>Personality leads — the shop-keeping fantasy should be felt on this desk most of all.</p></div>
+</div>
+</section>
+<section id="tc">
+<div class="opt-head"><span class="badge">C</span><h2>The Product Cards</h2></div>
+<p class="thesis">A shop shelf: one card per offer with its price/cost bars drawn inside, the verdict as a chip, empty slots visible as dashed cards.</p>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">$2,140/wk</span></div>
+        <div class="pages">
+          <div class="ptab on">offers<span class="n">2</span></div>
+          <div class="ptab">customers<span class="n">52</span></div>
+          <div class="ptab dim">pipeline</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral alerted"></span><div class="dh">COSTS <span class="abang">!</span><span class="cnt">$2,358/wk</span></div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY<span class="cnt">4</span></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG<span class="cnt">wk 14</span></div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 16px">
+  <div>
+    <div class="big" style="font-size:50px">$41 in · $6 out <span class="pos">→ $35</span></div>
+    <div class="dim" style="font-size:18px">what one customer's week earns you, across two offers on the shelf.</div>
+  </div>
+  <div style="margin-left:auto;width:270px">
+    <div class="tb">
+      <div class="tbrow"><span class="tblab pos" style="width:56px">pays</span><div class="tbbar" style="height:15px"><div class="seg sage" style="flex:1"></div></div><span class="tbval money" style="font-size:17px">$41</span></div>
+      <div class="tbrow"><span class="tblab neg" style="width:56px">serve</span><div class="tbbar" style="height:15px;width:15%"><div class="seg coral" style="flex:1"></div></div><span class="tbval money" style="font-size:17px">$6</span></div>
+    </div>
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+  <div class="pcard">
+    <h5>STANDARD SESSION · per session</h5>
+    <div style="display:flex;align-items:center;gap:10px"><span class="big money" style="font-size:36px">$70</span>
+      <span class="ctl" style="display:flex;gap:6px;margin-left:auto"><span class="glyph">−</span><span class="glyph">+</span></span></div>
+    <div class="tb" style="margin-top:8px">
+      <div class="tbrow" style="margin:4px 0"><span class="tblab" style="width:44px;font-size:14px">price</span><div class="tbbar" style="height:13px"><div class="seg sage" style="flex:1"></div></div><span class="tbval money" style="font-size:15px;width:56px">$70</span></div>
+      <div class="tbrow" style="margin:4px 0"><span class="tblab" style="width:44px;font-size:14px">cost</span><div class="tbbar" style="height:13px;width:24%"><div class="seg coral" style="flex:1"></div></div><span class="tbval money" style="font-size:15px;width:56px">$17</span></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;align-items:baseline"><span class="pill">about fair</span><span class="pos" style="font-size:19px;margin-left:auto">margin $53</span></div>
+  </div>
+  <div class="pcard">
+    <h5>PREMIUM PACKAGE · per package</h5>
+    <div style="display:flex;align-items:center;gap:10px"><span class="big money" style="font-size:36px">$180</span>
+      <span class="ctl" style="display:flex;gap:6px;margin-left:auto"><span class="glyph">−</span><span class="glyph">+</span></span></div>
+    <div class="tb" style="margin-top:8px">
+      <div class="tbrow" style="margin:4px 0"><span class="tblab" style="width:44px;font-size:14px">price</span><div class="tbbar" style="height:13px"><div class="seg sage" style="flex:1"></div></div><span class="tbval money" style="font-size:15px;width:56px">$180</span></div>
+      <div class="tbrow" style="margin:4px 0"><span class="tblab" style="width:44px;font-size:14px">cost</span><div class="tbbar" style="height:13px;width:21%"><div class="seg coral" style="flex:1"></div></div><span class="tbval money" style="font-size:15px;width:56px">$38</span></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;align-items:baseline"><span class="pill">about fair</span><span class="pos" style="font-size:19px;margin-left:auto">margin $142</span></div>
+  </div>
+  <div class="pcard" style="border-style:dashed;background:var(--paper);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:170px">
+    <div style="font-size:40px;color:var(--ink4)">+</div>
+    <div class="dim" style="font-size:16px;text-align:center">sell something new</div>
+    <div class="dimmer" style="font-size:13.5px">1 slot free at coworking</div>
+  </div>
+</div>
+<div style="margin-top:13px" class="footrules">each card is one thing you sell · the bars are its price against its cost · press a card for the fine print</div></div>
+  </div>
+</div>
+<div class="offs">
+<div class="off win"><h4>What it wins</h4><p>The margin is DRAWN (price bar vs cost bar) — the doctrine's law 4 at full strength; the dashed empty slot teaches the shelf cap by shape.</p></div>
+<div class="off cost"><h4>What it costs</h4><p>Cards hold fewer words: itemized costs live one press deeper in the detail state.</p></div>
+<div class="off pick"><h4>Choose if</h4><p>You want the strongest visual teaching of margin and shelf on the collapsed view.</p></div>
+</div>
+</section>
+<section id="td">
+<div class="opt-head"><span class="badge">D</span><h2>The Rate Card</h2></div>
+<p class="thesis">One ruled comparison table: a row per offer, a column per truth — price, street, serve, margin, demand — steppers in the row.</p>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">$2,140/wk</span></div>
+        <div class="pages">
+          <div class="ptab on">offers<span class="n">2</span></div>
+          <div class="ptab">customers<span class="n">52</span></div>
+          <div class="ptab dim">pipeline</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral alerted"></span><div class="dh">COSTS <span class="abang">!</span><span class="cnt">$2,358/wk</span></div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY<span class="cnt">4</span></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG<span class="cnt">wk 14</span></div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 16px">
+  <div>
+    <div class="big" style="font-size:50px">$41 in · $6 out <span class="pos">→ $35</span></div>
+    <div class="dim" style="font-size:18px">what one customer's week earns you, across two offers on the shelf.</div>
+  </div>
+  <div style="margin-left:auto;width:270px">
+    <div class="tb">
+      <div class="tbrow"><span class="tblab pos" style="width:56px">pays</span><div class="tbbar" style="height:15px"><div class="seg sage" style="flex:1"></div></div><span class="tbval money" style="font-size:17px">$41</span></div>
+      <div class="tbrow"><span class="tblab neg" style="width:56px">serve</span><div class="tbbar" style="height:15px;width:15%"><div class="seg coral" style="flex:1"></div></div><span class="tbval money" style="font-size:17px">$6</span></div>
+    </div>
+  </div>
+</div>
+<div class="pcard" style="padding:14px 18px">
+  <div style="display:grid;grid-template-columns:2.2fr 1fr 1fr 1fr 1fr 1.3fr .9fr;font-size:14px;color:var(--ink4);letter-spacing:.06em;border-bottom:2px solid var(--ink25);padding-bottom:6px">
+    <span>OFFER</span><span class="money">PRICE</span><span class="money">STREET</span><span class="money">SERVE</span><span class="money">MARGIN</span><span style="text-align:center">DEMAND</span><span></span>
+  </div>
+  <div style="display:grid;grid-template-columns:2.2fr 1fr 1fr 1fr 1fr 1.3fr .9fr;align-items:center;font-size:19px;padding:10px 0;border-bottom:2px solid var(--ink25)">
+    <span>standard session <span class="dimmer" style="font-size:13.5px">/session</span></span>
+    <span class="money big" style="font-size:24px">$70</span><span class="money dim">$72</span><span class="money dim">$17</span>
+    <span class="money pos">$53</span><span style="text-align:center"><span class="pill">about fair</span></span>
+    <span style="display:flex;gap:5px;justify-content:flex-end"><span class="glyph">−</span><span class="glyph">+</span></span>
+  </div>
+  <div style="display:grid;grid-template-columns:2.2fr 1fr 1fr 1fr 1fr 1.3fr .9fr;align-items:center;font-size:19px;padding:10px 0">
+    <span>premium package <span class="dimmer" style="font-size:13.5px">/package</span></span>
+    <span class="money big" style="font-size:24px">$180</span><span class="money dim">$185</span><span class="money dim">$38</span>
+    <span class="money pos">$142</span><span style="text-align:center"><span class="pill">about fair</span></span>
+    <span style="display:flex;gap:5px;justify-content:flex-end"><span class="glyph">−</span><span class="glyph">+</span></span>
+  </div>
+</div>
+<div style="display:flex;gap:14px;margin-top:14px;align-items:center">
+  <span class="pill" style="font-size:17px;padding:4px 14px">+ sell something new</span>
+  <span class="dimmer" style="font-size:15px">1 slot free</span>
+</div>
+<div style="margin-top:12px" class="footrules">one row per offer, one column per truth — margins compare at a glance down the sage column</div></div>
+  </div>
+</div>
+<div class="offs">
+<div class="off win"><h4>What it wins</h4><p>Instant comparison down columns; the most information per pixel; feels like a real business's rate card.</p></div>
+<div class="off cost"><h4>What it costs</h4><p>Least drawn; at one or two offers the table is grand for little content.</p></div>
+<div class="off pick"><h4>Choose if</h4><p>Late-game founders comparing 5-8 offers are the priority, and the accountant's austerity appeals.</p></div>
+</div>
+</section>
+<section id="te">
+<div class="opt-head"><span class="badge">E</span><h2>The Workbench</h2></div>
+<p class="thesis">Master–detail: the shelf as a compact list on the left, the selected offer disassembled on the right — price ladder, itemized costs, demand.</p>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider open"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">$2,140/wk</span></div>
+        <div class="pages">
+          <div class="ptab on">offers<span class="n">2</span></div>
+          <div class="ptab">customers<span class="n">52</span></div>
+          <div class="ptab dim">pipeline</div>
+          <div class="ptab">growth</div>
+        </div>
+      </div>
+      <div class="divider closed"><span class="tab coral alerted"></span><div class="dh">COSTS <span class="abang">!</span><span class="cnt">$2,358/wk</span></div></div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY<span class="cnt">4</span></div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG<span class="cnt">wk 14</span></div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 16px">
+  <div>
+    <div class="big" style="font-size:50px">$41 in · $6 out <span class="pos">→ $35</span></div>
+    <div class="dim" style="font-size:18px">what one customer's week earns you, across two offers on the shelf.</div>
+  </div>
+  <div style="margin-left:auto;width:270px">
+    <div class="tb">
+      <div class="tbrow"><span class="tblab pos" style="width:56px">pays</span><div class="tbbar" style="height:15px"><div class="seg sage" style="flex:1"></div></div><span class="tbval money" style="font-size:17px">$41</span></div>
+      <div class="tbrow"><span class="tblab neg" style="width:56px">serve</span><div class="tbbar" style="height:15px;width:15%"><div class="seg coral" style="flex:1"></div></div><span class="tbval money" style="font-size:17px">$6</span></div>
+    </div>
+  </div>
+</div>
+<div style="display:flex;gap:18px">
+  <div style="width:250px;flex:none">
+    <div class="ptab on" style="font-size:18px">standard session<span class="n">$70</span></div>
+    <div class="ptab" style="font-size:18px">premium package<span class="n">$180</span></div>
+    <div class="ptab dim" style="font-size:17px;border-style:dashed;border-width:2px;border-color:var(--ink25)">+ sell something new</div>
+    <div class="dimmer" style="font-size:13.5px;margin-top:8px;padding-left:8px">1 slot free at coworking</div>
+  </div>
+  <div class="pcard" style="flex:1">
+    <h5>STANDARD SESSION — the whole story</h5>
+    <div style="display:flex;align-items:center;gap:18px">
+      <span class="big money" style="font-size:44px">$70</span>
+      <div style="flex:1">
+        <div class="dimmer" style="font-size:13px;margin-bottom:3px">the ladder — where your price can step</div>
+        <div style="display:flex;gap:5px;align-items:flex-end">
+          <span class="rung" style="height:12px"></span><span class="rung" style="height:16px"></span><span class="rung" style="height:20px"></span>
+          <span class="rung on" style="height:26px"></span><span class="rung" style="height:30px"></span><span class="rung" style="height:34px"></span><span class="rung" style="height:38px"></span>
+        </div>
+      </div>
+      <span class="ctl" style="display:flex;gap:6px"><span class="glyph">−</span><span class="glyph">+</span></span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;column-gap:40px;margin-top:12px">
+      <div class="mrow" style="font-size:17px"><span class="lab">the street charges</span><span class="val money">$72</span></div>
+      <div class="mrow" style="font-size:17px"><span class="lab">demand at this price</span><span class="val" style="text-align:right"><span class="pill">about fair</span></span></div>
+      <div class="mrow" style="font-size:17px"><span class="lab">parts &amp; labor a session</span><span class="val money">$14</span></div>
+      <div class="mrow" style="font-size:17px"><span class="lab">payment fees</span><span class="val money">$3</span></div>
+      <div class="mrow" style="font-size:17px;border-top:2px solid var(--ink25)"><span class="lab"><b style="font-family:'Patrick'">margin, each sale</b></span><span class="val money pos" style="font-size:21px">$53</span></div>
+      <div class="mrow" style="font-size:17px;border-top:2px solid var(--ink25)"><span class="lab">share of a customer's week</span><span class="val money">70%</span></div>
+    </div>
+  </div>
+</div>
+<div style="margin-top:12px" class="footrules">the list stays put; the bench shows one offer whole — itemized costs, the price ladder, the demand read</div></div>
+  </div>
+</div>
+<div class="offs">
+<div class="off win"><h4>What it wins</h4><p>The only layout that shows ITEMIZED costs and the price ladder without leaving the page; deepest single-offer understanding.</p></div>
+<div class="off cost"><h4>What it costs</h4><p>Two panes on one sheet; the non-selected offers are just names until pressed.</p></div>
+<div class="off pick"><h4>Choose if</h4><p>The teaching north star wins: one offer fully understood beats all offers glanced.</p></div>
+</div>
+</section>
+<div class="footer">
+<p><b>Constant across all five:</b> the hero line ($41 in · $6 out → $35), the two-tap drop, the write-in flow behind "+ sell something new" (LLM itemizes, you adjust on the review card, nothing enters the books unreviewed), the era shelf cap, price-war captions when the street turns. After your letter, next tab: <b>customers</b>.</p>
+</div>
+</div>

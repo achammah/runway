@@ -1,0 +1,195 @@
+<title>The Ledger Sheet</title>
+<style>
+@font-face{font-family:'Patrick';src:url(../../../game/assets/fonts/PatrickHand-Regular.ttf) format('truetype');font-display:block}
+@font-face{font-family:'Baloo';src:url(../../../game/assets/fonts/Baloo2-Bold.ttf) format('truetype');font-weight:700;font-display:block}
+:root{
+  --wall:#2A2722; --wall2:#332F28; --paper:#F2EAD3; --paper2:#F6F0DE; --card:#EFE6CE;
+  --kraft:#DDBE8C; --kraft2:#CBA96F; --alert:#D93425;
+  --ink:#2B2823; --ink6:rgba(43,40,35,.6); --ink4:rgba(43,40,35,.42); --ink25:rgba(43,40,35,.25); --ink12:rgba(43,40,35,.12);
+  --coral:#E86A5C; --sage:#8FA582; --blue:#6E8CA0; --yell:#F4B942;
+  --sageband:rgba(143,165,130,.14);
+  --chrome:#D8D2C4; --chrome-dim:#A69E8D;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--wall);color:var(--chrome);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 0 90px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 26px}
+.topbar{position:sticky;top:0;z-index:50;background:linear-gradient(var(--wall) 82%,transparent);padding:18px 0 10px}
+.topbar .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-family:'Baloo';color:var(--paper);font-size:28px}
+.crumb{font-size:12.5px;color:var(--chrome-dim);letter-spacing:.08em}
+.lede{padding:24px 0 6px;max-width:940px}
+.lede p{margin:0 0 12px}
+.lede .how{border-left:4px solid var(--yell);padding:10px 16px;background:var(--wall2);border-radius:6px;margin-top:12px}
+.lede .how b{color:var(--paper)}
+.secttl{display:flex;align-items:baseline;gap:14px;margin:44px 0 8px}
+.secttl h2{font-family:'Baloo';color:var(--paper);font-size:26px}
+.secttl span{color:var(--chrome-dim);font-size:14px}
+.binder{position:relative;max-width:100%;display:flex;font-family:'Patrick';color:var(--ink);filter:drop-shadow(0 14px 30px rgba(0,0,0,.5))}
+.cover{flex:none;width:50px;background:var(--kraft);border:3px solid var(--ink);border-right:none;border-radius:16px 0 0 14px;position:relative;background-image:repeating-linear-gradient(115deg, rgba(43,40,35,.05) 0 3px, transparent 3px 9px)}
+.cover .sticker{position:absolute;top:26px;left:50%;transform:translateX(-50%) rotate(-90deg);white-space:nowrap;background:var(--paper2);border:2.2px solid var(--ink);border-radius:6px;padding:2px 12px;font-size:15px}
+.ringbar{flex:none;width:44px;background:var(--kraft2);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);display:flex;flex-direction:column;justify-content:space-around;align-items:center;padding:20px 0}
+.ring{width:32px;height:32px;border-radius:50%;border:3.4px solid var(--ink);position:relative}
+.ring::after{content:"";position:absolute;inset:6px;border-radius:50%;border:2.6px solid var(--ink);opacity:.45}
+.stack{flex:1;background:var(--paper);border:3px solid var(--ink);border-left:2.6px solid var(--ink);border-radius:0 14px 12px 0;display:flex;min-width:0;position:relative}
+.rail{flex:none;width:196px;padding:18px 8px 18px 22px}
+.divider{position:relative;margin:10px 0;border:2.6px solid var(--ink);border-radius:10px;background:var(--paper2)}
+.divider .tab{position:absolute;top:-2.6px;bottom:-2.6px;left:-16px;width:13px;border:2.6px solid var(--ink);border-radius:8px 0 0 8px}
+.tab.sage{background:var(--sage)}.tab.coral{background:var(--coral)}.tab.blue{background:var(--blue)}.tab.yell{background:var(--yell)}
+.divider .dh{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:15px}
+.divider .dh .cnt{margin-left:auto;font-size:12.5px;color:var(--ink4)}
+.divider.closed{background:var(--kraft);box-shadow:0 3px 0 -1px var(--kraft2), 0 6px 0 -2px rgba(43,40,35,.35)}
+.divider.open{background:var(--paper)}
+.divider.open .dh{border-bottom:2px solid var(--ink25)}
+.divider .pages{padding:6px 6px 9px}
+.ptab{display:flex;align-items:center;gap:7px;font-size:16.5px;padding:4px 9px;border-radius:8px;margin:2px 0}
+.ptab.on{background:var(--paper2);border:2.4px solid var(--ink);box-shadow:1.5px 1.5px 0 rgba(43,40,35,.18)}
+.sheet{flex:1;min-width:0;padding:20px 24px 22px;border-left:2.4px solid var(--ink25);background:var(--paper);border-radius:0 12px 10px 0}
+.money{font-variant-numeric:tabular-nums;text-align:right}
+.big{font-family:'Baloo';line-height:1.05}
+.pos{color:#5D7A50}
+.dim{color:var(--ink6)}.dimmer{color:var(--ink4)}
+.footrules{font-size:14.5px;color:var(--ink4)}
+.step{font-family:'Baloo';font-size:14px;border:2.2px solid var(--ink);border-radius:7px;background:var(--paper2);padding:0 6px;font-style:normal}
+.clock{display:inline-block;background:var(--alert);color:#fff;border:2.2px solid var(--ink);border-radius:8px;padding:0 8px;font-size:13.5px}
+.askchip{display:inline-block;background:var(--coral);color:#fff;border:2.2px solid var(--ink);border-radius:8px;padding:0 8px;font-size:13.5px}
+.fchip{display:inline-block;font-size:13px;border:2.2px solid var(--ink);border-radius:8px;padding:0 8px;background:var(--coral);color:#fff;font-style:normal}
+.fchip.sc{background:var(--yell);color:var(--ink)}
+.pips{display:inline-flex;gap:4px}
+.pip,.pip.off{width:11px;height:11px;border-radius:50%;border:2.2px solid var(--ink);background:var(--sage);display:inline-block}
+.pip.off{background:var(--paper2)}
+/* ═══ THE LEDGER SHEET primitive ═══ */
+.lsheet{background:var(--paper2);border:2.6px solid var(--ink);border-radius:8px;overflow:hidden;box-shadow:1.5px 2px 0 rgba(43,40,35,.18)}
+.lsheet>div{display:grid;align-items:center;column-gap:12px;padding:0 14px}
+.lsheet .amt{background:var(--sageband);align-self:stretch;display:flex;align-items:center;justify-content:flex-end;padding:0 10px;margin:0 -10px}
+.lhead{font-size:13px;color:var(--ink4);letter-spacing:.08em;border-bottom:2.4px solid var(--ink);padding-top:8px !important;padding-bottom:6px !important}
+.lhead .amt{color:var(--ink4)}
+.lrow{font-size:17.5px;border-bottom:1.6px solid var(--ink12);padding-top:7px !important;padding-bottom:7px !important}
+.lrow .rn{font-size:12.5px;color:var(--ink25);font-variant-numeric:tabular-nums}
+.lrow .note{font-size:14.5px;color:var(--ink6)}
+.lrow.open2{background:rgba(43,40,35,.035)}
+.lsec{font-size:13.5px;letter-spacing:.1em;color:var(--ink6);background:rgba(203,169,111,.22);border-bottom:1.6px solid var(--ink12);padding-top:5px !important;padding-bottom:4px !important}
+.lsub{font-size:16.5px;border-top:2px solid var(--ink6);border-bottom:1.6px solid var(--ink12);padding-top:6px !important;padding-bottom:6px !important}
+.lsub i{color:var(--ink6);font-size:14.5px}
+.lsub .note{font-size:14.5px;color:var(--ink6)}
+.ltot{font-size:19px;border-top:7px double var(--ink);background:var(--card);padding-top:8px !important;padding-bottom:8px !important}
+.lmemo{font-size:14.5px;color:var(--ink6);border-top:1.6px solid var(--ink12);padding-top:6px !important;padding-bottom:8px !important}
+.lmemo .note{font-size:14px}
+.footer{margin-top:64px;border-top:1px solid var(--wall2);padding-top:20px;color:var(--chrome-dim);font-size:14.5px}
+.footer b{color:var(--paper)}
+</style>
+
+<div class="topbar"><div class="wrap">
+<h1>The Ledger Sheet</h1><span class="crumb">ONE ACCOUNTING PRIMITIVE · THREE DESKS RE-RENDERED · SAY OK OR ADJUST</span>
+</div></div>
+
+<div class="wrap">
+<div class="lede">
+<p><b style="color:var(--paper)">Bills = B, rebuilt as a real book of accounts</b> — and since spend and team are the same family, all three now share one primitive: <b style="color:var(--paper)">THE LEDGER SHEET</b>. Paper book-keeping, not a webpage table: fine column rules, faint row numbers, the amount column carries the classic green ledger band, small-caps header states the unit once. The accounting rules are law: <b style="color:var(--paper)">single rule above a subtotal, DOUBLE RULE above the total</b>, total at the bottom always, and the book must balance to the hero's number. Sections fold to their subtotal (the collapse ladder); the total row never scrolls away.</p>
+<div class="how"><b>Below: bills, then spend and team re-rendered on the same sheet.</b> Say OK (or what to adjust) — then THE BANK round, whose BOOKS mode reuses this sheet for the full P&L statement.</div>
+</div>
+
+<div class="secttl"><h2>BILLS</h2><span>flat vs scaling sections · trend column teaches · memo line compares to revenue</span></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">≈21/wk</span></div></div>
+      <div class="divider open"><span class="tab coral"></span><div class="dh">COSTS<span class="cnt">$8.4k/wk</span></div>
+        <div class="pages"><div class="ptab">spend</div><div class="ptab">team</div><div class="ptab on">bills</div><div class="ptab">the bank</div><div class="ptab">the factory</div></div>
+      </div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 12px">
+  <div>
+    <div class="big" style="font-size:44px">$7,232 <span style="font-size:23px">every Monday, before you choose anything</span></div>
+    <div class="dim" style="font-size:17px">the flat moves when you move; the scaling moves when the business does.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div class="dim" style="font-size:14.5px">week 22 · office era</div>
+    <div class="dim" style="font-size:14.5px">all figures $/week</div>
+  </div>
+</div>
+<div class="lsheet">
+  <div class="lhead" style="grid-template-columns:34px 1.45fr 1.75fr .72fr .95fr 1.35fr"><span></span><span>WHO WE PAY</span><span>FOR WHAT</span><span style="text-align:center">KIND</span><span class="amt" style="text-align:right">$/WK</span><span>TREND</span></div>
+  <div class="lsec" style="grid-template-columns:34px 1.45fr 1.75fr .72fr .95fr 1.35fr"><span></span><span>THE FLAT</span><span></span><span></span><span></span><span></span></div>
+  <div class="lrow" style="grid-template-columns:34px 1.45fr 1.75fr .72fr .95fr 1.35fr;"><span class="rn">1</span><span><b>Vermeulen Properties</b></span><span class="dim">the office-era roof</span><span style="text-align:center"><span class="fchip">flat</span></span><span class="money amt">$3,000</span><span class="note">jumps ×4 at the floor era</span></div><div class="lrow" style="grid-template-columns:34px 1.45fr 1.75fr .72fr .95fr 1.35fr;"><span class="rn">2</span><span><b>the payroll</b></span><span class="dim">6 people → team ▸</span><span style="text-align:center"><span class="fchip">flat</span></span><span class="money amt">$3,050</span><span class="note">+$560 if you fill the seat</span></div><div class="lrow" style="grid-template-columns:34px 1.45fr 1.75fr .72fr .95fr 1.35fr;"><span class="rn">3</span><span><b>the tools</b></span><span class="dim">7 lines — hosting, licences ▸</span><span style="text-align:center"><span class="fchip">flat</span></span><span class="money amt">$230</span><span class="note">grows with the catalog</span></div>
+  <div class="lsub" style="grid-template-columns:34px 1.45fr 1.75fr .72fr .95fr 1.35fr"><span></span><span></span><span><i>subtotal — the flat</i></span><span></span><span class="money amt"><b>$6,280</b></span><span></span></div>
+  <div class="lsec" style="grid-template-columns:34px 1.45fr 1.75fr .72fr .95fr 1.35fr"><span></span><span>THE SCALING</span><span></span><span></span><span></span><span></span></div>
+  <div class="lrow" style="grid-template-columns:34px 1.45fr 1.75fr .72fr .95fr 1.35fr;"><span class="rn">4</span><span><b>serving customers</b></span><span class="dim">$6 × 96, every week</span><span style="text-align:center"><span class="fchip sc">scales</span></span><span class="money amt">$576</span><span class="note"><span class='pos'>margin-safe at your prices</span></span></div><div class="lrow" style="grid-template-columns:34px 1.45fr 1.75fr .72fr .95fr 1.35fr;"><span class="rn">5</span><span><b>Meridian Savings</b></span><span class="dim">interest on $9,400 → the bank ▸</span><span style="text-align:center"><span class="fchip sc">scales</span></span><span class="money amt">$376</span><span class="note">falls as you repay</span></div><div class="lrow" style="grid-template-columns:34px 1.45fr 1.75fr .72fr .95fr 1.35fr;"><span class="rn">6</span><span><b>the taxman</b></span><span class="dim">on profit — losses banked</span><span style="text-align:center"><span class="fchip sc">scales</span></span><span class="money amt">$0</span><span class="note">waiting</span></div>
+  <div class="lsub" style="grid-template-columns:34px 1.45fr 1.75fr .72fr .95fr 1.35fr"><span></span><span></span><span><i>subtotal — the scaling</i></span><span></span><span class="money amt"><b>$952</b></span><span></span></div>
+  <div class="ltot" style="grid-template-columns:34px 1.45fr 1.75fr .72fr .95fr 1.35fr"><span></span><span><b>TOTAL BILLS</b></span><span></span><span></span><span class="money amt big" style="font-size:23px">$7,232</span><span></span></div>
+  <div class="lmemo" style="grid-template-columns:34px 1.45fr 1.75fr .72fr .95fr 1.35fr"><span></span><span class="dim" colspan>revenue this week</span><span></span><span></span><span class="money amt dim">$3,840</span><span class="note">the Monday floor eats <b>1.9×</b> revenue</span></div>
+</div>
+<div style="margin-top:10px" class="footrules">single rule = subtotal, double rule = total — the book always balances to the hero</div></div>
+  </div>
+</div>
+
+<div class="secttl"><h2>SPEND</h2><span>the generated book (here: a dev-tools business) · bucket sections · effect on the subtotal row</span></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">≈21/wk</span></div></div>
+      <div class="divider open"><span class="tab coral"></span><div class="dh">COSTS<span class="cnt">$8.4k/wk</span></div>
+        <div class="pages"><div class="ptab on">spend</div><div class="ptab">team</div><div class="ptab">bills</div><div class="ptab">the bank</div><div class="ptab">the factory</div></div>
+      </div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 12px">
+  <div>
+    <div class="big" style="font-size:44px">$1,150 <span style="font-size:23px">a week feeds the org</span></div>
+    <div class="dim" style="font-size:17px">your book, written for YOUR business — every line sums into one of four engine buckets.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right"><div class="dim" style="font-size:14.5px">all figures $/week · steppers on the line</div></div>
+</div>
+<div class="lsheet">
+  <div class="lhead" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span></span><span>LINE</span><span>BUYS</span><span class="amt" style="text-align:right">$/WK</span><span>EFFECT</span></div>
+<div class="lsec" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span></span><span>CLOSING — sales</span><span></span><span></span><span></span></div><div class="lrow" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span class="rn">1</span><span><b>sales engineering</b></span><span class="dim">demos that land</span><span class="money amt">$180 <i class="step">−+</i></span><span></span></div><div class="lrow" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span class="rn">2</span><span><b>the demo rig</b></span><span class="dim">always ready to show</span><span class="money amt">$120 <i class="step">−+</i></span><span></span></div><div class="lsub" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span></span><span></span><span><i>subtotal — closing</i></span><span class="money amt"><b>$300</b></span><span class="note">deals shut <b>+9%</b> faster</span></div><div class="lsec" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span></span><span>RETENTION — care</span><span></span><span></span><span></span></div><div class="lrow" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span class="rn">3</span><span><b>on-call rotation</b></span><span class="dim">nights answered</span><span class="money amt">$120 <i class="step">−+</i></span><span></span></div><div class="lrow" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span class="rn">4</span><span><b>success check-ins</b></span><span class="dim">nobody drifts away</span><span class="money amt">$80 <i class="step">−+</i></span><span></span></div><div class="lsub" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span></span><span></span><span><i>subtotal — retention</i></span><span class="money amt"><b>$200</b></span><span class="note">churn <b>3.1% → 2.4%</b></span></div><div class="lsec" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span></span><span>BUILDING — r&d</span><span></span><span></span><span></span></div><div class="lrow" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span class="rn">5</span><span><b>the test bench</b></span><span class="dim">bugs die young</span><span class="money amt">$150 <i class="step">−+</i></span><span></span></div><div class="lrow" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span class="rn">6</span><span><b>refactor fridays</b></span><span class="dim">debt pays down</span><span class="money amt">$100 <i class="step">−+</i></span><span></span></div><div class="lsub" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span></span><span></span><span><i>subtotal — building</i></span><span class="money amt"><b>$250</b></span><span class="note"><b>+8</b> quality pace</span></div><div class="lsec" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span></span><span>PEOPLE — office</span><span></span><span></span><span></span></div><div class="lrow" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span class="rn">7</span><span><b>the kitchen</b></span><span class="dim">fed people stay</span><span class="money amt">$220 <i class="step">−+</i></span><span></span></div><div class="lrow" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span class="rn">8</span><span><b>gym floats</b></span><span class="dim">backs survive desks</span><span class="money amt">$180 <i class="step">−+</i></span><span></span></div><div class="lsub" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span></span><span></span><span><i>subtotal — people</i></span><span class="money amt"><b>$400</b></span><span class="note">morale <b>+1.2</b>/wk · flat past $800</span></div>
+  <div class="ltot" style="grid-template-columns:34px 1.9fr 1.5fr 1fr 1.5fr"><span></span><span><b>TOTAL ORG SPEND</b></span><span></span><span class="money amt big" style="font-size:23px">$1,150</span><span></span></div>
+</div>
+<div style="margin-top:10px" class="footrules">lines are written once at run start for your business — a restaurant's book reads front-of-house training and the test kitchen</div></div>
+  </div>
+</div>
+
+<div class="secttl"><h2>TEAM</h2><span>people rows · the open seat in the book · payroll total double-ruled · fully-loaded memo</span></div>
+<div class="binder" style="width:1180px">
+  <div class="cover"><span class="sticker">DAO — the binder</span></div>
+  <div class="ringbar"><span class="ring"></span><span class="ring"></span><span class="ring"></span></div>
+  <div class="stack">
+    <div class="rail">
+      <div class="divider closed"><span class="tab sage"></span><div class="dh">REVENUE<span class="cnt">≈21/wk</span></div></div>
+      <div class="divider open"><span class="tab coral"></span><div class="dh">COSTS<span class="cnt">$8.4k/wk</span></div>
+        <div class="pages"><div class="ptab">spend</div><div class="ptab on">team</div><div class="ptab">bills</div><div class="ptab">the bank</div><div class="ptab">the factory</div></div>
+      </div>
+      <div class="divider closed"><span class="tab blue"></span><div class="dh">THE COMPANY</div></div>
+      <div class="divider closed"><span class="tab yell"></span><div class="dh">THE LOG</div></div>
+    </div>
+    <div class="sheet"><div style="display:flex;align-items:center;gap:24px;margin:2px 0 12px">
+  <div>
+    <div class="big" style="font-size:44px">6 people <span style="font-size:23px">· $3,050 a week</span></div>
+    <div class="dim" style="font-size:17px">payroll is the biggest bill in the building — and the easiest to grow carelessly.</div>
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div style="font-size:17px"><span class="clock">3 applicants waiting</span></div>
+    <div class="dim" style="font-size:14.5px">morale 68 · all figures $/week</div>
+  </div>
+</div>
+<div class="lsheet">
+  <div class="lhead" style="grid-template-columns:34px 1.25fr 1fr .95fr 1fr 1.65fr"><span></span><span>WHO</span><span>ROLE</span><span>SKILL</span><span class="amt" style="text-align:right">$/WK</span><span>NOTE</span></div>
+<div class="lrow" style="grid-template-columns:34px 1.25fr 1fr .95fr 1fr 1.65fr"><span class="rn">1</span><span><b>Mara</b></span><span class="dim">product</span><span><span class="pips"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></span></span><span class="money amt">$620</span><span class="note"><span class="dim">cofounder</span></span></div><div class="lrow" style="grid-template-columns:34px 1.25fr 1fr .95fr 1fr 1.65fr"><span class="rn">2</span><span><b>Tomas</b></span><span class="dim">sales</span><span><span class="pips"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip off"></span></span></span><span class="money amt">$560</span><span class="note"><span class="dim">—</span></span></div><div class="lrow" style="grid-template-columns:34px 1.25fr 1fr .95fr 1fr 1.65fr"><span class="rn">3</span><span><b>Ravi</b></span><span class="dim">engineer</span><span><span class="pips"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip off"></span></span></span><span class="money amt">$540</span><span class="note"><span class="askchip">wants +$90 · answer ▸</span></span></div><div class="lrow" style="grid-template-columns:34px 1.25fr 1fr .95fr 1fr 1.65fr"><span class="rn">4</span><span><b>Ines</b></span><span class="dim">care</span><span><span class="pips"><span class="pip"></span><span class="pip"></span><span class="pip off"></span><span class="pip off"></span></span></span><span class="money amt">$470</span><span class="note"><span class="dim">—</span></span></div><div class="lrow" style="grid-template-columns:34px 1.25fr 1fr .95fr 1fr 1.65fr"><span class="rn">5</span><span><b>June</b></span><span class="dim">engineer</span><span><span class="pips"><span class="pip"></span><span class="pip"></span><span class="pip off"></span><span class="pip off"></span></span></span><span class="money amt">$510</span><span class="note"><span class="dim">—</span></span></div><div class="lrow" style="grid-template-columns:34px 1.25fr 1fr .95fr 1fr 1.65fr"><span class="rn">6</span><span><b>Priya</b></span><span class="dim">ops (part-time)</span><span><span class="pips"><span class="pip"></span><span class="pip off"></span><span class="pip off"></span><span class="pip off"></span></span></span><span class="money amt">$350</span><span class="note"><span class="dim">—</span></span></div>
+  <div class="lrow open2" style="grid-template-columns:34px 1.25fr 1fr .95fr 1fr 1.65fr"><span class="rn">·</span><span><b class="dim">salesperson #2</b></span><span class="dim">open seat</span><span class="dim" style="font-size:14px">advert $60 <i class="step">−+</i></span><span class="money amt dim">≈2/wk</span><span class="note"><span class="clock">3 waiting ▸</span></span></div>
+  <div class="ltot" style="grid-template-columns:34px 1.25fr 1fr .95fr 1fr 1.65fr"><span></span><span><b>TOTAL PAYROLL</b></span><span></span><span></span><span class="money amt big" style="font-size:23px">$3,050</span><span></span></div>
+  <div class="lmemo" style="grid-template-columns:34px 1.25fr 1fr .95fr 1fr 1.65fr"><span></span><span class="dim">fully loaded</span><span></span><span></span><span class="money amt dim">≈$3,700</span><span class="note">with the kitchen's share · severance always owed</span></div>
+</div>
+<div style="margin-top:10px" class="footrules">at 40 these rows group by function with subtotals; at hundreds, by business unit — same sheet, folded</div></div>
+  </div>
+</div>
+
+<div class="footer">
+<p><b>The sheet in one sentence:</b> every money desk is a page from the same paper accounting book — rules, row numbers, sections, subtotals, one double-ruled total that matches the hero. OK locks bills/spend/team final; then THE BANK.</p>
+</div>
+</div>
