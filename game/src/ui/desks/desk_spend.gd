@@ -71,6 +71,18 @@ static func draw(b) -> void:
 		Color(DeskKit.INK, 0.7), 420.0)
 	b.label("your book, written for YOUR business — every line sums into one of four engine buckets.",
 		Vector2(SHEET_X, 62.0), DeskKit.DETAIL, Color(DeskKit.INK, 0.6), 760.0)
+	# RED MEANS ACT, AND THE PAGE NAMES THE ASK (owner: "exclamation mark but
+	# unclear what is asked") — this desk's own attention rows, said out loud.
+	var asks: Array = []
+	for r_att in SimEngine.attention_items(state):
+		var rd_att: Dictionary = r_att
+		var did := String(Binder.LEGACY_TO_DESK.get(String(rd_att.get("desk", "")),
+			String(rd_att.get("desk", ""))))
+		if did == "spend":
+			asks.append(String(rd_att.get("label", "")))
+	if not asks.is_empty():
+		b.label("!  " + " · ".join(PackedStringArray(asks)) + " — adopt the book or fund a line",
+			Vector2(SHEET_X, 86.0), DeskKit.DETAIL, Binder.ALERT, 1000.0)
 	# the whole-book adopt arm (the ruling): one press-pair prices the book
 	if suggested > 0 and suggested != total:
 		var fire_book := func() -> void:

@@ -124,6 +124,15 @@ namespace Runway.Game
             }
             cogs = SimEngine.OffersCogsPerCustomer(s);
             string offersWord = s.Offers.Count == 1 ? "one offer" : s.Offers.Count + " offers";
+            // at 0 customers the unit story is a PROMISE, not money — say so
+            if (s.Traction <= 0)
+            {
+                big = "$0/wk — nobody pays yet";
+                line = "one customer's week would earn $" + Gd.RoundToInt(arpu) + " in · $"
+                       + Gd.RoundToInt(cogs) + " out -> $" + Gd.RoundToInt(arpu - cogs)
+                       + ", across " + offersWord;
+                return;
+            }
             big = "$" + Gd.RoundToInt(arpu) + " in · $" + Gd.RoundToInt(cogs)
                   + " out -> $" + Gd.RoundToInt(arpu - cogs);
             line = "what one customer's week earns you, across " + offersWord + " on the shelf";

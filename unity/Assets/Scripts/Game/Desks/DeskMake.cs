@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Runway.App;
@@ -116,11 +117,15 @@ namespace Runway.Game
                     var mt = new Texture2D(2, 2, TextureFormat.RGBA32, false);
                     if (mt.LoadImage(mb))
                     {
-                        var mi = new GameObject("make_illus", typeof(RectTransform),
+                        // hosted under a DrawnUI.Rect (the proven placement
+                        // idiom — a bare RawImage under Content drifted to the
+                        // layout's mercy; owner screenshot showed it floating)
+                        var host = DrawnUI.Rect(b.Content, "make_illus", 434f, 4f, 84f, 84f);
+                        var mi = new GameObject("img", typeof(RectTransform),
                             typeof(UnityEngine.UI.RawImage)).GetComponent<UnityEngine.UI.RawImage>();
                         mi.texture = mt;
-                        mi.rectTransform.SetParent(b.Content, false);
-                        DrawnUI.SetTopLeft(mi.rectTransform, 434f, 4f);
+                        mi.rectTransform.SetParent(host, false);
+                        DrawnUI.SetTopLeft(mi.rectTransform, 0f, 0f);
                         mi.rectTransform.sizeDelta = new Vector2(84f, 84f);
                         mi.raycastTarget = false;
                     }
@@ -502,7 +507,10 @@ namespace Runway.Game
             float cx = frame.ContentX;
             int sev = SoliditySev(fd.Solidity);
             if (sev > 0) DeskKit.SevDot(b, cx - 6f, y + 12f, sev);
-            b.L(fd.Name, cx + (sev > 0 ? 24f : 0f), y + 8f, 20f, DrawnUI.Ink, 190f);
+            var nmL = b.L(fd.Name, cx + (sev > 0 ? 24f : 0f), y + 8f, 20f, DrawnUI.Ink, 190f);
+            // one line, clipped — a generated name must not escape the card
+            nmL.textWrappingMode = TextWrappingModes.NoWrap;
+            nmL.overflowMode = TextOverflowModes.Ellipsis;
             var v = b.L(string.Format(CultureInfo.InvariantCulture, "${0}/wk", fd.KeepWk),
                 x + 306f - 110f, y + 8f, 18f, Ink(0.6f), 96f);
             v.alignment = TMPro.TextAlignmentOptions.TopRight;

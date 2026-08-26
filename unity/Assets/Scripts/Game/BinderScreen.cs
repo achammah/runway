@@ -46,6 +46,13 @@ namespace Runway.Game
             "vitals", "the ledger", "the bank", "pricing", "customers",
             "product", "crew", "cap table", "the street", "threats",
         };
+        /// <summary>Old attention desk word → the 19-desk taxonomy id.</summary>
+        public static string DeskAlias(string deskName)
+        {
+            string id;
+            return LegacyToDesk.TryGetValue(deskName ?? "", out id) ? id : deskName;
+        }
+
         static readonly Dictionary<string, string> LegacyToDesk =
             new Dictionary<string, string>
         {
@@ -475,7 +482,7 @@ namespace Runway.Game
                 GameUi.InkWord(_rail, "", RailX, y, RailBoxW, 48f, 19f, DrawnUI.Ink,
                                () => PressGroup(gidx));
                 DrawnUI.HandLabel(_rail, GroupNames[gi], RailX + 12f, y + 10f, 19f,
-                                  DrawnUI.Ink, RailBoxW - 110f);
+                                  DrawnUI.Ink, RailBoxW - 24f);
                 var cnt = DrawnUI.HandLabel(_rail, GroupCount(gi), RailX + RailBoxW - 66f,
                                             y + 14f, 15f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f),
                                             58f, TextAlignmentOptions.TopRight);
@@ -484,7 +491,7 @@ namespace Runway.Game
                 {
                     // the red bang chip on the closed divider header
                     var chip = DrawnUI.Fill(_rail, "bang", DeskKit.Alert,
-                                            RailX + RailBoxW - 92f, y + 12f, 22f, 22f);
+                                            RailX + RailBoxW - 26f, y - 6f, 22f, 22f);
                     chip.raycastTarget = false;
                     DrawnUI.AddInkEdge(chip.rectTransform, new Vector2(22f, 22f),
                         new DrawnUI.PaperStyle
@@ -492,7 +499,7 @@ namespace Runway.Game
                             ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
                             StepsPerEdge = 5, Jitter = 0.6f, Thickness = 2.2f, Seed = 17,
                         });
-                    DrawnUI.DisplayLabel(_rail, "!", RailX + RailBoxW - 92f, y + 12f, 15f,
+                    DrawnUI.DisplayLabel(_rail, "!", RailX + RailBoxW - 26f, y - 6f, 15f,
                                          Color.white, 22f, TextAlignmentOptions.Center);
                 }
                 if (open)

@@ -298,12 +298,13 @@ namespace Runway.Game
                 byte[] bytes = System.IO.File.ReadAllBytes(p);
                 var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
                 if (!tex.LoadImage(bytes)) return false;
-                var img = new GameObject("pitch_vignette",
+                var host = DrawnUI.Rect(b.Content, "pitch_vignette", 600f, 2f, 132f, 132f);
+                var img = new GameObject("img",
                     typeof(RectTransform), typeof(UnityEngine.UI.RawImage))
                     .GetComponent<UnityEngine.UI.RawImage>();
                 img.texture = tex;
-                img.rectTransform.SetParent(b.Content, false);
-                DrawnUI.SetTopLeft(img.rectTransform, 600f, 2f);
+                img.rectTransform.SetParent(host, false);
+                DrawnUI.SetTopLeft(img.rectTransform, 0f, 0f);
                 img.rectTransform.sizeDelta = new Vector2(132f, 132f);
                 img.color = new Color(1f, 1f, 1f, 0.9f);
                 img.raycastTarget = false;

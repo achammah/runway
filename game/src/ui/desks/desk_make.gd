@@ -414,8 +414,13 @@ static func _feature_card(b, state: GameState, x: float, y: float, fd: Dictionar
 	var sev := _solidity_sev(String(fd.get("solidity", "solid")))
 	if sev > 0:
 		DeskKit.sev_dot(b, cx - 6.0, y + 12.0, sev)
-	b.label(String(fd.get("name", "")), Vector2(cx + (24.0 if sev > 0 else 0.0), y + 8.0),
-		20, Binder.INK, 190.0)
+	var nm_l: Label = b.label(String(fd.get("name", "")),
+		Vector2(cx + (24.0 if sev > 0 else 0.0), y + 8.0), 20, Binder.INK, 190.0)
+	# one line, clipped — a 28-char generated name must not escape the card
+	nm_l.autowrap_mode = TextServer.AUTOWRAP_OFF
+	nm_l.clip_text = true
+	nm_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	nm_l.size = Vector2(190.0 - (24.0 if sev > 0 else 0.0), 26.0)
 	var v: Label = b.label("$%d/wk" % int(fd.get("keep_wk", 0)),
 		Vector2(x + 306.0 - 110.0, y + 8.0), 18, Color(Binder.INK, 0.6), 96.0)
 	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

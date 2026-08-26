@@ -84,6 +84,16 @@ static func _hero(s: GameState) -> Dictionary:
 			"line": "the shelf bills at the street's rate until you set your own prices"}
 	var cogs := SimEngine.offers_cogs_per_customer(s)
 	var offers_word := "one offer" if s.offers.size() == 1 else "%d offers" % s.offers.size()
+	# at 0 customers the unit story is a PROMISE, not money — say so first
+	# (owner: "$23 in but 0 customers" read as real income)
+	if s.traction <= 0:
+		return {
+			"big": "$0/wk — nobody pays yet",
+			"line": "one customer's week would earn $%s in · $%s out -> $%s, across %s" % [
+				String.num_int64(int(round(arpu))), String.num_int64(int(round(cogs))),
+				String.num_int64(int(round(arpu - cogs))), offers_word],
+			"arpu": arpu, "cogs": cogs,
+		}
 	return {
 		"big": "$%s in · $%s out -> $%s" % [String.num_int64(int(round(arpu))),
 			String.num_int64(int(round(cogs))), String.num_int64(int(round(arpu - cogs)))],
