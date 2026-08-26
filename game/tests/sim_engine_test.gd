@@ -611,6 +611,12 @@ func _go() -> void:
 		and old_state.option_pool_pct == 0.0 and old_state.founder_banked == 0
 		and old_state.tax_loss_carry == 0 and old_state.macro_season == "steady",
 		"every new subsystem field loads at its default")
+	_ok(old_state.sites.is_empty() and old_state.price_book.is_empty()
+		and old_state.topics.is_empty() and old_state.spend_book.is_empty()
+		and old_state.esop.is_empty() and old_state.instruments.is_empty()
+		and old_state.raise_state.is_empty() and old_state.recruitment.is_empty()
+		and old_state.features.is_empty() and old_state.buyout_offer.is_empty(),
+		"every DAG2 field loads at its default")
 	_ok(int(old_state.budgets.get("ads", 0)) == 500 and not old_state.budgets.has("marketing"),
 		"the old save's marketing budget migrated on load")
 	for _wk in 4:
@@ -650,9 +656,46 @@ func _go() -> void:
 	rt.option_pool_pct = 10.0
 	rt.founder_banked = 180_000
 	rt.macro_season = "winter"
-	rt.hardware = {"stock": 48, "capacity_base": 6.0, "equipment": [],
+	rt.hardware = {"stock": 48, "capacity_base": 6.0, "equipment": [
+		{"id": "press_1", "name": "the press", "capacity_add": 4.0,
+			"upkeep_wk": 60.0, "bought_week": 8, "site": "site_lyon"}],
 		"production_target": 12, "produced_total": 310, "subcontract_on": true,
 		"demand_ema": 9.5}
+	# ── DAG2 W1: every new field populated, plus the site/product tags that
+	# ride EXISTING records — a tag the save forgets is a division that
+	# silently dissolves on load.
+	rt.sites = [{"id": "site_lyon", "name": "Lyon", "rent_wk": 2_600,
+		"wage_mult": 0.92, "learning_count": 140, "demand_weight": 0.35,
+		"opened_wk": 9}]
+	rt.price_book = {"open_site_pack": 18_000, "relocation_fee": 400,
+		"machine_shipping": 900, "lease_break_weeks": 8,
+		"contract_notice_wks": 4, "refinance_break_fee": 350,
+		"freelance_rate": 65, "subcontract_rate": 30,
+		"account_fire_penalty": 1_200}
+	rt.topics = {"growth_plots": ["the garden"], "works_term": "the studio"}
+	rt.spend_book = [{"name": "staff meals", "buys": "the kitchen fed",
+		"amt": 220, "bucket": "office", "contract_notice": 0, "division": ""}]
+	rt.esop = {"pool_pct": 10.0, "granted": [
+		{"emp_id": "june_park", "pct": 0.4, "vest_start_wk": 12}]}
+	rt.instruments = [{"kind": "safe", "holder": "Fern Capital",
+		"amount": 150_000, "cap": 4_000_000, "discount": 0.2, "rate": 0.0,
+		"maturity_wk": 0, "pct": 0.0, "prefs": 0.0, "protective": false,
+		"drag_threshold": 0.0, "signed_wk": 9}]
+	rt.raise_state = {"stages": [], "interest_score": 22.5, "active": true,
+		"founder_time_tax": 0.15}
+	rt.recruitment = {"roles": [{"role": "designer"}], "candidates": [],
+		"offers_out": []}
+	rt.features = [{"id": "ft_booking", "name": "online booking", "job": "pull",
+		"family": "", "solidity": "solid", "keep_wk": 40, "unit_cost_add": 0.0,
+		"product_id": "", "born_wk": 1, "measured": 0.0}]
+	rt.buyout_offer = {"buyer": "Larkspur Depot", "cash": 1_200_000}
+	rt.employees = [{"name": "June Park", "role": "engineer", "salary": 1_500,
+		"burnout": 10, "quirk": "", "skill": 4, "hired_week": 3,
+		"site": "site_lyon"}]
+	rt.offers = [{"name": "the massage", "unit": "per session",
+		"fair_price": 80.0, "unit_cost": 20.0, "elasticity": 2.0,
+		"weight": 1.0, "price": 80.0, "price_set": true,
+		"product_id": "prod_flagship"}]
 	# JSON is the wire the real save travels on — round-trip through it, not
 	# through a live object reference that would pass no matter what
 	var rt_doc = JSON.parse_string(JSON.stringify(SaveSystem.state_to_dict(rt)))
@@ -675,12 +718,34 @@ func _go() -> void:
 		"the board, the offer and the banked cash persist")
 	_ok(int(rt2.hardware.get("stock", 0)) == 48 and int(rt2.hardware.get("produced_total", 0)) == 310,
 		"the factory persists")
+	_ok(rt2.sites.size() == 1
+		and int((rt2.sites[0] as Dictionary).get("rent_wk", 0)) == 2_600
+		and int(rt2.price_book.get("open_site_pack", 0)) == 18_000,
+		"the sites and the price book persist")
+	_ok(String(rt2.topics.get("works_term", "")) == "the studio"
+		and rt2.spend_book.size() == 1
+		and int((rt2.spend_book[0] as Dictionary).get("amt", 0)) == 220,
+		"the generated books persist (topics, spend book)")
+	_ok(absf(float(rt2.esop.get("pool_pct", 0.0)) - 10.0) < 0.001
+		and rt2.instruments.size() == 1
+		and int((rt2.instruments[0] as Dictionary).get("cap", 0)) == 4_000_000
+		and absf(float(rt2.raise_state.get("interest_score", 0.0)) - 22.5) < 0.001
+		and (rt2.recruitment.get("roles", []) as Array).size() == 1,
+		"the ownership cluster persists (pool, paper, raise, recruitment)")
+	_ok(rt2.features.size() == 1
+		and int((rt2.features[0] as Dictionary).get("keep_wk", 0)) == 40
+		and String(rt2.buyout_offer.get("buyer", "")) == "Larkspur Depot",
+		"the feature inventory and the buyout offer persist")
+	_ok(String((rt2.employees[0] as Dictionary).get("site", "")) == "site_lyon"
+		and String(((rt2.hardware.get("equipment", []) as Array)[0] as Dictionary).get("site", "")) == "site_lyon"
+		and String((rt2.offers[0] as Dictionary).get("product_id", "")) == "prod_flagship",
+		"the site tags and the product id persist on their records")
 	# and the saved run still ticks — a round-tripped state is a LIVE state
 	rt2.week += 1
 	var rt_rep := SimEngine.weekly_tick(rt2)
 	_ok(rt_rep.has("lines"), "a round-tripped run ticks without error")
 
-	# ── THE NINE LANES: each suite runs its own pins after the engine's
+	# ── THE LANES: each suite runs its own pins after the engine's
 	for lane_suite in [preload("res://tests/lanes/test_catalog.gd"),
 			preload("res://tests/lanes/test_labor.gd"),
 			preload("res://tests/lanes/test_street.gd"),
@@ -689,7 +754,11 @@ func _go() -> void:
 			preload("res://tests/lanes/test_bank.gd"),
 			preload("res://tests/lanes/test_roadmap.gd"),
 			preload("res://tests/lanes/test_board.gd"),
-			preload("res://tests/lanes/test_factory.gd")]:
+			preload("res://tests/lanes/test_factory.gd"),
+			preload("res://tests/lanes/test_divisions.gd"),
+			preload("res://tests/lanes/test_ownership.gd"),
+			preload("res://tests/lanes/test_features.gd"),
+			preload("res://tests/lanes/test_works.gd")]:
 		lane_suite.run(_ok)
 
 	if _failed:

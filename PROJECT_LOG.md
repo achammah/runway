@@ -474,3 +474,34 @@ Twin suites 158 → 368/368 in lockstep. Compile 0. Backlog recorded: the
 C# sentinel narration scan parity, cofounder-role int storage, roadmap
 signal thinner than spec, directives-order doc drift, DM status-install
 list (ruled: macro regimes stay engine-seeded).
+
+## 2026-08-26 — the binder rework designed with the owner, DAG 2 launched
+
+THE CHOOSE-BY-LETTER DAYS: every desk redesigned through owner-picked
+rounds on one living artifact — frame (ring binder, side rail, alarm
+red, 6-step tour, quartet overviews), offers=RATE CARD,
+customers=SCOREBOARD, in motion as an audience-native TRIPTYCH
+(river×sources / hot list / stage board), growth=THE MARKET GARDEN with
+run-start-generated topics and paintings, the money desks on THE LEDGER
+SHEET (book-keeping grammar, double-rule totals, separate −/+ ADJUST
+buttons), the bank=THE MEETING (rate derived, loans anatomized, the
+receipt prices the money, the miss stairs), the factory generalized into
+THE WORKS (four business types, three scale rungs, axis-agnostic
+divisions), WHAT WE MAKE (the kanban wall: pipeline + feature inventory
+with families and creaks), and the ownership cluster: CAP TABLE (slices,
+dilution story, waterfall, pool), THE RAISE (instrument zoo, comparison
+card, founder-time tax), RECRUITMENT (offer composer drawing on the
+ESOP), THE OFFER as the first momentary desk (decomposed price, applied
+waterfall, fishy flags, powers signed years earlier). Laws hardened
+along the way: the MUTATION LAW (ink free, brick priced, obligations
+survive), the PRICE BOOK (structural costs generated once at run start
+so the path is visible), generation-once (never per turn), divisions
+born from decisions only, collapse ladders everywhere. The binder is 18
+desks + momentary tabs. Corpus: DECISIONS.md + 11/12-binder-rework +
+mockups/00-18 archived with repo-relative fonts.
+
+DAG 2 LAUNCHED autonomously per the owner: two spines (engine fields/
+salts/hooks/stubs + the ring-binder frame/DeskKit v2/18 desk stubs),
+then seven lanes (ownership, divisions+works, features/wall, revenue
+desks, money desks, company+log desks, world-gen/DM prompts + once-only
+illustrations), integration, QA screenshots, ship.

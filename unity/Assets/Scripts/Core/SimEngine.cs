@@ -370,6 +370,27 @@ namespace Runway.Core
         public const int SALT_MNA = 100;              // 08 — M&A offer arrival + premium
         public const int SALT_HW_BREAKDOWN = 110;     // 09 — machine breakdown roll
         public const int SALT_HW_REPURCHASE = 111;    // 09 — repurchase seeded remainder
+        // ── DAG2 W1 BLOCKS (docs/design/DAG2.md W1): one fresh decade per new
+        // lane, reserved whole — ownership 120-129, divisions 130-139,
+        // features 140-149, recruitment 150-159, works 160-169. The named
+        // salts below are burned for the streams the W2 lanes will draw on; an
+        // unnamed number inside a decade stays reserved for its lane and
+        // nothing else may ever claim it.
+        public const int SALT_OWN_INBOUND = 120;      // ownership — investor inbound-knock arrival
+        public const int SALT_OWN_TERMS = 121;        // ownership — instrument term generation (caps, discounts, prefs)
+        public const int SALT_OWN_BUYOUT = 122;       // ownership — buyout-offer arrival + fishy-structure pick
+        public const int SALT_DIV_SITES = 130;        // divisions — site events (lease quotes, ramp jitter)
+        public const int SALT_DIV_NAMES = 131;        // divisions — keyless site-name pool
+        public const int SALT_FEAT_SHELF = 140;       // features — shelf candidate refresh
+        public const int SALT_FEAT_CREAK = 141;       // features — solidity decay / creak roll
+        public const int SALT_FEAT_MEASURED = 142;    // features — promised-vs-measured payoff spread
+        public const int SALT_RECRUIT_ARRIVALS = 150; // recruitment — candidate arrivals (per open role)
+        public const int SALT_RECRUIT_PROFILE = 151;  // recruitment — candidate profile draw (skill, ask, cash-vs-equity taste)
+        public const int SALT_RECRUIT_ACCEPT = 152;   // recruitment — offer acceptance roll
+        public const int SALT_RECRUIT_COUNTER = 153;  // recruitment — rival counter-offer roll
+        public const int SALT_WORKS_CAPACITY = 160;   // works — capacity jitter (the non-hardware breakdown analogue)
+        public const int SALT_WORKS_RELIEF = 161;     // works — relief-valve availability (freelancer supply, burst)
+        public const int SALT_WORKS_REMAINDER = 162;  // works — seeded remainder for fractional native units
 
         private static Rng RngFor(GameState state, int salt)
         {
@@ -406,11 +427,14 @@ namespace Runway.Core
         ///
         ///   3b   SimLabor.TickPre     roster + applicants settle before morale reads them
         ///   6a   SimStreet.TickPre    rivals act, then macro — both before the market
+        ///   6c   SimDivisions.TickPre sites settle (ramps, weights) before the market splits demand
         ///   7    SimRoadmap.TickPre   a shipped bet must exist before adoption reads product
+        ///   7f   SimFeatures.TickPre  a landed bet joins the inventory before anything reads the wall
         ///   7h   SimFactory.TickPre   produce FIRST: stock exists before adoption spends it
+        ///   7i   SimWorks.TickPre     per-type capacity settles after production, before the market
         ///   8    SimCatalog / SimFunnel / SimPipeline.TickPre, then the market moves once
-        ///   9    SimBank / SimBoard.TickPre, then ALL NINE .TickMoney(state, rep, m)
-        ///   9c+  ALL NINE .TickPost — board review and M&amp;A read the finished week
+        ///   9    SimBank / SimBoard / SimOwnership.TickPre, then ALL THIRTEEN .TickMoney(state, rep, m)
+        ///   9c+  ALL THIRTEEN .TickPost — board review and M&amp;A read the finished week
         ///
         /// Every hook is a no-op until its lane lands, and the tick's arithmetic
         /// is byte-identical while they are: that invariant is what lets nine
@@ -622,13 +646,29 @@ namespace Runway.Core
                 state.MarketTrend = Gd.Clampf(state.MarketTrend + r7.RandfRange(-1.0, 1.0) * th.TrendVol, 0.5, 1.5);
             }
 
+            // 6c ── DIVISIONS & SITES: roofs settle (ramp curves advance,
+            // demand weights firm up) BEFORE the market, so the funnel can
+            // split this week's reach by site. No-op until the lane lands
+            // (DAG2 W2 L-DIVWORKS).
+            SimDivisions.TickPre(state, rep);
+
             // 7 ── ROADMAP BETS: rnd-routed progress, READY bets roll the house
             // dice. A shipped bet's payoff must exist before adoption reads product.
             SimRoadmap.TickPre(state, rep);
 
+            // 7f ── THE FEATURE INVENTORY: a bet that just landed becomes a
+            // feature record (job, solidity, keep-cost) before anything reads
+            // the wall. No-op until the lane lands (DAG2 W2 L-MAKE).
+            SimFeatures.TickPre(state, rep);
+
             // 7h ── HARDWARE PRODUCTION: build target, produce, breakdown roll.
             // PRODUCE FIRST — stock must exist before adoption can be clamped to it.
             SimFactory.TickPre(state, rep);
+
+            // 7i ── THE WORKS: per-type capacity (crew hours, care bandwidth,
+            // machines, seller pool) settles AFTER production and before the
+            // market reads it. No-op until the lane lands (DAG2 W2 L-DIVWORKS).
+            SimWorks.TickPre(state, rep);
 
             // 8 ── adoption and churn (Bass + quality residence). The market
             // moves exactly ONCE, after weather, rivals, quality and stock have
@@ -760,6 +800,10 @@ namespace Runway.Core
             // what the week actually cost.
             SimBank.TickPre(state, rep);
             SimBoard.TickPre(state, rep);
+            // THE OWNERSHIP CLUSTER: vesting ticks, instrument maturities and
+            // the raise pipeline settle with the financial lanes, before the
+            // money is assembled. No-op until the lane lands (DAG2 W2 L-OWN).
+            SimOwnership.TickPre(state, rep);
             double arpuOff = OffersArpu(state);
             double revenue = 0.0;
             if (arpuOff >= 0.0)
@@ -856,6 +900,10 @@ namespace Runway.Core
             SimRoadmap.TickMoney(state, rep, m);
             SimBoard.TickMoney(state, rep, m);
             SimFactory.TickMoney(state, rep, m);
+            SimDivisions.TickMoney(state, rep, m);
+            SimOwnership.TickMoney(state, rep, m);
+            SimFeatures.TickMoney(state, rep, m);
+            SimWorks.TickMoney(state, rep, m);
             // the record answers back (09: a lane may honestly reduce what got
             // billed — no-op while every lane leaves m untouched)
             revenue = m.Revenue;
@@ -901,7 +949,8 @@ namespace Runway.Core
             // which is the whole pedagogy: operating profit, cost of debt, tax,
             // then what is actually yours.
             double laneBurn = m.Severance + m.Recruiting + m.Production
-                              + m.Subcontract + m.EquipUpkeep + m.Carrying;
+                              + m.Subcontract + m.EquipUpkeep + m.Carrying
+                              + m.RecruitAds + m.Relief + m.SiteRent;
             int burn = Gd.ToInt(((double)(rent + payroll + infra) + mkBudget + bSales + bCare + bRnd + bOffice) * th.BurnMult + cogs + offerFixed + laneBurn);
             burn += incidentCost;
             m.Burn = burn;
@@ -951,6 +1000,9 @@ namespace Runway.Core
                 Subcontract = Gd.RoundToInt(m.Subcontract),
                 EquipUpkeep = Gd.RoundToInt(m.EquipUpkeep),
                 Carrying = Gd.RoundToInt(m.Carrying),
+                RecruitAds = Gd.RoundToInt(m.RecruitAds),
+                Relief = Gd.RoundToInt(m.Relief),
+                SiteRent = Gd.RoundToInt(m.SiteRent),
                 Incident = incidentCost,
                 LiabilitiesWk = -liabWk,
                 Interest = Gd.RoundToInt(m.Interest),
@@ -1019,6 +1071,10 @@ namespace Runway.Core
             SimRoadmap.TickPost(state, rep);
             SimBoard.TickPost(state, rep);
             SimFactory.TickPost(state, rep);
+            SimDivisions.TickPost(state, rep);
+            SimOwnership.TickPost(state, rep);
+            SimFeatures.TickPost(state, rep);
+            SimWorks.TickPost(state, rep);
 
             // 10 ── commitments (recurring deltas with duration)
             var keptComm = new List<Commitment>();
@@ -1800,7 +1856,9 @@ namespace Runway.Core
                 SimStreet.Attention(state), SimFunnel.Attention(state),
                 SimPipeline.Attention(state), SimBank.Attention(state),
                 SimRoadmap.Attention(state), SimBoard.Attention(state),
-                SimFactory.Attention(state),
+                SimFactory.Attention(state), SimDivisions.Attention(state),
+                SimOwnership.Attention(state), SimFeatures.Attention(state),
+                SimWorks.Attention(state),
             };
             foreach (List<AttentionItem> lr in laneRows)
             {
@@ -1879,7 +1937,9 @@ namespace Runway.Core
                 SimStreet.Directives(state), SimFunnel.Directives(state),
                 SimPipeline.Directives(state), SimBank.Directives(state),
                 SimRoadmap.Directives(state), SimBoard.Directives(state),
-                SimFactory.Directives(state),
+                SimFactory.Directives(state), SimDivisions.Directives(state),
+                SimOwnership.Directives(state), SimFeatures.Directives(state),
+                SimWorks.Directives(state),
             };
             foreach (List<string> l in lanes)
             {

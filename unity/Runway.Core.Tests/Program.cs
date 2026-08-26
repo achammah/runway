@@ -735,6 +735,12 @@ namespace Runway.CoreTests
                && oldState.OptionPoolPct == 0.0 && oldState.FounderBanked == 0
                && oldState.TaxLossCarry == 0 && oldState.MacroSeason == "steady",
                 "every new subsystem field loads at its default");
+            Ok(oldState.Sites.Count == 0 && oldState.PriceBook.Count == 0
+               && oldState.Topics.Count == 0 && oldState.SpendBook.Count == 0
+               && oldState.Esop == null && oldState.Instruments.Count == 0
+               && oldState.RaiseState == null && oldState.Recruitment == null
+               && oldState.Features.Count == 0 && oldState.BuyoutOffer.Count == 0,
+                "every DAG2 field loads at its default");
             Ok(oldState.Budgets.Ads == 500 && oldState.Budgets.Marketing == 0,
                 "the old save's marketing budget migrated on load");
             for (int wk = 0; wk < 4; wk++)
@@ -786,8 +792,58 @@ namespace Runway.CoreTests
             rt.FounderBanked = 180000;
             rt.MacroSeason = "winter";
             rt.Hardware = new HardwareState { Stock = 48, CapacityBase = 6.0,
+                Equipment = new List<EquipmentItem> { new EquipmentItem {
+                    Id = "press_1", Name = "the press", CapacityAdd = 4.0,
+                    UpkeepWk = 60.0, BoughtWeek = 8, Site = "site_lyon" } },
                 ProductionTarget = 12, ProducedTotal = 310, SubcontractOn = true,
                 DemandEma = 9.5 };
+            // ── DAG2 W1: every new field populated, plus the site/product tags
+            // that ride EXISTING records — a tag the save forgets is a division
+            // that silently dissolves on load.
+            rt.Sites = new List<Site> { new Site { Id = "site_lyon", Name = "Lyon",
+                RentWk = 2600, WageMult = 0.92, LearningCount = 140,
+                DemandWeight = 0.35, OpenedWk = 9 } };
+            rt.PriceBook = new Dictionary<string, object>
+            {
+                { "open_site_pack", 18000 }, { "relocation_fee", 400 },
+                { "machine_shipping", 900 }, { "lease_break_weeks", 8 },
+                { "contract_notice_wks", 4 }, { "refinance_break_fee", 350 },
+                { "freelance_rate", 65 }, { "subcontract_rate", 30 },
+                { "account_fire_penalty", 1200 },
+            };
+            rt.Topics = new Dictionary<string, object>
+            {
+                { "growth_plots", new List<string> { "the garden" } },
+                { "works_term", "the studio" },
+            };
+            rt.SpendBook = new List<SpendLine> { new SpendLine { Name = "staff meals",
+                Buys = "the kitchen fed", Amt = 220, Bucket = "office",
+                ContractNotice = 0, Division = "" } };
+            rt.Esop = new Esop { PoolPct = 10.0, Granted = new List<EsopGrant> {
+                new EsopGrant { EmpId = "june_park", Pct = 0.4, VestStartWk = 12 } } };
+            rt.Instruments = new List<Instrument> { new Instrument { Kind = "safe",
+                Holder = "Fern Capital", Amount = 150000, Cap = 4000000,
+                Discount = 0.2, Rate = 0.0, MaturityWk = 0, Pct = 0.0,
+                Prefs = 0.0, Protective = false, DragThreshold = 0.0, SignedWk = 9 } };
+            rt.RaiseState = new RaiseState { Stages = new List<Dictionary<string, object>>(),
+                InterestScore = 22.5, Active = true, FounderTimeTax = 0.15 };
+            rt.Recruitment = new Recruitment { Roles = new List<Dictionary<string, object>> {
+                new Dictionary<string, object> { { "role", "designer" } } } };
+            rt.Features = new List<Feature> { new Feature { Id = "ft_booking",
+                Name = "online booking", Job = "pull", Family = "",
+                Solidity = "solid", KeepWk = 40, UnitCostAdd = 0.0,
+                ProductId = "", BornWk = 1, Measured = 0.0 } };
+            rt.BuyoutOffer = new Dictionary<string, object>
+            {
+                { "buyer", "Larkspur Depot" }, { "cash", 1200000 },
+            };
+            rt.Employees = new List<Employee> { new Employee { Name = "June Park",
+                Role = "engineer", Salary = 1500, Burnout = 10, Quirk = "",
+                Skill = 4, HiredWeek = 3, Site = "site_lyon" } };
+            rt.Offers = new List<Offer> { new Offer { Name = "the massage",
+                Unit = "per session", FairPrice = 80.0, UnitCost = 20.0,
+                Elasticity = 2.0, Weight = 1.0, Price = 80.0, PriceSet = true,
+                ProductId = "prod_flagship" } };
             // JSON is the wire the real save travels on — round-trip through it,
             // exactly as RunSave does, not through a live object reference that
             // would pass no matter what
@@ -818,12 +874,30 @@ namespace Runway.CoreTests
                 "the board, the offer and the banked cash persist");
             Ok(rt2.Hardware.Stock == 48 && rt2.Hardware.ProducedTotal == 310,
                 "the factory persists");
+            Ok(rt2.Sites.Count == 1 && rt2.Sites[0].RentWk == 2600
+               && Convert.ToInt32(rt2.PriceBook["open_site_pack"], CultureInfo.InvariantCulture) == 18000,
+                "the sites and the price book persist");
+            Ok(S(rt2.Topics["works_term"]) == "the studio"
+               && rt2.SpendBook.Count == 1 && rt2.SpendBook[0].Amt == 220,
+                "the generated books persist (topics, spend book)");
+            Ok(Gd.Absf(rt2.Esop.PoolPct - 10.0) < 0.001
+               && rt2.Instruments.Count == 1 && rt2.Instruments[0].Cap == 4000000
+               && Gd.Absf(rt2.RaiseState.InterestScore - 22.5) < 0.001
+               && rt2.Recruitment.Roles.Count == 1,
+                "the ownership cluster persists (pool, paper, raise, recruitment)");
+            Ok(rt2.Features.Count == 1 && rt2.Features[0].KeepWk == 40
+               && S(rt2.BuyoutOffer["buyer"]) == "Larkspur Depot",
+                "the feature inventory and the buyout offer persist");
+            Ok(rt2.Employees[0].Site == "site_lyon"
+               && rt2.Hardware.Equipment[0].Site == "site_lyon"
+               && rt2.Offers[0].ProductId == "prod_flagship",
+                "the site tags and the product id persist on their records");
             // and the saved run still ticks — a round-tripped state is a LIVE state
             rt2.Week += 1;
             WeeklyReport rtRep = SimEngine.WeeklyTick(rt2);
             Ok(rtRep != null && rtRep.Lines != null, "a round-tripped run ticks without error");
 
-            // ── THE NINE LANES: each suite runs its own pins after the engine's
+            // ── THE LANES: each suite runs its own pins after the engine's
             Action<bool, string> ok = Ok;
             CatalogTests.Run(ok);
             LaborTests.Run(ok);
@@ -834,6 +908,10 @@ namespace Runway.CoreTests
             RoadmapTests.Run(ok);
             BoardTests.Run(ok);
             FactoryTests.Run(ok);
+            DivisionsTests.Run(ok);
+            OwnershipTests.Run(ok);
+            FeaturesTests.Run(ok);
+            WorksTests.Run(ok);
         }
 
         /// <summary>

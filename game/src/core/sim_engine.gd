@@ -163,6 +163,26 @@ const SALT_BURNED := 95              # BURNED — four lanes claimed it at once;
 const SALT_MNA := 100                # 08 — M&A offer arrival + premium rolls
 const SALT_HW_BREAKDOWN := 110       # 09 — machine breakdown roll
 const SALT_HW_REPURCHASE := 111      # 09 — repurchase seeded remainder
+# ── DAG2 W1 BLOCKS (docs/design/DAG2.md §W1): one fresh decade per new lane,
+# reserved whole — ownership 120-129, divisions 130-139, features 140-149,
+# recruitment 150-159, works 160-169. The named salts below are burned for the
+# streams the W2 lanes will draw on; an unnamed number inside a decade stays
+# reserved for its lane and nothing else may ever claim it.
+const SALT_OWN_INBOUND := 120        # ownership — investor inbound-knock arrival
+const SALT_OWN_TERMS := 121          # ownership — instrument term generation (caps, discounts, prefs)
+const SALT_OWN_BUYOUT := 122         # ownership — buyout-offer arrival + fishy-structure pick
+const SALT_DIV_SITES := 130          # divisions — site events (lease quotes, ramp jitter)
+const SALT_DIV_NAMES := 131          # divisions — keyless site-name pool
+const SALT_FEAT_SHELF := 140         # features — shelf candidate refresh
+const SALT_FEAT_CREAK := 141         # features — solidity decay / creak roll
+const SALT_FEAT_MEASURED := 142      # features — promised-vs-measured payoff spread
+const SALT_RECRUIT_ARRIVALS := 150   # recruitment — candidate arrivals (per open role)
+const SALT_RECRUIT_PROFILE := 151    # recruitment — candidate profile draw (skill, ask, cash-vs-equity taste)
+const SALT_RECRUIT_ACCEPT := 152     # recruitment — offer acceptance roll
+const SALT_RECRUIT_COUNTER := 153    # recruitment — rival counter-offer roll
+const SALT_WORKS_CAPACITY := 160     # works — capacity jitter (the non-hardware breakdown analogue)
+const SALT_WORKS_RELIEF := 161       # works — relief-valve availability (freelancer supply, burst)
+const SALT_WORKS_REMAINDER := 162    # works — seeded remainder for fractional native units
 
 static func _rng(state: GameState, salt: int) -> RandomNumberGenerator:
 	var r := RandomNumberGenerator.new()
@@ -193,14 +213,17 @@ static func jano_down(x: float, x_ref: float, floor_v: float = 0.25) -> float:
 ##
 ##   §3b  SimLabor.tick_pre     roster + applicants settle before morale reads them
 ##   §6a  SimStreet.tick_pre    rivals act, then macro — both before the market
+##   §6c  SimDivisions.tick_pre sites settle (ramps, weights) before the market splits demand
 ##   §7   SimRoadmap.tick_pre   a shipped bet must exist before adoption reads product
+##   §7f  SimFeatures.tick_pre  a landed bet joins the inventory before anything reads the wall
 ##   §7h  SimFactory.tick_pre   produce FIRST: stock exists before adoption spends it
+##   §7i  SimWorks.tick_pre     per-type capacity settles after production, before the market
 ##   §8   SimCatalog / SimFunnel / SimPipeline.tick_pre   then the market moves once
-##   §9   SimBank / SimBoard.tick_pre, then ALL NINE .tick_money(state, rep, m)
-##   §9c+ ALL NINE .tick_post — board review and M&A read the finished week
+##   §9   SimBank / SimBoard / SimOwnership.tick_pre, then ALL THIRTEEN .tick_money(state, rep, m)
+##   §9c+ ALL THIRTEEN .tick_post — board review and M&A read the finished week
 ##
 ## Every hook is a no-op until its lane lands, and the tick's arithmetic is
-## byte-identical while they are: that invariant is what lets nine lanes ship
+## byte-identical while they are: that invariant is what lets the lanes ship
 ## in parallel against one engine.
 static func weekly_tick(state: GameState) -> Dictionary:
 	var rep := {"lines": [], "fired_clocks": [], "expired": [], "events": []}
@@ -248,11 +271,14 @@ static func weekly_tick(state: GameState) -> Dictionary:
 				still.append(hd)
 		state.pipeline = still
 		for g in grads:
+			# `site` (DAG2 W1): "" = the home roof. Inert until the divisions
+			# lane lands; the C# Employee twin carries the same default.
 			state.employees.append({"name": String(g.get("name", "hire")),
 				"role": String(g.get("role", "engineer")),
 				"salary": int(g.get("salary", 1200)), "burnout": 10,
 				"quirk": String(g.get("quirk", "")),
-				"skill": int(g.get("skill", 3)), "hired_week": state.week})
+				"skill": int(g.get("skill", 3)), "hired_week": state.week,
+				"site": ""})
 			rep["lines"].append("%s finished onboarding — productive now" % g.get("name", "a hire"))
 
 	# 3b ── THE LABOR MARKET: arrivals → applicant decay → review cycle. The
@@ -338,13 +364,28 @@ static func weekly_tick(state: GameState) -> Dictionary:
 		var r7 := _rng(state, SALT_TREND)
 		state.market_trend = clampf(state.market_trend + r7.randf_range(-1.0, 1.0) * float(th.trend_vol), 0.5, 1.5)
 
+	# 6c ── DIVISIONS & SITES: roofs settle (ramp curves advance, demand
+	# weights firm up) BEFORE the market, so the funnel can split this week's
+	# reach by site. No-op until the lane lands (DAG2 W2 L-DIVWORKS).
+	SimDivisions.tick_pre(state, rep)
+
 	# 7 ── ROADMAP BETS: rnd-routed progress, READY bets roll the house dice.
 	# A shipped bet's payoff must exist before adoption reads product.
 	SimRoadmap.tick_pre(state, rep)
 
+	# 7f ── THE FEATURE INVENTORY: a bet that just landed becomes a feature
+	# record (job, solidity, keep-cost) before anything reads the wall.
+	# No-op until the lane lands (DAG2 W2 L-MAKE).
+	SimFeatures.tick_pre(state, rep)
+
 	# 7h ── HARDWARE PRODUCTION: build target → produce → breakdown roll.
 	# PRODUCE FIRST — stock must exist before adoption can be clamped to it.
 	SimFactory.tick_pre(state, rep)
+
+	# 7i ── THE WORKS: per-type capacity (crew hours, care bandwidth, machines,
+	# seller pool) settles AFTER production and before the market reads it.
+	# No-op until the lane lands (DAG2 W2 L-DIVWORKS).
+	SimWorks.tick_pre(state, rep)
 
 	# 8 ── adoption and churn (Bass + quality residence). The market moves
 	# exactly ONCE, after weather, rivals, quality and stock are all settled.
@@ -458,6 +499,10 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	# written so the ledger never lies about what the week actually cost.
 	SimBank.tick_pre(state, rep)
 	SimBoard.tick_pre(state, rep)
+	# THE OWNERSHIP CLUSTER: vesting ticks, instrument maturities and the raise
+	# pipeline settle with the financial lanes, before the money is assembled.
+	# No-op until the lane lands (DAG2 W2 L-OWN).
+	SimOwnership.tick_pre(state, rep)
 	var arpu_off := offers_arpu(state)
 	var revenue := 0.0
 	if arpu_off >= 0.0:
@@ -514,6 +559,11 @@ static func weekly_tick(state: GameState) -> Dictionary:
 		"severance": 0.0, "recruiting": 0.0,
 		"production": 0.0, "subcontract": 0.0,
 		"equip_upkeep": 0.0, "carrying": 0.0,
+		# DAG2 W1 — pre-registered at zero (the record's names are fixed here,
+		# so a new money flow must exist before its lane can write it):
+		# recruitment adverts (L-OWN), works relief valves (L-DIVWORKS),
+		# per-site rents beside the era's own roof (L-DIVWORKS).
+		"recruit_ads": 0.0, "relief": 0.0, "site_rent": 0.0,
 		"incident": 0.0, "liabilities_wk": 0,
 		"interest": 0.0, "tax": 0.0, "burn": 0,
 	}
@@ -526,6 +576,10 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	SimRoadmap.tick_money(state, rep, m)
 	SimBoard.tick_money(state, rep, m)
 	SimFactory.tick_money(state, rep, m)
+	SimDivisions.tick_money(state, rep, m)
+	SimOwnership.tick_money(state, rep, m)
+	SimFeatures.tick_money(state, rep, m)
+	SimWorks.tick_money(state, rep, m)
 	# the record answers back (09: a lane may honestly reduce what got billed —
 	# no-op while every lane leaves m untouched)
 	revenue = float(m["revenue"])
@@ -566,7 +620,8 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	# pedagogy: operating profit → cost of debt → tax → net.
 	var lane_burn := float(m["severance"]) + float(m["recruiting"]) \
 			+ float(m["production"]) + float(m["subcontract"]) \
-			+ float(m["equip_upkeep"]) + float(m["carrying"])
+			+ float(m["equip_upkeep"]) + float(m["carrying"]) \
+			+ float(m["recruit_ads"]) + float(m["relief"]) + float(m["site_rent"])
 	var burn := int((float(rent + payroll + infra) + mk_budget + b_sales + b_care + b_rnd + b_office) * float(th.burn_mult) + cogs + offer_fixed + lane_burn)
 	burn += incident_cost
 	m["burn"] = burn
@@ -606,6 +661,9 @@ static func weekly_tick(state: GameState) -> Dictionary:
 		"subcontract": int(round(float(m["subcontract"]))),
 		"equip_upkeep": int(round(float(m["equip_upkeep"]))),
 		"carrying": int(round(float(m["carrying"]))),
+		"recruit_ads": int(round(float(m["recruit_ads"]))),
+		"relief": int(round(float(m["relief"]))),
+		"site_rent": int(round(float(m["site_rent"]))),
 		"incident": incident_cost,
 		"liabilities_wk": -liab_wk,
 		"interest": int(round(float(m["interest"]))),
@@ -660,6 +718,10 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	SimRoadmap.tick_post(state, rep)
 	SimBoard.tick_post(state, rep)
 	SimFactory.tick_post(state, rep)
+	SimDivisions.tick_post(state, rep)
+	SimOwnership.tick_post(state, rep)
+	SimFeatures.tick_post(state, rep)
+	SimWorks.tick_post(state, rep)
 
 	# 10 ── commitments (recurring deltas with duration)
 	var kept_comm: Array = []
@@ -1043,6 +1105,9 @@ static func add_offer(state: GameState, o_name: String, unit: String,
 		"elasticity": clampf(elasticity, 0.5, 3.0),
 		"weight": clampf(weight, 0.2, 3.0),
 		"price": 0.0,
+		# DAG2 W1: "" = the flagship product; set when a second product ships
+		# (roadmap) or by tag_offer. Inert until the lanes land.
+		"product_id": "",
 	}
 	if not cost_lines.is_empty():
 		offer["cost_lines"] = cost_lines
@@ -1219,12 +1284,14 @@ static func attention_items(state: GameState) -> Array:
 	if state.has_flag("fundraising_open"):
 		rows.append({"desk": "cap table", "key": "term_sheets", "severity": 3,
 			"label": "term sheets waiting — they expire"})
-	# ── the nine lanes, each owning its own predicates
+	# ── the lanes, each owning its own predicates
 	for lane_rows in [SimCatalog.attention(state), SimLabor.attention(state),
 			SimStreet.attention(state), SimFunnel.attention(state),
 			SimPipeline.attention(state), SimBank.attention(state),
 			SimRoadmap.attention(state), SimBoard.attention(state),
-			SimFactory.attention(state)]:
+			SimFactory.attention(state), SimDivisions.attention(state),
+			SimOwnership.attention(state), SimFeatures.attention(state),
+			SimWorks.attention(state)]:
 		for r in lane_rows:
 			if r is Dictionary:
 				rows.append(r)
@@ -1289,7 +1356,9 @@ static func lane_directives(state: GameState) -> Array[String]:
 			SimStreet.directives(state), SimFunnel.directives(state),
 			SimPipeline.directives(state), SimBank.directives(state),
 			SimRoadmap.directives(state), SimBoard.directives(state),
-			SimFactory.directives(state)]:
+			SimFactory.directives(state), SimDivisions.directives(state),
+			SimOwnership.directives(state), SimFeatures.directives(state),
+			SimWorks.directives(state)]:
 		for l in lane_lines:
 			out.append(String(l))
 	return out

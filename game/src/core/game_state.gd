@@ -168,6 +168,43 @@ var macro_season: String = "steady"   # "winter" | "steady" | "boom"; written by
 # 09 hardware production ({} on every non-Hardware run; seeded lazily)
 var hardware: Dictionary = {}    # {stock, capacity_base, equipment, production_target, produced_total, subcontract_on, demand_ema}
 
+# ── DAG2 W1 — THE BINDER REWORK'S DURABLE FIELDS (docs/design/DAG2.md §W1,
+# docs/design/DECISIONS.md). Same law as above: every field is additive with a
+# safe default so a pre-DAG2 save loads at the default and SaveSystem.VERSION
+# stays 2. The W1 spine plants the FIELDS; the W2 lanes fill the LOGIC — until
+# they land, nothing writes these and nothing reads them.
+#
+# divisions & sites (W2 L-DIVWORKS). A site is a ROOF the company operates
+# under; divisions are never generated — born only from real ops (open_site).
+var sites: Array = []            # [{id, name, rent_wk, wage_mult, learning_count, demand_weight, opened_wk}]
+# THE PRICE BOOK (DECISIONS.md): the structural price schedule generated once
+# at run start (and again only at a nature-changing pivot), LLM-proposed inside
+# engine bands, engine-clamped. Empty until world-gen fills it. Keys:
+# open_site_pack, relocation_fee, machine_shipping, lease_break_weeks,
+# contract_notice_wks, refinance_break_fee, freelance_rate, subcontract_rate,
+# account_fire_penalty.
+var price_book: Dictionary = {}
+# Generated-at-birth vocabulary (growth plots, spend rooms, works terms) —
+# dressing only, the engine's numbers never live here. Empty is a valid book.
+var topics: Dictionary = {}
+# THE ORG SPEND BOOK (DECISIONS.md): generated lines fitted to THIS business;
+# each bucket ∈ the four engine levers, engine math untouched (lever = Σ lines).
+var spend_book: Array = []       # [{name, buys, amt, bucket, contract_notice, division}]
+# ── the ownership cluster (W2 L-OWN)
+var esop: Dictionary = {}        # {pool_pct, granted: [{emp_id, pct, vest_start_wk}]} — {} = no pool born yet
+var instruments: Array = []      # [{kind: safe|note|priced|bridge, holder, amount, cap, discount,
+                                 #   rate, maturity_wk, pct, prefs, protective, drag_threshold, signed_wk}]
+var raise_state: Dictionary = {} # {stages: [], interest_score, active, founder_time_tax} — {} = no raise opened
+var recruitment: Dictionary = {} # {roles: [], candidates: [], offers_out: []} — {} = nothing advertised
+# ── the features pipeline behind WHAT WE MAKE (W2 L-MAKE)
+var features: Array = []         # [{id, name, job: pull|keep|charge|plumbing, family,
+                                 #   solidity: solid|creaky|breaking, keep_wk, unit_cost_add,
+                                 #   product_id, born_wk, measured}]
+# THE OFFER — the momentary buyout desk (W2 L-OWN). {} = nothing on the table;
+# a live offer extends the board lane's M&A offers with structure
+# {cash, stock+lockup, earnout+controller, retention} plus the fine-print flags.
+var buyout_offer: Dictionary = {}
+
 const RAMEN_PER_WEEK := 500    # founder personal burn, Dossier §10
 
 const ERAS: Array[String] = ["garage", "coworking", "office", "floor", "hq"]

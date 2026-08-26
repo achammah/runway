@@ -47,7 +47,8 @@ namespace Runway.Core
     /// THE IDENTITY, pinned by a twin test on every week of a mixed run:
     ///   burn = cogs + rent + payroll + infra + marketing + sales + care + rnd
     ///        + office + offer_fixed + severance + recruiting + production
-    ///        + subcontract + equip_upkeep + carrying + incident
+    ///        + subcontract + equip_upkeep + carrying
+    ///        + recruit_ads + relief + site_rent + incident
     ///   net  = revenue - burn - liabilities_wk - interest - tax
     ///
     /// Burn is OPERATING spend only. Interest and tax sit OUTSIDE it because
@@ -74,6 +75,12 @@ namespace Runway.Core
         [JsonProperty("subcontract")] public int Subcontract;     // contract-mfr premium (09)
         [JsonProperty("equip_upkeep")] public int EquipUpkeep;    // machine upkeep (09)
         [JsonProperty("carrying")] public int Carrying;           // stock carrying cost (09)
+        // ── DAG2 W1 — pre-registered at zero (the record's names are fixed
+        // here, so a new money flow must exist before its lane can write it).
+        // They sit INSIDE burn, like every operating lane above.
+        [JsonProperty("recruit_ads")] public int RecruitAds;      // role adverts (ownership/recruitment)
+        [JsonProperty("relief")] public int Relief;               // works relief valves (freelance/burst/subcontract)
+        [JsonProperty("site_rent")] public int SiteRent;          // per-site rents beside the era's own roof (divisions)
         [JsonProperty("incident")] public int Incident;
         [JsonProperty("liabilities_wk")] public int LiabilitiesWk;
         [JsonProperty("interest")] public int Interest;           // the bank — OUTSIDE burn (06)
@@ -111,6 +118,10 @@ namespace Runway.Core
         public double Subcontract;
         public double EquipUpkeep;
         public double Carrying;
+        // DAG2 W1 — the three new operating lanes, zero until their W2 lanes fill them
+        public double RecruitAds;
+        public double Relief;
+        public double SiteRent;
         public double Incident;
         public int LiabilitiesWk;
         public double Interest;
@@ -166,6 +177,9 @@ namespace Runway.Core
         [JsonProperty("wants_raise")] public bool WantsRaise;
         [JsonProperty("asked_week")] public int AskedWeek = -1;
         [JsonProperty("underpaid_since")] public int UnderpaidSince = -1;   // the receipt's clock
+        // DAG2 W1: which roof this person works under. "" = the home roof;
+        // the divisions lane sets it via reassign_employee. Inert until then.
+        [JsonProperty("site")] public string Site = "";
     }
 
     /// <summary>A seat the company is trying to fill (02-labor).</summary>
@@ -289,6 +303,9 @@ namespace Runway.Core
         [JsonProperty("capacity_add")] public double CapacityAdd;
         [JsonProperty("upkeep_wk")] public double UpkeepWk;
         [JsonProperty("bought_week")] public int BoughtWeek;
+        // DAG2 W1: which roof the machine stands under. "" = the home roof;
+        // the divisions lane sets it via move_machine. Inert until then.
+        [JsonProperty("site")] public string Site = "";
     }
 
     /// <summary>The factory (09). Null on every run that is not Hardware.</summary>
@@ -301,6 +318,114 @@ namespace Runway.Core
         [JsonProperty("produced_total")] public int ProducedTotal;   // drives the BUILD learning curve
         [JsonProperty("subcontract_on")] public bool SubcontractOn;
         [JsonProperty("demand_ema")] public double DemandEma;
+    }
+
+    // ── DAG2 W1 — the binder rework's durable records (docs/design/DAG2.md
+    // §W1, docs/design/DECISIONS.md). The W1 spine plants the FIELDS; the W2
+    // lanes fill the LOGIC. JSON names are the Godot save keys, byte-for-byte.
+
+    /// <summary>A roof the company operates under (divisions). Never generated:
+    /// born only from a real open_site op; the LLM names, never numbers.</summary>
+    public sealed class Site
+    {
+        [JsonProperty("id")] public string Id = "";
+        [JsonProperty("name")] public string Name = "";
+        [JsonProperty("rent_wk")] public int RentWk;
+        [JsonProperty("wage_mult")] public double WageMult = 1.0;
+        [JsonProperty("learning_count")] public int LearningCount;   // per-site learning curve
+        [JsonProperty("demand_weight")] public double DemandWeight = 1.0;   // the funnel splits reach by this
+        [JsonProperty("opened_wk")] public int OpenedWk;
+    }
+
+    /// <summary>One generated org-spend line (the spend book). bucket is one of
+    /// the four engine levers — sales | care | rnd | office; engine math is
+    /// untouched (a lever = the sum of its lines).</summary>
+    public sealed class SpendLine
+    {
+        [JsonProperty("name")] public string Name = "";
+        [JsonProperty("buys")] public string Buys = "";              // one-line "what this buys"
+        [JsonProperty("amt")] public int Amt;                        // $/wk
+        [JsonProperty("bucket")] public string Bucket = "office";
+        [JsonProperty("contract_notice")] public int ContractNotice; // 0 = stoppable instantly; N = notice weeks bill through
+        [JsonProperty("division")] public string Division = "";      // "" = shared/HQ; an ink tag, set in arrange mode
+    }
+
+    /// <summary>One ESOP grant: {n%, 208-wk vest, 52-wk cliff}. Leavers keep
+    /// vested; unvested returns to the pool.</summary>
+    public sealed class EsopGrant
+    {
+        [JsonProperty("emp_id")] public string EmpId = "";
+        [JsonProperty("pct")] public double Pct;
+        [JsonProperty("vest_start_wk")] public int VestStartWk;
+    }
+
+    /// <summary>The option pool. null mirrors GDScript's empty {} — no pool
+    /// has been born yet.</summary>
+    public sealed class Esop
+    {
+        [JsonProperty("pool_pct")] public double PoolPct;
+        [JsonProperty("granted")] public List<EsopGrant> Granted = new List<EsopGrant>();
+    }
+
+    /// <summary>One instrument on the cap table (ownership). Fields that do
+    /// not apply to a kind stay at their zero default — a SAFE has no rate, a
+    /// note has no pct. `prefs` is the liquidation-preference multiple
+    /// (0 = none; a standard priced round writes 1.0); `protective` and
+    /// `drag_threshold` are the powers the offer desk reads years later.</summary>
+    public sealed class Instrument
+    {
+        [JsonProperty("kind")] public string Kind = "safe";   // safe | note | priced | bridge
+        [JsonProperty("holder")] public string Holder = "";
+        [JsonProperty("amount")] public int Amount;
+        [JsonProperty("cap")] public int Cap;                 // valuation cap (safe/note)
+        [JsonProperty("discount")] public double Discount;    // 0.2 = 20% (safe/note)
+        [JsonProperty("rate")] public double Rate;            // weekly interest (note/bridge)
+        [JsonProperty("maturity_wk")] public int MaturityWk;  // 0 = none
+        [JsonProperty("pct")] public double Pct;              // equity taken (priced)
+        [JsonProperty("prefs")] public double Prefs;          // liquidation preference multiple, 0 = none
+        [JsonProperty("protective")] public bool Protective;  // protective provisions signed
+        [JsonProperty("drag_threshold")] public double DragThreshold;   // % of preferred that can force a sale, 0 = none
+        [JsonProperty("signed_wk")] public int SignedWk;
+    }
+
+    /// <summary>The fundraising pipeline's durable state. null mirrors
+    /// GDScript's empty {} — no raise has ever opened.</summary>
+    public sealed class RaiseState
+    {
+        [JsonProperty("stages")] public List<Dictionary<string, object>> Stages =
+            new List<Dictionary<string, object>>();
+        [JsonProperty("interest_score")] public double InterestScore;
+        [JsonProperty("active")] public bool Active;
+        [JsonProperty("founder_time_tax")] public double FounderTimeTax;   // an active raise slows the shop
+    }
+
+    /// <summary>The hiring pipeline with real offers (recruitment). null
+    /// mirrors GDScript's empty {} — nothing advertised yet. Row shapes are
+    /// the ownership lane's to pin when it lands.</summary>
+    public sealed class Recruitment
+    {
+        [JsonProperty("roles")] public List<Dictionary<string, object>> Roles =
+            new List<Dictionary<string, object>>();
+        [JsonProperty("candidates")] public List<Dictionary<string, object>> Candidates =
+            new List<Dictionary<string, object>>();
+        [JsonProperty("offers_out")] public List<Dictionary<string, object>> OffersOut =
+            new List<Dictionary<string, object>>();
+    }
+
+    /// <summary>One feature of what we make — an ENGINE OBJECT (birth features
+    /// from world gen + landed bets), never prose.</summary>
+    public sealed class Feature
+    {
+        [JsonProperty("id")] public string Id = "";
+        [JsonProperty("name")] public string Name = "";
+        [JsonProperty("job")] public string Job = "plumbing";   // pull | keep | charge | plumbing
+        [JsonProperty("family")] public string Family = "";     // ink — a free tag, regroupable
+        [JsonProperty("solidity")] public string Solidity = "solid";   // solid | creaky | breaking
+        [JsonProperty("keep_wk")] public int KeepWk;            // $/wk — features are never free
+        [JsonProperty("unit_cost_add")] public double UnitCostAdd;   // per-unit impact on the works' ticket
+        [JsonProperty("product_id")] public string ProductId = "";   // "" = the flagship
+        [JsonProperty("born_wk")] public int BornWk;
+        [JsonProperty("measured")] public double Measured;      // measured payoff on recent landings, 0 = not yet
     }
 
     public sealed class Cofounder
@@ -375,6 +500,9 @@ namespace Runway.Core
         [JsonProperty("cost_lines")] public List<CostLine> CostLines;    // variable, $ per unit
         [JsonProperty("fixed_lines")] public List<CostLine> FixedLines;  // $ per week, volume-free
         [JsonProperty("fixed_wk")] public double FixedWk;                // derived cache = sum of FixedLines
+        // DAG2 W1: which product this offer packages. "" = the flagship; set
+        // when a second product ships (roadmap) or by tag_offer. Inert until then.
+        [JsonProperty("product_id")] public string ProductId = "";
 
         /// <summary>
         /// A DEEP copy. MemberwiseClone alone would hand the copy the SAME line
@@ -656,6 +784,37 @@ namespace Runway.Core
         [JsonProperty("macro_season")] public string MacroSeason = "steady";   // written by macro only
         // 09 hardware production — null on every run that is not Hardware
         [JsonProperty("hardware")] public HardwareState Hardware;
+
+        // ── DAG2 W1 — the binder rework's durable fields (docs/design/DAG2.md
+        // §W1). Same law as above: additive with a default, JSON names
+        // byte-identical to the Godot save keys, RunSave.Version stays 2.
+        // Typed nulls mirror GDScript's empty {}; empty lists mirror [].
+        // divisions & sites (W2 L-DIVWORKS)
+        [JsonProperty("sites")] public List<Site> Sites = new List<Site>();
+        /// <summary>THE PRICE BOOK: the structural price schedule generated at
+        /// run start, empty until world-gen fills it. Keys: open_site_pack,
+        /// relocation_fee, machine_shipping, lease_break_weeks,
+        /// contract_notice_wks, refinance_break_fee, freelance_rate,
+        /// subcontract_rate, account_fire_penalty.</summary>
+        [JsonProperty("price_book")] public Dictionary<string, object> PriceBook =
+            new Dictionary<string, object>();
+        /// <summary>Generated-at-birth vocabulary (growth plots, spend rooms,
+        /// works terms) — dressing only; engine numbers never live here.</summary>
+        [JsonProperty("topics")] public Dictionary<string, object> Topics =
+            new Dictionary<string, object>();
+        [JsonProperty("spend_book")] public List<SpendLine> SpendBook = new List<SpendLine>();
+        // the ownership cluster (W2 L-OWN)
+        [JsonProperty("esop")] public Esop Esop;                       // null = no pool born yet
+        [JsonProperty("instruments")] public List<Instrument> Instruments = new List<Instrument>();
+        [JsonProperty("raise_state")] public RaiseState RaiseState;    // null = no raise opened
+        [JsonProperty("recruitment")] public Recruitment Recruitment;  // null = nothing advertised
+        // the features pipeline behind WHAT WE MAKE (W2 L-MAKE)
+        [JsonProperty("features")] public List<Feature> Features = new List<Feature>();
+        /// <summary>THE OFFER — the momentary buyout desk. Empty = nothing on
+        /// the table; a live offer extends the board lane's M&amp;A offers with
+        /// structure {cash, stock+lockup, earnout+controller, retention}.</summary>
+        [JsonProperty("buyout_offer")] public Dictionary<string, object> BuyoutOffer =
+            new Dictionary<string, object>();
 
         /// <summary>Godot's Object metadata, which the engine uses for prev_revenue / unit_econ / market_line.</summary>
         [JsonProperty("meta")] public Dictionary<string, object> Meta = new Dictionary<string, object>();

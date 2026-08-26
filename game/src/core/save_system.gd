@@ -121,6 +121,13 @@ static func state_to_dict(state: GameState) -> Dictionary:
 			"founder_banked": state.founder_banked,
 			"macro_season": state.macro_season,
 			"hardware": state.hardware,
+			# ── DAG2 W1 (docs/design/DAG2.md §W1) — additive keys, same law:
+			# an old save simply lacks them and the loader leaves the defaults.
+			"sites": state.sites, "price_book": state.price_book,
+			"topics": state.topics, "spend_book": state.spend_book,
+			"esop": state.esop, "instruments": state.instruments,
+			"raise_state": state.raise_state, "recruitment": state.recruitment,
+			"features": state.features, "buyout_offer": state.buyout_offer,
 	}
 
 static func has_run() -> bool:

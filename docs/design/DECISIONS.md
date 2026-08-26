@@ -663,3 +663,35 @@ return higher; the street hears). Engine: offer records extend the
 board lane's M&A offers with structure {cash, stock+lockup, earnout+
 controller, retention}, waterfall executor, powers checks
 (protective/drag-along fields on instrument records, set at signing).
+
+## THE BINDER PORTRAIT (owner, 2026-08-26: "an actual transparent-
+## background illustration of an actual binder with the name on top —
+## the big business owner binder, stick-out colors, papers not well
+## ordered")
+
+1. **What**: a transparent-background PNG illustration of a chunky,
+   well-used ring binder — kraft cover, FOUR thick index tabs
+   sticking out in the group colors (sage, coral, blue, yellow),
+   papers poking out untidily, a taped paper label on the front. In
+   the game's hand-drawn style (flat cartoon, wobbly felt-pen
+   outlines, flat fills, game palette, no gradients).
+2. **The name is overlaid, not generated**: the illustration is asked
+   for with a BLANK label (image models garble text); the engine
+   draws the company name onto the label in PatrickHand. Reliable and
+   re-nameable for free.
+3. **When**: generated ONCE at run start (the generation-once law);
+   regenerated only if the company is renamed or a pivot changes its
+   nature. Cached in user://; the drawn CSS-style kraft cover (the
+   already-locked frame art) is the instant placeholder and permanent
+   fallback — the binder never waits on an image.
+4. **Where**: (a) the binder screen's COVER STATE — you see the
+   portrait first, and the open transition goes portrait → rail +
+   sheet; (b) a small version wherever the binder appears as an
+   object (HUD button, the room scene if it hosts one).
+5. **Pipeline split (the "gpt image 2" ruling)**: TRANSPARENT-
+   BACKGROUND assets go through the OpenAI images API (the game
+   already holds the OpenAI key) — request model "gpt-image-2" and
+   fall back to "gpt-image-1" if the API reports no such model;
+   `background: transparent`, PNG. Scene paintings (rooms, garden
+   plots) stay on the Atlas/Seedream v2 path. One new pure-transport
+   client call, same no-Core-types law as the rest of the LLM layer.
