@@ -440,3 +440,37 @@ RUNWAY.dmg 2.2G — polish checks pass, both stamp halves verified inside
 the pck. Batch-build truth for the record: the success marker is
 `RUNWAY! build Succeeded` — an earlier grep for "Build succeeded"
 mislabeled seven good builds as UPM flakes.
+
+## 2026-08-26 — THE BUSINESS SIMULATOR SHIPS: one DAG, eleven specs, nine lanes
+
+The owner's mandate — "an economic business simulator that ACTUALLY works,
+a teaching tool, almost not a game; everything at once, a CLEAR DAG" —
+executed in one autonomous push:
+
+DESIGN (11 documents, docs/design/): nine lane specs + the integration
+spine (tick order v2, 23-lane P&L + one pinned identity, salt registry,
+attention system, DM context contract, op registry, era ladder) + the
+interface language (visual DNA codified, component library, clarity and
+interaction contracts, the 15-check ship gate). Every lane: faithful
+mechanics citing real-world analogues, LLM-leverage maps (five lanes
+honestly "none — pure math"), pedagogy in real business terms, era-scaled
+depth, standalone interface deltas. Owner arbitrations in DECISIONS.md.
+
+EXECUTION (the DAG): N1a engine spine (tick v2, stubs, four live bugs
+dead, save fixture) → N1b UI spine (DeskKit, ten tabs incl. THE BANK,
+desk dispatch, THE PRE-ROLL REVIEW, ticker, coach v2) → NINE LANES IN
+PARALLEL, zero shared-file writes, ~30 arbitrated coordinator packages →
+N4a the DM learns the world (prompt twins byte-synced; the audit killed a
+double-count and a save-migration asymmetry) → N4b the QA loop (63
+captures × 15 checks all green, 39 defects found-fixed-verified, twin
+parity proven, the emoji clock became the drawn clock).
+
+BALANCE, measured not asserted: Enterprise win rates 48/56/70/78 across
+founder profiles (was 93/91/97 noise); whales 12→96 seats across
+profiles; procurement 0→30 events; logo retention 60→88% with care; the
+no-decision receipt finally describes the numbers.
+
+Twin suites 158 → 368/368 in lockstep. Compile 0. Backlog recorded: the
+C# sentinel narration scan parity, cofounder-role int storage, roadmap
+signal thinner than spec, directives-order doc drift, DM status-install
+list (ruled: macro regimes stay engine-seeded).
