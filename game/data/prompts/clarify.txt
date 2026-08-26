@@ -15,7 +15,7 @@ Vagueness alone is never a gap. Only ask when a missing amount, price, target, o
 
 | Field | Type | Description & Usage |
 |-------|------|---------------------|
-| `run_state` | object | Compact run state: cash, week, era, customers, crew names, items, offers, budgets. This is the source of truth for what the founder HAS. Check it before asking a resource question — only ask if the needed thing is genuinely absent. |
+| `run_state` | object | Compact run state: cash, week, era, customers, crew names, items, offers, budgets, sites (the roofs the company operates under, by name). This is the source of truth for what the founder HAS. Check it before asking a resource question — only ask if the needed thing is genuinely absent. |
 | `event_card` | object | The week's event context. Context only — never ask about the card itself. |
 | `move` | string | The player's written weekly move (<=300 chars), possibly followed by " — answer" segments from earlier rounds. The thing being judged. Scan the WHOLE string for embedded numbers and names before asking anything. |
 
@@ -54,8 +54,9 @@ Only reached if Step 2 did not resolve the move. Apply in order — ask about th
 2. **Delegation or outreach where the target changes everything, and no target is given** — "send someone to close them" → ask who, `kind="target"`.
    - Edge case: if `run_state` crew has only ONE plausible person, the target is unambiguous — no question. If two or more candidates exist, ask.
    - A hiring move that names no role ("let's hire someone", "bring in help") has the same gap: which seat changes what the week does, and `run_state` carries no open roles to answer it → ask what the role is, `kind="target"`. A move that already names the seat ("hire a salesperson") needs nothing.
-3. **A selling or launch move while an offer has no price** — `run_state.offers` lists what the company sells, its billing unit, and whether each has a price; selling or promoting with an unpriced offer means the founder never named a price → ask what they charge for the FIRST unpriced offer, in its own unit, `kind="price"` (e.g. "What do you charge for the standard session?"). If the move sells something that is not in `run_state.offers` at all, ask what exactly is being sold and for how much, `kind="price"`.
-4. **A plan that hinges on something `run_state` does not have** — "demo it on the booth screen" with no booth in items → ask about the resource, `kind="resource"`.
+3. **A physical hire or purchase while the company runs two or more roofs, and no roof is named** — `run_state.sites` lists the roofs; hiring a person or buying something physical (a machine, a room's worth of kit) lands SOMEWHERE, and with ≥2 sites the move must say where → ask for which roof, `kind="target"` (e.g. "For which roof — Paris or Lyon?"). One site or none listed means the answer is unambiguous — no question. Pure-paper moves (pricing, tagging, budgets) never need a roof.
+4. **A selling or launch move while an offer has no price** — `run_state.offers` lists what the company sells, its billing unit, and whether each has a price; selling or promoting with an unpriced offer means the founder never named a price → ask what they charge for the FIRST unpriced offer, in its own unit, `kind="price"` (e.g. "What do you charge for the standard session?"). If the move sells something that is not in `run_state.offers` at all, ask what exactly is being sold and for how much, `kind="price"`.
+5. **A plan that hinges on something `run_state` does not have** — "demo it on the booth screen" with no booth in items → ask about the resource, `kind="resource"`.
    - Only ask when the state CONFIRMS the thing is absent. If items already lists it, no question.
 
 If none of these match unanswered, output no question.
@@ -160,3 +161,8 @@ Only one crew member exists, so the target is unambiguous.
 **Input:** `{"run_state":{"cash":42000,"week":17,"era":"office","crew":["Mara","Tomas"],"items":[]},"event_card":{"title":"The backlog wins"},"move":"we finally hire someone"}`
 **Output:** `{"needs_clarification":true,"question":"Which seat are you filling?","kind":"target"}`
 The role decides what the week does, and nothing in the state names it.
+
+### Example 9: Two roofs, a physical hire, no roof named → ask which roof
+**Input:** `{"run_state":{"cash":52000,"week":21,"era":"office","crew":["Mara","Jonas"],"items":[],"sites":["Paris","Lyon"],"offers":[{"name":"standard session","priced":true,"price":80,"unit":"per session"}]},"event_card":{"title":"The waitlist grows"},"move":"hire another masseuse"}`
+**Output:** `{"needs_clarification":true,"question":"For which roof — Paris or Lyon?","kind":"target"}`
+The seat is named, but two roofs exist and the hire lands somewhere; where changes the week.

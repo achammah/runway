@@ -236,10 +236,113 @@ const BETS_SCHEMA := {
 }
 
 ## Schema for run-start world generation: the bible born from the pitch.
+## DAG2 (DECISIONS.md): the SAME one call also births the binder's generated
+## content — identity, the four growth plots, the works vocabulary, the org
+## spend book, THE PRICE BOOK and the birth features. The LLM proposes inside
+## the stated bands; WorldGen.apply_birth clamps again engine-side (the law).
 const WORLD_SCHEMA := {
 	"type": "object", "additionalProperties": false,
-	"required": ["market", "investors", "rivals"],
+	"required": ["market", "investors", "rivals", "identity", "growth_topics",
+		"works_terms", "spend_book", "price_book", "birth_features"],
 	"properties": {
+		# WHO WE ARE, in the world's dry words — the product desk's header.
+		"identity": {
+			"type": "object", "additionalProperties": false,
+			"required": ["one_liner", "who_for"],
+			"properties": {
+				"one_liner": {"type": "string", "maxLength": 140},
+				"who_for": {"type": "string", "maxLength": 80},
+			},
+		},
+		# THE MARKET GARDEN's four plots. Dressing ONLY: each channel keeps its
+		# engine character verbatim in whatever world the model invents —
+		# ads instant-and-saturating, content a compounding stock that rots
+		# starved, referrals an NPS-gated multiplier, outbound quota knocking.
+		"growth_topics": {
+			"type": "object", "additionalProperties": false,
+			"required": ["ads", "content", "referrals", "outbound"],
+			"properties": {
+				"ads": {"type": "object", "additionalProperties": false,
+					"required": ["name", "one_line"],
+					"properties": {"name": {"type": "string", "maxLength": 28},
+						"one_line": {"type": "string", "maxLength": 110}}},
+				"content": {"type": "object", "additionalProperties": false,
+					"required": ["name", "one_line"],
+					"properties": {"name": {"type": "string", "maxLength": 28},
+						"one_line": {"type": "string", "maxLength": 110}}},
+				"referrals": {"type": "object", "additionalProperties": false,
+					"required": ["name", "one_line"],
+					"properties": {"name": {"type": "string", "maxLength": 28},
+						"one_line": {"type": "string", "maxLength": 110}}},
+				"outbound": {"type": "object", "additionalProperties": false,
+					"required": ["name", "one_line"],
+					"properties": {"name": {"type": "string", "maxLength": 28},
+						"one_line": {"type": "string", "maxLength": 110}}},
+			},
+		},
+		# THE WORKS' native vocabulary: what one sold thing is called, what the
+		# capacity is made of, what the overflow relief valve is called.
+		"works_terms": {
+			"type": "object", "additionalProperties": false,
+			"required": ["unit_word", "capacity_word", "relief_word"],
+			"properties": {
+				"unit_word": {"type": "string", "maxLength": 16},
+				"capacity_word": {"type": "string", "maxLength": 28},
+				"relief_word": {"type": "string", "maxLength": 28},
+			},
+		},
+		# THE ORG SPEND BOOK: 6-10 lines fitted to THIS business. The model
+		# invents rows, never math — bucket ∈ the four engine levers, and the
+		# engine's lever value stays the SUM of its lines.
+		"spend_book": {
+			"type": "array", "minItems": 6, "maxItems": 10,
+			"items": {
+				"type": "object", "additionalProperties": false,
+				"required": ["name", "buys", "amt", "bucket", "contract_notice"],
+				"properties": {
+					"name": {"type": "string", "maxLength": 28},
+					"buys": {"type": "string", "maxLength": 60},
+					"amt": {"type": "number", "minimum": 0, "maximum": 400},
+					"bucket": {"type": "string", "enum": ["sales", "care", "rnd", "office"]},
+					"contract_notice": {"type": "integer", "minimum": 0, "maximum": 12},
+				},
+			},
+		},
+		# THE PRICE BOOK: the whole structural price schedule, visible from
+		# week 1 so expansion can be planned, not discovered. Bands here are
+		# the engine's; WorldGen clamps again on apply.
+		"price_book": {
+			"type": "object", "additionalProperties": false,
+			"required": ["open_site_pack", "relocation_fee", "machine_shipping",
+				"lease_break_weeks", "contract_notice_wks", "refinance_break_fee",
+				"freelance_rate", "subcontract_rate", "account_fire_penalty"],
+			"properties": {
+				"open_site_pack": {"type": "number", "minimum": 6000, "maximum": 40000},
+				"relocation_fee": {"type": "number", "minimum": 100, "maximum": 1500},
+				"machine_shipping": {"type": "number", "minimum": 150, "maximum": 4000},
+				"lease_break_weeks": {"type": "integer", "minimum": 4, "maximum": 16},
+				"contract_notice_wks": {"type": "integer", "minimum": 2, "maximum": 12},
+				"refinance_break_fee": {"type": "number", "minimum": 100, "maximum": 2000},
+				"freelance_rate": {"type": "number", "minimum": 15, "maximum": 300},
+				"subcontract_rate": {"type": "number", "minimum": 10, "maximum": 250},
+				"account_fire_penalty": {"type": "number", "minimum": 200, "maximum": 5000},
+			},
+		},
+		# BIRTH FEATURES: what the thing is made of on day one. 3-6 rows for
+		# state.features; jobs are the fixed contribution classes.
+		"birth_features": {
+			"type": "array", "minItems": 3, "maxItems": 6,
+			"items": {
+				"type": "object", "additionalProperties": false,
+				"required": ["name", "job", "keep_wk", "unit_cost_add"],
+				"properties": {
+					"name": {"type": "string", "maxLength": 28},
+					"job": {"type": "string", "enum": ["pull", "keep", "charge", "plumbing"]},
+					"keep_wk": {"type": "number", "minimum": 0, "maximum": 150},
+					"unit_cost_add": {"type": "number", "minimum": 0, "maximum": 40},
+				},
+			},
+		},
 		"market": {
 			"type": "object", "additionalProperties": false,
 			"required": ["tam_buyers", "customer_patience_weeks", "one_liner"],

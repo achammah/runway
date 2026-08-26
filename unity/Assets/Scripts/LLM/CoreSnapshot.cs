@@ -85,6 +85,10 @@ namespace Runway.Llm
             s.Crew = CrewNames(state);
             s.Items = state.Items != null ? state.Items.ToArray() : new string[0];
             s.Budgets = state.Budgets != null ? JObject.FromObject(state.Budgets) : new JObject();
+            var siteNames = new List<string>();
+            if (state.Sites != null)
+                foreach (Site st in state.Sites) siteNames.Add(st.Name ?? "");
+            s.SiteNames = siteNames.ToArray();
 
             // ── the sentinel's ground truth ───────────────────────────────────
             var investors = new List<string>();

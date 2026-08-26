@@ -57,6 +57,9 @@ namespace Runway.Llm
         public string[] Crew;
         public string[] Items;
         public JToken Budgets;
+        /// The roofs, by name — with ≥2 of them a physical hire/buy that names
+        /// none is a real clarify gap (the "for which roof?" rule).
+        public string[] SiteNames;
 
         // ── the sentinel's ground truth ───────────────────────────────────────
         public string[] InvestorNames;

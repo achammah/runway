@@ -44,11 +44,91 @@ namespace Runway.Core
         [JsonProperty("tactics")] public List<string> Tactics;
     }
 
+    public sealed class LlmIdentity
+    {
+        [JsonProperty("one_liner")] public string OneLiner = "";
+        [JsonProperty("who_for")] public string WhoFor = "";
+    }
+
+    public sealed class LlmTopic
+    {
+        [JsonProperty("name")] public string Name = "";
+        [JsonProperty("one_line")] public string OneLine = "";
+    }
+
+    public sealed class LlmGrowthTopics
+    {
+        [JsonProperty("ads")] public LlmTopic Ads;
+        [JsonProperty("content")] public LlmTopic Content;
+        [JsonProperty("referrals")] public LlmTopic Referrals;
+        [JsonProperty("outbound")] public LlmTopic Outbound;
+    }
+
+    public sealed class LlmWorksTerms
+    {
+        [JsonProperty("unit_word")] public string UnitWord = "";
+        [JsonProperty("capacity_word")] public string CapacityWord = "";
+        [JsonProperty("relief_word")] public string ReliefWord = "";
+    }
+
+    public sealed class LlmSpendLine
+    {
+        [JsonProperty("name")] public string Name = "";
+        [JsonProperty("buys")] public string Buys = "";
+        [JsonProperty("amt")] public double Amt;
+        [JsonProperty("bucket")] public string Bucket = "";
+        [JsonProperty("contract_notice")] public int ContractNotice;
+    }
+
+    public sealed class LlmPriceBook
+    {
+        [JsonProperty("open_site_pack")] public double? OpenSitePack;
+        [JsonProperty("relocation_fee")] public double? RelocationFee;
+        [JsonProperty("machine_shipping")] public double? MachineShipping;
+        [JsonProperty("lease_break_weeks")] public double? LeaseBreakWeeks;
+        [JsonProperty("contract_notice_wks")] public double? ContractNoticeWks;
+        [JsonProperty("refinance_break_fee")] public double? RefinanceBreakFee;
+        [JsonProperty("freelance_rate")] public double? FreelanceRate;
+        [JsonProperty("subcontract_rate")] public double? SubcontractRate;
+        [JsonProperty("account_fire_penalty")] public double? AccountFirePenalty;
+
+        public double? Get(string key)
+        {
+            switch (key)
+            {
+                case "open_site_pack": return OpenSitePack;
+                case "relocation_fee": return RelocationFee;
+                case "machine_shipping": return MachineShipping;
+                case "lease_break_weeks": return LeaseBreakWeeks;
+                case "contract_notice_wks": return ContractNoticeWks;
+                case "refinance_break_fee": return RefinanceBreakFee;
+                case "freelance_rate": return FreelanceRate;
+                case "subcontract_rate": return SubcontractRate;
+                case "account_fire_penalty": return AccountFirePenalty;
+            }
+            return null;
+        }
+    }
+
+    public sealed class LlmBirthFeature
+    {
+        [JsonProperty("name")] public string Name = "";
+        [JsonProperty("job")] public string Job = "";
+        [JsonProperty("keep_wk")] public double KeepWk;
+        [JsonProperty("unit_cost_add")] public double UnitCostAdd;
+    }
+
     public sealed class LlmWorld
     {
         [JsonProperty("market")] public LlmMarket Market;
         [JsonProperty("investors")] public List<LlmInvestor> Investors;
         [JsonProperty("rivals")] public List<LlmRival> Rivals;
+        [JsonProperty("identity")] public LlmIdentity Identity;
+        [JsonProperty("growth_topics")] public LlmGrowthTopics GrowthTopics;
+        [JsonProperty("works_terms")] public LlmWorksTerms WorksTerms;
+        [JsonProperty("spend_book")] public List<LlmSpendLine> SpendBook;
+        [JsonProperty("price_book")] public LlmPriceBook PriceBook;
+        [JsonProperty("birth_features")] public List<LlmBirthFeature> BirthFeatures;
     }
 
     /// <summary>
@@ -406,6 +486,9 @@ namespace Runway.Core
                 }
             }
             SeedRivalConduct(state, rng);
+            // THE BIRTH BOOK'S KEYLESS HALF (DAG2 L-GEN): pure static tables,
+            // no rng — dead last so every draw keeps its sequence position.
+            DefaultBirth(state);
         }
 
         /// <summary>
@@ -539,7 +622,280 @@ namespace Runway.Core
             {
                 state.Rivals = rivals;
             }
+            // the same call births the binder's own book (clamped; defaults
+            // stand wherever the model came back thin)
+            ApplyBirth(state, gen);
             return true;
+        }
+
+        // ══ THE BIRTH BOOK (DAG2 L-GEN, DECISIONS.md) — world_gen.gd's twins ══
+        // The LLM proposes inside bands; ApplyBirth clamps again (the law).
+        // DefaultBirth is the deterministic fallback: a keyless run gets a
+        // complete playable book from these tables alone, and nothing here
+        // draws from the rng.
+
+        static readonly string[] GROWTH_CHANNELS = { "ads", "content", "referrals", "outbound" };
+        static readonly Dictionary<string, string[]> GROWTH_DEFAULTS = new Dictionary<string, string[]>
+        {
+            { "ads", new[] { "the paid plot", "watered, it blooms the same day; unwatered, it dies the same day — and every extra dollar buys a little less" } },
+            { "content", new[] { "the compost bed", "a stock that compounds while it is fed and rots the month it is starved" } },
+            { "referrals", new[] { "the cutting vine", "a multiplier gated on how much the regulars actually like the thing" } },
+            { "outbound", new[] { "the knocking rows", "quota knocking — so many doors a week per person out knocking" } },
+        };
+        // unit_word, capacity_word, relief_word
+        static readonly Dictionary<string, string[]> WORKS_TERMS_DEFAULTS = new Dictionary<string, string[]>
+        {
+            { "Service", new[] { "session", "bookable hours", "freelancers" } },
+            { "Hardware", new[] { "unit", "machine slots", "the subcontract shop" } },
+            { "Marketplace", new[] { "order", "active sellers", "recruited supply" } },
+            { "Software", new[] { "seat", "headroom", "burst capacity" } },
+        };
+        public static readonly Dictionary<string, int[]> PRICE_BANDS = new Dictionary<string, int[]>
+        {
+            { "open_site_pack", new[] { 6000, 40000 } }, { "relocation_fee", new[] { 100, 1500 } },
+            { "machine_shipping", new[] { 150, 4000 } }, { "lease_break_weeks", new[] { 4, 16 } },
+            { "contract_notice_wks", new[] { 2, 12 } }, { "refinance_break_fee", new[] { 100, 2000 } },
+            { "freelance_rate", new[] { 15, 300 } }, { "subcontract_rate", new[] { 10, 250 } },
+            { "account_fire_penalty", new[] { 200, 5000 } },
+        };
+        public static readonly Dictionary<string, int> PRICE_BOOK_DEFAULT = new Dictionary<string, int>
+        {
+            { "open_site_pack", 18000 }, { "relocation_fee", 400 }, { "machine_shipping", 900 },
+            { "lease_break_weeks", 8 }, { "contract_notice_wks", 4 }, { "refinance_break_fee", 350 },
+            { "freelance_rate", 65 }, { "subcontract_rate", 30 }, { "account_fire_penalty", 1200 },
+        };
+        static readonly string[] SPEND_BUCKETS = { "sales", "care", "rnd", "office" };
+        static readonly string[] FEATURE_JOBS = { "pull", "keep", "charge", "plumbing" };
+        const double SPEND_LINE_CAP = 400.0;
+        const double SPEND_BOOK_CAP = 900.0;
+        // name, job, keep_wk, unit_cost_add — every set carries the four jobs
+        static readonly Dictionary<string, object[][]> FEATURE_DEFAULTS = new Dictionary<string, object[][]>
+        {
+            { "Service", new[] {
+                new object[] { "the signature protocol", "keep", 30, 2.0 },
+                new object[] { "online booking", "pull", 20, 0.0 },
+                new object[] { "the premium add-on", "charge", 15, 3.0 },
+                new object[] { "the back office", "plumbing", 25, 0.0 } } },
+            { "Hardware", new[] {
+                new object[] { "the core device", "keep", 40, 0.0 },
+                new object[] { "the companion app", "pull", 25, 0.0 },
+                new object[] { "the pro accessory line", "charge", 20, 2.0 },
+                new object[] { "the assembly jigs", "plumbing", 30, 0.0 } } },
+            { "Marketplace", new[] {
+                new object[] { "search & matching", "pull", 35, 0.0 },
+                new object[] { "ratings & reviews", "keep", 20, 0.0 },
+                new object[] { "escrow & payouts", "charge", 25, 1.0 },
+                new object[] { "the data plumbing", "plumbing", 30, 0.0 } } },
+            { "Software", new[] {
+                new object[] { "the onboarding door", "pull", 20, 0.0 },
+                new object[] { "the daily workflow", "keep", 35, 0.0 },
+                new object[] { "the paid tier", "charge", 15, 0.0 },
+                new object[] { "the data plumbing", "plumbing", 30, 0.0 } } },
+        };
+
+        static string[] WorksDefaultsFor(string bizWhat)
+        {
+            string[] terms;
+            if (!WORKS_TERMS_DEFAULTS.TryGetValue(bizWhat ?? "", out terms))
+                terms = WORKS_TERMS_DEFAULTS["Software"];
+            return terms;
+        }
+
+        static string IdentityFallback(GameState state)
+        {
+            string idea = (state.CompanyIdea ?? "").Trim();
+            return idea.Length > 0 ? Gd.Left(idea, 140)
+                : "a small company doing what it says on the door";
+        }
+
+        /// <summary>Install the complete deterministic birth book. Guarded per
+        /// field so a save-loaded or LLM-filled state is never clobbered.</summary>
+        public static void DefaultBirth(GameState state)
+        {
+            if (state.Topics == null || state.Topics.Count == 0)
+            {
+                var growth = new Dictionary<string, object>();
+                foreach (string ch in GROWTH_CHANNELS)
+                    growth[ch] = new Dictionary<string, object>
+                    {
+                        { "name", GROWTH_DEFAULTS[ch][0] }, { "one_line", GROWTH_DEFAULTS[ch][1] },
+                    };
+                string[] terms = WorksDefaultsFor(state.BizWhat);
+                state.Topics = new Dictionary<string, object>
+                {
+                    { "identity", new Dictionary<string, object>
+                        { { "one_liner", IdentityFallback(state) }, { "who_for", state.BizWho ?? "" } } },
+                    { "growth", growth },
+                    { "works", new Dictionary<string, object>
+                        { { "unit_word", terms[0] }, { "capacity_word", terms[1] }, { "relief_word", terms[2] } } },
+                };
+            }
+            if (state.SpendBook == null || state.SpendBook.Count == 0)
+            {
+                state.SpendBook = new List<SpendLine>
+                {
+                    new SpendLine { Name = "sales", Buys = "closing what is already in the pipe", Amt = 0, Bucket = "sales" },
+                    new SpendLine { Name = "care", Buys = "keeping the customers we have", Amt = 0, Bucket = "care" },
+                    new SpendLine { Name = "r&d", Buys = "building the thing", Amt = 0, Bucket = "rnd" },
+                    new SpendLine { Name = "office", Buys = "the room and the people in it", Amt = 0, Bucket = "office" },
+                };
+            }
+            if (state.PriceBook == null || state.PriceBook.Count == 0)
+            {
+                var pb = new Dictionary<string, object>();
+                foreach (var kv in PRICE_BOOK_DEFAULT) pb[kv.Key] = kv.Value;
+                state.PriceBook = pb;
+            }
+            if (state.Features == null || state.Features.Count == 0)
+            {
+                object[][] defs;
+                if (!FEATURE_DEFAULTS.TryGetValue(state.BizWhat ?? "", out defs))
+                    defs = FEATURE_DEFAULTS["Software"];
+                var rows = new List<Feature>();
+                for (int i = 0; i < defs.Length; i++)
+                    rows.Add(new Feature
+                    {
+                        Id = "ft_birth_" + (i + 1), Name = (string)defs[i][0],
+                        Job = (string)defs[i][1], KeepWk = (int)defs[i][2],
+                        UnitCostAdd = (double)defs[i][3], BornWk = state.Week,
+                    });
+                state.Features = rows;
+            }
+        }
+
+        /// <summary>Clamp-and-write the LLM's birth blocks over the defaults.
+        /// Also the PIVOT regeneration entry point (a pivot keeps its investors
+        /// and rivals; only the business's own book is reborn).</summary>
+        public static bool ApplyBirth(GameState state, LlmWorld gen)
+        {
+            if (gen == null) return false;
+            // ── topics: identity + growth plots + works terms, per-piece fallback
+            var growth2 = new Dictionary<string, object>();
+            var topicIn = new Dictionary<string, LlmTopic>
+            {
+                { "ads", gen.GrowthTopics != null ? gen.GrowthTopics.Ads : null },
+                { "content", gen.GrowthTopics != null ? gen.GrowthTopics.Content : null },
+                { "referrals", gen.GrowthTopics != null ? gen.GrowthTopics.Referrals : null },
+                { "outbound", gen.GrowthTopics != null ? gen.GrowthTopics.Outbound : null },
+            };
+            foreach (string ch in GROWTH_CHANNELS)
+            {
+                LlmTopic t = topicIn[ch];
+                string nm = t != null ? Gd.Left((t.Name ?? "").Trim(), 28) : "";
+                string ln = t != null ? Gd.Left((t.OneLine ?? "").Trim(), 110) : "";
+                if (nm.Length == 0 || ln.Length == 0)
+                    growth2[ch] = new Dictionary<string, object>
+                    { { "name", GROWTH_DEFAULTS[ch][0] }, { "one_line", GROWTH_DEFAULTS[ch][1] } };
+                else
+                    growth2[ch] = new Dictionary<string, object> { { "name", nm }, { "one_line", ln } };
+            }
+            string[] termsDef = WorksDefaultsFor(state.BizWhat);
+            string oneLiner = gen.Identity != null ? Gd.Left((gen.Identity.OneLiner ?? "").Trim(), 140) : "";
+            if (oneLiner.Length == 0) oneLiner = IdentityFallback(state);
+            string whoFor = gen.Identity != null ? Gd.Left((gen.Identity.WhoFor ?? "").Trim(), 80) : "";
+            string unitWord = gen.WorksTerms != null ? Gd.Left((gen.WorksTerms.UnitWord ?? "").Trim(), 16) : "";
+            string capWord = gen.WorksTerms != null ? Gd.Left((gen.WorksTerms.CapacityWord ?? "").Trim(), 28) : "";
+            string reliefWord = gen.WorksTerms != null ? Gd.Left((gen.WorksTerms.ReliefWord ?? "").Trim(), 28) : "";
+            state.Topics = new Dictionary<string, object>
+            {
+                { "identity", new Dictionary<string, object>
+                    { { "one_liner", oneLiner },
+                      { "who_for", whoFor.Length > 0 ? whoFor : (state.BizWho ?? "") } } },
+                { "growth", growth2 },
+                { "works", new Dictionary<string, object>
+                    { { "unit_word", unitWord.Length > 0 ? unitWord : termsDef[0] },
+                      { "capacity_word", capWord.Length > 0 ? capWord : termsDef[1] },
+                      { "relief_word", reliefWord.Length > 0 ? reliefWord : termsDef[2] } } },
+            };
+            // ── the spend book: 4-10 clean rows or the bare four lines
+            var book = new List<SpendLine>();
+            double total = 0.0;
+            if (gen.SpendBook != null)
+            {
+                foreach (LlmSpendLine row in gen.SpendBook)
+                {
+                    if (row == null || book.Count >= 10) continue;
+                    string rname = Gd.Left((row.Name ?? "").Trim(), 28);
+                    if (rname.Length == 0) continue;
+                    double amt = Math.Max(0.0, Math.Min(SPEND_LINE_CAP, row.Amt));
+                    book.Add(new SpendLine
+                    {
+                        Name = rname, Buys = Gd.Left((row.Buys ?? "").Trim(), 60),
+                        Amt = Gd.RoundToInt(amt),
+                        Bucket = Array.IndexOf(SPEND_BUCKETS, row.Bucket ?? "") >= 0 ? row.Bucket : "office",
+                        ContractNotice = Gd.Clampi(row.ContractNotice, 0, PRICE_BANDS["contract_notice_wks"][1]),
+                        Division = "",
+                    });
+                    total += amt;
+                }
+            }
+            if (total > SPEND_BOOK_CAP)
+            {
+                double scale = SPEND_BOOK_CAP / total;
+                foreach (SpendLine r2 in book) r2.Amt = Gd.RoundToInt(r2.Amt * scale);
+            }
+            if (book.Count >= 4) state.SpendBook = book;
+            else DefaultSpendBookInto(state);
+            // ── the price book: every key inside its band, missing at default
+            var pb2 = new Dictionary<string, object>();
+            foreach (var kv in PRICE_BOOK_DEFAULT)
+            {
+                int[] band = PRICE_BANDS[kv.Key];
+                double? v = gen.PriceBook != null ? gen.PriceBook.Get(kv.Key) : null;
+                pb2[kv.Key] = Gd.Clampi(Gd.RoundToInt(v ?? kv.Value), band[0], band[1]);
+            }
+            state.PriceBook = pb2;
+            // ── birth features: 3-6 rows, plumbing guaranteed
+            var feats = new List<Feature>();
+            double fair = 0.0;
+            if (state.Offers != null && state.Offers.Count > 0) fair = state.Offers[0].FairPrice;
+            double addCap = fair <= 0.0 ? 40.0 : Math.Min(40.0, fair * 0.35);
+            if (gen.BirthFeatures != null)
+            {
+                foreach (LlmBirthFeature f in gen.BirthFeatures)
+                {
+                    if (f == null || feats.Count >= 6) continue;
+                    string fname = Gd.Left((f.Name ?? "").Trim(), 28);
+                    if (fname.Length == 0) continue;
+                    feats.Add(new Feature
+                    {
+                        Id = "ft_birth_" + (feats.Count + 1), Name = fname,
+                        Job = Array.IndexOf(FEATURE_JOBS, f.Job ?? "") >= 0 ? f.Job : "keep",
+                        Family = "", Solidity = "solid",
+                        KeepWk = Gd.Clampi(Gd.RoundToInt(f.KeepWk), 0, 150),
+                        UnitCostAdd = Math.Round(Math.Max(0.0, Math.Min(addCap, f.UnitCostAdd)), 2),
+                        ProductId = "", BornWk = state.Week, Measured = 0.0,
+                    });
+                }
+            }
+            if (feats.Count >= 3)
+            {
+                bool plumbed = false;
+                foreach (Feature f2 in feats) if (f2.Job == "plumbing") plumbed = true;
+                if (!plumbed)
+                {
+                    if (feats.Count >= 6) feats.RemoveAt(feats.Count - 1);
+                    feats.Add(new Feature
+                    {
+                        Id = "ft_birth_" + (feats.Count + 1), Name = "the plumbing",
+                        Job = "plumbing", Family = "", Solidity = "solid", KeepWk = 25,
+                        UnitCostAdd = 0.0, ProductId = "", BornWk = state.Week, Measured = 0.0,
+                    });
+                }
+                state.Features = feats;
+            }
+            return true;
+        }
+
+        static void DefaultSpendBookInto(GameState state)
+        {
+            state.SpendBook = new List<SpendLine>
+            {
+                new SpendLine { Name = "sales", Buys = "closing what is already in the pipe", Amt = 0, Bucket = "sales" },
+                new SpendLine { Name = "care", Buys = "keeping the customers we have", Amt = 0, Bucket = "care" },
+                new SpendLine { Name = "r&d", Buys = "building the thing", Amt = 0, Bucket = "rnd" },
+                new SpendLine { Name = "office", Buys = "the room and the people in it", Amt = 0, Bucket = "office" },
+            };
         }
 
         /// <summary>

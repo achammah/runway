@@ -211,6 +211,9 @@ static func build(state: GameState) -> void:
 			flag0["fixed_lines"] = [{"label": "the tools that make it", "amount": 15.0 * aud0}]
 			SimEngine.sync_offer_costs(flag0)
 	seed_rival_conduct(state, rng)
+	# THE BIRTH BOOK'S KEYLESS HALF (DAG2 L-GEN): pure static tables, no rng —
+	# added dead last so every existing draw keeps its exact sequence position.
+	default_birth(state)
 
 ## THE RIVALS' CONDUCT (docs/design/03-rivals-macro.md §1): a war chest, a
 ## strategic bent, a price posture and a share of voice — what turns a strength
@@ -290,7 +293,238 @@ static func apply_llm_world(state: GameState, gen: Dictionary) -> bool:
 		})
 	if rivals.size() == 2:
 		state.rivals = rivals
+	# the same call births the binder's own book (clamped; defaults stand
+	# wherever the model came back thin)
+	apply_birth(state, gen)
 	return true
+
+# ══ THE BIRTH BOOK (DAG2 L-GEN, DECISIONS.md) ════════════════════════════════
+## Generated-at-birth binder content: identity, the four growth plots, the
+## works vocabulary, the org spend book, THE PRICE BOOK, the birth features.
+## The LLM proposes inside bands; apply_birth clamps again (LLM proposes,
+## engine clamps — the law). default_birth is the DETERMINISTIC fallback: a
+## keyless run gets a complete playable book from these tables alone, and
+## nothing here draws from the rng (worldgen determinism stays byte-stable).
+##
+## state.topics shape (the contract every desk reads):
+##   {"identity": {"one_liner", "who_for"},
+##    "growth":   {"ads"|"content"|"referrals"|"outbound": {"name", "one_line"}},
+##    "works":    {"unit_word", "capacity_word", "relief_word"}}
+
+## The garden set — the default plots. Each channel's ENGINE CHARACTER is in
+## the wording verbatim: ads instant-and-saturating, content a compounding
+## stock that rots starved, referrals NPS-gated, outbound quota knocking.
+const GROWTH_DEFAULTS := {
+	"ads": {"name": "the paid plot",
+		"one_line": "watered, it blooms the same day; unwatered, it dies the same day — and every extra dollar buys a little less"},
+	"content": {"name": "the compost bed",
+		"one_line": "a stock that compounds while it is fed and rots the month it is starved"},
+	"referrals": {"name": "the cutting vine",
+		"one_line": "a multiplier gated on how much the regulars actually like the thing"},
+	"outbound": {"name": "the knocking rows",
+		"one_line": "quota knocking — so many doors a week per person out knocking"},
+}
+
+## The works' native units when no key names better ones, by business type.
+const WORKS_TERMS_DEFAULTS := {
+	"Service": {"unit_word": "session", "capacity_word": "bookable hours", "relief_word": "freelancers"},
+	"Hardware": {"unit_word": "unit", "capacity_word": "machine slots", "relief_word": "the subcontract shop"},
+	"Marketplace": {"unit_word": "order", "capacity_word": "active sellers", "relief_word": "recruited supply"},
+	"Software": {"unit_word": "seat", "capacity_word": "headroom", "relief_word": "burst capacity"},
+}
+
+## The bare four-line book (DECISIONS: the default when no key): one honest
+## line per engine lever, at the birth budgets (zero — the levers ARE zero).
+const SPEND_BOOK_DEFAULT := [
+	{"name": "sales", "buys": "closing what is already in the pipe", "amt": 0, "bucket": "sales", "contract_notice": 0, "division": ""},
+	{"name": "care", "buys": "keeping the customers we have", "amt": 0, "bucket": "care", "contract_notice": 0, "division": ""},
+	{"name": "r&d", "buys": "building the thing", "amt": 0, "bucket": "rnd", "contract_notice": 0, "division": ""},
+	{"name": "office", "buys": "the room and the people in it", "amt": 0, "bucket": "office", "contract_notice": 0, "division": ""},
+]
+
+## THE PRICE BOOK bands ([lo, hi]) and the mid-band defaults. The schema asks
+## inside these same bands; this clamp is the engine's own half of the law.
+## Units: flat dollars, except lease_break_weeks (weeks of rent) and
+## contract_notice_wks (weeks); freelance_rate and subcontract_rate are
+## dollars per overflow unit served/made.
+const PRICE_BANDS := {
+	"open_site_pack": [6000, 40000], "relocation_fee": [100, 1500],
+	"machine_shipping": [150, 4000], "lease_break_weeks": [4, 16],
+	"contract_notice_wks": [2, 12], "refinance_break_fee": [100, 2000],
+	"freelance_rate": [15, 300], "subcontract_rate": [10, 250],
+	"account_fire_penalty": [200, 5000],
+}
+const PRICE_BOOK_DEFAULT := {
+	"open_site_pack": 18000, "relocation_fee": 400, "machine_shipping": 900,
+	"lease_break_weeks": 8, "contract_notice_wks": 4, "refinance_break_fee": 350,
+	"freelance_rate": 65, "subcontract_rate": 30, "account_fire_penalty": 1200,
+}
+
+## Generic birth features by business type: [name, job, keep_wk, unit_cost_add].
+## Every set carries the four jobs — the plumbing card is where creak will live.
+const FEATURE_DEFAULTS := {
+	"Service": [["the signature protocol", "keep", 30, 2.0],
+		["online booking", "pull", 20, 0.0],
+		["the premium add-on", "charge", 15, 3.0],
+		["the back office", "plumbing", 25, 0.0]],
+	"Hardware": [["the core device", "keep", 40, 0.0],
+		["the companion app", "pull", 25, 0.0],
+		["the pro accessory line", "charge", 20, 2.0],
+		["the assembly jigs", "plumbing", 30, 0.0]],
+	"Marketplace": [["search & matching", "pull", 35, 0.0],
+		["ratings & reviews", "keep", 20, 0.0],
+		["escrow & payouts", "charge", 25, 1.0],
+		["the data plumbing", "plumbing", 30, 0.0]],
+	"Software": [["the onboarding door", "pull", 20, 0.0],
+		["the daily workflow", "keep", 35, 0.0],
+		["the paid tier", "charge", 15, 0.0],
+		["the data plumbing", "plumbing", 30, 0.0]],
+}
+
+const SPEND_BUCKETS := ["sales", "care", "rnd", "office"]
+const FEATURE_JOBS := ["pull", "keep", "charge", "plumbing"]
+## Birth caps: per-line and whole-book weekly spend stay garage-sane.
+const SPEND_LINE_CAP := 400.0
+const SPEND_BOOK_CAP := 900.0
+
+## Install the complete deterministic birth book. Guarded per field so a
+## save-loaded or LLM-filled state is never clobbered. No rng in here.
+static func default_birth(state: GameState) -> void:
+	if state.topics.is_empty():
+		state.topics = {
+			"identity": {
+				"one_liner": (state.company_idea.left(140) if state.company_idea != ""
+					else "a small company doing what it says on the door"),
+				"who_for": state.biz_who,
+			},
+			"growth": GROWTH_DEFAULTS.duplicate(true),
+			"works": (WORKS_TERMS_DEFAULTS.get(state.biz_what,
+				WORKS_TERMS_DEFAULTS["Software"]) as Dictionary).duplicate(true),
+		}
+	if state.spend_book.is_empty():
+		state.spend_book = SPEND_BOOK_DEFAULT.duplicate(true)
+	if state.price_book.is_empty():
+		state.price_book = PRICE_BOOK_DEFAULT.duplicate(true)
+	if state.features.is_empty():
+		var rows: Array = []
+		var defs: Array = FEATURE_DEFAULTS.get(state.biz_what, FEATURE_DEFAULTS["Software"])
+		for i in defs.size():
+			var d: Array = defs[i]
+			rows.append({"id": "ft_birth_%d" % (i + 1), "name": String(d[0]),
+				"job": String(d[1]), "family": "", "solidity": "solid",
+				"keep_wk": int(d[2]), "unit_cost_add": float(d[3]),
+				"product_id": "", "born_wk": state.week, "measured": 0.0})
+		state.features = rows
+
+## Clamp-and-write the LLM's birth blocks over the defaults. Also the PIVOT
+## regeneration entry point: a nature-changing pivot calls generate_world and
+## hands the fresh gen HERE (not apply_llm_world — the pivot keeps its
+## investors and rivals; only the business's own book is reborn).
+static func apply_birth(state: GameState, gen: Dictionary) -> bool:
+	if gen.is_empty():
+		return false
+	# ── topics: identity + growth plots + works terms, per-piece fallback
+	var identity_in: Dictionary = gen.get("identity", {})
+	var growth_in: Dictionary = gen.get("growth_topics", {})
+	var works_in: Dictionary = gen.get("works_terms", {})
+	var growth := {}
+	for ch in ["ads", "content", "referrals", "outbound"]:
+		var t: Dictionary = growth_in.get(ch, {})
+		var nm := String(t.get("name", "")).strip_edges().left(28)
+		var ln := String(t.get("one_line", "")).strip_edges().left(110)
+		if nm == "" or ln == "":
+			growth[ch] = (GROWTH_DEFAULTS[ch] as Dictionary).duplicate(true)
+		else:
+			growth[ch] = {"name": nm, "one_line": ln}
+	var works_def: Dictionary = WORKS_TERMS_DEFAULTS.get(state.biz_what,
+		WORKS_TERMS_DEFAULTS["Software"])
+	var one_liner := String(identity_in.get("one_liner", "")).strip_edges().left(140)
+	if one_liner == "":
+		one_liner = (state.company_idea.left(140) if state.company_idea != ""
+			else "a small company doing what it says on the door")
+	var who_for := String(identity_in.get("who_for", "")).strip_edges().left(80)
+	state.topics = {
+		"identity": {"one_liner": one_liner,
+			"who_for": (who_for if who_for != "" else state.biz_who)},
+		"growth": growth,
+		"works": {
+			"unit_word": _word(works_in, "unit_word", works_def, 16),
+			"capacity_word": _word(works_in, "capacity_word", works_def, 28),
+			"relief_word": _word(works_in, "relief_word", works_def, 28),
+		},
+	}
+	# ── the spend book: 4-10 clean rows or the bare four lines
+	var book: Array = []
+	var total := 0.0
+	for row in gen.get("spend_book", []):
+		if not (row is Dictionary) or book.size() >= 10:
+			continue
+		var r: Dictionary = row
+		var rname := String(r.get("name", "")).strip_edges().left(28)
+		if rname == "":
+			continue
+		var amt := clampf(float(r.get("amt", 0.0)), 0.0, SPEND_LINE_CAP)
+		book.append({"name": rname,
+			"buys": String(r.get("buys", "")).strip_edges().left(60),
+			"amt": int(round(amt)),
+			"bucket": (String(r.get("bucket", "")) if SPEND_BUCKETS.has(String(r.get("bucket", ""))) else "office"),
+			"contract_notice": clampi(int(r.get("contract_notice", 0)), 0,
+				int(PRICE_BANDS["contract_notice_wks"][1])),
+			"division": ""})
+		total += amt
+	if total > SPEND_BOOK_CAP:
+		var scale := SPEND_BOOK_CAP / total
+		for r2 in book:
+			r2["amt"] = int(round(float(r2["amt"]) * scale))
+	state.spend_book = book if book.size() >= 4 else SPEND_BOOK_DEFAULT.duplicate(true)
+	# ── the price book: every key inside its band, missing keys at the default
+	var pb_in: Dictionary = gen.get("price_book", {})
+	var pb := {}
+	for key in PRICE_BOOK_DEFAULT:
+		var band: Array = PRICE_BANDS[key]
+		pb[key] = clampi(int(round(float(pb_in.get(key, PRICE_BOOK_DEFAULT[key])))),
+			int(band[0]), int(band[1]))
+	state.price_book = pb
+	# ── birth features: 3-6 rows, plumbing guaranteed (creak needs a home)
+	var feats: Array = []
+	# per-unit adds stay a fraction of the flagship's fair price, so a $12
+	# Consumer plan can never be handed a $40 serving cost by the model
+	var fair := 0.0
+	if not state.offers.is_empty():
+		fair = float((state.offers[0] as Dictionary).get("fair_price", 0.0))
+	var add_cap := 40.0 if fair <= 0.0 else minf(40.0, fair * 0.35)
+	for f in gen.get("birth_features", []):
+		if not (f is Dictionary) or feats.size() >= 6:
+			continue
+		var fd: Dictionary = f
+		var fname := String(fd.get("name", "")).strip_edges().left(28)
+		if fname == "":
+			continue
+		feats.append({"id": "ft_birth_%d" % (feats.size() + 1), "name": fname,
+			"job": (String(fd.get("job", "")) if FEATURE_JOBS.has(String(fd.get("job", ""))) else "keep"),
+			"family": "", "solidity": "solid",
+			"keep_wk": clampi(int(round(float(fd.get("keep_wk", 0.0)))), 0, 150),
+			"unit_cost_add": snappedf(clampf(float(fd.get("unit_cost_add", 0.0)), 0.0, add_cap), 0.01),
+			"product_id": "", "born_wk": state.week, "measured": 0.0})
+	if feats.size() >= 3:
+		var has_plumbing := false
+		for f2 in feats:
+			if String((f2 as Dictionary).get("job", "")) == "plumbing":
+				has_plumbing = true
+		if not has_plumbing:
+			if feats.size() >= 6:
+				feats.pop_back()
+			feats.append({"id": "ft_birth_%d" % (feats.size() + 1),
+				"name": "the plumbing", "job": "plumbing", "family": "",
+				"solidity": "solid", "keep_wk": 25, "unit_cost_add": 0.0,
+				"product_id": "", "born_wk": state.week, "measured": 0.0})
+		state.features = feats
+	# fewer than 3 usable rows: keep whatever book is already installed
+	return true
+
+static func _word(src: Dictionary, key: String, fallback: Dictionary, cap: int) -> String:
+	var w := String(src.get(key, "")).strip_edges().left(cap)
+	return w if w != "" else String(fallback.get(key, ""))
 
 ## Investor-founder compatibility: the alignment dot product → a DC nudge on
 ## raise checks against THIS investor. Friendly-and-aligned = easier ask.

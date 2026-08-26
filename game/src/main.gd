@@ -947,6 +947,17 @@ func _finish_worldgen(g: GarageViewScreen, birth: BirthScreen = null) -> void:
 		print("WORLDGEN: skeleton world (prefetch empty or timed out)")
 	WorldGen.apply_llm_world(state, gen)
 	SimEngine.seed_beliefs(state)
+	# L-GEN: the once-per-run art — 4 garden plots + 4 spend rooms through the
+	# painter's Seedream path (cached per book generation, silent-fail), and
+	# the binder portrait through the OpenAI images ladder. Fire-and-forget:
+	# the engine's numbers never wait on an image.
+	var birth_art_key := "%d_p%d" % [state.sim_seed, state.pivots]
+	director.make_birth_illustrations(birth_art_key, state.topics, state.spend_book,
+		{"name": state.company_name, "idea": state.company_idea,
+		"what": state.biz_what, "who": state.biz_who})
+	if _portrait_client == null:
+		_portrait_client = PortraitClient.new(get_tree())
+	_portrait_client.generate()
 	# DAY ONE IS WRITTEN BEFORE THE BOOK OPENS (owner: the book kept opening
 	# onto an empty page): the birth screen stays up — "writing day one…" —
 	# until the founding lands (60s ceiling), so the first thing the reader
@@ -1380,6 +1391,7 @@ const ROLE_KEYS := {
 const MOOD_WORDS := {"burnt": " (burnt out, running on fumes)", "gone": " (checked out entirely)"}
 
 var director: SceneDirector
+var _portrait_client: PortraitClient = null
 var _refs: Dictionary = {}          # ref key -> permanent https url
 var _dm: Dictionary = {}            # the DM verdict currently pending on the page
 var _dm_armed := false              # ...and whether it is still sitting there

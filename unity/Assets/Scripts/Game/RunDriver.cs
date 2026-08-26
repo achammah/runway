@@ -351,6 +351,16 @@ namespace Runway.Game
                 {
                     LlmWorld world = _worldgenRes.ToObject<LlmWorld>();
                     WorldGen.ApplyLlmWorld(State, world);
+                    // L-GEN: the binder portrait rides the world's arrival —
+                    // fire-and-forget; numbers never wait on an image. Hosted on
+                    // Boot's object, the same roof the other LLM components live under.
+                    if (Boot.Instance != null)
+                    {
+                        var portrait = Boot.Instance.gameObject.GetComponent<PortraitClient>();
+                        if (portrait == null)
+                            portrait = Boot.Instance.gameObject.AddComponent<PortraitClient>();
+                        portrait.Generate(null, null);
+                    }
                     JObject market = _worldgenRes["market"] as JObject;
                     string oneLiner = ContentDb.Str(market, "one_liner");
                     if (oneLiner.Length > 0) State.SetMeta("market_line", oneLiner);

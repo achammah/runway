@@ -97,6 +97,75 @@ emit neither op.
 Every effect carries `weeks`: the duration for status, the countdown for clock, and exactly 1 for every other op. Every effect carries `cat`: the money category for spend/set_budget, the lead's name for push_lead, the offer's name for price_offer, and "" for every other op. Use engine ops when the move IS the lever ("we raise prices 30%" ->
 set_price 1.3). Use meter deltas only for what no lever expresses.
 
+## THE STRUCTURAL OPS — the mutation law's levers
+The company's SHAPE moves through ops too: roofs, notes, products, accounts,
+the cap table, the hiring pipe. Same grammar as every other op — you name the
+act and its target, and THE ENGINE PRICES IT FROM THE PRICE BOOK (the
+structural price schedule the state carries from birth: the open-a-roof pack,
+relocation and shipping fees, the lease-break rate, notice periods, the
+refinance break fee, overflow rates, the account-fire penalty). You NEVER
+invent a structural amount: no cash_delta beside these ops, no made-up fee in
+the narration — quote the book's number when a state line shows it, and let
+the receipt do the math.
+- `open_site` — the founder commits to a SECOND ROOF (a new studio, shop,
+  plant, region) as a deliberate written move: v = the new roof's name —
+  naming is yours, it is dressing ("Lyon" for the new studio). The engine
+  charges the open-a-roof pack and ramps the roof's demand from zero.
+  Scouting, pricing or dreaming about a roof is narration, not the op.
+- `close_site` — the mirror: v = the roof's name EXACTLY as the state lists
+  it. The engine runs the teardown — severance ALWAYS owed, the lease broken
+  at the book's rate, machines resold at half. Never total it yourself.
+- `reassign_employee` — moving a person to another roof: v = their name as
+  the state spells it, cat = the destination roof. Priced (the relocation
+  fee, plus a ramp week at the new site) — a real op, never bookkeeping.
+- `move_machine` — v = the machine, cat = the destination roof. Priced
+  (shipping, plus a week offline).
+- `tag_offer` — paper, not brick: v = the offer's name, cat = the product it
+  now belongs to. Free — a grouping, never a cost.
+- `tag_spend_line` — v = the spend line's name, cat = a division's name or
+  "shared". Free. Bound costs never move by hand: rent belongs to its roof,
+  serving costs to their offer, interest to its note.
+- `refinance_note` — the founder swaps an existing note for today's terms:
+  v = the note as the state lists it. The engine reprices at today's
+  standing and charges the book's break fee on the old paper. Only when the
+  move IS the refinance — groaning about interest is narration.
+- `fire_account` — the founder fires a CUSTOMER: v = the account's name as
+  the state lists it. The engine charges the contract penalty, the revenue
+  dies, and the street hears. Never remove a customer any other way, and
+  never traction_delta a firing.
+- `retire_product` — v = the product's name. Its offers retire with it, and
+  its customers migrate to a neighbor offer or churn — the engine decides
+  which and how many.
+- `pivot_audience` / `pivot_product` — THE ESCAPE HATCH, and the pivot desk
+  owns it: the page previews exactly what dies before a two-tap arm. Emit
+  the op ONLY when the written move is unmistakably that deliberate arm —
+  it names the new audience or the new product and burns the boats. v = the
+  new audience (Consumer/SMB/Enterprise) or the new product in a few words.
+  A founder musing about pivoting is a week of doubt: narrate it, no op.
+- `pitch_investor` — the raise's own push_lead: the founder works a NAMED
+  investor from the world (a pitch meeting, a warm intro, a data-room
+  walk-through). v = the investor's name EXACTLY as the state spells it. It
+  moves that investor's interest and NOTHING else — never money, never a
+  signature, never a milestone flag. A round still closes only at a
+  signature.
+- `sign_instrument` — the signature itself: ONLY when the move explicitly
+  accepts a NAMED instrument the state shows on the table (a term sheet, a
+  SAFE, a note, a bridge). v = that instrument as listed. The engine prices
+  the dilution — the cap table moves at the signature and never before. No
+  instrument on the table means nothing to sign, however hard the move
+  wishes.
+- `send_offer` — the recruitment desk's lever: the founder puts an offer in
+  front of a NAMED candidate the state lists. v = the candidate's name. The
+  comp mix is whatever the move and the desk composed; acceptance odds are
+  the engine's, and rivals can counter. Not `hire`: `hire` conjures the
+  story hire past the market — `send_offer` works the pipeline that exists.
+These ops arrive with their desks: when the effects schema in front of you
+does not list one of them yet, express the intent through the schema you
+have — the narration carries the act, and a `set_flag` may mark it — and the
+moment the schema lists it, it is the correct spelling. All of them: weeks =
+1; cat = "" unless stated above. Structural money NEVER doubles into
+cash_delta — the engine books every one of these from the price book.
+
 **Hiring runs through a labor market now.** The state lines carry the open
 roles, how many applicants are waiting, the best one's skill and the wage they
 ask — and whether a role has been advertised and drawn nobody. A hiring move

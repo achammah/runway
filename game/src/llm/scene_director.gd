@@ -535,6 +535,180 @@ func _middleware_call(endpoint: String, body: Dictionary, out_name: String) -> S
 	progress.emit(1.0)
 	return out_path
 
+# ═══════════════ BIRTH ILLUSTRATIONS (DAG2 L-GEN — once per run) ═══════════════
+## The market garden's four plot vignettes + the org ledger's four spend-room
+## vignettes, generated ONCE at run start (and again only at a pivot that
+## changes the business's nature) through the same Atlas/Seedream text-to-image
+## path the novel backgrounds use. Style-locked to the game palette; cached per
+## run under BIRTH_DIR; inflight-coalesced; hard-fail SILENT — the drawn SVG
+## instruments are the instant placeholder and the permanent fallback, and the
+## engine's numbers, verdicts and steppers never wait on an image.
+
+const BIRTH_DIR := "user://gen_illustrations"
+const BIRTH_PLOTS := ["ads", "content", "referrals", "outbound"]
+const BIRTH_ROOMS := ["sales", "care", "rnd", "office"]
+const BIRTH_ROOM_DRESS := {
+	"sales": "the closing room: a desk for two, a phone, a handshake chair, a small board of names",
+	"care": "the care room: a warm counter, a kettle, a wall of thank-you notes, a headset on a hook",
+	"rnd": "the workshop: a workbench, tools on a pegboard, sketches pinned up, a half-built something",
+	"office": "the people room: a big shared table, plants, coat hooks, a fridge with magnets",
+}
+
+var _birth_inflight := {}
+
+## Where a birth illustration lives (the desks read this; absent file = draw
+## the SVG instrument instead). kind ∈ plot_ads/…/plot_outbound,
+## room_sales/…/room_office.
+static func birth_illustration_path(run_key: String, kind: String) -> String:
+	return "%s/%s/%s.png" % [BIRTH_DIR, run_key, kind]
+
+## Fire-and-forget: 4 garden plots + 4 spend rooms. Call WITHOUT await —
+## every image lands (or silently doesn't) on its own coroutine. Keyless runs
+## return immediately: the drawn instruments carry the whole desk.
+## `topics` is state.topics, `spend_book` state.spend_book,
+## `company` {name, idea, what, who} — the same trade block v2 scenes use.
+func make_birth_illustrations(run_key: String, topics: Dictionary,
+		spend_book: Array, company: Dictionary) -> void:
+	if _atlas_key() == "":
+		return
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(
+		"%s/%s" % [BIRTH_DIR, run_key]))
+	var growth: Dictionary = topics.get("growth", {})
+	for ch in BIRTH_PLOTS:
+		_one_birth_illustration(run_key, "plot_" + ch,
+			_plot_prompt(growth.get(ch, {}), company))
+	# each room borrows up to three of the book's own line names as props, so
+	# a restaurant's care room shows staff meals and a dev shop's shows on-call
+	var by_bucket := {}
+	for row in spend_book:
+		var rd: Dictionary = row
+		var b := String(rd.get("bucket", ""))
+		if not by_bucket.has(b):
+			by_bucket[b] = []
+		if String(rd.get("name", "")) != "":
+			(by_bucket[b] as Array).append(String(rd.get("name", "")))
+	for bucket in BIRTH_ROOMS:
+		_one_birth_illustration(run_key, "room_" + bucket,
+			_room_prompt(bucket, by_bucket.get(bucket, []), company))
+
+func _trade_line(company: Dictionary) -> String:
+	if company.is_empty():
+		return ""
+	return " The business it belongs to: %s — %s (%s for %s); its trade shows in the props." % [
+		String(company.get("name", "")), String(company.get("idea", "")),
+		String(company.get("what", "")), String(company.get("who", ""))]
+
+func _plot_prompt(topic: Dictionary, company: Dictionary) -> String:
+	var nm := String(topic.get("name", "a garden plot"))
+	var line := String(topic.get("one_line", ""))
+	return ("A small square vignette for a game ledger: one tended garden plot "
+		+ "called \"%s\"" % nm
+		+ ((" — %s." % line) if line != "" else ".")
+		+ " One raised bed seen slightly from above, a hand-painted wooden sign "
+		+ "with NO writing on it, a watering can, neat soil rows with small "
+		+ "stylized growth." + _trade_line(company)
+		+ " COMPLETELY EMPTY OF PEOPLE: no characters, no figures, no creatures. "
+		+ "Simple calm composition on a plain cream ground, generous margins. "
+		+ STYLE_LAW + " No text, numbers or letters anywhere in the image.")
+
+func _room_prompt(bucket: String, line_names: Array, company: Dictionary) -> String:
+	var props := ""
+	if not line_names.is_empty():
+		props = " Hint at what the money buys here: " \
+			+ ", ".join(PackedStringArray(line_names.slice(0, 3))) + "."
+	return ("A small square vignette for a game ledger: one cozy interior — "
+		+ String(BIRTH_ROOM_DRESS.get(bucket, "a small working room")) + "."
+		+ props + _trade_line(company)
+		+ " COMPLETELY EMPTY OF PEOPLE: no characters, no figures, no creatures. "
+		+ "Simple calm composition, one wall and a slice of floor, generous "
+		+ "margins. " + STYLE_LAW
+		+ " No text, numbers or letters anywhere in the image.")
+
+## One cached, coalesced, silent generation. Never throws, never signals —
+## the file either appears under BIRTH_DIR or the drawn fallback stands.
+func _one_birth_illustration(run_key: String, kind: String, prompt: String) -> void:
+	var path := birth_illustration_path(run_key, kind)
+	if FileAccess.file_exists(path):
+		return
+	var ikey := "%s/%s" % [run_key, kind]
+	if _birth_inflight.has(ikey):
+		return
+	_birth_inflight[ikey] = true
+	var okv := await _atlas_t2i_quiet(prompt, path)
+	_birth_inflight.erase(ikey)
+	if not okv:
+		print("SceneDirector: birth illustration '%s' failed — drawn fallback stands" % kind)
+
+## Text-to-image via Atlas/Seedream, written straight to out_path. Returns
+## false on ANY failure; prints nothing but the caller's one line. The quiet
+## twin of _generate_background + _download, without signals or library writes.
+func _atlas_t2i_quiet(prompt: String, out_path: String) -> bool:
+	var key := _atlas_key()
+	if key == "":
+		return false
+	var http := HTTPRequest.new()
+	_tree.root.add_child(http)
+	var err := http.request("https://api.atlascloud.ai/api/v1/model/generateImage",
+			PackedStringArray(["Content-Type: application/json", "Authorization: Bearer " + key]),
+			HTTPClient.METHOD_POST, JSON.stringify({
+				"model": "bytedance/seedream-v5.0-pro/text-to-image",
+				"prompt": prompt, "size": "2K", "output_format": "png"}))
+	if err != OK:
+		http.queue_free()
+		return false
+	var res: Array = await http.request_completed
+	http.queue_free()
+	var parsed = JSON.parse_string((res[3] as PackedByteArray).get_string_from_utf8())
+	if not (parsed is Dictionary):
+		return false
+	var jid := String((((parsed as Dictionary).get("data", {})) as Dictionary).get("id", ""))
+	if jid == "":
+		return false
+	for i in 90:
+		await _tree.create_timer(2.0).timeout
+		var h2 := HTTPRequest.new()
+		_tree.root.add_child(h2)
+		if h2.request("https://api.atlascloud.ai/api/v1/model/prediction/" + jid,
+				PackedStringArray(["Authorization: Bearer " + key]), HTTPClient.METHOD_GET) != OK:
+			h2.queue_free()
+			continue
+		var r2: Array = await h2.request_completed
+		h2.queue_free()
+		var p2 = JSON.parse_string((r2[3] as PackedByteArray).get_string_from_utf8())
+		if not (p2 is Dictionary):
+			continue
+		var d2: Dictionary = (p2 as Dictionary).get("data", {})
+		if String(d2.get("status", "")) in ["completed", "succeeded"]:
+			var outs: Array = d2.get("outputs", [])
+			if outs.is_empty():
+				return false
+			return await _fetch_png_quiet(String(outs[0]), out_path)
+		if String(d2.get("status", "")) == "failed":
+			return false
+	return false
+
+## Download a PNG to an exact path with the IEND integrity check — a partial
+## body must never ship as an illustration.
+func _fetch_png_quiet(url: String, out_path: String) -> bool:
+	var http := HTTPRequest.new()
+	_tree.root.add_child(http)
+	if http.request(url) != OK:
+		http.queue_free()
+		return false
+	var res: Array = await http.request_completed
+	http.queue_free()
+	if int(res[1]) < 200 or int(res[1]) >= 300:
+		return false
+	var bytes: PackedByteArray = res[3]
+	if bytes.size() < 4096 or bytes.slice(bytes.size() - 8, bytes.size() - 4).get_string_from_ascii() != "IEND":
+		return false
+	var f := FileAccess.open(out_path, FileAccess.WRITE)
+	if f == null:
+		return false
+	f.store_buffer(bytes)
+	f.close()
+	return true
+
 func _run(body: Dictionary, out_name: String) -> void:
 	# progress is REPORTED, never faked: the pen stroke on the reading beat moves
 	# when something real happens, and otherwise waits.
