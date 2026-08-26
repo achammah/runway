@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- STANDALONE RUNNER for the L-MONEY lane checks: compiles the SAME Core
+       sources and the SAME test file the shared suite will run once
+       Program.cs registers MoneyDesksTests.Run — no duplicated checks, just
+       an exit code the lane can gate on before integration. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>Runway.MoneyDesks.Tests</RootNamespace>
+    <AssemblyName>Runway.MoneyDesks.Tests</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../Runway.Core.Tests/Lanes/MoneyDesksTests.cs" />
+    <Compile Include="../Assets/Scripts/Core/*.cs" />
+    <Compile Include="../Assets/Scripts/Core/Lanes/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+</Project>

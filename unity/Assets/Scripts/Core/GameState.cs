@@ -348,6 +348,12 @@ namespace Runway.Core
         [JsonProperty("bucket")] public string Bucket = "office";
         [JsonProperty("contract_notice")] public int ContractNotice; // 0 = stoppable instantly; N = notice weeks bill through
         [JsonProperty("division")] public string Division = "";      // "" = shared/HQ; an ink tag, set in arrange mode
+        // ── L-MONEY (SimSpendBook): the REAL $/wk (amt stays the birth
+        // SUGGESTION) and the stop-notice clock. NULLABLE + ignored-when-null
+        // so both engines write these keys only once a line is touched —
+        // byte-identical save keys with the Godot dictionary rows.
+        [JsonProperty("live", NullValueHandling = NullValueHandling.Ignore)] public int? Live;
+        [JsonProperty("stop_wk", NullValueHandling = NullValueHandling.Ignore)] public int? StopWk;
     }
 
     /// <summary>One ESOP grant: {n%, 208-wk vest, 52-wk cliff}. Leavers keep
