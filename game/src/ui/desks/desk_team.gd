@@ -105,7 +105,7 @@ static func draw(b) -> void:
 		DeskKit.ledger_row(b, sheet, ["%s — open seat" % role, "advertised",
 			"advert $%s" % b.fmt(int(rd.get("offered_salary", 0))),
 			"≈%.1f/wk" % SimLabor.arrival_rate(state, rd),
-			"%d waiting → recruitment ▸" % waiting], {"dim": true, "on_press": go})
+			"%d waiting -> recruitment ▸" % waiting], {"dim": true, "on_press": go})
 	if state.employees.is_empty() and state.pipeline.is_empty() and state.open_roles.is_empty():
 		var go_hire := func() -> void:
 			b.focus_desk("recruitment")

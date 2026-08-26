@@ -146,7 +146,7 @@ namespace Runway.Game
                         Note = "opened wk " + s.OpenedWk });
             int payroll = SimLabor.PayrollWk(state);
             int heads = state.Employees.Count + state.Pipeline.Count;
-            rows.Add(new BillRow { Who = "the payroll", What = heads + " people → team",
+            rows.Add(new BillRow { Who = "the payroll", What = heads + " people -> team",
                 Kind = "flat", Amt = payroll, Note = PayrollTrend(state), Press = "team" });
             List<BillRow> toolLines = ToolLines(state);
             int tools = (int)Math.Round(SimEngine.OffersFixedWk(state));
@@ -225,7 +225,7 @@ namespace Runway.Game
                     ncol = DrawnUI.Coral;
                 }
                 rows.Add(new BillRow { Who = NameOf(state, "bank", "the bank"),
-                    What = "interest on $" + GameUi.Money(SimBank.DebtTotal(state)) + " → the bank",
+                    What = "interest on $" + GameUi.Money(SimBank.DebtTotal(state)) + " -> the bank",
                     Kind = "scales", Amt = interest, Note = note, NoteCol = ncol, Press = "the bank" });
             }
             int tax = state.LastPnl != null ? state.LastPnl.Tax : 0;

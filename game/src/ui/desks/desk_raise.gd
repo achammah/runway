@@ -4,10 +4,10 @@ extends RefCounted
 ## L-OWN, per DECISIONS (THE OWNERSHIP CLUSTER §2) and mockup 18 page 2.
 ##
 ## THE PAGE: hero (offers on the table · investors in motion · the
-## founder-time banner while active) → WHO'S IN MOTION (four pipeline
-## columns: radar → conversations → terms → wired) → THE COMPARISON (two
+## founder-time banner while active) -> WHO'S IN MOTION (four pipeline
+## columns: radar -> conversations -> terms -> wired) -> THE COMPARISON (two
 ## term sheets side by side, true dilution NOW and AT THE NEXT ROUND, the
-## SAFE-stack warning — the desk's biggest teaching moment) → EVERY WAY
+## SAFE-stack warning — the desk's biggest teaching moment) -> EVERY WAY
 ## MONEY COMES IN (six instruments, six characters). Signing runs through
 ## the receipt-shaped ticket + the two-tap arm; a no-shop freezes the pens.
 ##

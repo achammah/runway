@@ -9,9 +9,9 @@ namespace Runway.Game
 {
     /// <summary>
     /// DESK — THE COMPANY · "cap table" (twin of desk_cap_page.gd). W2 lane:
-    /// L-OWN, reworked to the locked pick: hero (your % + paper worth) →
-    /// THE SLICES (ledger sheet, double-ruled 100%) → THE DILUTION STORY
-    /// beside IF SOLD TODAY (SimOwnership.Waterfall, pure) → the pool door
+    /// L-OWN, reworked to the locked pick: hero (your % + paper worth) ->
+    /// THE SLICES (ledger sheet, double-ruled 100%) -> THE DILUTION STORY
+    /// beside IF SOLD TODAY (SimOwnership.Waterfall, pure) -> the pool door
     /// (receipt + two-tap). The old wheel desk (DeskCap) is no longer
     /// embedded — retirement candidate.
     /// </summary>

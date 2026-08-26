@@ -183,7 +183,7 @@ namespace Runway.Game
                 DeskKit.SevDot(b, z2.ContentX, ry + 2f, Heat(s, rd));
                 b.L(rd.Name, z2.ContentX + 34f, ry - 4f, DeskKit.Row, DrawnUI.Ink, 380f);
                 if (CameAtYou(rd))
-                    b.L("→ they came at YOU", z2.ContentX + 430f, ry, DeskKit.Detail,
+                    b.L("-> they came at YOU", z2.ContentX + 430f, ry, DeskKit.Detail,
                         DeskKit.Alert, 300f);
                 b.L(SimEngine.Fuzz(rd.Strength), z2.ContentX + 900f, ry, DeskKit.Detail,
                     DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 180f);
@@ -227,7 +227,7 @@ namespace Runway.Game
                 book += string.Format("  +{0} more", s.Investors.Count - 3);
             b.L(book, z3.ContentX, z3.ContentY + 30f, DeskKit.Detail,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 760f);
-            DeskKit.Word(b, "feeds THE RAISE →", z3.ContentX + 840f, z3.ContentY + 12f,
+            DeskKit.Word(b, "feeds THE RAISE ->", z3.ContentX + 840f, z3.ContentY + 12f,
                 () => b.FocusDesk("the raise"), DeskKit.Detail,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f), 260f);
             y = z3.Bottom + 12f;
@@ -251,7 +251,7 @@ namespace Runway.Game
                 b.L(row.Label + tail, z4.ContentX + 32f, wy, DeskKit.Detail,
                     DrawnUI.WithAlpha(DrawnUI.Ink, 0.85f), 810f);
                 string dsk = row.Desk;
-                DeskKit.Word(b, dsk + " →", z4.ContentX + 880f, wy - 6f,
+                DeskKit.Word(b, dsk + " ->", z4.ContentX + 880f, wy - 6f,
                     () => b.FocusDesk(dsk), DeskKit.Detail, DrawnUI.Coral, 200f);
                 wy += 30f;
             }

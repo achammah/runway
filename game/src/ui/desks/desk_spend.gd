@@ -9,7 +9,7 @@ extends RefCounted
 ## (SimSpendBook keeps the two equal — the write-back law, twin-tested).
 ##
 ## THE SUGGESTION PATH (coordinator ruling): the generated `amt` renders as a
-## dim suggestion; levers start at 0; ADOPT copies suggestion → live spend
+## dim suggestion; levers start at 0; ADOPT copies suggestion -> live spend
 ## through the receipt path (arm carries the price). One "adopt the whole
 ## book" arm sits at the sheet top. The keyless bare book has no suggestions.
 ##

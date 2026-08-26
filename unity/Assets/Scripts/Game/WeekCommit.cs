@@ -426,6 +426,11 @@ namespace Runway.Game
         /// THE EXTENDED EXECUTOR (plan C2): classic meter ops go through EffectOps'
         /// clamps; engine ops (status/clock/levers/hire/loan/spend/budget) go through
         /// SimEngine — typed, clamped, catalog-only. Every op returns a receipt line.
+        static Dictionary<string, object> DmDict(JToken d)
+        {
+            return d.ToObject<Dictionary<string, object>>() ?? new Dictionary<string, object>();
+        }
+
         List<string> ApplyDmEffects(JToken effects)
         {
             var classic = new JArray();
@@ -527,6 +532,60 @@ namespace Runway.Game
                             role, sal, why));
                         break;
                     }
+                    case "pivot_audience":
+                    {
+                        var pa = SimPivot.PivotAudience(St, ContentDb.Str(d, "v"));
+                        if (pa.Ok) foreach (string pl in pa.Lines) outp.Add("THE PIVOT: " + pl);
+                        else outp.Add("the pivot was refused — " + pa.Reason);
+                        break;
+                    }
+                    case "pivot_product":
+                    {
+                        var pp = SimPivot.PivotProduct(St, ContentDb.Str(d, "v"));
+                        if (pp.Ok) foreach (string pl2 in pp.Lines) outp.Add("THE PIVOT: " + pl2);
+                        else outp.Add("the pivot was refused — " + pp.Reason);
+                        break;
+                    }
+                    case "pitch_investor":
+                    {
+                        string pline = SimOwnership.OpPitchInvestor(St, ContentDb.Str(d, "v"));
+                        if (pline.Length > 0) outp.Add(pline + " — " + why);
+                        break;
+                    }
+                    case "sign_instrument":
+                    {
+                        string sline = SimOwnership.OpSignInstrument(St, ContentDb.Str(d, "v"));
+                        if (sline.Length > 0) outp.Add(sline + " — " + why);
+                        break;
+                    }
+                    case "send_offer":
+                    {
+                        string cname = ContentDb.Str(d, "v").ToLowerInvariant();
+                        string targetId = "";
+                        if (St.Recruitment != null && St.Recruitment.Candidates != null)
+                            foreach (var c in St.Recruitment.Candidates)
+                            {
+                                object nmO; c.TryGetValue("name", out nmO);
+                                object stO; c.TryGetValue("stage", out stO);
+                                string nm = nmO as string ?? "";
+                                string stg = stO as string ?? "";
+                                if (nm.ToLowerInvariant().Contains(cname)
+                                    && (stg == "applied" || stg == "interviewed"))
+                                {
+                                    object idO; c.TryGetValue("id", out idO);
+                                    targetId = idO as string ?? "";
+                                    break;
+                                }
+                            }
+                        if (targetId.Length > 0)
+                        {
+                            int mk = SimLabor.MarketSalary("engineer", St.Era);
+                            string oline = SimOwnership.OpSendOffer(St, targetId,
+                                ContentDb.Int(d, "cash", mk), 0.0);
+                            if (oline.Length > 0) outp.Add(oline + " — " + why);
+                        }
+                        break;
+                    }
                     case "take_loan":
                     {
                         int amt = Gd.Clampi(ContentDb.Int(d, "v", 10000), 1000, 250000);
@@ -587,6 +646,16 @@ namespace Runway.Game
                             : string.Format("no live deal called '{0}' — the push found nobody", leadNm));
                         break;
                     }
+                    case "open_site": outp.Add(SimDivisions.OpOpenSite(St, DmDict(d))); break;
+                    case "close_site": outp.Add(SimDivisions.OpCloseSite(St, DmDict(d))); break;
+                    case "reassign_employee": outp.Add(SimDivisions.OpReassignEmployee(St, DmDict(d))); break;
+                    case "move_machine": outp.Add(SimDivisions.OpMoveMachine(St, DmDict(d))); break;
+                    case "tag_offer": outp.Add(SimDivisions.OpTagOffer(St, DmDict(d))); break;
+                    case "tag_spend_line": outp.Add(SimDivisions.OpTagSpendLine(St, DmDict(d))); break;
+                    case "refinance_note": outp.Add(SimWorks.OpRefinanceNote(St, DmDict(d))); break;
+                    case "fire_account": outp.Add(SimWorks.OpFireAccount(St, DmDict(d))); break;
+                    case "retire_product": outp.Add(SimWorks.OpRetireProduct(St, DmDict(d))); break;
+                    case "set_relief": outp.Add(SimWorks.OpSetRelief(St, DmDict(d))); break;
                     default:
                         classic.Add(d);
                         break;

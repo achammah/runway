@@ -419,6 +419,8 @@ static func ship_bet(state: GameState, bet: Dictionary, roller: Callable) -> Dic
 	bet["committed"] = false
 	bet["shipped_week"] = state.week
 	bet["band"] = band
+	# W2 L-MAKE seam: the landing joins the wall in the same beat as the dice
+	SimFeatures.on_bet_landed(state, bet, {})
 	state.clampi_meters()
 	var event := "SHIPPED %s: '%s' — d20 %d%+d vs DC %d" % [band.to_upper(),
 		String(bet.get("name", "")), int(ctx.d20), int(ctx.mod), dc]

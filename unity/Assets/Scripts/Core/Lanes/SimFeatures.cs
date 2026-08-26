@@ -75,7 +75,7 @@ namespace Runway.Core
     {
         /// <summary>The package flips this when SimRoadmap.ShipBet gains the
         /// OnBetLanded call; the polling fallback stands down the same commit.</summary>
-        public const bool LANDING_SEAM_LIVE = false;
+        public const bool LANDING_SEAM_LIVE = true;
 
         /// <summary>Weeks between a landing and its measured verdict.</summary>
         public const int MEASURE_WEEKS = 4;
@@ -188,12 +188,11 @@ namespace Runway.Core
         /// MoneyWork and no feature lane exists yet.</summary>
         public static void TickMoney(GameState state, WeeklyReport rep, MoneyWork m)
         {
-            // ── FEATURE_KEEP SEAM (coordinator package): when MoneyWork gains
-            // the FeatureKeep lane, this hook bills it, in one line:
-            //   m.FeatureKeep += KeepTotal(state);
-            //   rep.Lines.Add(string.Format(CultureInfo.InvariantCulture,
-            //       "product upkeep: ${0}/wk keeps {1} features alive",
-            //       KeepTotal(state), state.Features.Count));
+            m.FeatureKeep += KeepTotal(state);
+            if (KeepTotal(state) > 0)
+                rep.Lines.Add(string.Format(CultureInfo.InvariantCulture,
+                    "product upkeep: ${0}/wk keeps {1} features alive",
+                    KeepTotal(state), state.Features.Count));
         }
 
         /// <summary>After the record: measured settles, solidity reconciles.</summary>

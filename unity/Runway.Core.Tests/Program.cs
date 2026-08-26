@@ -543,7 +543,7 @@ namespace Runway.CoreTests
                 "price_offer survives the ops validator");
             Ok(Array.IndexOf(SimEngine.OP_REGISTRY, "push_lead") >= 0,
                 "push_lead is a live op");
-            Ok(SimEngine.OP_REGISTRY.Length == 16,
+            Ok(SimEngine.OP_REGISTRY.Length == 31,
                 "the op registry carries " + S(SimEngine.OP_REGISTRY.Length) + " ops");
             // 2 — the catalog cost-lines engine half existed only in Godot
             GameState cl = NewState();
@@ -638,7 +638,8 @@ namespace Runway.CoreTests
                 int lanesSum = p.Cogs + p.Rent + p.Payroll + p.Infra + p.Marketing
                     + p.Sales + p.Care + p.Rnd + p.Office + p.OfferFixed
                     + p.Severance + p.Recruiting + p.Production + p.Subcontract
-                    + p.EquipUpkeep + p.Carrying + p.Incident;
+                    + p.EquipUpkeep + p.Carrying + p.Incident
+                    + p.RecruitAds + p.Relief + p.SiteRent + p.FeatureKeep;
                 Ok(Gd.Absi(p.Burn - lanesSum) <= 1,
                     "wk" + S(idn.Week) + " burn is the sum of its operating lanes ("
                     + S(p.Burn) + " vs " + S(lanesSum) + ")");
@@ -909,7 +910,9 @@ namespace Runway.CoreTests
             BoardTests.Run(ok);
             FactoryTests.Run(ok);
             DivisionsTests.Run(ok);
+            MoneyDesksTests.Run(ok);
             OwnershipTests.Run(ok);
+            PivotTests.Run(ok);
             FeaturesTests.Run(ok);
             WorksTests.Run(ok);
         }

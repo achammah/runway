@@ -517,7 +517,9 @@ func _go() -> void:
 			+ int(p.get("care", 0)) + int(p.get("rnd", 0)) + int(p.get("office", 0)) \
 			+ int(p.get("offer_fixed", 0)) + int(p.get("severance", 0)) + int(p.get("recruiting", 0)) \
 			+ int(p.get("production", 0)) + int(p.get("subcontract", 0)) \
-			+ int(p.get("equip_upkeep", 0)) + int(p.get("carrying", 0)) + int(p.get("incident", 0))
+			+ int(p.get("equip_upkeep", 0)) + int(p.get("carrying", 0)) + int(p.get("incident", 0)) \
+			+ int(p.get("recruit_ads", 0)) + int(p.get("relief", 0)) \
+			+ int(p.get("site_rent", 0)) + int(p.get("feature_keep", 0))
 		_ok(absi(int(p.get("burn", 0)) - lanes_sum) <= 1,
 			"wk%d burn is the sum of its operating lanes (%d vs %d)" % [idn.week, int(p.get("burn", 0)), lanes_sum])
 		_ok(int(p.get("net", 0)) == int(p.get("revenue", 0)) - int(p.get("burn", 0))
@@ -756,7 +758,9 @@ func _go() -> void:
 			preload("res://tests/lanes/test_board.gd"),
 			preload("res://tests/lanes/test_factory.gd"),
 			preload("res://tests/lanes/test_divisions.gd"),
+			preload("res://tests/lanes/test_money_desks.gd"),
 			preload("res://tests/lanes/test_ownership.gd"),
+			preload("res://tests/lanes/test_pivot.gd"),
 			preload("res://tests/lanes/test_features.gd"),
 			preload("res://tests/lanes/test_works.gd")]:
 		lane_suite.run(_ok)

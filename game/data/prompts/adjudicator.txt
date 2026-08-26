@@ -129,6 +129,7 @@ the receipt do the math.
   v = the note as the state lists it. The engine reprices at today's
   standing and charges the book's break fee on the old paper. Only when the
   move IS the refinance — groaning about interest is narration.
+- `set_relief` — the founder sets a standing relief valve at the works (a LEVER, not a stunt): `{op:"set_relief", cat:"freelance"|"subcontract"|"burst"|"recruit_supply", v:<units or $/wk>, weeks:1}`. Use it when the move commits to bought capacity ("bring in freelancers", "burst the servers", "recruit sellers"); the engine prices it from the price book — never invent the cost, and never double it into `cash_delta`.
 - `fire_account` — the founder fires a CUSTOMER: v = the account's name as
   the state lists it. The engine charges the contract penalty, the revenue
   dies, and the street hears. Never remove a customer any other way, and
@@ -1041,10 +1042,3 @@ them at the desk where they belong.
 12. **Ignoring equity.** A rescue round narrated as pure relief with no sign of the `founder_pct` it cost. → Equity is the real currency; when a move dilutes, the week shows the price.
 13. **Rendering off `era` instead of the scene facets.** Treating an `office`-era retreat week as a `small_office` because "that's the era". → Scene facets are authoritative over `era` for rendering; a `family`/`place` mismatch produces the wrong room.
 
----
-
-That's the full block, in append order. A couple of closing notes so nothing surprises you after you paste:
-
-- **`family`/`place` pairing is now load-bearing** — failure mode 13 and the era-authority section both assume the renderer keys on the facets *together*. Your `SceneDirector.resolve()` matches on the facet set, so this holds; just confirm nothing downstream re-derives `family` from `place` (or vice-versa) independently, or a valid pair could desync.
-- **One place id lives in two families by design:** `garage` sits under both `home_retreat` and `scrappy_workspace` in the era table (it's the garage-era origin *and* a retreat-flavored room). If `SceneDirector.resolve()` requires a single canonical `family` per `place`, pin `garage` to `scrappy_workspace` for Tier 5 rendering and let Tier 4 never emit it — say the word and I'll tighten the era-default row to remove the ambiguity.
-- I kept every threshold exactly as you set them (`runway_weeks < 4`, `weeks_in_the_red` 1 / 2–3 / 4–5 / 6+, climb-back at `runway_weeks >= 6`, morale floor `<=10` forced / `11–20` available). If playtesting says the descent still bites too slow given the ~week-19 death median, the single knob to turn is the `weeks_in_the_red` rungs — nudge them down a row and nothing else in the block needs to change.

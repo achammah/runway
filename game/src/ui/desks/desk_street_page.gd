@@ -10,7 +10,7 @@ extends RefCounted
 ##   1 THE WEATHER          the drawn season band + what changes THIS week
 ##   2 THE RIVALS           a card per rival: posture chips, heat dot, the
 ##                          last-3 record with week stamps; an act that came
-##                          at YOU stays face-up; "the other N →" folds
+##                          at YOU stays face-up; "the other N ->" folds
 ##   3 THE INVESTORS' MOOD  the multiples band + the appetite word — the
 ##                          raise's radar, fed from here
 ##   4 TAKEN FROM US        poaches, price wars, disruptors — each row with
@@ -170,7 +170,7 @@ static func draw(b) -> void:
 		b.label(String(rd.get("name", "?")), Vector2(float(z2.content_x) + 34.0, ry - 4.0),
 			DeskKit.ROW, DeskKit.INK, 380.0)
 		if _came_at_you(rd):
-			b.label("→ they came at YOU", Vector2(float(z2.content_x) + 430.0, ry),
+			b.label("-> they came at YOU", Vector2(float(z2.content_x) + 430.0, ry),
 				DeskKit.DETAIL, DeskKit.ALERT, 300.0)
 		b.label(SimEngine._fuzz(float(rd.get("strength", 20.0))),
 			Vector2(float(z2.content_x) + 900.0, ry), DeskKit.DETAIL,
@@ -211,7 +211,7 @@ static func draw(b) -> void:
 		book += "  +%d more" % (s.investors.size() - 3)
 	b.label(book, Vector2(float(z3.content_x), float(z3.content_y) + 30.0),
 		DeskKit.DETAIL, Color(DeskKit.INK, 0.6), 760.0)
-	DeskKit.word(b, "feeds THE RAISE →", Vector2(float(z3.content_x) + 840.0,
+	DeskKit.word(b, "feeds THE RAISE ->", Vector2(float(z3.content_x) + 840.0,
 		float(z3.content_y) + 12.0), func() -> void: b.focus_desk("the raise"),
 		DeskKit.DETAIL, Color(DeskKit.INK, 0.7), 260.0)
 	y = float(z3.bottom) + 12.0
@@ -233,7 +233,7 @@ static func draw(b) -> void:
 			Vector2(float(z4.content_x) + 32.0, wy),
 			DeskKit.DETAIL, Color(DeskKit.INK, 0.85), 810.0)
 		var dsk := String(row.get("desk", ""))
-		DeskKit.word(b, dsk + " →", Vector2(float(z4.content_x) + 880.0, wy - 6.0),
+		DeskKit.word(b, dsk + " ->", Vector2(float(z4.content_x) + 880.0, wy - 6.0),
 			func() -> void: b.focus_desk(dsk), DeskKit.DETAIL, DeskKit.PEN, 200.0)
 		wy += 30.0
 

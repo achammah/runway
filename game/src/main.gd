@@ -900,7 +900,7 @@ func _after_draft(result: Dictionary) -> void:
 		# WAIT WITH A CEILING (owner: "I was on this screen for ages"): 25s,
 		# then the deterministic skeleton IS the world and the run moves on.
 		var waited := 0.0
-		while _worldgen_inflight and _worldgen_res.is_empty() and waited < 25.0:
+		while _worldgen_inflight and _worldgen_res.is_empty() and waited < 35.0:
 			await get_tree().create_timer(0.25).timeout
 			waited += 0.25
 		_finish_worldgen(g, birth)

@@ -309,6 +309,8 @@ namespace Runway.Core
             { "feature_buzz",      new StatusDef { AdoptMult = 1.3, Kind = "buff" } },
             // 08 — the board
             { "board_delight",     new StatusDef { Adv = "raise", MoraleWk = 2.0, HypeWk = 3.0, Kind = "buff" } },
+            // ownership — an active raise measurably slows the shop (L-OWN re-arms weekly)
+            { "raise_distraction", new StatusDef { VelocityMult = 0.88, AdoptMult = 0.94, Kind = "condition" } },
         };
 
         private static readonly StatusDef NO_STATUS = new StatusDef();
@@ -950,7 +952,7 @@ namespace Runway.Core
             // then what is actually yours.
             double laneBurn = m.Severance + m.Recruiting + m.Production
                               + m.Subcontract + m.EquipUpkeep + m.Carrying
-                              + m.RecruitAds + m.Relief + m.SiteRent;
+                              + m.RecruitAds + m.Relief + m.SiteRent + m.FeatureKeep;
             int burn = Gd.ToInt(((double)(rent + payroll + infra) + mkBudget + bSales + bCare + bRnd + bOffice) * th.BurnMult + cogs + offerFixed + laneBurn);
             burn += incidentCost;
             m.Burn = burn;
@@ -1003,6 +1005,7 @@ namespace Runway.Core
                 RecruitAds = Gd.RoundToInt(m.RecruitAds),
                 Relief = Gd.RoundToInt(m.Relief),
                 SiteRent = Gd.RoundToInt(m.SiteRent),
+                FeatureKeep = Gd.RoundToInt(m.FeatureKeep),
                 Incident = incidentCost,
                 LiabilitiesWk = -liabWk,
                 Interest = Gd.RoundToInt(m.Interest),
@@ -1096,14 +1099,27 @@ namespace Runway.Core
             state.Commitments = keptComm;
 
             // the binder's memory: one snapshot per week, capped
-            state.MetricHistory.Add(new MetricSnapshot
+            var snap = new MetricSnapshot
             {
                 Wk = state.Week, Cash = state.Cash,
                 Customers = state.Traction, Revenue = rep.Revenue,
                 Burn = rep.Burn, Morale = state.Morale,
                 Debt = Gd.ToInt(state.TechDebt), Hype = state.Hype,
                 Net = state.LastPnl != null ? state.LastPnl.Net : (int?)null,
-            });
+            };
+            // 04-funnel: the arrivals split rides the snapshot (the river).
+            Dictionary<string, double> snapFunnel = SimFunnel.Funnel(state);
+            if (snapFunnel.Count > 0)
+            {
+                snap.Adds = SimFunnel.Num(snapFunnel, "adds");
+                snap.AddsOrg = SimFunnel.Num(snapFunnel, "organic");
+                snap.AddsWom = SimFunnel.Num(snapFunnel, "wom");
+                snap.AddsChan = SimFunnel.Num(snapFunnel, "signed_ads")
+                    + SimFunnel.Num(snapFunnel, "signed_content")
+                    + SimFunnel.Num(snapFunnel, "signed_referrals")
+                    + SimFunnel.Num(snapFunnel, "signed_outbound");
+            }
+            state.MetricHistory.Add(snap);
             if (state.MetricHistory.Count > 90)
             {
                 state.MetricHistory = state.MetricHistory.GetRange(
@@ -1795,6 +1811,10 @@ namespace Runway.Core
             "cash_delta", "product_delta", "traction_delta", "morale_delta", "hype_delta",
             "set_flag", "status", "clock", "set_price", "price_offer", "set_marketing",
             "hire", "take_loan", "spend", "set_budget", "push_lead",
+            "open_site", "close_site", "reassign_employee", "move_machine",
+            "tag_offer", "tag_spend_line", "refinance_note", "fire_account",
+            "retire_product", "pivot_audience", "pivot_product",
+            "pitch_investor", "sign_instrument", "send_offer", "set_relief",
         };
 
         // ════════════════ THE SPINE'S AGGREGATORS ════════════════
@@ -1832,8 +1852,10 @@ namespace Runway.Core
         /// </summary>
         public static readonly string[] ATTENTION_DESKS =
         {
-            "pricing", "the ledger", "the bank", "crew", "cap table",
-            "customers", "product", "the street", "vitals", "threats",
+            "pricing", "the ledger", "the bank", "crew", "recruitment",
+            "cap table", "the raise", "the offer", "customers", "product",
+            "what we make", "the works", "the street", "vitals", "threats",
+            "pivot",
         };
 
         public static List<AttentionItem> AttentionItems(GameState state)
@@ -1858,7 +1880,7 @@ namespace Runway.Core
                 SimRoadmap.Attention(state), SimBoard.Attention(state),
                 SimFactory.Attention(state), SimDivisions.Attention(state),
                 SimOwnership.Attention(state), SimFeatures.Attention(state),
-                SimWorks.Attention(state),
+                SimWorks.Attention(state), SimPivot.Attention(state),
             };
             foreach (List<AttentionItem> lr in laneRows)
             {
@@ -1939,7 +1961,7 @@ namespace Runway.Core
                 SimRoadmap.Directives(state), SimBoard.Directives(state),
                 SimFactory.Directives(state), SimDivisions.Directives(state),
                 SimOwnership.Directives(state), SimFeatures.Directives(state),
-                SimWorks.Directives(state),
+                SimWorks.Directives(state), SimPivot.Directives(state),
             };
             foreach (List<string> l in lanes)
             {

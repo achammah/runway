@@ -14,7 +14,7 @@ extends RefCounted
 ##   HIRING  the roles you advertise, the rate you advertise them at, and the
 ##           people that rate brings in
 ## The pen toggle in the header moves between roster and hiring; Esc walks
-## PERSON → ROSTER before it ever closes the binder (the shared contract).
+## PERSON -> ROSTER before it ever closes the binder (the shared contract).
 ##
 ## THE DESK TEACHES: MARKET RATE beside every advert, FULLY-LOADED beside every
 ## salary, SEVERANCE inside the button that charges it. Nothing here recomputes a

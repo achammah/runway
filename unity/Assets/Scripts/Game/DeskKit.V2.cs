@@ -713,7 +713,7 @@ namespace Runway.Game
             DashRule(b, x, y + 20f, 1120f * 0.35f);
             string text = "the other " + n + " " + label;
             if (onPress != null)
-                Word(b, text + "  →", x + 1120f * 0.36f, y - 2f, onPress, Detail,
+                Word(b, text + "  ->", x + 1120f * 0.36f, y - 2f, onPress, Detail,
                      Ink(0.6f), 420f);
             else
                 b.L(text, x + 1120f * 0.36f, y + 4f, Detail, Ink(0.5f), 420f);

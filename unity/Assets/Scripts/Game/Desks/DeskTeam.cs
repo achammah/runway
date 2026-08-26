@@ -10,7 +10,7 @@ namespace Runway.Game
     /// <summary>
     /// DESK — COSTS · "team" = THE PAYROLL LEDGER (twin of desk_team.gd; DAG2
     /// W2 L-MONEY). Three deterministic rungs (SimSpendBook.TeamRung): flat
-    /// person rows → function groups with subtotals (askers surface first) →
+    /// person rows -> function groups with subtotals (askers surface first) ->
     /// business units that open to their functions (display recursion). The
     /// OPEN SEAT points at recruitment; asks are answered ON the row via
     /// SimLabor.GrantRaise behind a receipt-priced arm; granted rows carry
@@ -103,7 +103,7 @@ namespace Runway.Game
                 DeskKit.LedgerRow(b, sheet, new[] { role + " — open seat", "advertised",
                     "advert $" + GameUi.Money(r.OfferedSalary),
                     "≈" + SimLabor.ArrivalRate(state, r).ToString("0.0") + "/wk",
-                    waiting + " waiting → recruitment ▸" },
+                    waiting + " waiting -> recruitment ▸" },
                     new DeskKit.LedgerRowCfg { Dim = true, OnPress = () => b.FocusDesk("recruitment") });
             }
             if (state.Employees.Count == 0 && state.Pipeline.Count == 0 && state.OpenRoles.Count == 0)

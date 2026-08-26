@@ -8,7 +8,7 @@ extends RefCounted
 ##   Consumer   = THE RIVER × THE SOURCES: joiners/wk + the measured word-of-
 ##                mouth factor, the cohort river (weekly joiner bars colored by
 ##                origin), WHERE THEY COME FROM (top 4 + "+N more"), THE TASTE
-##                TEST (tried → stayed, with the honest "ads can't move this").
+##                TEST (tried -> stayed, with the honest "ads can't move this").
 ##   SMB        = THE HOT LIST: the five worth a dinner ranked by revenue-if-
 ##                landed × closeness, the crowd as one honest row. Rank 1 is
 ##                the week's journal move.
@@ -205,7 +205,7 @@ static func _sources_card(b, s: GameState, y: float) -> void:
 		DeskKit.meter(b, cx + 180.0, by, w, 1.0, rd.get("col", DeskKit.BLUE), String(rd.get("text", "")))
 		by += 36.0
 	if src.size() > 4:
-		DeskKit.word(b, "+%d more →" % (src.size() - 4), Vector2(cx, by - 4.0), func() -> void:
+		DeskKit.word(b, "+%d more ->" % (src.size() - 4), Vector2(cx, by - 4.0), func() -> void:
 			b.desk["mode"] = "sources", DeskKit.LAW, Color(DeskKit.INK, 0.6), 200.0)
 
 ## The named streams, ranked. Words stay plain; the funnel's numbers carry.
@@ -222,7 +222,7 @@ static func _sources(_s: GameState, f: Dictionary) -> Array:
 		return float(a.get("v", 0.0)) > float(c.get("v", 0.0)))
 	return src
 
-## THE TASTE TEST — tried → stayed, and the note ads can't argue with.
+## THE TASTE TEST — tried -> stayed, and the note ads can't argue with.
 static func _taste_card(b, s: GameState, y: float) -> void:
 	var frame := DeskKit.card_frame(b, 666.0, y, 464.0, 236.0, "the taste test")
 	var f := SimFunnel.funnel(s)
@@ -337,7 +337,7 @@ static func _hot_list(b, s: GameState, f: Dictionary, y: float, show: int) -> fl
 	b.label("the other %d — small shops moving on their own · ≈%d land weekly" % [crowd, lands],
 		Vector2(60.0, cy + 2.0), DeskKit.DETAIL, Color(DeskKit.INK, 0.55), 800.0)
 	if ranked.size() > show:
-		DeskKit.word(b, "the full list →", Vector2(920.0, cy - 4.0), func() -> void:
+		DeskKit.word(b, "the full list ->", Vector2(920.0, cy - 4.0), func() -> void:
 			b.desk["mode"] = "smb_all", DeskKit.LAW, Color(DeskKit.INK, 0.6), 190.0)
 	return float(frame.get("bottom", cy)) + 10.0
 

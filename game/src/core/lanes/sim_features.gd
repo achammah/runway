@@ -82,7 +82,7 @@ extends RefCounted
 
 ## The package flips this to true when the roadmap's ship_bet gains the
 ## on_bet_landed call; the polling fallback stands down the same commit.
-const LANDING_SEAM_LIVE := false
+const LANDING_SEAM_LIVE := true
 
 ## Weeks between a landing and its measured verdict.
 const MEASURE_WEEKS := 4
@@ -173,12 +173,10 @@ static func tick_pre(state: GameState, rep: Dictionary) -> void:
 ## and no feature lane exists yet, so billing here would either vanish (a key
 ## nothing sums) or break the twin. keep_total() below is the display truth.
 static func tick_money(_state: GameState, _rep: Dictionary, _m: Dictionary) -> void:
-	# ── FEATURE_KEEP SEAM (coordinator package): when the money record gains
-	# the "feature_keep" lane, this hook bills it, in one line:
-	#   _m["feature_keep"] = float(_m.get("feature_keep", 0.0)) + float(keep_total(_state))
-	#   _rep["lines"].append("product upkeep: $%d/wk keeps %d features alive"
-	#       % [keep_total(_state), _state.features.size()])
-	pass
+	_m["feature_keep"] = float(_m.get("feature_keep", 0.0)) + float(keep_total(_state))
+	if keep_total(_state) > 0 and _rep.has("lines"):
+		_rep["lines"].append("product upkeep: $%d/wk keeps %d features alive"
+			% [keep_total(_state), _state.features.size()])
 
 ## After the record is written: landings settle their measured verdict, and
 ## the solidity ledger reconciles against the jar.

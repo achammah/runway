@@ -30,7 +30,7 @@ namespace Runway.Game
         const float CardGap = 18f;
         /// The refinance executor lands with L-DIVWORKS (refinance_note);
         /// until the coordinator flips this the preview renders disabled.
-        const bool RefiWired = false;
+        const bool RefiWired = true;
 
         static readonly Color[] StairCols =
             { DrawnUI.Hex("F6F0DE"), DrawnUI.Hex("F2D6B8"), DrawnUI.Hex("D93425") };
@@ -288,7 +288,7 @@ namespace Runway.Game
                     int newPay = SimBank.LoanPaymentWk(bal, newRate, Math.Max(rem, 4));
                     parts.Add("refinance: swap " + (oldRate * 100.0).ToString("0.0") + "% for "
                         + (newRate * 100.0).ToString("0.0") + "% — fee $" + GameUi.Money(fee)
-                        + " · $" + GameUi.Money(note.PayWk) + " → $" + GameUi.Money(newPay) + "/Mon"
+                        + " · $" + GameUi.Money(note.PayWk) + " -> $" + GameUi.Money(newPay) + "/Mon"
                         + (RefiWired ? "" : " · papers arrive with the works wave"));
                 }
             }
@@ -412,7 +412,7 @@ namespace Runway.Game
                 int term = DInt(b, "term", terms[Math.Min(1, terms.Length - 1)]);
                 if (Array.IndexOf(terms, term) < 0) term = terms[0];
                 text = "3 · NEW MONEY — borrow $" + GameUi.Money(borrow) + " over " + term
-                    + " weeks → $" + GameUi.Money(SimBank.LoanPaymentWk(borrow, rate, term))
+                    + " weeks -> $" + GameUi.Money(SimBank.LoanPaymentWk(borrow, rate, term))
                     + " every Monday ▸";
             }
             return Bar(b, y, text, () => { b.Desk["zone4"] = false; });
@@ -421,7 +421,7 @@ namespace Runway.Game
         static float Zone4Bar(BinderScreen b, float y)
         {
             return Bar(b, y,
-                "4 · IF A MONDAY IS MISSED — the balance grows → repriced + the bank stops answering → sold to the collectors ▸",
+                "4 · IF A MONDAY IS MISSED — the balance grows -> repriced + the bank stops answering -> sold to the collectors ▸",
                 () => { b.Desk["zone4"] = true; });
         }
 
@@ -542,9 +542,9 @@ namespace Runway.Game
             Op(op, "infra", pnl.Infra, "");
             Op(op, "the catalog's tools", pnl.OfferFixed, "");
             Op(op, "machine upkeep + carrying", pnl.EquipUpkeep + pnl.Carrying, "");
-            Op(op, "marketing — the mix", pnl.Marketing, "→ growth");
+            Op(op, "marketing — the mix", pnl.Marketing, "-> growth");
             Op(op, "sales · care · rnd · office",
-                pnl.Sales + pnl.Care + pnl.Rnd + pnl.Office, "→ spend");
+                pnl.Sales + pnl.Care + pnl.Rnd + pnl.Office, "-> spend");
             Op(op, "the unforeseen", pnl.Incident, "nobody planned it");
             Op(op, "severance", pnl.Severance, "always owed");
             Op(op, "recruiting + adverts", pnl.Recruiting + pnl.RecruitAds, "");
@@ -595,8 +595,8 @@ namespace Runway.Game
             if (amount != 0) op.Add(new object[] { label, amount, note });
         }
 
-        /// The second memo slot, by teaching priority: principal → NOL →
-        /// net-30 → break-even.
+        /// The second memo slot, by teaching priority: principal -> NOL ->
+        /// net-30 -> break-even.
         static void SecondMemo(BinderScreen b, DeskKit.LedgerBox sheet, GameState state)
         {
             int principal = (int)state.GetMetaF("bank_principal_wk", 0.0);

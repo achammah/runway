@@ -4,10 +4,10 @@ extends RefCounted
 ## lane: L-OWN, per DECISIONS (THE OWNERSHIP CLUSTER §3) and mockup 18 page 3.
 ##
 ## THE PAGE: hero (seats open · candidates in motion · offers out, the expiry
-## clock face-up) → THE OPEN SEATS (per-seat card, band from the labor
-## market, the advert stepper with the live ≈applicants/wk read) → THE
-## CANDIDATES (four columns: applied → interviewed → offer out → joined;
-## interviewing costs the founder's week) → THE OFFER COMPOSER (cash stepper
+## clock face-up) -> THE OPEN SEATS (per-seat card, band from the labor
+## market, the advert stepper with the live ≈applicants/wk read) -> THE
+## CANDIDATES (four columns: applied -> interviewed -> offer out -> joined;
+## interviewing costs the founder's week) -> THE OFFER COMPOSER (cash stepper
 ## + options stepper with SEPARATE − +, live acceptance odds, the pool-after
 ## line, SEND behind the arm). Comp design is the lesson: a mercenary chases
 ## cash, a missionary takes equity, and the pool is finite.

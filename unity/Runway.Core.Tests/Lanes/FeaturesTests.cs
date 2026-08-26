@@ -107,9 +107,9 @@ namespace Runway.CoreTests
             Populate(full);
             SimEngine.WeeklyTick(ctrl);
             SimEngine.WeeklyTick(full);
-            ok(ctrl.Cash == full.Cash && ctrl.Traction == full.Traction
-                && ctrl.Product == full.Product,
-                "features: keep-costs stay off the books until the money package lands");
+            ok(ctrl.Cash - full.Cash == SimFeatures.KeepTotal(full) - SimFeatures.KeepTotal(ctrl)
+                && ctrl.Traction == full.Traction && ctrl.Product == full.Product,
+                "features: keep-costs bill into burn, dollar for dollar");
 
             // ── 6 · the records ride the tick untouched (jar-stable fixture)
             ok(full.Features[0].KeepWk == 40 && full.Features[1].Solidity == "creaky",

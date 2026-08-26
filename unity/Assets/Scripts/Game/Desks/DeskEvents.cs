@@ -311,7 +311,7 @@ namespace Runway.Game
                     else
                     {
                         int wkv = wk2;
-                        DeskKit.Word(b, string.Format("wk {0} — {1} read  →", wkv, pile.Count),
+                        DeskKit.Word(b, string.Format("wk {0} — {1} read  ->", wkv, pile.Count),
                             DeskKit.XId, y - 4f, () => { b.Desk["openwk"] = wkv; },
                             DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), 420f);
                         y += 34f;
@@ -344,7 +344,7 @@ namespace Runway.Game
             b.L(ld.Stamp, x + 826f, y + 2f, 17f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f), 130f);
             string dsk = ld.Desk;
             string key = ld.Key;
-            DeskKit.Word(b, dsk + " →", x + 962f, y - 4f, () =>
+            DeskKit.Word(b, dsk + " ->", x + 962f, y - 4f, () =>
             {
                 MarkRead(b.State, key);
                 b.FocusDesk(dsk);

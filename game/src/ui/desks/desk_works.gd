@@ -6,14 +6,14 @@ extends RefCounted
 ## Four numbered zones in every business's OWN units (DECISIONS: the factory
 ## broadened; mockups 10/11/12): 1 CAN WE SERVE? · 2 WHAT ONE COSTS · 3 WHAT
 ## MAKES THE CAPACITY · 4 THE RELIEF VALVES. The zones never change; their
-## CONTENTS climb three rungs — boutique (named things) → house (the demand
-## mix + the ticket book on the ledger sheet) → empire (THE LINEUP, hero rows
+## CONTENTS climb three rungs — boutique (named things) -> house (the demand
+## mix + the ticket book on the ledger sheet) -> empire (THE LINEUP, hero rows
 ## per division, face B; press a row and its whole rung-2 works opens).
 ##
-## States (desk dict): mode "arrange" → DeskArrange (the WRITE view) · page
-## "capacity" → the assets-and-relief DETAIL sheet (the collapse ladder's
-## honest tail: the crowd folds, the valves stay face-up) · row <site id> →
-## the empire's opened roof (rung-2 scoped to it) · ticket <i> → the ticket
+## States (desk dict): mode "arrange" -> DeskArrange (the WRITE view) · page
+## "capacity" -> the assets-and-relief DETAIL sheet (the collapse ladder's
+## honest tail: the crowd folds, the valves stay face-up) · row <site id> ->
+## the empire's opened roof (rung-2 scoped to it) · ticket <i> -> the ticket
 ## book's opened row · slice — the empire's axis.
 ##
 ## Money lives in columns; the hero answers the question alone; every gap is
@@ -51,7 +51,7 @@ static func draw(b) -> void:
 	# a popped arrange mode leaves no stale staging behind
 	for k in ["teardown", "open_roof", "edit", "staged2", "chip_k"]:
 		b.desk.erase(k)
-	DeskKit.word(b, "arrange →", Vector2(DeskKit.X_ID + 980.0, 6.0), func() -> void:
+	DeskKit.word(b, "arrange ->", Vector2(DeskKit.X_ID + 980.0, 6.0), func() -> void:
 		b.desk["mode"] = "arrange", DeskKit.STATUS, DeskKit.BLUE, 160.0)
 	if s.offers.is_empty():
 		_empty(b, s)
@@ -343,7 +343,7 @@ static func _relief_line(s: GameState) -> String:
 static func pen_row(b, y: float, num: int, title: String, facts: String, on_press: Callable) -> void:
 	b.label("%d · %s" % [num, title], Vector2(DeskKit.X_ID + 8.0, y), DeskKit.DETAIL, DeskKit.INK, 360.0)
 	b.label(facts, Vector2(DeskKit.X_ID + 400.0, y), DeskKit.DETAIL, Color(DeskKit.INK, 0.65), 560.0)
-	DeskKit.word(b, "open →", Vector2(DeskKit.X_ID + 980.0, y - 6.0), on_press, DeskKit.DETAIL, DeskKit.BLUE, 130.0)
+	DeskKit.word(b, "open ->", Vector2(DeskKit.X_ID + 980.0, y - 6.0), on_press, DeskKit.DETAIL, DeskKit.BLUE, 130.0)
 	DeskKit.pen_rule(b, y + 40.0, DeskKit.X_ID, 1120.0, Color(DeskKit.INK, 0.14), int(y) % 17)
 
 ## THE DETAIL SHEET: zones 3+4 full size — the assets grouped like the team,
@@ -421,7 +421,7 @@ static func _capacity_sheet(b, s: GameState, site: String) -> void:
 	# ── ZONE 4: the valves, each its own SEPARATE − +, priced against in-house
 	y = _zone_relief(b, s, y)
 	DeskKit.footer(b, {"y": 806.0,
-		"computed": "letting hands go is never free — severance is always owed (→ team)",
+		"computed": "letting hands go is never free — severance is always owed (-> team)",
 		"rules": "every valve priced against in-house — dearer each, but dearer beats turned away", "rules_y": 840.0})
 	DeskKit.hero_question(b, QUESTION)
 
@@ -589,7 +589,7 @@ static func _axis_word(s: GameState, axis: String, n: int) -> String:
 static func _money(v: float) -> String:
 	return ("−$%s" % _m(-v)) if v < 0.0 else ("$%s" % _m(v))
 
-## Tabular money: 1240 → 1,240 · 27.5 → 27.50 only when cents matter.
+## Tabular money: 1240 -> 1,240 · 27.5 -> 27.50 only when cents matter.
 static func _m(v: float) -> String:
 	if absf(v - roundf(v)) >= 0.005 and absf(v) < 100.0:
 		return "%.2f" % v

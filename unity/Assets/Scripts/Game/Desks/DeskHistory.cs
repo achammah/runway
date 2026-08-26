@@ -13,7 +13,7 @@ namespace Runway.Game
     /// THE QUESTION: "how did we get here?"
     ///
     /// Sparklines (cash · customers) above THE BOOK: a ledger-sheet row per
-    /// week — wk · cash · net · customers · the headline · receipts →. Older
+    /// week — wk · cash · net · customers · the headline · receipts ->. Older
     /// weeks fold into a subtotal (the collapse ladder; the recent rows are
     /// the money-nearest and never hide); the TOTAL is double-ruled; answered
     /// momentary tabs file as flagged memo rows.
@@ -143,7 +143,7 @@ namespace Runway.Game
                     F(row.Customers),
                     Headline(s, wk).Length > 44
                         ? Headline(s, wk).Substring(0, 44) : Headline(s, wk),
-                    "receipts →",
+                    "receipts ->",
                 }, new DeskKit.LedgerRowCfg
                 {
                     Col = net >= 0 ? DrawnUI.Sage : DrawnUI.Coral,
@@ -170,7 +170,7 @@ namespace Runway.Game
                     DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 500f);
 
             DeskKit.Footer(b,
-                string.Format("cash: ${0} at wk {1} → ${2} now · {3} today{4}",
+                string.Format("cash: ${0} at wk {1} -> ${2} now · {3} today{4}",
                     F(rows[0].Cash), rows[0].Wk, F(s.Cash), s.EraDisplayName(),
                     s.Pivots > 0
                         ? string.Format(" · {0} pivots on the record", s.Pivots) : ""),

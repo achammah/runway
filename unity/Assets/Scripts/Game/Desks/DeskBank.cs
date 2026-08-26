@@ -388,8 +388,8 @@ namespace Runway.Game
 
         /// <summary>
         /// THE FULL GROUPED STATEMENT (00-spine section 2 display split):
-        /// IN → COST OF SERVING → KEEPING THE LIGHTS ON → THE LEVERS → THE
-        /// UNPLANNED → THE BANK &amp; THE STATE → THE BOTTOM LINE. Grouped,
+        /// IN -> COST OF SERVING -> KEEPING THE LIGHTS ON -> THE LEVERS -> THE
+        /// UNPLANNED -> THE BANK &amp; THE STATE -> THE BOTTOM LINE. Grouped,
         /// because an income statement that is one flat list of lanes teaches
         /// nothing about which costs are which.
         /// </summary>

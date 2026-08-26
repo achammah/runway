@@ -489,7 +489,7 @@ func next_card(state: GameState, content: ContentDb, rng: SeededRng) -> Dictiona
 ## ONE list at three sites; a twin test pins them equal. `price_offer` was in
 ## the schema and the executor but missing HERE, so any DM reply that priced an
 ## offer was rejected wholesale — the bug this list's pin test now prevents.
-const ALLOWED_OPS := ["cash_delta", "product_delta", "traction_delta", "morale_delta", "hype_delta", "set_flag", "status", "clock", "set_price", "price_offer", "set_marketing", "hire", "take_loan", "spend", "set_budget", "push_lead"]
+const ALLOWED_OPS := ["cash_delta", "product_delta", "traction_delta", "morale_delta", "hype_delta", "set_flag", "status", "clock", "set_price", "price_offer", "set_marketing", "hire", "take_loan", "spend", "set_budget", "push_lead", "open_site", "close_site", "reassign_employee", "move_machine", "tag_offer", "tag_spend_line", "refinance_note", "fire_account", "retire_product", "pivot_audience", "pivot_product", "pitch_investor", "sign_instrument", "send_offer", "set_relief"]
 
 func _validate_effects(effects, allow_empty: bool = false) -> bool:
 	if not (effects is Array):

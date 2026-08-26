@@ -9,7 +9,7 @@ namespace Runway.Game
 {
     /// <summary>
     /// DESK — THE COMPANY · "the raise" (twin of desk_raise.gd). W2 lane:
-    /// L-OWN: the four pipeline columns (radar → conversations → terms →
+    /// L-OWN: the four pipeline columns (radar -> conversations -> terms ->
     /// wired), THE COMPARISON (two sheets priced honestly + the SAFE-stack
     /// warning), the six-instrument glossary, the founder-time banner.
     /// Signing runs op_sign_instrument behind the two-tap arm; a no-shop

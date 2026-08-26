@@ -279,7 +279,8 @@ static func _plot_art(b, key: String, x: float, y: float) -> void:
 	art.position = Vector2(x, y)
 	art.set_deferred("size", Vector2(116.0, 92.0))
 	b.pane().add_child(art)
-	var path := "user://garden_%s.png" % key
+	# the generation lane caches per run+pivot (regenerates at a pivot)
+	var path := "user://gen_illustrations/%d_p%d/plot_%s.png" % [b.state.sim_seed, b.state.pivots, key]
 	if FileAccess.file_exists(path):
 		var img := Image.new()
 		if img.load(path) == OK:

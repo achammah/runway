@@ -17,7 +17,7 @@ extends RefCounted
 ##                       (SimEngine.preroll_items) before any roll
 ##
 ## THE HOST SEAM: the garage screen owns the real flow (_commit_from_text:
-## clarify → pre-roll → dice → adjudicate). It hands this desk the week's
+## clarify -> pre-roll -> dice -> adjudicate). It hands this desk the week's
 ## card and a lock hook; until that package lands the desk shows the card it
 ## can prove and points the roll at the journal instead of faking one.
 ##   DeskThisWeek.week_card = {title, line, icon}   (set at week start)

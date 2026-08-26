@@ -42,7 +42,7 @@ const ORG_LEVERS := [
 const LEVER_STEPS := [0, 250, 500, 1000, 2000, 4000, 8000]
 
 ## ONE COLUMN GRAMMAR down the whole sheet (10-interface-language §1.4):
-## identity → money → live effect → controls. Eight rows share it, or the page
+## identity -> money -> live effect -> controls. Eight rows share it, or the page
 ## reads as two pages taped together.
 const X_VALUE := 455.0
 const X_EFFECT := 640.0

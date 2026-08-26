@@ -23,6 +23,7 @@ var content: ContentDb
 var rng: SeededRng
 var record: RunRecord
 var generator: EventGenerator
+var _pclient: PortraitClient = null
 
 var _font: Font
 var _font_d: Font
@@ -195,6 +196,16 @@ func _unhandled_key_input(ev: InputEvent) -> void:
 		_open_binder()
 
 func _open_binder(on_desk: String = "") -> void:
+	# LOCK IN from the binder routes into the SAME commit path the journal
+	# uses (clarify → pre-roll → dice → adjudicate) — nothing forked.
+	DeskThisWeek.draft = String(_free_text.get(1, ""))
+	DeskThisWeek.lock_hook = func(t: String) -> void:
+		if _binder != null and is_instance_valid(_binder):
+			_binder.queue_free()
+		_free_text[1] = t
+		if not _journal.visible:
+			_open_journal()
+		_commit_from_text()
 	_binder = Binder.new()
 	_binder.setup(state, generator)
 	add_child(_binder)
@@ -1909,6 +1920,9 @@ func _start_week() -> void:
 	_after_week_setup()
 
 func _after_week_setup() -> void:
+	# the binder's landing tab reads the week's card from here (L-COMPANY seam)
+	DeskThisWeek.week_card = {"title": String(_current_event.get("title", "")),
+		"line": String(_current_event.get("body", "")).left(110), "icon": ""}
 	_sync_room()
 	generator.prefetch(state)
 	_open_btn.visible = true
@@ -3015,11 +3029,47 @@ func _apply_dm_effects(effects: Array) -> Array:
 					"designer": 1100, "ops": 1000, "marketing": 1300}.get(role, 1200)
 				state.pipeline.append({"name": nm2, "role": role, "salary": sal, "weeks_in": 0})
 				out.append("hired a %s ($%d/wk, onboarding) — %s" % [role, sal, why])
+			"pitch_investor":
+				var pline := SimOwnership.op_pitch_investor(state, String(d.get("v", "")))
+				if pline != "":
+					out.append("%s — %s" % [pline, why])
+			"sign_instrument":
+				var sline := SimOwnership.op_sign_instrument(state, String(d.get("v", "")))
+				if sline != "":
+					out.append("%s — %s" % [sline, why])
+			"send_offer":
+				var cname := String(d.get("v", ""))
+				var target := {}
+				for c in state.recruitment.get("candidates", []):
+					if String((c as Dictionary).get("name", "")).to_lower().contains(cname.to_lower()) \
+							and ["applied", "interviewed"].has(String((c as Dictionary).get("stage", ""))):
+						target = c
+						break
+				if not target.is_empty():
+					var mk := SimLabor.market_salary("engineer", state.era)
+					var oline := SimOwnership.op_send_offer(state,
+						String(target.get("id", "")), int(d.get("cash", mk)), 0.0)
+					if oline != "":
+						out.append("%s — %s" % [oline, why])
 			"take_loan":
 				var amt := clampi(int(d.get("v", 10_000)), 1_000, 250_000)
 				state.loan_principal += amt
 				state.cash += amt
 				out.append("bridge loan +$%d at 18%%/wk — %s" % [amt, why])
+			"pivot_audience":
+				var pa := SimPivot.pivot_audience(state, String(d.get("v", "")))
+				if bool(pa.get("ok", false)):
+					for pl in pa.get("lines", []):
+						out.append("THE PIVOT: " + String(pl))
+				else:
+					out.append("the pivot was refused — " + String(pa.get("reason", "")))
+			"pivot_product":
+				var pp := SimPivot.pivot_product(state, String(d.get("v", "")))
+				if bool(pp.get("ok", false)):
+					for pl2 in pp.get("lines", []):
+						out.append("THE PIVOT: " + String(pl2))
+				else:
+					out.append("the pivot was refused — " + String(pp.get("reason", "")))
 			"spend":
 				# THE MONEY LAW, engine side: the DM names the outlay, the ENGINE
 				# decides what cash can actually cover. Era-capped; never below
@@ -3060,6 +3110,26 @@ func _apply_dm_effects(effects: Array) -> Array:
 					out.append(pushed)
 				else:
 					out.append("no live deal called '%s' — the push found nobody" % lead_nm)
+			"open_site":
+				out.append(SimDivisions.op_open_site(state, d))
+			"close_site":
+				out.append(SimDivisions.op_close_site(state, d))
+			"reassign_employee":
+				out.append(SimDivisions.op_reassign_employee(state, d))
+			"move_machine":
+				out.append(SimDivisions.op_move_machine(state, d))
+			"tag_offer":
+				out.append(SimDivisions.op_tag_offer(state, d))
+			"tag_spend_line":
+				out.append(SimDivisions.op_tag_spend_line(state, d))
+			"refinance_note":
+				out.append(SimWorks.op_refinance_note(state, d))
+			"fire_account":
+				out.append(SimWorks.op_fire_account(state, d))
+			"retire_product":
+				out.append(SimWorks.op_retire_product(state, d))
+			"set_relief":
+				out.append(SimWorks.op_set_relief(state, d))
 			_:
 				classic.append(d)
 	var clog := EffectOps.apply_all(classic, state)
@@ -3072,6 +3142,38 @@ func _apply_lock(work_results: Dictionary) -> void:
 	_week_prev = {"cash": state.cash, "traction": state.traction,
 		"product": state.product, "morale": state.morale}
 	var outcome_log: Array = []
+	# THE PIVOT resolves at LOCK IN (DECISIONS § THE PIVOT; L-COMPANY's SimPivot).
+	# The armed flag dies with the resolution; the receipt narrates through the
+	# same outcome log every other consequence uses.
+	var pivot_res := SimPivot.resolve_armed(state)
+	if bool(pivot_res.get("ok", false)):
+		for pvl in pivot_res.get("lines", []):
+			outcome_log.append("THE PIVOT: " + String(pvl))
+		# the regeneration recipe (coordinator ruling): a nature-changing pivot
+		# re-dresses the run — one generate_world call applied through the BIRTH
+		# applier (identity, topics, spend book, price book, features), then the
+		# birth illustrations + the three identity images re-fire under the
+		# pivot-suffixed key, all forced. Keyless runs skip cleanly; numbers
+		# never wait on any of it.
+		if generator != null and generator.llm.enabled():
+			generator.generate_world(state, func(gen: Dictionary) -> void:
+				if WorldGen.apply_birth(state, gen):
+					if _director == null:
+						_director = SceneDirector.new(get_tree())
+					_director.make_birth_illustrations(
+						"%d_p%d" % [state.sim_seed, state.pivots],
+						state.topics, state.spend_book,
+						{"name": state.company_name, "idea": state.company_idea,
+							"what": state.biz_what, "who": state.biz_who})
+					if _pclient == null:
+						_pclient = PortraitClient.new(get_tree())
+					var co := {"idea": state.company_idea, "what": state.biz_what,
+						"who": state.biz_who,
+						"unit": String((state.topics.get("works", {}) as Dictionary).get("unit_word", ""))}
+					_pclient.generate(Callable(), true)
+					_pclient.generate_logo(co, Callable(), true)
+					_pclient.generate_make(co, Callable(), true)
+					_pclient.generate_pitch(co, Callable(), true))
 	# the gestures you made to the people who stayed
 	for i in _pending_people:
 		if i < 0 or i >= state.cofounders.size():
@@ -3236,7 +3338,9 @@ func _apply_lock(work_results: Dictionary) -> void:
 		fx.append("%s %s — %s" % [String((eff as Dictionary).get("op", "")),
 			str((eff as Dictionary).get("v", "")), String((eff as Dictionary).get("why", ""))])
 	var roll_d: Dictionary = _last_outcome.get("dm", {}).get("roll", {})
-	state.run_history.append({"wk": state.week, "said": String(_last_outcome.get("said", "")).left(90),
+	state.run_history.append({"wk": state.week,
+		"title": String(_last_outcome.get("title", "")).left(60),
+		"said": String(_last_outcome.get("said", "")).left(90),
 		"heard": String(_last_outcome.get("heard", "")).left(70),
 		"verdict": String(_last_outcome.get("verdict", "")),
 		"roll": ("d20=%d vs DC %d (%s)" % [int(_last_outcome.get("dm", {}).get("d20", 0)),

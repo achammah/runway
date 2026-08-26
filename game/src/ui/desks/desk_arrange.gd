@@ -9,8 +9,8 @@ extends RefCounted
 ## whole staged change through the binder's desk-mode pop.
 ##
 ## PAPER vs BRICK: moving a person prices the relocation + a ramp week; a
-## machine prices shipping + a week offline; tags (offer → product, spend line
-## → division/shared) are FREE — paper is paper. Bound elements never move by
+## machine prices shipping + a week offline; tags (offer -> product, spend line
+## -> division/shared) are FREE — paper is paper. Bound elements never move by
 ## hand: rent belongs to its roof, serving costs to their offer, interest to
 ## its note. Bin verbs: ✎ rename free (ink) / re-lease priced (brick);
 ## ✕ the teardown wizard — every element decided, ONE receipt, the payback
@@ -51,14 +51,14 @@ static func draw(b) -> void:
 			y += 104.0   # the open edit panel's room under its bin
 	# ── the axis toggle, only when both axes are real
 	if SimDivisions.products_count(s) >= 2 and axis == "site":
-		DeskKit.word(b, "arrange the paper instead (offers → products) →",
+		DeskKit.word(b, "arrange the paper instead (offers -> products) ->",
 			Vector2(DeskKit.X_ID, y), func() -> void:
 				b.desk["arrange_axis"] = "product"
 				b.desk.erase("chip_k")
 				b.desk.erase("staged2"), DeskKit.DETAIL, DeskKit.BLUE, 560.0)
 		y += 44.0
 	elif axis == "product":
-		DeskKit.word(b, "back to the roofs (people, machines, spend) →",
+		DeskKit.word(b, "back to the roofs (people, machines, spend) ->",
 			Vector2(DeskKit.X_ID, y), func() -> void:
 				b.desk["arrange_axis"] = "site"
 				b.desk.erase("chip_k")
@@ -66,7 +66,7 @@ static func draw(b) -> void:
 		y += 44.0
 	# ── THE LOCKED STRIP: what never moves by hand, so the player learns
 	# which costs follow which objects
-	b.label("bound to their objects (never move by hand): rent → its roof · serving costs → their offer · interest → its note",
+	b.label("bound to their objects (never move by hand): rent -> its roof · serving costs -> their offer · interest -> its note",
 		Vector2(DeskKit.X_ID, y), DeskKit.LAW, Color(DeskKit.INK, 0.5), 1100.0)
 	y += 40.0
 	# ── the staged chip move: ONE at a time, its own receipt, two-tap
@@ -294,7 +294,7 @@ static func _staged_receipt(b, s: GameState, st: Dictionary, y: float) -> void:
 	match kind:
 		"e":
 			var nm := String((s.employees[idx] as Dictionary).get("name", "?")) if idx < s.employees.size() else "?"
-			lines = [{"label": "%s → %s" % [nm, SimDivisions._roof_name(s, target)],
+			lines = [{"label": "%s -> %s" % [nm, SimDivisions._roof_name(s, target)],
 				"value": "$%s now" % str(int(q.get("fee", 0)))},
 				{"label": "the ramp at the new roof", "value": "1 wk at zero"}]
 			total = "$%d now" % int(q.get("fee", 0))
@@ -305,7 +305,7 @@ static func _staged_receipt(b, s: GameState, st: Dictionary, y: float) -> void:
 		"m":
 			var mn := String(((s.hardware.get("equipment", []) as Array)[idx] as Dictionary).get("name", "?")) \
 				if idx < (s.hardware.get("equipment", []) as Array).size() else "?"
-			lines = [{"label": "%s → %s (shipping)" % [mn, SimDivisions._roof_name(s, target)],
+			lines = [{"label": "%s -> %s (shipping)" % [mn, SimDivisions._roof_name(s, target)],
 				"value": "$%s now" % str(int(q.get("fee", 0)))},
 				{"label": "off the floor", "value": "1 wk offline"}]
 			total = "$%d now" % int(q.get("fee", 0))
@@ -356,7 +356,7 @@ static func _edit_panel(b, s: GameState, id: String, x: float, y: float) -> void
 	var px := clampf(x, DeskKit.X_ID, 700.0)
 	b.label("✎ %s — rename is ink; the roof is brick" % String(site.get("name", "?")),
 		Vector2(px, y), DeskKit.DETAIL, DeskKit.INK, 420.0)
-	DeskKit.word(b, "rename (free) →", Vector2(px, y + 30.0), func() -> void:
+	DeskKit.word(b, "rename (free) ->", Vector2(px, y + 30.0), func() -> void:
 		var pool: Array = SimDivisions.NAME_POOL
 		var cur := String(site.get("name", ""))
 		var i := (pool.find(cur) + 1) % pool.size()
@@ -399,7 +399,7 @@ static func _teardown_sheet(b, s: GameState, id: String) -> void:
 		b.label(String(e.get("name", "?")), Vector2(DeskKit.X_ID + 10.0, y), DeskKit.DETAIL, DeskKit.INK, 240.0)
 		var sev := SimLabor.severance_for(s, e)
 		var caption := ("let go — severance $%d" % sev) if cur == "go" \
-			else "move → %s (+$%d)" % [SimDivisions._roof_name(s, cur.trim_prefix("move:")), int(round(SimDivisions.pb(s, "relocation_fee")))]
+			else "move -> %s (+$%d)" % [SimDivisions._roof_name(s, cur.trim_prefix("move:")), int(round(SimDivisions.pb(s, "relocation_fee")))]
 		DeskKit.word(b, caption, Vector2(DeskKit.X_ID + 260.0, y - 6.0), func() -> void:
 			b.desk["td_" + key] = _next_decision(s, id, cur), DeskKit.DETAIL,
 			DeskKit.PEN if cur == "go" else DeskKit.BLUE, 460.0)
@@ -415,7 +415,7 @@ static func _teardown_sheet(b, s: GameState, id: String) -> void:
 		var mcur := String(decisions.get(mkey, "sell"))
 		b.label(String(m.get("name", "?")), Vector2(DeskKit.X_ID + 10.0, y), DeskKit.DETAIL, DeskKit.INK, 240.0)
 		var mcaption := ("sell at half — +$%d" % SimFactory.resale_value(String(m.get("id", "")))) if mcur == "sell" \
-			else "move → %s (+$%d, 1 wk offline)" % [SimDivisions._roof_name(s, mcur.trim_prefix("move:")), int(round(SimDivisions.pb(s, "machine_shipping")))]
+			else "move -> %s (+$%d, 1 wk offline)" % [SimDivisions._roof_name(s, mcur.trim_prefix("move:")), int(round(SimDivisions.pb(s, "machine_shipping")))]
 		DeskKit.word(b, mcaption, Vector2(DeskKit.X_ID + 260.0, y - 6.0), func() -> void:
 			b.desk["td_" + mkey] = _next_machine_decision(s, id, mcur), DeskKit.DETAIL,
 			DeskKit.SAGE if mcur == "sell" else DeskKit.BLUE, 460.0)
@@ -477,7 +477,7 @@ static func _decisions(b, s: GameState, id: String) -> Dictionary:
 			out["m:%d" % mi] = String(b.desk.get("td_m:%d" % mi, "sell"))
 	return out
 
-## The decision word cycles: go → move:<home> → move:<each other roof> → go.
+## The decision word cycles: go -> move:<home> -> move:<each other roof> -> go.
 static func _next_decision(s: GameState, closing_id: String, cur: String) -> String:
 	var dests: Array = [""]
 	for site in s.sites:
@@ -506,7 +506,7 @@ static func _open_roof_sheet(b, s: GameState) -> void:
 	var y := 64.0
 	b.label("the sign over the door:", Vector2(DeskKit.X_ID + 10.0, y), DeskKit.DETAIL,
 		Color(DeskKit.INK, 0.6), 260.0)
-	DeskKit.word(b, "%s  (another name →)" % nm, Vector2(DeskKit.X_ID + 280.0, y - 6.0), func() -> void:
+	DeskKit.word(b, "%s  (another name ->)" % nm, Vector2(DeskKit.X_ID + 280.0, y - 6.0), func() -> void:
 		var pool: Array = SimDivisions.NAME_POOL
 		var i := (pool.find(nm) + 1) % pool.size()
 		b.desk["roof_name"] = String(pool[i]), DeskKit.STATUS, DeskKit.BLUE, 420.0)

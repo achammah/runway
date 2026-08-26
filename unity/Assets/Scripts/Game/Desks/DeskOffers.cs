@@ -21,7 +21,7 @@ namespace Runway.Game
     /// (the stepper law) and the expand mark opening the shipped five-state
     /// detail machine unchanged. detail / write / wait / review are delegated
     /// whole to DeskCatalog: the DEFINE-AN-OFFER door is the same
-    /// write→wait→review cost-lines road, and the drop arm lives on the
+    /// write->wait->review cost-lines road, and the drop arm lives on the
     /// detail sheet behind its two-tap.
     ///
     /// AUDIENCE VARIANTS: Consumer rows carry units/wk under the name;
@@ -125,7 +125,7 @@ namespace Runway.Game
             cogs = SimEngine.OffersCogsPerCustomer(s);
             string offersWord = s.Offers.Count == 1 ? "one offer" : s.Offers.Count + " offers";
             big = "$" + Gd.RoundToInt(arpu) + " in · $" + Gd.RoundToInt(cogs)
-                  + " out → $" + Gd.RoundToInt(arpu - cogs);
+                  + " out -> $" + Gd.RoundToInt(arpu - cogs);
             line = "what one customer's week earns you, across " + offersWord + " on the shelf";
         }
 

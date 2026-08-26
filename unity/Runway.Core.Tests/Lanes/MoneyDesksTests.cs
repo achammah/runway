@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Runway.Core;
 
-namespace Runway.Core.Tests
+namespace Runway.CoreTests
 {
     /// <summary>
     /// LANE SUITE — the money desks (DAG2 W2 L-MONEY), the byte-twin of

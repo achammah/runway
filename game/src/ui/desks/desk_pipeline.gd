@@ -100,7 +100,7 @@ static func _columns(state: GameState) -> Array:
 				hidden += 1
 				continue
 			var heat := int(lead.get("heat", 0))
-			# THE HEAT WORD WEARS THE RAMP (§1.1, and 05 §12): coral → yell → sage,
+			# THE HEAT WORD WEARS THE RAMP (§1.1, and 05 §12): coral -> yell -> sage,
 			# ONE word, never the line. Folded into `facts` it was just more ink,
 			# and the whole point of the chip — is this deal warming or dying — went
 			# grey. The kit draws `heat` on its own row in the ramp's colour.

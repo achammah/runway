@@ -15,7 +15,7 @@ extends RefCounted
 ##   3 NEW MONEY — borrow/term with SEPARATE −/+ and THE RECEIPT printing
 ##     the whole truth before SIGN (the existing borrow op).
 ##   4 IF A MONDAY IS MISSED — the engine's own ladder as three stairs:
-##     the balance grows → repriced + the bank stops answering → sold to
+##     the balance grows -> repriced + the bank stops answering -> sold to
 ##     the collectors at the shark's price.
 ##
 ## THE COLLAPSE LADDER ON THE ZONES (the pane never scrolls): zones 1–2 are
@@ -35,7 +35,7 @@ const Y_RULES := 844.0
 const NOTES_MAX := 2
 ## The refinance executor lands with L-DIVWORKS (refinance_note). Until the
 ## coordinator flips this, the row renders its computed preview disabled.
-const REFI_WIRED := false
+const REFI_WIRED := true
 const CARD_GAP := 18.0
 const STAIR_COLS := [Color("F6F0DE"), Color("F2D6B8"), Color("D93425")]
 const POS := Color("5D7A50")
@@ -260,13 +260,27 @@ static func _tail_line(b, state: GameState, hidden: int, x: float, y: float) -> 
 		else:
 			var rem := SimBank.note_weeks_left(bal, old_rate, int(note.get("pay_wk", 0)))
 			var new_pay := SimBank.loan_payment_wk(bal, new_rate, maxi(rem, 4))
-			parts.append("refinance: swap %.1f%% for %.1f%% — fee $%s · $%s → $%s/Mon%s" % [
+			parts.append("refinance: swap %.1f%% for %.1f%% — fee $%s · $%s -> $%s/Mon%s" % [
 				old_rate * 100.0, new_rate * 100.0, b.fmt(fee),
 				b.fmt(int(note.get("pay_wk", 0))), b.fmt(new_pay),
 				"" if REFI_WIRED else " · papers arrive with the works wave"])
 	if parts.is_empty():
 		return
-	b.label(" · ".join(parts), Vector2(x, y), DeskKit.LAW, Color(DeskKit.INK, 0.42), 1060.0)
+	b.label(" · ".join(parts), Vector2(x, y), DeskKit.LAW, Color(DeskKit.INK, 0.42), 940.0)
+	# the executor, behind the same sign-stroke ritual as new money — the
+	# preview line above IS the receipt (mutation law)
+	var ridx := _refi_note(state)
+	if REFI_WIRED and ridx >= 0:
+		var refi_note: Dictionary = state.loans[ridx]
+		var rterm := maxi(int(refi_note.get("term_wk", 12)) \
+			- (state.week - int(refi_note.get("taken_week", state.week))), 4)
+		var rsign := DeskKit.word(b, "[ swap it ]", Vector2(x + 950.0, y - 2.0),
+			Callable(), DeskKit.LAW, DeskKit.INK, 110.0)
+		var fire_refi := func() -> void:
+			SimWorks.op_refinance_note(state, {"old_id": ridx, "weeks": rterm})
+			b.refresh()
+		rsign.pressed.connect(func() -> void:
+			DeskKit.sign_stroke(b, rsign, fire_refi))
 
 ## Zone 3 — new money: the truth printed before the pen moves.
 static func _zone_new_money(b, state: GameState, y: float, rate: float) -> float:
@@ -371,13 +385,13 @@ static func _zone3_bar(b, state: GameState, y: float, rate: float) -> float:
 		var term := int(b.desk.get("term", int(terms[mini(1, terms.size() - 1)])))
 		if not terms.has(term):
 			term = int(terms[0])
-		text = "3 · NEW MONEY — borrow $%s over %d weeks → $%s every Monday ▸" % [
+		text = "3 · NEW MONEY — borrow $%s over %d weeks -> $%s every Monday ▸" % [
 			b.fmt(borrow), term, b.fmt(SimBank.loan_payment_wk(borrow, rate, term))]
 	return _bar(b, y, text, func() -> void: b.desk["zone4"] = false)
 
 static func _zone4_bar(b, _state: GameState, y: float) -> float:
 	return _bar(b, y,
-		"4 · IF A MONDAY IS MISSED — the balance grows → repriced + the bank stops answering → sold to the collectors ▸",
+		"4 · IF A MONDAY IS MISSED — the balance grows -> repriced + the bank stops answering -> sold to the collectors ▸",
 		func() -> void: b.desk["zone4"] = true)
 
 static func _bar(b, y: float, text: String, on_press: Callable) -> float:
@@ -496,9 +510,9 @@ static func _draw_books(b, state: GameState) -> void:
 	_op(op, "infra", int(pnl.get("infra", 0)), "")
 	_op(op, "the catalog's tools", int(pnl.get("offer_fixed", 0)), "")
 	_op(op, "machine upkeep + carrying", int(pnl.get("equip_upkeep", 0)) + int(pnl.get("carrying", 0)), "")
-	_op(op, "marketing — the mix", int(pnl.get("marketing", 0)), "→ growth")
+	_op(op, "marketing — the mix", int(pnl.get("marketing", 0)), "-> growth")
 	_op(op, "sales · care · rnd · office", int(pnl.get("sales", 0)) + int(pnl.get("care", 0))
-		+ int(pnl.get("rnd", 0)) + int(pnl.get("office", 0)), "→ spend")
+		+ int(pnl.get("rnd", 0)) + int(pnl.get("office", 0)), "-> spend")
 	_op(op, "the unforeseen", int(pnl.get("incident", 0)), "nobody planned it")
 	_op(op, "severance", int(pnl.get("severance", 0)), "always owed")
 	_op(op, "recruiting + adverts", int(pnl.get("recruiting", 0)) + int(pnl.get("recruit_ads", 0)), "")
@@ -546,8 +560,8 @@ static func _op(op: Array, label_text: String, amount: int, note: String) -> voi
 	if amount != 0:
 		op.append([label_text, amount, note])
 
-## The second memo slot, by teaching priority: principal (profit ≠ cash) →
-## NOL shelter → the net-30 float → break-even.
+## The second memo slot, by teaching priority: principal (profit ≠ cash) ->
+## NOL shelter -> the net-30 float -> break-even.
 static func _second_memo(b, sheet: Dictionary, state: GameState) -> void:
 	var principal := int(state.get_meta("bank_principal_wk", 0))
 	if principal > 0:

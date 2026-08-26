@@ -227,7 +227,7 @@ static func draw(b) -> void:
 					y = _letter_row(b, s, y, ld3, true)
 			else:
 				var wkv := int(wk2)
-				DeskKit.word(b, "wk %d — %d read  →" % [wkv, pile.size()],
+				DeskKit.word(b, "wk %d — %d read  ->" % [wkv, pile.size()],
 					Vector2(DeskKit.X_ID, y - 4.0), func() -> void:
 						b.desk["openwk"] = wkv,
 					DeskKit.DETAIL, Color(DeskKit.INK, 0.55), 420.0)
@@ -265,7 +265,7 @@ static func _letter_row(b, s: GameState, y: float, ld: Dictionary, is_read: bool
 		Color(DeskKit.INK, 0.45), 130.0)
 	var dsk := String(ld.get("desk", ""))
 	var key := String(ld.get("key", ""))
-	DeskKit.word(b, dsk + " →", Vector2(x + 962.0, y - 4.0), func() -> void:
+	DeskKit.word(b, dsk + " ->", Vector2(x + 962.0, y - 4.0), func() -> void:
 		_mark_read(b.state, key)
 		b.focus_desk(dsk), DeskKit.DETAIL, DeskKit.PEN, 190.0)
 	return y + 38.0

@@ -52,7 +52,7 @@ static func draw(b) -> void:
 			28, DeskKit.PEN if int(itd.get("severity", 1)) >= 3
 			else Color(DeskKit.INK, 0.85), 800.0)
 		var dsk := String(itd.get("desk", ""))
-		DeskKit.word(b, dsk + " →", Vector2(DeskKit.X_ID + 900.0, y - 4.0),
+		DeskKit.word(b, dsk + " ->", Vector2(DeskKit.X_ID + 900.0, y - 4.0),
 			func() -> void: b.focus_desk(dsk), DeskKit.STATUS, DeskKit.PEN, 220.0)
 		y += 46.0
 	y += 10.0

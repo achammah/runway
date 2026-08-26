@@ -12,9 +12,9 @@ namespace Runway.Game
     /// DESK — COSTS · "the works" (twin of desk_works.gd). W2: L-DIVWORKS.
     /// THE QUESTION: "can we serve what they want, and what does one cost?"
     /// Four numbered zones in the business's OWN units; contents climb three
-    /// rungs — boutique → house (demand mix + ticket book) → empire (THE
-    /// LINEUP, hero rows, face B; press a row → its rung-2 works). States:
-    /// mode "arrange" → DeskArrange · page "capacity" → the assets-and-relief
+    /// rungs — boutique -> house (demand mix + ticket book) -> empire (THE
+    /// LINEUP, hero rows, face B; press a row -> its rung-2 works). States:
+    /// mode "arrange" -> DeskArrange · page "capacity" -> the assets-and-relief
     /// DETAIL · row &lt;site&gt; · ticket &lt;i&gt; · slice.
     /// </summary>
     public static class DeskWorks
@@ -72,7 +72,7 @@ namespace Runway.Game
             if (DS(b, "mode") == "arrange") { DeskArrange.Draw(b); return; }
             foreach (string k in new[] { "teardown", "open_roof", "edit", "staged2", "chip_k" })
                 b.Desk.Remove(k);
-            DeskKit.Word(b, "arrange →", DeskKit.XId + 980f, 6f,
+            DeskKit.Word(b, "arrange ->", DeskKit.XId + 980f, 6f,
                 () => { b.Desk["mode"] = "arrange"; }, DeskKit.Status, DrawnUI.Blue, 160f);
             if (s.Offers.Count == 0) { DrawEmpty(b, s); return; }
             if (DS(b, "page") == "capacity") { CapacitySheet(b, s, DS(b, "row")); return; }
@@ -431,7 +431,7 @@ namespace Runway.Game
         {
             b.L(num + " · " + title, DeskKit.XId + 8f, y, DeskKit.Detail, DrawnUI.Ink, 360f);
             b.L(facts, DeskKit.XId + 400f, y, DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.65f), 560f);
-            DeskKit.Word(b, "open →", DeskKit.XId + 980f, y - 6f, onPress, DeskKit.Detail,
+            DeskKit.Word(b, "open ->", DeskKit.XId + 980f, y - 6f, onPress, DeskKit.Detail,
                 DrawnUI.Blue, 130f);
             DeskKit.PenRule(b, y + 40f, DeskKit.XId, 1120f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.14f), (int)y % 17);
         }
@@ -517,7 +517,7 @@ namespace Runway.Game
             DeskKit.LedgerEnd(b, sheet);
             y += h3 + 12f;
             y = ZoneRelief(b, s, y);
-            DeskKit.Footer(b, "letting hands go is never free — severance is always owed (→ team)",
+            DeskKit.Footer(b, "letting hands go is never free — severance is always owed (-> team)",
                 "every valve priced against in-house — dearer each, but dearer beats turned away",
                 "", 806f, 840f);
             DeskKit.HeroQuestion(b, Question);

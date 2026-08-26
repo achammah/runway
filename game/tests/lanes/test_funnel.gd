@@ -227,3 +227,17 @@ static func run(ok: Callable) -> void:
 		and int(curated.budgets.get("referrals", 0)) == 0
 		and int(curated.budgets.get("outbound", 0)) == 0,
 		"and on a curated mix it splits by that mix — the narrator never overwrites it")
+
+	# ── the river's snapshot (DAG2 L-REV): arrivals ride metric_history by
+	# origin, and the parts sum to the week's adds — the consumer river is a
+	# receipt, not an illustration.
+	var river := _st("Consumer")
+	river.budgets["ads"] = 1000
+	SimEngine.weekly_tick(river)
+	var snap: Dictionary = river.metric_history[river.metric_history.size() - 1]
+	ok.call(snap.has("adds") and snap.has("adds_org") and snap.has("adds_wom")
+		and snap.has("adds_chan"),
+		"the weekly snapshot carries the arrivals split")
+	ok.call(absf(float(snap.get("adds_org", 0.0)) + float(snap.get("adds_wom", 0.0))
+		+ float(snap.get("adds_chan", 0.0)) - float(snap.get("adds", 0.0))) < 0.05,
+		"and the origins sum to the week's adds")

@@ -233,6 +233,19 @@ namespace Runway.CoreTests
             ok(curated.Budgets.Ads == 500 && curated.Budgets.Content == 1500
                && curated.Budgets.Referrals == 0 && curated.Budgets.Outbound == 0,
                 "and on a curated mix it splits by that mix — the narrator never overwrites it");
+
+            // ── the river's snapshot (DAG2 L-REV)
+            GameState riverSt = St("Consumer");
+            riverSt.Budgets.Ads = 1000;
+            SimEngine.WeeklyTick(riverSt);
+            MetricSnapshot snap = riverSt.MetricHistory[riverSt.MetricHistory.Count - 1];
+            ok(snap.Adds.HasValue && snap.AddsOrg.HasValue && snap.AddsWom.HasValue
+               && snap.AddsChan.HasValue,
+                "the weekly snapshot carries the arrivals split");
+            ok(Math.Abs((snap.AddsOrg ?? 0.0) + (snap.AddsWom ?? 0.0)
+               + (snap.AddsChan ?? 0.0) - (snap.Adds ?? 0.0)) < 0.05,
+                "and the origins sum to the week's adds");
+
         }
     }
 }

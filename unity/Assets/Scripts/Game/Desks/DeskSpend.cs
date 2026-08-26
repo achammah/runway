@@ -198,7 +198,7 @@ namespace Runway.Game
             }
         }
 
-        /// The add-a-line door: bucket picker → staged receipt → the ADD arm.
+        /// The add-a-line door: bucket picker -> staged receipt -> the ADD arm.
         static void AddDoor(BinderScreen b, GameState state, float y)
         {
             bool full = state.SpendBook.Count >= SimSpendBook.BookCap;

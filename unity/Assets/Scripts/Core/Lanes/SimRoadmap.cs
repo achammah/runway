@@ -528,6 +528,8 @@ namespace Runway.Core
             bet.Committed = false;
             bet.ShippedWeek = state.Week;
             bet.Band = band;
+            // W2 L-MAKE seam: the landing joins the wall in the same beat as the dice
+            SimFeatures.OnBetLanded(state, bet, null);
             state.ClampiMeters();
             string ev = string.Format(CultureInfo.InvariantCulture,
                 "SHIPPED {0}: '{1}' — d20 {2}{3} vs DC {4}", band.ToUpperInvariant(), bet.Name,

@@ -118,6 +118,9 @@ const STATUS := {
 	"feature_buzz":     {"adopt_mult": 1.3, "kind": "buff"},
 	# 08 — the board
 	"board_delight":    {"adv": "raise", "morale_wk": 2.0, "hype_wk": 3.0, "kind": "buff"},
+	# ownership — an active raise measurably slows the shop (L-OWN re-arms
+	# this weekly while raise_state.active; the founder-time tax made real)
+	"raise_distraction": {"velocity_mult": 0.88, "adopt_mult": 0.94, "kind": "condition"},
 }
 
 # ─────────────────────── seeded per-subsystem randomness ─────────────────────
@@ -183,6 +186,9 @@ const SALT_RECRUIT_COUNTER := 153    # recruitment — rival counter-offer roll
 const SALT_WORKS_CAPACITY := 160     # works — capacity jitter (the non-hardware breakdown analogue)
 const SALT_WORKS_RELIEF := 161       # works — relief-valve availability (freelancer supply, burst)
 const SALT_WORKS_REMAINDER := 162    # works — seeded remainder for fractional native units
+const SALT_PIVOT_LOSS := 170         # pivot — the product pivot's 50–100% customer roll
+                                     # (decade 170-179 reserved: pivot / L-COMPANY;
+                                     # the drawing const lives on SimPivot, same number)
 
 static func _rng(state: GameState, salt: int) -> RandomNumberGenerator:
 	var r := RandomNumberGenerator.new()
@@ -564,6 +570,7 @@ static func weekly_tick(state: GameState) -> Dictionary:
 		# recruitment adverts (L-OWN), works relief valves (L-DIVWORKS),
 		# per-site rents beside the era's own roof (L-DIVWORKS).
 		"recruit_ads": 0.0, "relief": 0.0, "site_rent": 0.0,
+		"feature_keep": 0.0,
 		"incident": 0.0, "liabilities_wk": 0,
 		"interest": 0.0, "tax": 0.0, "burn": 0,
 	}
@@ -621,7 +628,8 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	var lane_burn := float(m["severance"]) + float(m["recruiting"]) \
 			+ float(m["production"]) + float(m["subcontract"]) \
 			+ float(m["equip_upkeep"]) + float(m["carrying"]) \
-			+ float(m["recruit_ads"]) + float(m["relief"]) + float(m["site_rent"])
+			+ float(m["recruit_ads"]) + float(m["relief"]) + float(m["site_rent"]) \
+			+ float(m["feature_keep"])
 	var burn := int((float(rent + payroll + infra) + mk_budget + b_sales + b_care + b_rnd + b_office) * float(th.burn_mult) + cogs + offer_fixed + lane_burn)
 	burn += incident_cost
 	m["burn"] = burn
@@ -664,6 +672,7 @@ static func weekly_tick(state: GameState) -> Dictionary:
 		"recruit_ads": int(round(float(m["recruit_ads"]))),
 		"relief": int(round(float(m["relief"]))),
 		"site_rent": int(round(float(m["site_rent"]))),
+		"feature_keep": int(round(float(m["feature_keep"]))),
 		"incident": incident_cost,
 		"liabilities_wk": -liab_wk,
 		"interest": int(round(float(m["interest"]))),
@@ -742,11 +751,25 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	# once interest and tax exist. A pre-wave row has no `net` key at all, so a
 	# reader falls back to (revenue − burn) for history and is exact from here.
 	var snap_pnl: Dictionary = state.get_meta("pnl", {})
-	state.metric_history.append({"wk": state.week, "cash": state.cash,
+	# 04-funnel: the week's arrivals ride the snapshot BY ORIGIN, so the
+	# consumer river (IN MOTION) can draw the last 8 weeks after a load.
+	# A pre-package row has no `adds` key at all — the desk draws it as a
+	# ghost bar rather than a made-up split.
+	var snap_funnel: Dictionary = state.get_meta("funnel", {})
+	var snap := {"wk": state.week, "cash": state.cash,
 		"customers": state.traction, "revenue": int(rep.get("revenue", 0)),
 		"burn": int(rep.get("burn", 0)), "morale": state.morale,
 		"debt": int(state.tech_debt), "hype": state.hype,
-		"net": int(snap_pnl.get("net", 0))})
+		"net": int(snap_pnl.get("net", 0))}
+	if not snap_funnel.is_empty():
+		snap["adds"] = float(snap_funnel.get("adds", 0.0))
+		snap["adds_org"] = float(snap_funnel.get("organic", 0.0))
+		snap["adds_wom"] = float(snap_funnel.get("wom", 0.0))
+		snap["adds_chan"] = float(snap_funnel.get("signed_ads", 0.0)) \
+			+ float(snap_funnel.get("signed_content", 0.0)) \
+			+ float(snap_funnel.get("signed_referrals", 0.0)) \
+			+ float(snap_funnel.get("signed_outbound", 0.0))
+	state.metric_history.append(snap)
 	if state.metric_history.size() > 90:
 		state.metric_history = state.metric_history.slice(state.metric_history.size() - 90)
 	state.clampi_meters()
@@ -1269,7 +1292,9 @@ static func migrate_budgets(state: GameState) -> void:
 ## term the player must learn, in ≤40 characters, because the garage ticker
 ## prints it verbatim with no room to explain itself.
 const ATTENTION_DESKS := ["pricing", "the ledger", "the bank", "crew",
-	"cap table", "customers", "product", "the street", "vitals", "threats"]
+	"recruitment", "cap table", "the raise", "the offer", "customers",
+	"product", "what we make", "the works", "the street", "vitals",
+	"threats", "pivot"]
 
 static func attention_items(state: GameState) -> Array:
 	var rows: Array = []
@@ -1291,7 +1316,7 @@ static func attention_items(state: GameState) -> Array:
 			SimRoadmap.attention(state), SimBoard.attention(state),
 			SimFactory.attention(state), SimDivisions.attention(state),
 			SimOwnership.attention(state), SimFeatures.attention(state),
-			SimWorks.attention(state)]:
+			SimWorks.attention(state), SimPivot.attention(state)]:
 		for r in lane_rows:
 			if r is Dictionary:
 				rows.append(r)
@@ -1358,7 +1383,7 @@ static func lane_directives(state: GameState) -> Array[String]:
 			SimRoadmap.directives(state), SimBoard.directives(state),
 			SimFactory.directives(state), SimDivisions.directives(state),
 			SimOwnership.directives(state), SimFeatures.directives(state),
-			SimWorks.directives(state)]:
+			SimWorks.directives(state), SimPivot.directives(state)]:
 		for l in lane_lines:
 			out.append(String(l))
 	return out

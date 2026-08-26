@@ -331,6 +331,15 @@ func _refresh() -> void:
 	for c2 in _rail.get_children():
 		c2.queue_free()
 	_frame.queue_redraw()
+	# THE OFFER's gold tab follows the buyout folder (L-OWN): summoned while
+	# an offer is on the table, folded away when it leaves. resolve is guarded
+	# on presence — resolve_momentary refreshes unconditionally and would loop.
+	if state != null:
+		if not state.buyout_offer.is_empty():
+			summon_momentary("the offer", "THE COMPANY", "THE OFFER",
+				maxi(int(state.buyout_offer.get("expires_wk", 0)) - state.week, 0))
+		elif _find_group("the offer") >= 0:
+			resolve_momentary("the offer")
 	_build_rail()
 	# THE SHEET: tour > overview > the page's own desk
 	if _tour >= 0:
@@ -601,6 +610,38 @@ static func make_object(p_state: GameState, on_open: Callable,
 		art.set_deferred("size", obj_size)
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		root.add_child(art)
+	# the label illustration (or the monogram) sits above the overlaid name —
+	# DECISIONS § THE THREE BINDER ILLUSTRATIONS: the mark is a vignette,
+	# generated textless; initials on a drawn chip stand in until it exists.
+	var logo_h := obj_size.y * LABEL_RECT.size.y * 1.35
+	var logo_pos := Vector2(obj_size.x * LABEL_RECT.position.x,
+		obj_size.y * LABEL_RECT.position.y - logo_h - 2.0)
+	if FileAccess.file_exists(PortraitClient.LOGO_PATH):
+		var limg := Image.new()
+		if limg.load(PortraitClient.LOGO_PATH) == OK:
+			var ltr := TextureRect.new()
+			ltr.texture = ImageTexture.create_from_image(limg)
+			ltr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ltr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ltr.position = logo_pos
+			ltr.set_deferred("size", Vector2(obj_size.x * LABEL_RECT.size.x, logo_h))
+			ltr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			root.add_child(ltr)
+	elif p_state != null and String(p_state.company_name) != "":
+		var initials := ""
+		for wpart in String(p_state.company_name).split(" ", false):
+			if initials.length() < 2 and wpart.length() > 0:
+				initials += wpart.substr(0, 1).to_upper()
+		var mono := Label.new()
+		mono.text = initials
+		mono.add_theme_font_override("font", load(DISPLAY) as Font)
+		mono.add_theme_font_size_override("font_size", int(logo_h * 0.7))
+		mono.add_theme_color_override("font_color", INK)
+		mono.position = logo_pos
+		mono.custom_minimum_size = Vector2(obj_size.x * LABEL_RECT.size.x, logo_h)
+		mono.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		mono.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(mono)
 	# the name, overlaid — the image is generated with a BLANK label
 	var f: Font = load(HAND)
 	var company := String(p_state.company_name) if p_state != null else ""

@@ -6,7 +6,7 @@ extends RefCounted
 ##
 ##   SPARKLINES  cash and customers, side by side, above the book
 ##   THE BOOK    a ledger-sheet row per week: wk · cash · net · customers ·
-##               the headline · receipts → (opens that week's receipts).
+##               the headline · receipts -> (opens that week's receipts).
 ##               Older eras collapse to their net subtotal (the collapse
 ##               ladder — the recent weeks are the money-nearest rows and
 ##               never hide); the TOTAL is double-ruled, the run whole.
@@ -81,7 +81,7 @@ static func _era_spans(s: GameState) -> Array:
 		var hd: Dictionary = h
 		var e := String(hd.get("entry", ""))
 		if e.begins_with("MOVED UP:") or e.begins_with("MOVED DOWN:"):
-			var arrow := e.find("→ ")
+			var arrow := e.find("-> ")
 			if arrow >= 0:
 				var tail := e.substr(arrow + 2)
 				var sp := tail.find(" ")
@@ -148,7 +148,7 @@ static func draw(b) -> void:
 			str(wk), "$%s" % b.fmt(int(row.get("cash", 0))),
 			"%s$%s" % ["+" if net >= 0 else "−", b.fmt(absi(net))],
 			b.fmt(int(row.get("customers", 0))),
-			_headline(s, wk).left(44), "receipts →"],
+			_headline(s, wk).left(44), "receipts ->"],
 			{"col": DeskKit.SAGE if net >= 0 else DeskKit.PEN,
 				"on_press": _open_receipts(b, wk)})
 	DeskKit.ledger_total(b, sheet, "the run so far", "%s$%s"
@@ -172,7 +172,7 @@ static func draw(b) -> void:
 
 	var first_cash := int((rows[0] as Dictionary).get("cash", 0))
 	DeskKit.footer(b, {
-		"computed": "cash: $%s at wk %d → $%s now · %s today%s"
+		"computed": "cash: $%s at wk %d -> $%s now · %s today%s"
 			% [b.fmt(first_cash), _wk(rows[0]), b.fmt(s.cash), s.era_display_name(),
 			(" · %d pivots on the record" % s.pivots) if s.pivots > 0 else ""],
 		"rules": "a row per week: what the week earned, what it cost, and the receipts "

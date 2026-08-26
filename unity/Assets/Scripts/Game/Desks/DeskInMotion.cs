@@ -211,7 +211,17 @@ namespace Runway.Game
             int n = s.MetricHistory.Count;
             int start = Math.Max(n - RiverWeeks, 0);
             for (int i = start; i < n; i++)
-                outRows.Add(new RiverRow { Wk = s.MetricHistory[i].Wk, Known = false });
+            {
+                MetricSnapshot m = s.MetricHistory[i];
+                if (m.Adds.HasValue)
+                    outRows.Add(new RiverRow
+                    {
+                        Wk = m.Wk, Known = true, Total = m.Adds.Value,
+                        Segs = new[] { m.AddsChan ?? 0.0, m.AddsWom ?? 0.0, m.AddsOrg ?? 0.0 },
+                    });
+                else
+                    outRows.Add(new RiverRow { Wk = m.Wk, Known = false });
+            }
             Dictionary<string, double> f = SimFunnel.Funnel(s);
             if (f.Count > 0 && outRows.Count > 0)
             {
@@ -262,7 +272,7 @@ namespace Runway.Game
                 by += 36f;
             }
             if (src.Count > 4)
-                DeskKit.Word(b, "+" + (src.Count - 4) + " more →", cx, by - 4f,
+                DeskKit.Word(b, "+" + (src.Count - 4) + " more ->", cx, by - 4f,
                     () => b.Desk["mode"] = "sources", DeskKit.Law,
                     DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 200f);
         }
@@ -283,7 +293,7 @@ namespace Runway.Game
             return src;
         }
 
-        /// THE TASTE TEST — tried → stayed, and the note ads can't argue with.
+        /// THE TASTE TEST — tried -> stayed, and the note ads can't argue with.
         static void TasteCard(BinderScreen b, GameState s, float y)
         {
             DeskKit.CardBox frame = DeskKit.CardFrame(b, 666f, y, 464f, 236f, "the taste test");
@@ -414,7 +424,7 @@ namespace Runway.Game
                 + " land weekly", 60f, cy + 2f, DeskKit.Detail,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), 800f);
             if (ranked.Count > show)
-                DeskKit.Word(b, "the full list →", 920f, cy - 4f,
+                DeskKit.Word(b, "the full list ->", 920f, cy - 4f,
                     () => b.Desk["mode"] = "smb_all", DeskKit.Law,
                     DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 190f);
             return frame.Bottom + 10f;

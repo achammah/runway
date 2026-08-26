@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Runway.App;
 using Runway.Core;
+using Runway.Llm;
 
 namespace Runway.Game
 {
@@ -325,6 +326,23 @@ namespace Runway.Game
                     if (gi >= 0) { _openGroup = gi; _page = want; }
                 }
                 _legacyApplied = _tab;
+            }
+            if (_st != null)
+            {
+                if (_st.BuyoutOffer != null && _st.BuyoutOffer.Count > 0)
+                {
+                    object ew;
+                    int wks = _st.BuyoutOffer.TryGetValue("expires_wk", out ew) && ew != null
+                        ? Gd.Maxi(Convert.ToInt32(ew) - _st.Week, 0) : 0;
+                    SummonMomentary("the offer", "THE COMPANY", "THE OFFER", wks);
+                }
+                else
+                {
+                    bool present = false;
+                    for (int i = 0; i < _momentary.Count; i++)
+                        if (_momentary[i][0] == "the offer") present = true;
+                    if (present) ResolveMomentary("the offer");
+                }
             }
             for (int i = _content.childCount - 1; i >= 0; i--)
                 Destroy(_content.GetChild(i).gameObject);
@@ -732,6 +750,44 @@ namespace Runway.Game
                         ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
                         StepsPerEdge = 6, Jitter = 0.7f, Thickness = 2.4f, Seed = 31,
                     });
+            }
+            // the label illustration (or monogram) above the name — DECISIONS
+            // § THE THREE BINDER ILLUSTRATIONS. Textless vignette; initials
+            // stand in until it exists.
+            float logoH = h * LabelRect.height * 1.35f;
+            float logoY = h * LabelRect.y - logoH - 2f;
+            Texture2D logoTex = null;
+            try
+            {
+                string lp = PortraitClient.LogoPath;
+                if (System.IO.File.Exists(lp))
+                {
+                    byte[] lb = System.IO.File.ReadAllBytes(lp);
+                    var lt = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                    if (lt.LoadImage(lb)) logoTex = lt;
+                }
+            }
+            catch { }
+            if (logoTex != null)
+            {
+                var li = new GameObject("logo", typeof(RectTransform),
+                    typeof(RawImage)).GetComponent<RawImage>();
+                li.texture = logoTex;
+                li.rectTransform.SetParent(root, false);
+                DrawnUI.SetTopLeft(li.rectTransform, w * LabelRect.x, logoY);
+                li.rectTransform.sizeDelta = new Vector2(w * LabelRect.width, logoH);
+                li.raycastTarget = false;
+            }
+            else if (state != null && !string.IsNullOrEmpty(state.CompanyName))
+            {
+                string initials = "";
+                foreach (string wp in state.CompanyName.Split(' '))
+                    if (initials.Length < 2 && wp.Length > 0)
+                        initials += char.ToUpperInvariant(wp[0]);
+                var mono = DrawnUI.DisplayLabel(root, initials, w * LabelRect.x, logoY,
+                    logoH * 0.7f, DrawnUI.Ink, w * LabelRect.width,
+                    TextAlignmentOptions.Center);
+                mono.raycastTarget = false;
             }
             // the name, overlaid — the image is generated with a BLANK label;
             // below LabelMinPx the name is omitted rather than illegible

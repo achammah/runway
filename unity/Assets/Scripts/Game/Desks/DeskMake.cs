@@ -13,8 +13,8 @@ namespace Runway.Game
     /// THE QUESTION THIS DESK ANSWERS: "what are we making, and how solid is it?"
     ///
     /// THE KANBAN WALL (DECISIONS style 5; mockups 16 + 17): the hero plate,
-    /// the four-column pipeline wall (SHELF commit arms → NEXT queue →
-    /// BUILDING with stand-down −25% → READY, dice at the press behind the
+    /// the four-column pipeline wall (SHELF commit arms -> NEXT queue ->
+    /// BUILDING with stand-down −25% -> READY, dice at the press behind the
     /// pre-roll review), the LIVE band grouped by job with families and
     /// attention-first folds, rung 3's LINEUP + SHARED PLUMBING, and the cost
     /// footer matching SimFeatures' own numbers. Solidity wears the kit's
@@ -91,6 +91,27 @@ namespace Runway.Game
             string version = "v0." + Math.Max(1, st.Product / 10)
                 .ToString(CultureInfo.InvariantCulture);
             DeskKit.HeroPlate(b, 10f, 6f, Clip(name, 22), version, "what we make");
+            // THE MAKE illustration — beside the plate; plate alone is the fallback.
+            try
+            {
+                string mp = Runway.Llm.PortraitClient.MakePath;
+                if (System.IO.File.Exists(mp))
+                {
+                    byte[] mb = System.IO.File.ReadAllBytes(mp);
+                    var mt = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                    if (mt.LoadImage(mb))
+                    {
+                        var mi = new GameObject("make_illus", typeof(RectTransform),
+                            typeof(UnityEngine.UI.RawImage)).GetComponent<UnityEngine.UI.RawImage>();
+                        mi.texture = mt;
+                        mi.rectTransform.SetParent(b.Content, false);
+                        DrawnUI.SetTopLeft(mi.rectTransform, 196f, 4f);
+                        mi.rectTransform.sizeDelta = new Vector2(84f, 84f);
+                        mi.raycastTarget = false;
+                    }
+                }
+            }
+            catch { }
             b.L(line, 450f, 8f, 32f, DrawnUI.Ink, 660f);
             string counts = string.Format(CultureInfo.InvariantCulture,
                 "{0} live · {1} building · {2} ready · {3} on the shelf",
@@ -573,12 +594,12 @@ namespace Runway.Game
 
         // ═══════════════════════ THE COST FOOTER ═════════════════════════════
 
-        /// Build + keep + per-unit → the works + the creak tax — the numbers
+        /// Build + keep + per-unit -> the works + the creak tax — the numbers
         /// MUST match SimFeatures' own reads.
         static void CostFoot(BinderScreen b, GameState st)
         {
             string computed = string.Format(CultureInfo.InvariantCulture,
-                "building ${0}/wk · keeping {1} features ${2}/wk · they add ${3:0.00}/unit → the works",
+                "building ${0}/wk · keeping {1} features ${2}/wk · they add ${3:0.00}/unit -> the works",
                 SimFeatures.BuildTotal(st), st.Features.Count,
                 SimFeatures.KeepTotal(st), SimFeatures.UnitCostTotal(st, ""));
             int creaks = SimFeatures.CreakCount(st);
@@ -761,7 +782,7 @@ namespace Runway.Game
             return total;
         }
 
-        // ═══════════ THE SHIP RITUAL (pre-roll review → dice → receipt) ══════
+        // ═══════════ THE SHIP RITUAL (pre-roll review -> dice -> receipt) ══════
 
         static List<AttentionItem> PrerollRows(GameState st)
         {

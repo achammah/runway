@@ -10,8 +10,8 @@ namespace Runway.Game
     /// <summary>
     /// DESK — COSTS · "recruitment" (twin of desk_recruit.gd). W2 lane:
     /// L-OWN: the open seats (band from the labor market, advert stepper with
-    /// the live ≈applicants/wk read), the candidate wall (applied →
-    /// interviewed → offer out → joined; interviewing costs the founder's
+    /// the live ≈applicants/wk read), the candidate wall (applied ->
+    /// interviewed -> offer out -> joined; interviewing costs the founder's
     /// week), THE OFFER COMPOSER (cash + options steppers, live acceptance
     /// odds, the pool-after line, SEND armed). All odds come from
     /// SimOwnership.AcceptanceOdds — the desk recomputes nothing.

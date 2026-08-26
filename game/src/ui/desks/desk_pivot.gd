@@ -10,7 +10,7 @@ extends RefCounted
 ##                     said on both. Pressing a door chooses it; the
 ##                     audience door then asks where you are going.
 ##   2 THE PREVIEW     computed from live state, never asserted: N customers,
-##                     the well's $X, N named deals, v0.62 → v0.1, what
+##                     the well's $X, N named deals, v0.62 -> v0.1, what
 ##                     regenerates. The product roll shows its honest RANGE —
 ##                     the die is cast at the press, not the preview.
 ##   3 THE WEEK AFTER  what the first post-pivot week looks like.
@@ -36,7 +36,7 @@ static func hero_summary(state) -> Dictionary:
 
 ## What dies behind each door, in the door's own words (DECISIONS' exact lists).
 const AUD_DIES: Array[String] = [
-	"customers → 0 — traction starts over",
+	"customers -> 0 — traction starts over",
 	"named deals and leads — dead with their market",
 	"channel learning + the content well — drained",
 	"the market re-fogs — your beliefs reset",
@@ -44,7 +44,7 @@ const AUD_DIES: Array[String] = [
 const AUD_LIVES := "survives: the product, as built · the team · the cash"
 const PROD_DIES: Array[String] = [
 	"customers — a 50–100% roll decides who walks",
-	"the version → v0.1 — every advance dies",
+	"the version -> v0.1 — every advance dies",
 	"bets and platform die · tech debt clears",
 	"named deals knock back to the first meeting",
 ]
@@ -196,7 +196,7 @@ static func _preview_lines(s: GameState, door: String, pv: Dictionary) -> Array:
 	return [
 		{"label": "customers at the roll's mercy", "value": "50–100%% of %d"
 			% int(pv.get("customers_at_risk", 0))},
-		{"label": "the version", "value": "%s → %s" % [String(pv.get("version_from", "")),
+		{"label": "the version", "value": "%s -> %s" % [String(pv.get("version_from", "")),
 			String(pv.get("version_to", ""))]},
 		{"label": "bets die on the wall · debt clears · %d deals knock back"
 			% int(pv.get("deals_knocked", 0)), "value": "%d bets · −%d debt"
@@ -208,7 +208,7 @@ static func _preview_lines(s: GameState, door: String, pv: Dictionary) -> Array:
 ## The armed caption — the second tap carries the full price in coral.
 static func _arm_caption(s: GameState, door: String, target: String) -> String:
 	if door == "audience":
-		return "press again: %d customers → 0, the market dies — %s next" \
+		return "press again: %d customers -> 0, the market dies — %s next" \
 			% [s.traction, target]
 	return "press again: the roll takes 50–100%% of %d customers" % s.traction
 

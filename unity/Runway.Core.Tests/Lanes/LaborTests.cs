@@ -74,20 +74,22 @@ namespace Runway.CoreTests
             loud.Morale = 70;
             SimLabor.OpenRoleAt(loud, "engineer", mkEng);
             Tick(loud, 3);
-            ok(loud.Applicants.Count >= 1, "an advert AT the market rate draws people");
+            ok(Cands(loud).Count >= 1, "an advert AT the market rate draws people");
             GameState twin = NewState();
             twin.Hype = 40;
             twin.Morale = 70;
             SimLabor.OpenRoleAt(twin, "engineer", mkEng);
             Tick(twin, 3);
-            bool same = twin.Applicants.Count == loud.Applicants.Count;
+            bool same = Cands(twin).Count == Cands(loud).Count;
             if (same)
             {
-                for (int i = 0; i < loud.Applicants.Count; i++)
+                for (int i = 0; i < Cands(loud).Count; i++)
                 {
-                    Applicant a = loud.Applicants[i];
-                    Applicant b = twin.Applicants[i];
-                    if ((a.Name ?? "") != (b.Name ?? "") || a.Skill != b.Skill || a.Ask != b.Ask)
+                    var a = Cands(loud)[i];
+                    var b = Cands(twin)[i];
+                    if (CandS(a, "name") != CandS(b, "name")
+                        || CandI(a, "skill") != CandI(b, "skill")
+                        || CandI(a, "ask") != CandI(b, "ask"))
                     {
                         same = false;
                         break;
@@ -104,18 +106,25 @@ namespace Runway.CoreTests
             flood.Hype = 80;
             SimLabor.OpenRoleAt(flood, "engineer", (int)(mkEng * 1.5));
             Tick(flood, 3);
-            ok(flood.Applicants.Count >= 6, "an advert at 1.5x market floods the desk");
+            ok(Cands(flood).Count >= 6, "an advert at 1.5x market floods the desk");
+            // the union of the two documented curves (labor first-week draw and
+            // recruitment band interpolation, rounded to 10) — +-10 slack.
             bool bounded = true;
-            for (int i = 0; i < flood.Applicants.Count; i++)
+            foreach (var a in Cands(flood))
             {
-                Applicant a = flood.Applicants[i];
-                if (a.Skill < 1 || a.Skill > 5)
+                int sk = CandI(a, "skill");
+                if (sk < 1 || sk > 5)
                 {
                     bounded = false;
                     break;
                 }
-                double bse = mkEng * SimLabor.AskMult(a.Skill);
-                if (a.Ask < bse * 0.90 - 5.0 || a.Ask > bse * 1.15 + 5.0)
+                double bse = mkEng * SimLabor.AskMult(sk);
+                double blo = mkEng * 0.85, bhi = mkEng * 1.25;
+                double recBase = blo + (bhi - blo) * (sk - 1) / 4.0;
+                double loU = Math.Min(bse * 0.90, recBase * 0.95) - 10.0;
+                double hiU = Math.Max(bse * 1.15, recBase * 1.12) + 10.0;
+                int ask = CandI(a, "ask");
+                if (ask < loU || ask > hiU)
                 {
                     bounded = false;
                     break;
@@ -127,7 +136,7 @@ namespace Runway.CoreTests
             int w0 = patient.Week;
             patient.Applicants.Add(new Applicant
             {
-                Name = "Halden Rook", Role = "engineer", Skill = 3, Ask = mkEng,
+                Name = "Halden Rook", Role = "engineer", Skill = 4, Ask = mkEng,
                 Quirk = "waits", OneLiner = "", AppliedWeek = w0, Source = "inbound",
             });
             Tick(patient, 1);
@@ -351,12 +360,31 @@ namespace Runway.CoreTests
             return s;
         }
 
+        static List<Dictionary<string, object>> Cands(GameState s)
+        {
+            return s.Recruitment != null && s.Recruitment.Candidates != null
+                ? s.Recruitment.Candidates : new List<Dictionary<string, object>>();
+        }
+
+        static string CandS(Dictionary<string, object> c, string k)
+        {
+            object v; return c.TryGetValue(k, out v) && v != null ? v.ToString() : "";
+        }
+
+        static int CandI(Dictionary<string, object> c, string k)
+        {
+            object v; return c.TryGetValue(k, out v) && v != null ? Convert.ToInt32(v) : 0;
+        }
+
         static bool HasApplicant(GameState s, string nm)
         {
             for (int i = 0; i < s.Applicants.Count; i++)
             {
                 if ((s.Applicants[i].Name ?? "") == nm) return true;
             }
+            // the reconcile (L-OWN): candidates drain into recruitment at tick start
+            foreach (var c in Cands(s))
+                if (CandS(c, "name") == nm && CandS(c, "stage") != "lost") return true;
             return false;
         }
 

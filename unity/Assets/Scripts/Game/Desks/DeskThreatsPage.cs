@@ -57,7 +57,7 @@ namespace Runway.Game
                     it.Severity >= 3 ? DrawnUI.Coral : DrawnUI.WithAlpha(DrawnUI.Ink, 0.85f),
                     800f);
                 string dsk = it.Desk;
-                DeskKit.Word(b, dsk + " →", DeskKit.XId + 900f, y - 4f,
+                DeskKit.Word(b, dsk + " ->", DeskKit.XId + 900f, y - 4f,
                     () => b.FocusDesk(dsk), DeskKit.Status, DrawnUI.Coral, 220f);
                 y += 46f;
             }

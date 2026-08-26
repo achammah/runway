@@ -4,10 +4,10 @@ extends RefCounted
 ## reworked to the locked pick (DECISIONS: THE OWNERSHIP CLUSTER §1, pixel
 ## source docs/design/mockups/18-ownership-cluster.html page 1).
 ##
-## THE PAGE: hero (your % + paper worth + "paper, not cash") → THE SLICES
-## (ledger sheet, double-ruled 100%) → THE DILUTION STORY (shrinking bars per
+## THE PAGE: hero (your % + paper worth + "paper, not cash") -> THE SLICES
+## (ledger sheet, double-ruled 100%) -> THE DILUTION STORY (shrinking bars per
 ## ownership event) beside IF SOLD TODAY (the waterfall, reused pure from
-## SimOwnership) → the pool/cliff/covenant costline. The old wheel desk
+## SimOwnership) -> the pool/cliff/covenant costline. The old wheel desk
 ## (desk_cap.gd) is no longer embedded — it stays in tree as a retirement
 ## candidate for the coordinator.
 ##
@@ -104,7 +104,7 @@ static func draw(b) -> void:
 		"the cap table moves only through rounds, offers and events — never by hand · rounds happen at THE RAISE",
 		"y": 812.0, "rules_y": 846.0})
 
-## THE POOL EXPANSION — receipt → two-tap → Esc abandons (desk["mode"] pops).
+## THE POOL EXPANSION — receipt -> two-tap -> Esc abandons (desk["mode"] pops).
 static func _draw_pool_page(b, state: GameState) -> void:
 	DeskKit.back(b, "back to the cap table", func() -> void:
 		b.desk.erase("mode"))

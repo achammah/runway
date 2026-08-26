@@ -1485,7 +1485,7 @@ static func fold_row(b, x: float, y: float, n: int, label_text: String,
 	_dashrule(b, x, y + 20.0, 1120.0 * 0.35)
 	var text := "the other %d %s" % [n, label_text]
 	if on_press.is_valid():
-		word(b, text + "  →", Vector2(x + 1120.0 * 0.36, y - 2.0), on_press, DETAIL,
+		word(b, text + "  ->", Vector2(x + 1120.0 * 0.36, y - 2.0), on_press, DETAIL,
 			Color(INK, 0.6), 420.0)
 	else:
 		b.label(text, Vector2(x + 1120.0 * 0.36, y + 4.0), DETAIL, Color(INK, 0.5), 420.0)

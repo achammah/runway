@@ -25,7 +25,7 @@ namespace Runway.Game
 
         static readonly string[] AudDies =
         {
-            "customers → 0 — traction starts over",
+            "customers -> 0 — traction starts over",
             "named deals and leads — dead with their market",
             "channel learning + the content well — drained",
             "the market re-fogs — your beliefs reset",
@@ -34,7 +34,7 @@ namespace Runway.Game
         static readonly string[] ProdDies =
         {
             "customers — a 50–100% roll decides who walks",
-            "the version → v0.1 — every advance dies",
+            "the version -> v0.1 — every advance dies",
             "bets and platform die · tech debt clears",
             "named deals knock back to the first meeting",
         };
@@ -240,7 +240,7 @@ namespace Runway.Game
                 string.Format("50–100% of {0}", pv.CustomersAtRisk) });
             cols.Add(DrawnUI.Coral);
             rows.Add(new[] { "the version",
-                string.Format("{0} → {1}", pv.VersionFrom, pv.VersionTo) });
+                string.Format("{0} -> {1}", pv.VersionFrom, pv.VersionTo) });
             cols.Add(DrawnUI.Coral);
             rows.Add(new[] { string.Format(
                 "bets die on the wall · debt clears · {0} deals knock back",
@@ -255,7 +255,7 @@ namespace Runway.Game
         static string ArmCaption(GameState s, string door, string target)
         {
             if (door == "audience")
-                return string.Format("press again: {0} customers → 0, the market dies — {1} next",
+                return string.Format("press again: {0} customers -> 0, the market dies — {1} next",
                     s.Traction, target);
             return string.Format("press again: the roll takes 50–100% of {0} customers",
                 s.Traction);

@@ -81,6 +81,7 @@ namespace Runway.Core
         [JsonProperty("recruit_ads")] public int RecruitAds;      // role adverts (ownership/recruitment)
         [JsonProperty("relief")] public int Relief;               // works relief valves (freelance/burst/subcontract)
         [JsonProperty("site_rent")] public int SiteRent;          // per-site rents beside the era's own roof (divisions)
+        [JsonProperty("feature_keep")] public int FeatureKeep;    // product upkeep — feature keep-costs (L-MAKE)
         [JsonProperty("incident")] public int Incident;
         [JsonProperty("liabilities_wk")] public int LiabilitiesWk;
         [JsonProperty("interest")] public int Interest;           // the bank — OUTSIDE burn (06)
@@ -122,6 +123,7 @@ namespace Runway.Core
         public double RecruitAds;
         public double Relief;
         public double SiteRent;
+        public double FeatureKeep;   // W2 L-MAKE: product upkeep (feature keep-costs)
         public double Incident;
         public int LiabilitiesWk;
         public double Interest;
@@ -548,6 +550,13 @@ namespace Runway.Core
         // a reader falls back to (revenue - burn), which is close enough for
         // history and exact from here on.
         [JsonProperty("net")] public int? Net;
+        // 04-funnel (DAG2 L-REV): the week's arrivals by origin, for the
+        // consumer river. Nullable: a pre-package row has none and draws
+        // as a ghost bar. Save keys byte-identical to the Godot twin.
+        [JsonProperty("adds")] public double? Adds;
+        [JsonProperty("adds_org")] public double? AddsOrg;
+        [JsonProperty("adds_wom")] public double? AddsWom;
+        [JsonProperty("adds_chan")] public double? AddsChan;
     }
 
     public sealed class HistoryEntry

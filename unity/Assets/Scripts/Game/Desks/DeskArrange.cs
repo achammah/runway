@@ -58,7 +58,7 @@ namespace Runway.Game
             }
             if (SimDivisions.ProductsCount(s) >= 2 && axis == "site")
             {
-                DeskKit.Word(b, "arrange the paper instead (offers → products) →",
+                DeskKit.Word(b, "arrange the paper instead (offers -> products) ->",
                     DeskKit.XId, y, () =>
                     {
                         b.Desk["arrange_axis"] = "product";
@@ -69,7 +69,7 @@ namespace Runway.Game
             }
             else if (axis == "product")
             {
-                DeskKit.Word(b, "back to the roofs (people, machines, spend) →",
+                DeskKit.Word(b, "back to the roofs (people, machines, spend) ->",
                     DeskKit.XId, y, () =>
                     {
                         b.Desk["arrange_axis"] = "site";
@@ -78,7 +78,7 @@ namespace Runway.Game
                     }, DeskKit.Detail, DrawnUI.Blue, 560f);
                 y += 44f;
             }
-            b.L("bound to their objects (never move by hand): rent → its roof · serving costs → their offer · interest → its note",
+            b.L("bound to their objects (never move by hand): rent -> its roof · serving costs -> their offer · interest -> its note",
                 DeskKit.XId, y, DeskKit.Law, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 1100f);
             y += 40f;
             var staged = b.Desk.ContainsKey("staged2")
@@ -363,7 +363,7 @@ namespace Runway.Game
                 {
                     string nm = idx < s.Employees.Count ? s.Employees[idx].Name ?? "?" : "?";
                     lines.Add(new DeskKit.TicketLine
-                        { Label = nm + " → " + SimDivisions.RoofName(s, target),
+                        { Label = nm + " -> " + SimDivisions.RoofName(s, target),
                           Value = "$" + fee + " now" });
                     lines.Add(new DeskKit.TicketLine
                         { Label = "the ramp at the new roof", Value = "1 wk at zero" });
@@ -381,7 +381,7 @@ namespace Runway.Game
                     List<EquipmentItem> eq = Eq(s);
                     string mn = idx < eq.Count ? eq[idx].Name ?? "?" : "?";
                     lines.Add(new DeskKit.TicketLine
-                        { Label = mn + " → " + SimDivisions.RoofName(s, target) + " (shipping)",
+                        { Label = mn + " -> " + SimDivisions.RoofName(s, target) + " (shipping)",
                           Value = "$" + fee + " now" });
                     lines.Add(new DeskKit.TicketLine
                         { Label = "off the floor", Value = "1 wk offline" });
@@ -451,7 +451,7 @@ namespace Runway.Game
             float px = Mathf.Clamp(x, DeskKit.XId, 700f);
             b.L("edit " + site.Name + " — rename is ink; the roof is brick", px, y,
                 DeskKit.Detail, DrawnUI.Ink, 420f);
-            DeskKit.Word(b, "rename (free) →", px, y + 30f, () =>
+            DeskKit.Word(b, "rename (free) ->", px, y + 30f, () =>
             {
                 string[] pool = SimDivisions.NAME_POOL;
                 int i = (Array.IndexOf(pool, site.Name) + 1 + pool.Length) % pool.Length;
@@ -499,7 +499,7 @@ namespace Runway.Game
                 int sev = SimLabor.SeveranceFor(s, e);
                 string caption = cur == "go"
                     ? "let go — severance $" + sev
-                    : string.Format("move → {0} (+${1})",
+                    : string.Format("move -> {0} (+${1})",
                         SimDivisions.RoofName(s, cur.Substring(5)),
                         Gd.RoundToInt(SimDivisions.Pb(s, "relocation_fee")));
                 string capturedKey = key;
@@ -521,7 +521,7 @@ namespace Runway.Game
                 b.L(m.Name ?? "?", DeskKit.XId + 10f, y, DeskKit.Detail, DrawnUI.Ink, 240f);
                 string mcaption = mcur == "sell"
                     ? "sell at half — +$" + SimFactory.ResaleValue(m.Id)
-                    : string.Format("move → {0} (+${1}, 1 wk offline)",
+                    : string.Format("move -> {0} (+${1}, 1 wk offline)",
                         SimDivisions.RoofName(s, mcur.Substring(5)),
                         Gd.RoundToInt(SimDivisions.Pb(s, "machine_shipping")));
                 string capturedM = mkey;
@@ -649,7 +649,7 @@ namespace Runway.Game
             b.L("the sign over the door:", DeskKit.XId + 10f, y, DeskKit.Detail,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 260f);
             string capturedNm = nm;
-            DeskKit.Word(b, nm + "  (another name →)", DeskKit.XId + 280f, y - 6f, () =>
+            DeskKit.Word(b, nm + "  (another name ->)", DeskKit.XId + 280f, y - 6f, () =>
             {
                 string[] pool = SimDivisions.NAME_POOL;
                 int i = (Array.IndexOf(pool, capturedNm) + 1 + pool.Length) % pool.Length;

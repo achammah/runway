@@ -126,7 +126,7 @@ static func _flat_rows(state: GameState, tools_open: bool) -> Array:
 			"note": "opened wk %d" % int(sd.get("opened_wk", 0))})
 	var payroll := SimLabor.payroll_wk(state)
 	var heads := state.employees.size() + state.pipeline.size()
-	rows.append({"who": "the payroll", "what": "%d people → team" % heads, "kind": "flat",
+	rows.append({"who": "the payroll", "what": "%d people -> team" % heads, "kind": "flat",
 		"amt": payroll, "note": _payroll_trend(state), "press": "team"})
 	var tool_lines := _tool_lines(state)
 	var tools := int(round(SimEngine.offers_fixed_wk(state)))
@@ -191,7 +191,7 @@ static func _scaling_rows(state: GameState) -> Array:
 			note = "never falls on its own — interest only"
 			ncol = Binder.PEN
 		rows.append({"who": _name_of(state, "bank", "the bank"),
-			"what": "interest on $%s → the bank" % _fmt(SimBank.debt_total(state)),
+			"what": "interest on $%s -> the bank" % _fmt(SimBank.debt_total(state)),
 			"kind": "scales", "amt": interest, "note": note, "note_col": ncol,
 			"press": "the bank"})
 	var pnl: Dictionary = state.get_meta("pnl", {})

@@ -7,9 +7,9 @@ extends RefCounted
 ## 16-what-we-make-wall.html + 17-wall-scale.html):
 ##   HERO      the name plate (identity/topics), version, the counts line,
 ##             the creak line, the self-ship clock.
-##   THE WALL  four columns — THE SHELF (priced ideas, commit arm) → NEXT
-##             (the queue, reorder) → BUILDING (progress + $/wk + stand-down
-##             −25%) → READY (SHIP rolls the dice at the press, behind the
+##   THE WALL  four columns — THE SHELF (priced ideas, commit arm) -> NEXT
+##             (the queue, reorder) -> BUILDING (progress + $/wk + stand-down
+##             −25%) -> READY (SHIP rolls the dice at the press, behind the
 ##             pre-roll review; the slip clock is honest).
 ##   LIVE      the inventory, grouped by job. Rung 1 (≤12 live): every
 ##             feature a card. Rung 2: FAMILIES (ink tags) + attention-first
@@ -18,7 +18,7 @@ extends RefCounted
 ##   RUNG 3    (a second product exists): THE LINEUP — one hero-row per
 ##             product, press opens its wall — and the SHARED PLUMBING band
 ##             (product_id "" plumbing; a creak THERE taxes every build).
-##   FOOT      build + keep + per-unit → the works + the creak tax, matching
+##   FOOT      build + keep + per-unit -> the works + the creak tax, matching
 ##             SimFeatures' own numbers exactly.
 ##
 ## Solidity wears the kit's marks, not the mockup's palette: solid is calm
@@ -87,6 +87,20 @@ static func _hero(b, state: GameState) -> void:
 		line = "the thing we make"
 	var version := "v0.%d" % maxi(1, state.product / 10)
 	DeskKit.hero_plate(b, 10.0, 6.0, name.substr(0, 22), version, "what we make")
+	# THE MAKE illustration (DECISIONS § THE THREE BINDER ILLUSTRATIONS) —
+	# the thing the company makes, beside the plate; the plate alone is the
+	# fallback and the page never waits.
+	if FileAccess.file_exists(PortraitClient.MAKE_PATH):
+		var mimg := Image.new()
+		if mimg.load(PortraitClient.MAKE_PATH) == OK:
+			var mtr := TextureRect.new()
+			mtr.texture = ImageTexture.create_from_image(mimg)
+			mtr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			mtr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			mtr.position = Vector2(196.0, 4.0)
+			mtr.set_deferred("size", Vector2(84.0, 84.0))
+			mtr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			b.pane().add_child(mtr)
 	b.label(line, Vector2(450.0, 8.0), 32, Binder.INK, 660.0)
 	var counts := "%d live · %d building · %d ready · %d on the shelf" % [
 		state.features.size(), SimRoadmap.committed_bets(state).size(),
@@ -490,10 +504,10 @@ static func _families_of(members: Array) -> Dictionary:
 
 # ═══════════════════════════ THE COST FOOTER ═════════════════════════════════
 
-## The four numbers the engine owns, said once: build + keep + per-unit →
+## The four numbers the engine owns, said once: build + keep + per-unit ->
 ## the works + the creak tax. They MUST match SimFeatures' own reads.
 static func _cost_foot(b, state: GameState) -> void:
-	var computed := "building $%s/wk · keeping %d features $%s/wk · they add $%.2f/unit → the works" % [
+	var computed := "building $%s/wk · keeping %d features $%s/wk · they add $%.2f/unit -> the works" % [
 		b.fmt(SimFeatures.build_total(state)), state.features.size(),
 		b.fmt(SimFeatures.keep_total(state)), SimFeatures.unit_cost_total(state, "")]
 	var creaks := SimFeatures.creak_count(state)
@@ -654,7 +668,7 @@ static func _sum_keep(members: Array) -> int:
 		total += int((m as Dictionary).get("keep_wk", 0))
 	return total
 
-# ═══════════════ THE SHIP RITUAL (pre-roll review → dice → receipt) ══════════
+# ═══════════════ THE SHIP RITUAL (pre-roll review -> dice -> receipt) ══════════
 
 ## The engine decides what is outstanding; this page reads it — minus the
 ## row that IS this press ("a bet is built" never blocks its own shipping).

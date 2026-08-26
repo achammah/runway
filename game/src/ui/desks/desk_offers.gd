@@ -9,7 +9,7 @@ extends RefCounted
 ## law) and ▸ opening the shipped five-state detail machine unchanged.
 ##
 ## THE MACHINE UNDERNEATH IS DeskCatalog's: detail / write / wait / review are
-## delegated whole — the DEFINE-AN-OFFER door is the same write→wait→review
+## delegated whole — the DEFINE-AN-OFFER door is the same write->wait->review
 ## road (the DM prices its tools via the cost-lines flow; nothing an LLM wrote
 ## enters the books unreviewed), and the drop arm lives on the detail sheet
 ## behind its two-tap. This file owns only the LIST — the rate card itself.
@@ -23,7 +23,7 @@ extends RefCounted
 const QUESTION := "what do we sell and what does each sale earn?"
 
 ## The rate card's own column grammar (inside the card at x10 w1120, pad 18):
-## identity → price → street → serve → margin → verdict → ▸ → ADJUST.
+## identity -> price -> street -> serve -> margin -> verdict -> ▸ -> ADJUST.
 const COL_NAME_X := 28.0
 const COL_NAME_W := 300.0
 const COL_PRICE_X := 340.0
@@ -85,7 +85,7 @@ static func _hero(s: GameState) -> Dictionary:
 	var cogs := SimEngine.offers_cogs_per_customer(s)
 	var offers_word := "one offer" if s.offers.size() == 1 else "%d offers" % s.offers.size()
 	return {
-		"big": "$%s in · $%s out → $%s" % [String.num_int64(int(round(arpu))),
+		"big": "$%s in · $%s out -> $%s" % [String.num_int64(int(round(arpu))),
 			String.num_int64(int(round(cogs))), String.num_int64(int(round(arpu - cogs)))],
 		"line": "what one customer's week earns you, across %s on the shelf" % offers_word,
 		"arpu": arpu, "cogs": cogs,
@@ -254,7 +254,7 @@ static func _named_accounts_line(b, s: GameState, y: float) -> float:
 	return y + 30.0
 
 ## THE DEFINE-AN-OFFER DOOR, or the honest reason it is shut. The road behind
-## it is the shipped write→wait→review cost-lines flow (the mutation law's
+## it is the shipped write->wait->review cost-lines flow (the mutation law's
 ## receipt: the DM prices its tools, you sign or tear it up).
 static func _define_door(b, y: float) -> void:
 	var shut := SimCatalog.shelf_full_line(b.state)

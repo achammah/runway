@@ -58,17 +58,17 @@ static func run(ok: Callable) -> void:
 	loud.morale = 70
 	SimLabor.open_role(loud, "engineer", mk_eng)
 	_tick(loud, 3)
-	ok.call(loud.applicants.size() >= 1, "an advert AT the market rate draws people")
+	ok.call(_cands(loud).size() >= 1, "an advert AT the market rate draws people")
 	var twin := _state()
 	twin.hype = 40
 	twin.morale = 70
 	SimLabor.open_role(twin, "engineer", mk_eng)
 	_tick(twin, 3)
-	var same := twin.applicants.size() == loud.applicants.size()
+	var same := _cands(twin).size() == _cands(loud).size()
 	if same:
-		for i in loud.applicants.size():
-			var a: Dictionary = loud.applicants[i]
-			var b: Dictionary = twin.applicants[i]
+		for i in _cands(loud).size():
+			var a: Dictionary = _cands(loud)[i]
+			var b: Dictionary = _cands(twin)[i]
 			if String(a.get("name", "")) != String(b.get("name", "")) \
 					or int(a.get("skill", 0)) != int(b.get("skill", 0)) \
 					or int(a.get("ask", 0)) != int(b.get("ask", 0)):
@@ -84,24 +84,32 @@ static func run(ok: Callable) -> void:
 	flood.hype = 80
 	SimLabor.open_role(flood, "engineer", int(float(mk_eng) * 1.5))
 	_tick(flood, 3)
-	ok.call(flood.applicants.size() >= 6, "an advert at 1.5x market floods the desk")
+	ok.call(_cands(flood).size() >= 6, "an advert at 1.5x market floods the desk")
+	# the ask now sits on ONE of the two documented curves: labor's first-week
+	# draw (market x SKILL_ASK x 0.90-1.15) or recruitment's band interpolation
+	# (lo+(hi-lo)(sk-1)/4 x 0.95-1.12, rounded to 10) — the union, +-5 slack.
 	var bounded := true
-	for a2 in flood.applicants:
+	for a2 in _cands(flood):
 		var ad: Dictionary = a2
 		var sk := int(ad.get("skill", 0))
 		if sk < 1 or sk > 5:
 			bounded = false
 			break
 		var base := float(mk_eng) * float(SimLabor.SKILL_ASK[sk])
+		var blo := float(mk_eng) * 0.85
+		var bhi := float(mk_eng) * 1.25
+		var rec_base := blo + (bhi - blo) * float(sk - 1) / 4.0
+		var lo_u := minf(base * 0.90, rec_base * 0.95) - 10.0
+		var hi_u := maxf(base * 1.15, rec_base * 1.12) + 10.0
 		var ask := float(int(ad.get("ask", 0)))
-		if ask < base * 0.90 - 5.0 or ask > base * 1.15 + 5.0:
+		if ask < lo_u or ask > hi_u:
 			bounded = false
 			break
 	ok.call(bounded, "every ask sits on the skill curve within its noise band")
 
 	var patient := _state()
 	var w0 := patient.week
-	patient.applicants.append({"name": "Halden Rook", "role": "engineer", "skill": 3,
+	patient.applicants.append({"name": "Halden Rook", "role": "engineer", "skill": 4,
 		"ask": mk_eng, "quirk": "waits", "one_liner": "", "applied_week": w0,
 		"source": "inbound"})
 	_tick(patient, 1)
@@ -311,7 +319,15 @@ static func _has_applicant(s: GameState, nm: String) -> bool:
 	for a in s.applicants:
 		if String((a as Dictionary).get("name", "")) == nm:
 			return true
+	# the reconcile (L-OWN): candidates drain into recruitment at tick start
+	for c in s.recruitment.get("candidates", []):
+		var cd: Dictionary = c
+		if String(cd.get("name", "")) == nm and String(cd.get("stage", "")) != "lost":
+			return true
 	return false
+
+static func _cands(s: GameState) -> Array:
+	return s.recruitment.get("candidates", []) as Array
 
 ## Three office-era staff paid exactly the market rate, so nothing but the
 ## benefits expectation can move morale between the twins.

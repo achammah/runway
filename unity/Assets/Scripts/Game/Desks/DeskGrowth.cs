@@ -333,7 +333,8 @@ namespace Runway.Game
             DrawnInstrument(b, key, x, y, 116f, 92f);
             try
             {
-                string p = RunwayPaths.User("garden_" + key + ".png");
+                string p = RunwayPaths.User("gen_illustrations/" + b.State.SimSeed + "_p"
+                    + b.State.Pivots + "/plot_" + key + ".png");
                 if (System.IO.File.Exists(p))
                 {
                     byte[] bytes = System.IO.File.ReadAllBytes(p);

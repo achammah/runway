@@ -322,8 +322,8 @@ static func _desk_footer(b, state: GameState) -> void:
 # ══════════════════════════ THE BOOKS ═══════════════════════════════════════
 
 ## THE FULL GROUPED STATEMENT (docs/design/00-spine.md §2 display split):
-## IN → COST OF SERVING → KEEPING THE LIGHTS ON → THE LEVERS → THE UNPLANNED →
-## THE BANK & THE STATE → THE BOTTOM LINE. Grouped, because an income statement
+## IN -> COST OF SERVING -> KEEPING THE LIGHTS ON -> THE LEVERS -> THE UNPLANNED ->
+## THE BANK & THE STATE -> THE BOTTOM LINE. Grouped, because an income statement
 ## that is one flat list of lanes teaches nothing about which costs are which.
 static func _draw_books(b, state: GameState) -> void:
 	DeskKit.title(b, "the books — last week, line by line")

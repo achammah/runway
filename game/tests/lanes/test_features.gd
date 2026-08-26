@@ -93,9 +93,9 @@ static func run(ok: Callable) -> void:
 	_populate(full)
 	SimEngine.weekly_tick(ctrl)
 	SimEngine.weekly_tick(full)
-	ok.call(ctrl.cash == full.cash and ctrl.traction == full.traction
-		and ctrl.product == full.product,
-		"features: keep-costs stay off the books until the money package lands")
+	ok.call(ctrl.cash - full.cash == SimFeatures.keep_total(full) - SimFeatures.keep_total(ctrl)
+		and ctrl.traction == full.traction and ctrl.product == full.product,
+		"features: keep-costs bill into burn, dollar for dollar")
 
 	# ── 6 · the records ride the tick untouched (jar-stable fixture)
 	ok.call(int((full.features[0] as Dictionary).get("keep_wk", 0)) == 40

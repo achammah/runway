@@ -137,7 +137,11 @@ const ADJUDICATE_SCHEMA := {
 					"op": {"type": "string", "enum": ["cash_delta", "product_delta",
 						"traction_delta", "morale_delta", "hype_delta", "set_flag",
 						"status", "clock", "set_price", "price_offer", "set_marketing", "hire", "take_loan",
-						"spend", "set_budget", "push_lead"]},
+						"spend", "set_budget", "push_lead",
+							"open_site", "close_site", "reassign_employee", "move_machine",
+							"tag_offer", "tag_spend_line", "refinance_note", "fire_account",
+							"retire_product", "pivot_audience", "pivot_product",
+							"pitch_investor", "sign_instrument", "send_offer", "set_relief"]},
 					"v": {"type": ["number", "string"]},
 					"why": {"type": "string", "maxLength": 90},
 					# status: duration · clock: weeks until it fires · all other ops: 1
