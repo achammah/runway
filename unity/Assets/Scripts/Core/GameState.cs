@@ -836,6 +836,15 @@ namespace Runway.Core
 
         public const int RAMEN_PER_WEEK = 500;   // founder personal burn, Dossier 10
 
+        /// <summary>The founder's day-one bank, granted at run birth (archetype bonus,
+        /// funding and banked scramble value ride on top). The draft screen has PROMISED
+        /// this number since the first commit while the birth code granted only the
+        /// riders, so a bootstrap founder started on $1,500 couch cushions against a
+        /// $650/wk garage burn — 2.3 weeks of runway, unwinnable by arithmetic. One
+        /// constant, read by the draft display AND the birth grant, so they can never
+        /// disagree.</summary>
+        public const int START_CASH = 8000;
+
         public static readonly List<string> ERAS = new List<string> { "garage", "coworking", "office", "floor", "hq" };
 
         public static readonly Dictionary<string, string> ERA_NAMES = new Dictionary<string, string>

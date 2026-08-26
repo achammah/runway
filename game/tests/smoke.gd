@@ -50,8 +50,9 @@ func _init() -> void:
 			if not state.items.has(id):
 				state.items.append(id)
 				state.cash += int(content.items[id].get("cash_value", 0))
-		if state.cash == 0:
-			state.cash = 1500
+		# the day-one bank the birth grant applies (main.gd _after_draft) — the old
+		# $1,500 couch-cushion fallback modeled a birth bug, not the game
+		state.cash += GameState.START_CASH
 		# grind loop
 		var outcome := "stall"
 		for week in 40:

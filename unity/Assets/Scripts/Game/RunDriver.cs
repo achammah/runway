@@ -201,7 +201,8 @@ namespace Runway.Game
             for (int i = 0; i < State.Cofounders.Count; i++)
                 State.Cofounders[i].EquityDiluted = State.Cofounders[i].Equity * dilution;
             State.FounderPct = (100.0 - cfEquity) * dilution;
-            State.Cash += ContentDb.Int(arch, "start_cash_bonus", 0) + ContentDb.Int(fund, "cash", 0);
+            // the day-one bank the draft screen promises — base + archetype bonus + funding
+            State.Cash += GameState.START_CASH + ContentDb.Int(arch, "start_cash_bonus", 0) + ContentDb.Int(fund, "cash", 0);
 
             // competence coverage: full-time roles patch stats, part-time patches half
             for (int i = 0; i < d.Cofounders.Count; i++)

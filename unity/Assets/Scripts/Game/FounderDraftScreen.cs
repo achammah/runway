@@ -349,7 +349,7 @@ namespace Runway.Game
 
         public int DayOneCash()
         {
-            int cash = 8000;
+            int cash = GameState.START_CASH;
             if (SelArch != null) cash += ContentDb.Int(SelArch, "start_cash_bonus", 0);
             if (SelFund != null) cash += ContentDb.Int(SelFund, "cash", 0);
             for (int i = 0; i < Bag.Count; i++) cash += Deck.CashValue(Bag[i]);

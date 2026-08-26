@@ -37,6 +37,9 @@ func _go() -> void:
 	_ok(float(mad.adopt_p) <= 0.004, "adopt_p clamps down")
 	_ok(float(mad.lifetime_wk) >= 6.0, "lifetime clamps up")
 
+	# ── the day-one bank: the draft's promise IS the engine's grant
+	_ok(GameState.START_CASH == 8000, "day-one bank pinned at $8,000")
+
 	# ── determinism: same seed+week = identical tick
 	var a := _state()
 	var b := _state()

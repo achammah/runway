@@ -238,9 +238,9 @@ namespace Runway.Game
 
             _dName.text = ContentDb.Str(arch, "name");
             _dTag.text = ContentDb.Str(arch, "tagline");
-            int cashTotal = 8000 + ContentDb.Int(arch, "start_cash_bonus", 0);
+            int cashTotal = GameState.START_CASH + ContentDb.Int(arch, "start_cash_bonus", 0);
             _dCash.text = "$" + GameUi.Money(cashTotal);
-            _dCash.color = cashTotal >= 8000 ? DrawnUI.Sage : DrawnUI.Coral;
+            _dCash.color = cashTotal >= GameState.START_CASH ? DrawnUI.Sage : DrawnUI.Coral;
             _dPerk.text = "★ " + ContentDb.Str(arch, "perk");
             if (_tip != null) _tip.gameObject.SetActive(false);
 

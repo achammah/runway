@@ -832,7 +832,8 @@ func _after_draft(result: Dictionary) -> void:
 	for cf in state.cofounders:
 		cf["equity_diluted"] = float(cf.get("equity", 0)) * dilution
 	state.founder_pct = (100.0 - cf_equity) * dilution
-	state.cash += int(arch.get("start_cash_bonus", 0)) + int(funding.get("cash", 0))
+	# the day-one bank the draft screen promises — base + archetype bonus + funding
+	state.cash += GameState.START_CASH + int(arch.get("start_cash_bonus", 0)) + int(funding.get("cash", 0))
 	# competence coverage: full-time roles patch stats, part-time patches half
 	for cf in cofounders:
 		var full := String(cf.get("commitment", "")) == "Full-time"

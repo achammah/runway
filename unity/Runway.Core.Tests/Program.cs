@@ -126,6 +126,9 @@ namespace Runway.CoreTests
             Ok(mad.AdoptP <= 0.004, "adopt_p clamps down");
             Ok(mad.LifetimeWk >= 6.0, "lifetime clamps up");
 
+            // ── the day-one bank: the draft's promise IS the engine's grant
+            Ok(GameState.START_CASH == 8000, "day-one bank pinned at $8,000");
+
             // ── determinism: same seed+week = identical tick
             GameState a = NewState();
             GameState b = NewState();

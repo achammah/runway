@@ -806,9 +806,9 @@ func _select(i: int, animate_swap: bool = true) -> void:
 		(_d_traits as TraitPips).set_traits(_sel_arch.get("traits", {}))
 	if _trait_tip:
 		_trait_tip.visible = false
-	var cash_total := 8000 + int(_sel_arch.get("start_cash_bonus", 0))
+	var cash_total := GameState.START_CASH + int(_sel_arch.get("start_cash_bonus", 0))
 	_d_cash.text = "$%s" % _fmt_money(cash_total)
-	_d_cash.add_theme_color_override("font_color", PALETTE["sage"] if cash_total >= 8000 else PALETTE["coral"])
+	_d_cash.add_theme_color_override("font_color", PALETTE["sage"] if cash_total >= GameState.START_CASH else PALETTE["coral"])
 	_d_perk.text = "★ " + String(_sel_arch.get("perk", ""))
 	# hero swap: old slides off, new lands with squash
 	var frames: Array = _anim_frames.get(String(_sel_arch["id"]), [])
@@ -2200,7 +2200,7 @@ func _refresh_capline() -> void:
 		if not _sel_fund.is_empty() and float(_sel_fund.get("equity_cost", 0)) > 0.0:
 			slices.append({"label": "investors", "pct": float(_sel_fund["equity_cost"]), "color": PALETTE["coral"]})
 		(_donut as CapTableDonut).set_slices(slices, founder_pct)
-	var cash := 8000 + (int(_sel_arch.get("start_cash_bonus", 0)) if not _sel_arch.is_empty() else 0) + (int(_sel_fund.get("cash", 0)) if not _sel_fund.is_empty() else 0)
+	var cash := GameState.START_CASH + (int(_sel_arch.get("start_cash_bonus", 0)) if not _sel_arch.is_empty() else 0) + (int(_sel_fund.get("cash", 0)) if not _sel_fund.is_empty() else 0)
 	for bid in _bag:
 		for def in content_items:
 			if def["id"] == bid:
