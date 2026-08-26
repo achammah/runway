@@ -43,8 +43,16 @@ namespace Runway.Game
 
         const float XAuto = 120f;     // the AUTO word sits in the stepper name's own gutter
         const float WAuto = 300f;
-        const float XBuy2 = 560f;     // the next rung of the ladder, dimmed with its reason
-        const float XSell = 870f;
+        // THE BUY ROW, MEASURED ACROSS: `buy:` 10 · what you can sign for 70–470 ·
+        // the next rung 480–870, dimmed and wearing the engine's own refusal · the
+        // sell arm 880–1160. At 300px the refusal wrapped and wrote its second line
+        // into the make-vs-buy row 46px below, so the rung took the whole gap and
+        // one step down in size instead.
+        const float WBuy1 = 400f;
+        const float XBuy2 = 480f;
+        const float WBuy2 = 390f;
+        const float SzBuy2 = 19f;
+        const float XSell = 880f;
 
         static Color Ink(float a) { return DrawnUI.WithAlpha(DrawnUI.Ink, a); }
 
@@ -236,24 +244,29 @@ namespace Runway.Game
                             "{0}  ${1}  +{2}/wk  ${3}/wk upkeep", e.Name, GameUi.Money(e.Price),
                             Gd.ToInt(e.CapacityAdd), GameUi.Money(Gd.ToInt(e.UpkeepWk))),
                         70f, YBuy, () => Handle(b, "buy:" + id),
-                        DeskKit.Law, DrawnUI.Ink, 470f);
+                        DeskKit.Law, DrawnUI.Ink, WBuy1);
                     continue;
                 }
                 // dimmed, wearing the reason: era gate, era spend cap, or cash short
                 b.L(string.Format(CultureInfo.InvariantCulture, "{0} ${1} — {2}",
                         e.Name, GameUi.Money(e.Price), c.Why),
-                    i == 0 ? 70f : XBuy2, YBuy + 12f, DeskKit.Law, Ink(0.35f),
-                    i == 0 ? 470f : 300f);
+                    i == 0 ? 70f : XBuy2, YBuy + 12f,
+                    i == 0 ? DeskKit.Law : SzBuy2, Ink(0.35f),
+                    i == 0 ? WBuy1 : WBuy2);
             }
             if (hw.Equipment.Count > 0)
             {
                 EquipmentItem last = hw.Equipment[hw.Equipment.Count - 1];
                 int back = SimFactory.ResaleValue(last.Id);
-                string lname = last.Name ?? "it";
-                if (lname.Length > 20) lname = lname.Substring(0, 20);
+                // THE ARMED CAPTION HAS TO FIT ITS OWN BOX. A word button never
+                // wraps, so the long form ran the machine's name, the price AND the
+                // lesson straight off the right edge of the sheet. The invoice is
+                // what 2.9 asks the armed label to carry; the haircut is named in
+                // the one word `half`, and the machine is the last one on the row
+                // above.
                 DeskKit.Arm(b, "sell_machine", "sell a machine",
                     string.Format(CultureInfo.InvariantCulture,
-                        "sell {0} · ${1} back (half — the secondhand haircut)", lname, GameUi.Money(back)),
+                        "${0} back (half) — sure?", GameUi.Money(back)),
                     XSell, YBuy, () => Handle(b, "sell_last"), 280f, DeskKit.Law);
             }
         }
@@ -306,7 +319,14 @@ namespace Runway.Game
             bool warn = SimFactory.Overstock(st);
             if (warn)
             {
-                line += " — OVERSTOCK: more than 8 weeks of cover is asleep";
+                // ONE MEASURED LINE at 1120px. The band's last row is at 716 and the
+                // pane ends at 760, so a second line falls off the bottom of the
+                // sheet: when the warning fires it takes the parenthetical's place
+                // rather than following it.
+                line = string.Format(CultureInfo.InvariantCulture,
+                    "carrying cost: ${0}/wk on {1} units — OVERSTOCK: more than 8 weeks of cover is asleep, and {2}%/wk of unit cost bills for every one of them",
+                    GameUi.Money(Gd.RoundToInt(stock * rate)), stock,
+                    Gd.RoundToInt(rate / Gd.Maxf(SimFactory.UnitCost(st), 1.0) * 100.0));
             }
             else if (hw.ProducedTotal > 0)
             {

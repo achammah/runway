@@ -49,6 +49,11 @@ namespace Runway.Game
         private const float FullWk = 88f;
         private const float TightWk = 38f;
         private const float WrapWk = 124f;
+        /// THE "+N MORE" LINE IS PART OF THE BUDGET. The room check used to reserve
+        /// only the next ENTRY, so on the crowded page (an hq third rival, a live
+        /// shock banner) the closing line was drawn at the y that had just failed the
+        /// test — off the bottom of the pane and onto the clipboard's shadow.
+        private const float MoreWk = 34f;
 
         /// <summary>
         /// Draw the macro banner and the four-line rival blocks.
@@ -131,9 +136,11 @@ namespace Runway.Game
             int shown = 0;
             foreach (Investor d in st.Investors)
             {
-                if (shown >= DeskKit.ListCap || y + (tight ? TightWk : WrapWk) > DeskKit.PaneH)
+                if (shown >= DeskKit.ListCap
+                    || y + (tight ? TightWk : WrapWk) + MoreWk > DeskKit.PaneH)
                 {
-                    DeskKit.More(b, DeskKit.XId, y, st.Investors.Count - shown, "are in the book");
+                    if (y + MoreWk <= DeskKit.PaneH)
+                        DeskKit.More(b, DeskKit.XId, y, st.Investors.Count - shown, "are in the book");
                     return;
                 }
                 b.L(string.Format("{0} ({1})", d.Name, d.Archetype), DeskKit.XId, y, 29f);

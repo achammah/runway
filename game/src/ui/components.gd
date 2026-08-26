@@ -335,18 +335,27 @@ static func pips(b, pos: Vector2, filled: int, total: int = 5) -> void:
 ## and no controls at all: the board is the founder's wall calendar, and hands
 ## move deals in the story, not by dragging.
 ##
-## columns: Array[{head, chips: Array[{name, facts, heat, note, flavor}]}]
+## columns: Array[{head, chips: Array[{name, facts_lead, heat, facts, note, flavor}]}]
+## `facts_lead · HEAT · facts` renders as ONE row with only the heat word coloured.
 static func board(b, y: float, columns: Array, empty_line: String = "") -> float:
 	if columns.is_empty():
 		return empty(b, Vector2(X_ID, y), empty_line, "")
 	var n := columns.size()
 	var col_w := (1120.0 / float(n))
+	# THE RULES ARE COUNTED FIRST. §2.5 allows "headers alone when the chips make
+	# the columns obvious" — and on an empty board there are no chips, so the
+	# pen-ruled columns had nothing to separate and drew themselves straight
+	# through the authored empty line instead.
 	var live := 0
+	for c0 in columns:
+		live += (c0 as Dictionary).get("chips", []).size()
+	var ruled := live > 0
+	live = 0
 	for ci in n:
 		var c: Dictionary = columns[ci]
 		var cx := X_ID + float(ci) * col_w
 		b.label(String(c.get("head", "")).to_upper(), Vector2(cx, y), 26, INK, col_w - 16.0)
-		if ci > 0:
+		if ci > 0 and ruled:
 			var vr := _VRule.new()
 			vr.h = 300.0
 			vr.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -360,14 +369,33 @@ static func board(b, y: float, columns: Array, empty_line: String = "") -> float
 			var chd: Dictionary = ch
 			b.label(String(chd.get("name", "")), Vector2(cx, cy), 26, INK, col_w - 20.0)
 			cy += maxf(b.wrap_h(String(chd.get("name", "")), 26, col_w - 20.0), 30.0)
-			var facts := String(chd.get("facts", ""))
-			if facts != "":
-				b.label(facts, Vector2(cx, cy), DETAIL, Color(INK, 0.7), col_w - 20.0)
-				cy += 28.0
+			# THE FACTS LINE IS ONE ROW WITH ONE COLOURED WORD (§1.1's heat ramp,
+			# 05 §12): `6 seats · warm · wk 1` colours only "warm". A chip that
+			# folded the heat into `facts` printed it in the same grey as the seat
+			# count and the whole point of the board — is this deal warming or
+			# dying — went with it; a chip that gave heat its own ROW cost the
+			# column a third of its height. Three measured segments, one line.
 			var heat := String(chd.get("heat", ""))
+			var facts := String(chd.get("facts", ""))
 			if heat != "":
-				# the heat WORD wears its color (10-interface §1.1; 05 §12)
-				b.label(heat, Vector2(cx, cy), DETAIL, heat_col(heat), col_w - 20.0)
+				var lead := String(chd.get("facts_lead", ""))
+				if lead == "" and facts != "":
+					# no explicit lead: the whole facts string sits ahead of the word
+					lead = facts
+					facts = ""
+				var fx := cx
+				if lead != "":
+					b.label(lead + "  ·  ", Vector2(fx, cy), DETAIL, Color(INK, 0.7), col_w - 20.0)
+					fx += b.font().get_string_size(lead + "  ·  ",
+						HORIZONTAL_ALIGNMENT_LEFT, -1, DETAIL).x
+				b.label(heat, Vector2(fx, cy), DETAIL, heat_col(heat), col_w - 20.0)
+				if facts != "":
+					fx += b.font().get_string_size(heat, HORIZONTAL_ALIGNMENT_LEFT, -1, DETAIL).x
+					b.label("  ·  " + facts, Vector2(fx, cy), DETAIL, Color(INK, 0.7),
+						col_w - 20.0)
+				cy += 28.0
+			elif facts != "":
+				b.label(facts, Vector2(cx, cy), DETAIL, Color(INK, 0.7), col_w - 20.0)
 				cy += 28.0
 			var note := String(chd.get("note", ""))
 			if note != "":

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Runway.App;
@@ -47,6 +48,8 @@ namespace Runway.Game
         const float NotePitch = 58f;
         const int NotesMax = 3;
         const float YForecast = 646f;
+        /// THE BOOKS' LAST LINE never crosses into the teaching footer at 700.
+        const float YBottomMax = 654f;
         const float XToggle = 860f;
         const float XRepay = 960f;
         const float XSpark = 600f;
@@ -86,7 +89,11 @@ namespace Runway.Game
                 DeskKit.Status, Ink(0.75f), 260f);
             float y = st.EraIndex() < 1 ? GarageBlock(b, st) : QuoteBlock(b, st);
             y = NotesBlock(b, st, y);
-            if (st.EraIndex() >= 1) ForecastLine(b, st);
+            // THE FORECAST IS A FLOOR, NOT A SLOT. YForecast is where it sits on an
+            // ordinary sheet; on a floor-era sheet the venture block and a fourth
+            // filed note push the notes down, and a fixed slot is a line drawn
+            // through them.
+            if (st.EraIndex() >= 1) ForecastLine(b, st, Mathf.Max(YForecast, y + 8f));
             DeskFooter(b, st);
         }
 
@@ -136,6 +143,9 @@ namespace Runway.Game
             int term = b.Desk.TryGetValue("term", out tv) && tv != null
                 ? Convert.ToInt32(tv) : terms[Gd.Mini(1, terms.Length - 1)];
             if (Array.IndexOf(terms, term) < 0) term = terms[0];
+            // where the block ACTUALLY ended: the venture note is the one line below
+            // the sign row, and the rule under it follows the ink, not a constant
+            float blockEnd = YRule2;   // the rule follows the ink, not a constant
             bool locked = SimBank.CreditLocked(st);
             bool noLine = headroom < SimBank.MinDraw;
             bool dead = locked || noLine;
@@ -161,7 +171,9 @@ namespace Runway.Game
             DeskKit.Stepper(b, YTerm, new DeskKit.StepRow
             {
                 Name = "over",
-                Why = "the term — longer weeks, smaller payment, more interest in total",
+                // THE WHY IS ONE MEASURED LINE. This sheet is a fixed grid, so a why
+                // that wraps writes its second line straight through the preview.
+                Why = "the term — longer weeks, smaller payment, more interest",
                 Value = term + " weeks",
                 Effect = dead ? "" : term + " payments",
                 Disabled = dead, Pitch = 62f,
@@ -182,7 +194,7 @@ namespace Runway.Game
             else
             {
                 b.L(string.Format(CultureInfo.InvariantCulture,
-                    "→ ${0}/wk  ·  ≈${1} all-in (${2} interest — that is what the time costs)",
+                    "= ${0}/wk  ·  ≈${1} all-in (${2} interest — that is what the time costs)",
                     GameUi.Money(pay), GameUi.Money(allIn), GameUi.Money(Gd.Maxi(allIn - borrow, 0))),
                     DeskKit.XId, YPreview, DeskKit.Status, DrawnUI.Blue, 1100f);
             }
@@ -227,13 +239,19 @@ namespace Runway.Game
                             b.Refresh();
                         });
                     }, DeskKit.Status, Ink(0.8f), 380f, false);
+                    // ONE MEASURED LINE at 690px, clear of the 46px word above it
+                    // -- and the rule below moves down to meet it. Wrapped and
+                    // fixed, this line was drawn through both the button and the
+                    // divider, and its tail landed in WHAT YOU OWE.
+                    float vy = YSign + 48f;
                     b.L(string.Format(CultureInfo.InvariantCulture,
-                        "${0} at {1:0.0}%/wk, interest-only, balloon in {2} wks · costs {3:0.00}% of the company in warrants",
+                        "${0} at {1:0.0}%/wk · interest-only · balloon in {2} wks · {3:0.00}% in warrants",
                         GameUi.Money(vcap), vrate * 100.0, vterm, SimBank.WarrantPct),
-                        460f, YSign + 40f, DeskKit.Law, Ink(0.5f), 690f);
+                        460f, vy, DeskKit.Law, Ink(0.5f), 690f);
+                    blockEnd = Mathf.Max(blockEnd, vy + 34f);
                 }
             }
-            return DeskKit.Rule(b, YRule2);
+            return DeskKit.Rule(b, blockEnd);
         }
 
         /// <summary>THE FILED LETTERS. Each note carries what it costs, what is
@@ -320,10 +338,11 @@ namespace Runway.Game
 
         /// <summary>THE FP&amp;A STRIP: what the plan does to the bank account,
         /// before surprises.</summary>
-        static void ForecastLine(BinderScreen b, GameState st)
+        static void ForecastLine(BinderScreen b, GameState st, float y)
         {
             List<SimBank.ForecastWeek> rows = SimBank.ForecastCash(st, SimBank.ForecastWeeks);
-            if (rows.Count == 0) return;
+            // the teaching footer owns 700 down: a forecast with no room yields to it
+            if (rows.Count == 0 || y + 34f > DeskKit.FooterY - 6f) return;
             var parts = new List<string>();
             bool below = false;
             foreach (SimBank.ForecastWeek r in rows)
@@ -334,8 +353,8 @@ namespace Runway.Game
             }
             b.L(string.Format(CultureInfo.InvariantCulture,
                 "the next {0} weeks, as planned: {1} (before surprises)",
-                rows.Count, string.Join(" → ", parts.ToArray())),
-                DeskKit.XId, YForecast, DeskKit.Status,
+                rows.Count, string.Join(" -> ", parts.ToArray())),
+                DeskKit.XId, y, DeskKit.Status,
                 below ? DrawnUI.Coral : Ink(0.8f), 1100f);
         }
 
@@ -438,11 +457,16 @@ namespace Runway.Game
                     + " · tax $" + GameUi.Money(p.Tax),
             }, DrawnUI.Coral);
             int be = SimBank.BreakEvenCustomers(st);
+            // THE BOTTOM LINE GETS THE WHOLE WIDTH and a ceiling. Nine lanes can all
+            // bill in one week: the groups above are a measured cursor, so on a busy
+            // week `y` arrives near the footer, and at 560px this line wrapped into
+            // the desk laws. The right column ends well above YBottomMax.
             b.L("THE BOTTOM LINE: " + (p.Net >= 0 ? "+" : "−") + "$" + GameUi.Money(Gd.Absi(p.Net))
                 + " a week  ·  " + (be > 0
                     ? "break-even " + be + " customers (" + st.Traction + " now)"
                     : "no count breaks even"),
-                DeskKit.XId, y + 4f, DeskKit.Row, p.Net >= 0 ? DrawnUI.Sage : DrawnUI.Coral, 560f);
+                DeskKit.XId, Mathf.Min(y + 4f, YBottomMax), DeskKit.Row,
+                p.Net >= 0 ? DrawnUI.Sage : DrawnUI.Coral, 1100f);
             // ── the right column: the two series the bank itself prices you on
             b.L("net, weekly:", XSpark, YQuote, 24f, Ink(0.6f), 600f);
             DrawnChart.MountSpark(b.Content, NetSeries(st), DrawnUI.Sage,
@@ -457,36 +481,49 @@ namespace Runway.Game
             int ebt = p.Revenue - p.Burn - p.LiabilitiesWk - p.Interest;
             if (st.EraIndex() < SimBank.TaxEra)
             {
-                b.L("nothing yet — profit is taxed from the office era up. Cash-basis and below the radar until then.",
-                    XSpark, sy, DeskKit.Detail, Ink(0.7f), 540f);
+                sy = TaxLine(b, sy, "nothing yet — profit is taxed from the office era up. Cash-basis and below the radar until then.");
             }
             else
             {
-                b.L("20% of EBT — earnings after interest, before tax. Last week's EBT: $"
-                    + GameUi.Money(ebt) + " → tax $" + GameUi.Money(p.Tax),
-                    XSpark, sy, DeskKit.Detail, Ink(0.7f), 540f);
+                // SIGN OUTSIDE THE DOLLAR (10-interface-language 1.3): a loss-making
+                // week reads −$13,804, never $-13,804.
+                sy = TaxLine(b, sy, "20% of EBT — earnings after interest, before tax. Last week's EBT: "
+                    + Signed(ebt) + " -> tax $" + GameUi.Money(p.Tax));
             }
-            sy += 56f;
             if (st.TaxLossCarry > 0)
             {
-                b.L("losses carried forward: $" + GameUi.Money(st.TaxLossCarry)
-                    + " — they shelter the next profits before the taxman sees them",
-                    XSpark, sy, DeskKit.Detail, Ink(0.7f), 540f);
-                sy += 56f;
+                sy = TaxLine(b, sy, "losses carried forward: $" + GameUi.Money(st.TaxLossCarry)
+                    + " — they shelter the next profits before the taxman sees them");
             }
             if (st.Receivables.Count > 0)
             {
                 int owed = 0;
                 foreach (Commitment r in st.Receivables) owed += r.CashWk;
-                b.L("net-30 float: $" + GameUi.Money(owed)
-                    + " invoiced and not yet in the bank — profit is not cash",
-                    XSpark, sy, DeskKit.Detail, Ink(0.7f), 540f);
+                sy = TaxLine(b, sy, "net-30 float: $" + GameUi.Money(owed)
+                    + " invoiced and not yet in the bank — profit is not cash");
             }
             DeskKit.Footer(b,
                 "burn is OPERATING spend only · interest and tax sit outside it, which is why the bottom line is smaller than in − out",
                 "read it top to bottom: what came in, what serving cost, what the lights cost, "
                 + "what you chose to spend, what nobody planned, what the bank and the state took",
                 "");
+        }
+
+        /// <summary>ONE LINE OF THE TAXMAN BLOCK, cursor-advanced by MEASURED
+        /// height. A fixed 56px step wrote the loss-carryforward line straight
+        /// through the second line of the EBT sentence the week the numbers got
+        /// long enough to wrap.</summary>
+        static float TaxLine(BinderScreen b, float sy, string text)
+        {
+            TextMeshProUGUI l = b.L(text, XSpark, sy, DeskKit.Detail, Ink(0.7f), 540f);
+            return sy + Mathf.Max(BinderScreen.Height(l), 28f) + 14f;
+        }
+
+        /// <summary>Money with the sign OUTSIDE the dollar (1.3): −$300, never
+        /// $-300.</summary>
+        static string Signed(int v)
+        {
+            return v < 0 ? "−$" + GameUi.Money(Gd.Absi(v)) : "$" + GameUi.Money(v);
         }
 
         /// <summary>One captioned group of the statement. Returns the y it ended at.</summary>

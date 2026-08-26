@@ -54,6 +54,7 @@ static func draw(b) -> void:
 		b.label("Traffic seems… decent? Someone signed up on Tuesday. The numbers live in a notebook you lost.",
 			Vector2(10, 110), 30, Color(Binder.INK, 0.7))
 		b.label("(invest in analytics to see the funnel)", Vector2(10, 210), 26, Binder.PEN)
+		_footer(b, state)
 		return
 	var an := SimFunnel.analytics(state)
 	b.label("%d customers" % state.traction, Vector2(100, 10), 46)
@@ -84,6 +85,28 @@ static func draw(b) -> void:
 		_cohort(b, state)
 	if an >= 3:
 		_truth(b, state)
+	_footer(b, state)
+
+## THE DESK STATES ITS OWN LAWS (§2.7). Every other desk ends on its lesson and
+## this one used to end on whatever the last analytics gate happened to unlock —
+## a page whose bottom edge moved with a purchase. The rules line is the funnel's
+## whole pedagogy in one breath; the warning outranks it when money is buying
+## nobody, which is the one thing on this page a founder must not scroll past.
+static func _footer(b, state: GameState) -> void:
+	var f := SimFunnel.funnel(state)
+	var warning := ""
+	for k in SimFunnel.MIX:
+		if SimFunnel.num(f, "cac_" + k) <= 0.0 \
+				and SimFunnel.num(f, "spend_" + k) >= SimFunnel.BURN_SPEND:
+			warning = "%s is BURNING: $%s/wk bought nobody last week — a channel with no CAC has no price" % [
+				k.to_upper(), b.fmt(int(SimFunnel.num(f, "spend_" + k)))]
+			break
+	DeskKit.footer(b, {
+		"rules": "the rules of this desk: REACH is what money bought · a LEAD is reach that answered · "
+			+ "only closing capacity signs them · CAC is spend ÷ signed, per channel · churn is a leaky bucket, and care patches it",
+		"warning": warning,
+		"y": DeskKit.FOOTER_Y, "rules_y": DeskKit.RULES_Y,
+	})
 
 ## THE FUNNEL, three pen strokes of shrinking length — the SHAPE is the lesson
 ## before any number lands. REACH is what money bought; LEADS is what converted;
@@ -173,9 +196,11 @@ static func _truth(b, state: GameState) -> void:
 		b.fmt(int(float(state.beliefs.get("tam", th.get("tam", 100000.0))))),
 		SimFunnel.num(f, "conv") * 100.0,
 		int(round(SimFunnel.num(f, "close_rate") * 100.0)),
-		("your cheapest customer comes from %s" % best.to_upper()) if best != ""
+		# ONE MEASURED LINE at 1100px: the desk's own law line sits 50px under this
+		# one, and the long form of the tail wrapped straight into it.
+		("cheapest customer: %s" % best.to_upper()) if best != ""
 			else "no channel has bought a customer yet"],
-		Vector2(10, Y_TRUTH), 26, Binder.SAGE)
+		Vector2(10, Y_TRUTH), 26, Binder.SAGE, 1100.0)
 
 ## A press inside this desk. `id` is whatever the desk's own draw registered.
 static func handle(_b, _id: String) -> void:

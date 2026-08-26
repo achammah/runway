@@ -122,18 +122,24 @@ namespace Runway.Game
                     Lead lead = st.Leads[i];
                     if ((lead.Stage ?? "meeting") != stage) { continue; }
                     if (col.Chips.Count >= 4) { hidden += 1; continue; }
+                    // THE HEAT WORD WEARS THE RAMP (1.1, and 05 §12): coral, yell,
+                    // sage — ONE word, never the line. Folded into Facts it was just
+                    // more ink, and the whole point of the chip — is this deal
+                    // warming or dying — went grey.
                     var chip = new DeskKit.Chip
                     {
                         Name = lead.Name,
-                        Facts = string.Format(CultureInfo.InvariantCulture, "{0} seats · {1} · wk {2}",
-                            lead.Seats, SimPipeline.HeatWord(lead.Heat), lead.AgeWeeks),
+                        FactsLead = string.Format(CultureInfo.InvariantCulture, "{0} seats", lead.Seats),
+                        Heat = SimPipeline.HeatWord(lead.Heat),
+                        Facts = string.Format(CultureInfo.InvariantCulture, "wk {0}", lead.AgeWeeks),
                         Flavor = lead.Flavor ?? "",
                     };
                     // the coral clock: a deal two weeks from dying of no-decision says so
                     int dies = SimPipeline.WeeksToCold(lead.Heat, decay);
                     if (dies <= 2)
                     {
-                        chip.Note = string.Format(CultureInfo.InvariantCulture, "dies in {0} wk", dies);
+                        chip.Note = string.Format(CultureInfo.InvariantCulture, "dies in {0} wk{1}",
+                            dies, dies == 1 ? "" : "s");
                     }
                     col.Chips.Add(chip);
                 }

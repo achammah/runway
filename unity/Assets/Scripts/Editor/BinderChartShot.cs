@@ -92,10 +92,19 @@ namespace Runway.EditorTools
                 float frac = Mathf.Clamp(pct[i], 0f, 100f) / 100f;
                 if (frac <= 0.01f) continue;
                 float mid = a0 + TwoPi * frac * 0.5f;
-                float lx = cx + Mathf.Cos(mid) * (r + 40f) - 46f;
-                float ly = cy + Mathf.Sin(mid) * (r + 40f) + 8f - 24f * 0.78f;
+                // THE LABEL HANGS OUTWARD, and stays on the sheet. A headless shot
+                // has no type, so the cross marks where the word's LEFT edge lands
+                // once the anchor and the pane clamp have both had their say — the
+                // same two lines binder.gd and DeskCap.PieLabels run.
+                float dx = Mathf.Cos(mid);
+                float anchor = (1f - dx) * 0.5f;
+                float tw = names[i].Length * 11.6f;      // 24px hand, ≈0.48em average
+                float lxRaw = cx + dx * (r + 30f) - tw * anchor;
+                float lx = Mathf.Clamp(lxRaw, -pieX, DeskKit.PaneW - pieX - tw);
+                float ly = cy + Mathf.Sin(mid) * (r + 30f) + 8f - 24f * 0.78f;
                 Cross(px, W, H, lx, ly, 7f, new Color32(0, 160, 255, 255));
-                placed.Add(string.Format("{0} top-left ({1:0.0}, {2:0.0})", names[i], lx, ly));
+                placed.Add(string.Format("{0} left edge ({1:0.0}, {2:0.0}){3}",
+                    names[i], lx, ly, Mathf.Abs(lx - lxRaw) > 0.5f ? "  [clamped to the pane]" : ""));
                 a0 += TwoPi * frac;
             }
             Write(dir, "pie.png", px, W, H);
@@ -136,8 +145,9 @@ namespace Runway.EditorTools
             Say(log, "  wedges         coral " + coral + " · blue " + blue + " · sage " + sage
                      + "   (62/18/20 of " + (Mathf.PI * r * r).ToString("0") + "px)");
             for (int i = 0; i < placed.Count; i++) Say(log, "  label          " + placed[i]);
-            Say(log, "  labels sit at r+40 = " + (r + 40f).ToString("0.0")
-                     + " from the centre, all in ink — NOT stacked under the wheel");
+            Say(log, "  labels hang at r+30 = " + (r + 30f).ToString("0.0")
+                     + " from the centre, anchored OUTWARD (0 at 3 o'clock, 1 at 9) and"
+                     + " clamped to the pane — never written back over the wheel");
             Say(log, "");
         }
 
@@ -318,8 +328,9 @@ namespace Runway.EditorTools
             Say(log, "  sprite         " + w + "x" + h + " (shown 4x in clock.png)");
             Say(log, "  ring px        " + face + " coral · hands " + hands + " ink");
             Say(log, "  mounted        (10, y+3) 30x30 · the line starts at x 48");
-            Say(log, "  ⚠ ▲ ▼ ↻ on this page are still literal characters and ride the"
-                     + " font fallback — that mechanism belongs to another lane");
+            Say(log, "  ⚠ ▲ ▼ ↻ are gone from this page: the hand carries none of them,"
+                     + " so the rows lead with the WORD (helping:/hurting:/standing:) and"
+                     + " the deadline leads with this drawn face, in both engines");
             Say(log, "");
         }
 

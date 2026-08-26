@@ -100,16 +100,21 @@ static func _columns(state: GameState) -> Array:
 				hidden += 1
 				continue
 			var heat := int(lead.get("heat", 0))
+			# THE HEAT WORD WEARS THE RAMP (§1.1, and 05 §12): coral → yell → sage,
+			# ONE word, never the line. Folded into `facts` it was just more ink,
+			# and the whole point of the chip — is this deal warming or dying — went
+			# grey. The kit draws `heat` on its own row in the ramp's colour.
 			var chip := {
 				"name": String(lead.get("name", "a prospect")),
-				"facts": "%d seats · %s · wk %d" % [int(lead.get("seats", 0)),
-					SimPipeline.heat_word(heat), int(lead.get("age_weeks", 0))],
+				"facts_lead": "%d seats" % int(lead.get("seats", 0)),
+				"heat": SimPipeline.heat_word(heat),
+				"facts": "wk %d" % int(lead.get("age_weeks", 0)),
 				"flavor": String(lead.get("flavor", "")),
 			}
 			# the coral clock: a deal two weeks from dying of no-decision says so
 			var dies := SimPipeline.weeks_to_cold(heat, decay)
 			if dies <= 2:
-				chip["note"] = "dies in %d wk" % dies
+				chip["note"] = "dies in %d wk%s" % [dies, "" if dies == 1 else "s"]
 			chips.append(chip)
 		cols.append({"head": stage, "chips": chips, "hidden": hidden})
 	return cols

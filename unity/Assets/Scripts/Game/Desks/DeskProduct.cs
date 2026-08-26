@@ -96,7 +96,8 @@ namespace Runway.Game
             b.L(string.Format(CultureInfo.InvariantCulture,
                 "debt {0} · outage ≈ {1}%/wk · TECH-DEBT INTEREST: −{2}% velocity",
                 Gd.ToInt(st.TechDebt), outage, interest), 390f, 16f, 25f,
-                st.TechDebt >= 40.0 ? DrawnUI.Coral : DrawnUI.WithAlpha(DrawnUI.Ink, 0.75f), 760f);
+                st.TechDebt >= 40.0 && BenchCoral(st) < 2
+                    ? DrawnUI.Coral : DrawnUI.WithAlpha(DrawnUI.Ink, 0.75f), 760f);
             // CAPACITY, by name and in the industry's own unit: one team, so many
             // person-weeks a week, whatever the org happens to be made of.
             b.L(string.Format(CultureInfo.InvariantCulture,
@@ -140,7 +141,7 @@ namespace Runway.Game
             bool standing = separator && bet.Id == SimRoadmap.HARDENING_ID;
             if (standing)
             {
-                b.L("── standing ──", DeskKit.XId, y, 20f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.4f));
+                b.L("—— standing ——", DeskKit.XId, y, 20f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.4f));
                 y += 28f;
             }
             var row = new DeskKit.CardRow
@@ -194,7 +195,7 @@ namespace Runway.Game
             {
                 b.L("rnd money buys weeks, not polish", BarX, y + 12f, 22f, DrawnUI.Coral, 280f);
             }
-            DeskKit.Arm(b, "on:" + id, "point the team →", "sure?", ActX, y + 4f,
+            DeskKit.Arm(b, "on:" + id, "point the team ->", "sure?", ActX, y + 4f,
                 () => SimRoadmap.CommitBet(st, id), 160f, DeskKit.Detail);
         }
 
@@ -249,7 +250,7 @@ namespace Runway.Game
             // THE PRESS OWNS ITS WHOLE BEAT — the review first if anything is open,
             // then the stroke, then the dice (disarms:false keeps the rebuild from
             // freeing the very button the stroke draws under).
-            btn = DeskKit.Word(b, "SHIP IT →", ActX, y + 4f, () =>
+            btn = DeskKit.Word(b, "SHIP IT ->", ActX, y + 4f, () =>
             {
                 b.Desk.Remove("armed");
                 if (PrerollRows(st).Count > 0)
@@ -259,7 +260,7 @@ namespace Runway.Game
                     b.Refresh();
                     return;
                 }
-                DeskKit.SignStroke(b, btn, "SHIP IT →", ActX, y + 4f, () => Fire(b, id));
+                DeskKit.SignStroke(b, btn, "SHIP IT ->", ActX, y + 4f, () => Fire(b, id));
             }, DeskKit.Status, DrawnUI.Ink, 160f, false);
         }
 
@@ -340,7 +341,7 @@ namespace Runway.Game
             b.Desk.TryGetValue("ship", out stored);
             var res = stored as SimRoadmap.ShipResult;
             if (res == null) { b.Desk.Clear(); Draw(b); return; }
-            DeskKit.Back(b, "◂ back to the board", () => b.Desk.Clear());
+            DeskKit.Back(b, "back to the board", () => b.Desk.Clear());
             float y = 90f;
             b.L(res.Event, DeskKit.XId, y, DeskKit.TitleSize,
                 res.Band == "brilliant" || res.Band == "fine" ? DrawnUI.Sage : DrawnUI.Coral,
@@ -421,5 +422,16 @@ namespace Runway.Game
         {
             DeskFactory.DrawBench(b);
         }
+
+        /// SPINE RULING (coral budget): when the bench already spends two coral
+        /// lines, the standing debt meter yields its color.
+        static int BenchCoral(GameState st)
+        {
+            int n = 0;
+            foreach (var r in SimEngine.AttentionItems(st))
+                if (r.Key == "stockout" || r.Key == "overstock" || r.Key == "machine_down") n++;
+            return n;
+        }
+
     }
 }

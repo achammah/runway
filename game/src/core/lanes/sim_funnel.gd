@@ -269,7 +269,7 @@ static func lever_effect(state: GameState, cat: String) -> String:
 				if c >= 0.005:
 					return "fading −7%/wk"
 				return "nothing written yet"
-			return "equity %d%% → ≈%d/wk" % [int(round(c * 100.0)), int(round(reach_content(state)))]
+			return "equity %d%% -> ≈%d/wk" % [int(round(c * 100.0)), int(round(reach_content(state)))]
 		"referrals":
 			if spend_of(state, "referrals") <= 0.0:
 				return "no program"
@@ -549,7 +549,7 @@ static func _receipts(state: GameState, rep: Dictionary, f: Dictionary) -> void:
 		if num(f, "spend_" + k) > 0.0:
 			funded += 1
 	if funded >= 2:
-		lines.append("the mix: ads $%d→%.1f · content $%d→%.1f (equity %d%%) · referrals $%d→%.1f · outbound $%d→%.1f" % [
+		lines.append("the mix: ads $%d->%.1f · content $%d->%.1f (equity %d%%) · referrals $%d->%.1f · outbound $%d->%.1f" % [
 			int(b_ads), num(f, "signed_ads"), int(b_con), num(f, "signed_content"),
 			int(round(num(f, "equity") * 100.0)), int(b_ref), num(f, "signed_referrals"),
 			int(b_ob), num(f, "signed_outbound")])

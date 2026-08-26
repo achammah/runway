@@ -67,6 +67,7 @@ namespace Runway.Game
                 b.L("Traffic seems… decent? Someone signed up on Tuesday. The numbers live in a "
                     + "notebook you lost.", 10f, 110f, 30f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f));
                 b.L("(invest in analytics to see the funnel)", 10f, 210f, 26f, DrawnUI.Coral);
+                Footer(b, st);
                 return;
             }
             int an = SimFunnel.Analytics(st);
@@ -101,6 +102,35 @@ namespace Runway.Game
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f));
             if (an >= 2) Cohort(b, st);
             if (an >= 3) Truth(b, st);
+            Footer(b, st);
+        }
+
+        /// <summary>THE DESK STATES ITS OWN LAWS (2.7). Every other desk ends on its
+        /// lesson and this one used to end on whatever the last analytics gate
+        /// happened to unlock — a page whose bottom edge moved with a purchase. The
+        /// rules line is the funnel's whole pedagogy in one breath; the warning
+        /// outranks it when money is buying nobody, which is the one thing on this
+        /// page a founder must not scroll past.</summary>
+        static void Footer(BinderScreen b, GameState st)
+        {
+            Dictionary<string, double> f = SimFunnel.Funnel(st);
+            string warning = "";
+            for (int i = 0; i < SimFunnel.Mix.Length; i++)
+            {
+                string k = SimFunnel.Mix[i];
+                if (SimFunnel.Num(f, "cac_" + k) <= 0.0
+                    && SimFunnel.Num(f, "spend_" + k) >= SimFunnel.BurnSpend)
+                {
+                    warning = k.ToUpper() + " is BURNING: $"
+                        + GameUi.Money(Gd.ToInt(SimFunnel.Num(f, "spend_" + k)))
+                        + "/wk bought nobody last week — a channel with no CAC has no price";
+                    break;
+                }
+            }
+            DeskKit.Footer(b, "",
+                "the rules of this desk: REACH is what money bought · a LEAD is reach that answered · "
+                + "only closing capacity signs them · CAC is spend ÷ signed, per channel · churn is a leaky bucket, and care patches it",
+                warning);
         }
 
         /// <summary>
@@ -223,10 +253,12 @@ namespace Runway.Game
                 GameUi.Money(Gd.ToInt(th.Tam)), GameUi.Money(Gd.ToInt(believed)),
                 SimFunnel.Num(f, "conv") * 100.0,
                 Gd.RoundToInt(SimFunnel.Num(f, "close_rate") * 100.0),
+                // ONE MEASURED LINE at 1100px: the desk's own law line sits 50px
+                // under this one, and the long form of the tail wrapped into it.
                 best.Length > 0
-                    ? "your cheapest customer comes from " + best.ToUpper()
+                    ? "cheapest customer: " + best.ToUpper()
                     : "no channel has bought a customer yet"),
-                10f, YTruth, 26f, DrawnUI.Sage);
+                10f, YTruth, 26f, DrawnUI.Sage, 1100f);
         }
 
         /// <summary>

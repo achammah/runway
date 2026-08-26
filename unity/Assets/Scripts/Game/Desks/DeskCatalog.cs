@@ -57,6 +57,9 @@ namespace Runway.Game
 
         const float RowPitch = 62f;
         const float RowsY = 84f;
+        /// The last y a row may START at: the growth invitation and the two footer
+        /// lines own everything under it.
+        const float ListBottom = 620f;
         /// The shelf itself never holds more than 8 (SimCatalog.EraOfferCap), so
         /// this cap can only bite on a save that arrived from somewhere else — and
         /// then it says so rather than hiding a row behind nothing.
@@ -150,8 +153,18 @@ namespace Runway.Game
                     DeskKit.XId, 58f, DeskKit.Law, DrawnUI.Coral, 1100f);
                 y += 26f;
             }
-            int shown = Gd.Mini(st.Offers.Count, ListMax);
-            for (int i = 0; i < shown; i++) y = Row(b, y, i, lc, fm);
+            // ROWS ARE MEASURED, AND THEY STOP WHILE THERE IS STILL PAPER. A price
+            // war or a floor-era discount read makes the verdict wrap, which grows
+            // the row; eight grown rows do not fit 760px, so the list closes on
+            // "+N more" rather than writing the last one over the footer.
+            int shown = 0;
+            int room = Gd.Mini(st.Offers.Count, ListMax);
+            for (int i = 0; i < room; i++)
+            {
+                if (y + RowPitch > ListBottom) break;
+                y = Row(b, y, i, lc, fm);
+                shown++;
+            }
             y = DeskKit.More(b, DeskKit.XId, y, st.Offers.Count - shown,
                 "are on the shelf behind these");
             NewOfferWord(b, y + 8f);
@@ -173,7 +186,7 @@ namespace Runway.Game
                 {
                     double cpc = SimEngine.OffersCogsPerCustomer(st);
                     computed = string.Format(CultureInfo.InvariantCulture,
-                        "unit economics: ≈ ${0:0.0} ARPU − ${1:0.0} COGS = ${2:0.0} contribution per customer per week  →  ≈ ${3}/wk at {4} customers",
+                        "unit economics: ≈ ${0:0.0} ARPU − ${1:0.0} COGS = ${2:0.0} contribution per customer per week  ->  ≈ ${3}/wk at {4} customers",
                         arpu, cpc, arpu - cpc, Money((arpu - cpc) * st.Traction), st.Traction);
                 }
                 rules = "COGS bills only when you sell · fixed bills either way · price − variable = contribution margin";
@@ -215,7 +228,11 @@ namespace Runway.Game
             b.L((o.Name ?? "?").ToUpper() + "  ·  " + (o.Unit ?? ""),
                 DeskKit.XId, y, 28f, DrawnUI.Ink, 400f);
             b.L(Receipts(b, o, lc, fm), DeskKit.XId, y + 32f, 20f, Ink(0.55f), 410f);
-            Status(b, o, y, lc, fm);
+            // THE ROW IS AS TALL AS ITS VERDICT. `about fair (−2% vs street)` and
+            // `absurd — ~nobody buys` both wrap the status column, and at a fixed
+            // 62px the second line was written into the next offer's own verdict —
+            // three rows of status that no longer lined up with the three names.
+            float statusH = Status(b, o, y, lc, fm);
             DeskKit.Expand(b, DeskKit.XExpand, y, () =>
             {
                 b.Desk["mode"] = "detail";
@@ -227,7 +244,7 @@ namespace Runway.Game
                 () => PriceStep(o, -1));
             StepBtn(b, "+", DeskKit.XPlus, y, DeskKit.AtMax(steps, cur),
                 () => PriceStep(o, 1));
-            return y + RowPitch;
+            return y + Mathf.Max(RowPitch, statusH + 14f);
         }
 
         /// The receipts under a name. The garage sees one number, because at the
@@ -248,27 +265,30 @@ namespace Runway.Game
         /// THE THREE-STATE STATUS COLUMN: a giveaway the founder chose, a price
         /// nobody named, or the price with its verdict. COLOUR NEVER CARRIES ALONE
         /// — every one of them says it in words first.
-        static void Status(BinderScreen b, Offer o, float y, double lc, double fm)
+        static float Status(BinderScreen b, Offer o, float y, double lc, double fm)
         {
+            string text;
+            Color col = DrawnUI.Ink;
             if (o.Price <= 0.0 && o.PriceSet)
             {
-                b.L("FREE ON PURPOSE — pays in users, not dollars",
-                    DeskKit.XValue, y + 4f, 26f, DrawnUI.Blue, 480f);
-                return;
+                text = "FREE ON PURPOSE — pays in users, not dollars";
+                col = DrawnUI.Blue;
             }
-            if (o.Price <= 0.0)
+            else if (o.Price <= 0.0)
             {
-                b.L("! billing at the going rate $" + Money(o.FairPrice * fm),
-                    DeskKit.XValue, y + 4f, 26f, DrawnUI.Coral, 480f);
-                return;
+                text = "! billing at the going rate $" + Money(o.FairPrice * fm);
+                col = DrawnUI.Coral;
             }
-            bool losing = SimCatalog.NeverPays(o, lc);
-            b.L(string.Format(CultureInfo.InvariantCulture, "${0}  ·  margin ${1}/unit  ·  {2}",
+            else
+            {
+                text = string.Format(CultureInfo.InvariantCulture, "${0}  ·  margin ${1}/unit  ·  {2}",
                     Money(o.Price), Money(SimCatalog.Contribution(o, lc, fm)),
-                    Verdict(b.State, o, o.Price, fm)),
-                DeskKit.XValue, y + 4f, 26f,
-                losing || SimEngine.OfferDemand(o, o.Price, fm) <= 0.25
-                    ? DrawnUI.Coral : DrawnUI.Ink, 480f);
+                    Verdict(b.State, o, o.Price, fm));
+                if (SimCatalog.NeverPays(o, lc) || SimEngine.OfferDemand(o, o.Price, fm) <= 0.25)
+                    col = DrawnUI.Coral;
+            }
+            TextMeshProUGUI l = b.L(text, DeskKit.XValue, y + 4f, 26f, col, 480f);
+            return 4f + Mathf.Max(BinderScreen.Height(l), 34f);
         }
 
         /// What the street makes of this price, in words. Discounting only gets
@@ -518,7 +538,7 @@ namespace Runway.Game
                 Name = "shelf weight",
                 Why = "the slice of a customer's wallet this one claims",
                 Value = string.Format(CultureInfo.InvariantCulture, "{0:0.0}", cur),
-                Effect = string.Format(CultureInfo.InvariantCulture, "shelf: Σ{0:0.0} of {1:0.0} used",
+                Effect = string.Format(CultureInfo.InvariantCulture, "shelf: ∑{0:0.0} of {1:0.0} used",
                     SimCatalog.ShelfWeight(st), SimCatalog.ShelfWeightCap),
                 Bound = cur >= ceiling - 0.001 ? "(the shelf is full)" : "",
                 XVal = DeskKit.XValue, Pitch = 66f,
@@ -539,7 +559,7 @@ namespace Runway.Game
             double variable = sales * SimCatalog.ServedUnitCost(o, lc);
             double fixedWk = o.FixedWk;
             string text = string.Format(CultureInfo.InvariantCulture,
-                "this offer, a week at current volume: ≈{0} sales → ${1} in − ${2} variable − ${3} fixed = ${4} contribution",
+                "this offer, a week at current volume: ≈{0} sales -> ${1} in − ${2} variable − ${3} fixed = ${4} contribution",
                 Gd.RoundToInt(sales), Money(inc), Money(variable), Money(fixedWk),
                 Money(inc - variable - fixedWk));
             TextMeshProUGUI l = b.L(text, DeskKit.XId, y, 22f, DrawnUI.Blue, 1100f);

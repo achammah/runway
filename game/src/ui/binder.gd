@@ -36,6 +36,8 @@ const HAND := "res://assets/fonts/PatrickHand-Regular.ttf"
 ## button row twice when a pitch was re-typed somewhere else.
 const TABS := ["vitals", "the ledger", "the bank", "pricing", "customers",
 	"product", "crew", "cap table", "the street", "threats"]
+## The content pane the desks draw into (docs/design/10-interface-language §1.4).
+const PANE_W := 1160.0
 const TAB_X0 := 24.0
 const TAB_PITCH := 120.0
 const TAB_W := 118.0
@@ -360,12 +362,15 @@ func _tab_vitals() -> void:
 			int(round(SimBank.worst_rate(state) * 100.0))]) if debt_owed > 0 else ""],
 		Vector2(10, 432), 27, Color(INK, 0.8))
 	_label("valuation, if anyone asked: $%s" % _fmt(SimEngine.valuation(state)), Vector2(10, 486), 30)
-	# the hype chart moved here when the roadmap took the product sheet (07)
-	_label("hype:", Vector2(10, 556), 24, Color(INK, 0.6))
-	_spark(_series("hype"), Vector2(10, 580), Vector2(1120, 120), YELL)
+	# THE PRICE LINE OWNS 532–566 AT 27px, so the hype caption cannot start at 556:
+	# it was written over the line above it and its own spark's wash was drawn over
+	# it in turn. 574 clears both, and the spark still lands inside the 760 pane.
 	_label("price ×%.2f  ·  the market is %s" % [state.price_mult,
 		"warm" if state.market_trend > 1.05 else ("cold" if state.market_trend < 0.95 else "even")],
 		Vector2(10, 532), 27, Color(INK, 0.8))
+	# the hype chart moved here when the roadmap took the product sheet (07)
+	_label("hype:", Vector2(10, 574), 24, Color(INK, 0.6))
+	_spark(_series("hype"), Vector2(10, 606), Vector2(1120, 120), YELL)
 
 func _ink_btn(btn: Button) -> void:
 	btn.flat = true
@@ -382,6 +387,9 @@ func _wrap_h(text: String, sz: int, w: float) -> float:
 	return _font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, w, sz).y
 
 # ── tab 9: threats & promises ────────────────────────────────────────────────
+## The drawn clock's footprint — the space the typed ⏰ used to take at 30px type.
+const CLOCK_SIDE := 30.0
+
 func _tab_threats() -> void:
 	_label("threats & promises", Vector2(10, 6), 40)
 	var y := 80.0
@@ -406,23 +414,45 @@ func _tab_threats() -> void:
 		y += 12.0
 	if state.clocks.is_empty() and state.statuses.is_empty() and state.commitments.is_empty():
 		_label("nothing ticking. that never lasts.", Vector2(10, y), 30, Color(INK, 0.6))
+	# THE WORD IS THE MARK. The hand carries no clock, no triangles and no repeat
+	# arrow (U+23F0/25B2/25BC/21BB are all absent from Patrick Hand), so a typed
+	# one was borrowed from whatever face the OS handed over — the clock arrived
+	# as a full-colour emoji on a cream sheet. Each row now leads with the word
+	# that says what kind of row it is, which is also what §3.3 asks for: read the
+	# page in grey and every state is still there.
+	# THE CLOCK IS DRAWN, NOT TYPED — the instrument §2.10 names, and the twin
+	# Unity has always drawn: a wobbled coral face with two ink hands. The typed
+	# ⏰ this line used to carry is absent from the hand, so it came back from the
+	# OS as a full-colour emoji on a cream sheet.
 	for c in state.clocks:
 		var cd: Dictionary = c
-		_label("⏰ in %d wks: %s" % [int(cd.get("weeks_left", 0)), String(cd.get("consequence", ""))],
-			Vector2(10, y), 30, PEN)
+		var face := _Clock.new()
+		face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		face.position = Vector2(10, y + 3.0)
+		face.set_deferred("size", Vector2(CLOCK_SIDE, CLOCK_SIDE))
+		_content.add_child(face)
+		_label("in %d wks: %s" % [int(cd.get("weeks_left", 0)), String(cd.get("consequence", ""))],
+			Vector2(10.0 + CLOCK_SIDE + 8.0, y), 30, PEN)
 		y += 52.0
 	for s in state.statuses:
 		var sd: Dictionary = s
 		var kind := String(SimEngine.STATUS.get(String(sd.get("name", "")), {}).get("kind", "condition"))
-		_label("%s %s — %d wks left" % ["▲" if kind == "buff" else "▼",
+		_label("%s %s — %d wks left" % ["helping:" if kind == "buff" else "hurting:",
 			String(sd.get("name", "")).replace("_", " "), int(sd.get("weeks_left", 0))],
 			Vector2(10, y), 30, SAGE if kind == "buff" else PEN)
 		y += 52.0
 	for cm in state.commitments:
 		var cmd: Dictionary = cm
-		_label("↻ %s: $%d/wk for %d more wks" % [String(cmd.get("name", "")),
+		_label("standing: %s — $%d/wk for %d more wks" % [String(cmd.get("name", "")),
 			int(cmd.get("cash_wk", 0)), int(cmd.get("weeks_left", 0))], Vector2(10, y), 30, BLUE)
 		y += 52.0
+	# THE PAGE STATES ITS OWN LAW, like every desk does (§2.7). Reading order ends
+	# on the lesson: this sheet is the overflow, and the thing it has to teach is
+	# that these rows are ranked and that the desks hold the controls.
+	_label("the rules of this page: everything the company is shouting about, loudest first · "
+		+ "a CLOCK fires on its week · a CONDITION expires on its own · a STANDING cost bills "
+		+ "until it runs out · nothing is fixed here, and every row names the desk that owns it",
+		Vector2(10, 734), 21, Color(INK, 0.5), 1100.0)
 
 # ─────────────────────────────── drawn pieces ───────────────────────────────
 class _Clipboard:
@@ -499,6 +529,28 @@ class _Spark:
 			return "%.0fk" % (v / 1_000.0)
 		return "%.0f" % v
 
+## THE CLOCK (10-interface-language §2.10): a wobbled coral face and two ink
+## hands — the minute hand straight up, the hour hand short and out to four. The
+## silhouette that reads as a clock at 30px and at 14. Transcribed from the twin
+## in DrawnChart.Clock so the two engines draw the same face.
+class _Clock:
+	extends Control
+	func _draw() -> void:
+		var side := minf(size.x, size.y)
+		var c := side * 0.5
+		var r := c - 3.0
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 11
+		var ring := PackedVector2Array()
+		for i in 21:
+			var t := TAU * float(i) / 20.0
+			var rr := r + rng.randf_range(-0.7, 0.7)
+			ring.append(Vector2(c + cos(t) * rr, c + sin(t) * rr))
+		draw_polyline(ring, Binder.PEN, side * 0.085, true)
+		var hw := maxf(side * 0.07, 1.6)
+		draw_line(Vector2(c, c), Vector2(c, c - r * 0.72), Binder.INK, hw, true)
+		draw_line(Vector2(c, c), Vector2(c + r * 0.42, c + r * 0.42), Binder.INK, hw, true)
+
 class _DebtJar:
 	extends Control
 	var fill := 0.3
@@ -534,7 +586,12 @@ class _Pie:
 			draw_colored_polygon(pts, Color(d.get("col", Binder.SAGE), 0.75))
 			a0 = a1
 		draw_arc(c, r, 0, TAU, 64, Binder.INK, 4.0, true)
-		# labels around the wheel
+		# LABELS HUNG ROUND THE WHEEL, never over it. The fixed −46px nudge used to
+		# centre every word on the arc's own point: right at the poles, wrong at
+		# both sides, where a name was written back INTO the pie (the founder's own
+		# slice was the one it always ate). The word hangs OUTWARD now — it starts
+		# at the point when the slice faces right, ends at it when the slice faces
+		# left, and centres only near top and bottom.
 		a0 = -PI / 2.0
 		for s2 in slices:
 			var d2: Dictionary = s2
@@ -542,7 +599,17 @@ class _Pie:
 			if frac2 <= 0.01:
 				continue
 			var mid := a0 + TAU * frac2 * 0.5
-			var p := c + Vector2(cos(mid), sin(mid)) * (r + 40.0)
-			draw_string(font, p - Vector2(46, -8), String(d2.get("label", "")),
+			var dir := Vector2(cos(mid), sin(mid))
+			var p := c + dir * (r + 30.0)
+			var txt := String(d2.get("label", ""))
+			var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 24).x
+			# 0 = the word starts here (slice faces right) … 1 = it ends here
+			var anchor := (1.0 - dir.x) * 0.5
+			# …and it stays ON THE SHEET. A slice pointing hard left hangs its whole
+			# name off the left edge of the pane, which is how "option pool 10%"
+			# lost its first four letters to the margin.
+			var lx: float = clampf(p.x - tw * anchor, -position.x,
+				Binder.PANE_W - position.x - tw)
+			draw_string(font, Vector2(lx, p.y + 8.0), txt,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Binder.INK)
 			a0 += TAU * frac2

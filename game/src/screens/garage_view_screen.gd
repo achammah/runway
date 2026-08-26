@@ -2758,8 +2758,8 @@ func _preroll_card() -> void:
 	if shown < rows.size():
 		_jp.line("…and %d more, on the threats page." % (rows.size() - shown), true)
 	_jp.line("fix them, or roll and live with it.", false, "ending")
-	_jp.icon_row([{"id": "pre:fix", "text": "go fix it"},
-		{"id": "pre:roll", "text": "roll anyway"}], Vector2(240, 42), "ending")
+	_jp.icon_row([{"id": "pre:roll", "text": "roll anyway"},
+		{"id": "pre:fix", "text": "go fix it"}], Vector2(240, 42), "ending")
 	_jp.choice_made.connect(func(id: String) -> void:
 		if id == "pre:fix":
 			_preroll_fix()

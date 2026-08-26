@@ -524,8 +524,8 @@ namespace Runway.Game
                          true);
             _jp.Line("fix them, or roll and live with it.", false, "ending");
             _jp.IconRow(new List<RowItem> {
-                RowItem.Of("pre:fix", "go fix it"),
                 RowItem.Of("pre:roll", "roll anyway"),
+                RowItem.Of("pre:fix", "go fix it"),
             }, new Vector2(240f, 42f), "ending");
             _jp.ChoiceMade += id =>
             {

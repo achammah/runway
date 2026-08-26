@@ -433,6 +433,7 @@ namespace Runway.Game
         public sealed class Chip
         {
             public string Name = "";
+            public string FactsLead = "";  // what sits AHEAD of the heat word
             public string Facts = "";
             public string Heat = "";      // the heat WORD wears its color (10-interface §1.1)
             public string Note = "";      // the coral clock, when one is running
@@ -457,13 +458,20 @@ namespace Runway.Game
             if (columns == null || columns.Count == 0)
                 return Empty(b, XId, y, emptyLine, "");
             float colW = 1120f / columns.Count;
+            // THE RULES ARE COUNTED FIRST. 2.5 allows "headers alone when the chips
+            // make the columns obvious" — and on an empty board there are no chips,
+            // so the pen-ruled columns had nothing to separate and drew themselves
+            // straight through the authored empty line instead.
             int live = 0;
+            for (int ci = 0; ci < columns.Count; ci++) live += columns[ci].Chips.Count;
+            bool ruled = live > 0;
+            live = 0;
             for (int ci = 0; ci < columns.Count; ci++)
             {
                 Column c = columns[ci];
                 float cx = XId + ci * colW;
                 b.L((c.Head ?? "").ToUpper(), cx, y, 26f, DrawnUI.Ink, colW - 16f);
-                if (ci > 0)
+                if (ci > 0 && ruled)
                     DrawnUI.Fill(b.Content, "vrule", Ink(0.25f), cx - 12f, y, 2f, 300f)
                            .raycastTarget = false;
                 float cy = y + 44f;
@@ -473,15 +481,40 @@ namespace Runway.Game
                     Chip ch = c.Chips[i];
                     TextMeshProUGUI nm = b.L(ch.Name, cx, cy, 26f, DrawnUI.Ink, colW - 20f);
                     cy += Mathf.Max(BinderScreen.Height(nm), 30f);
-                    if (!string.IsNullOrEmpty(ch.Facts))
-                    {
-                        b.L(ch.Facts, cx, cy, Detail, Ink(0.7f), colW - 20f);
-                        cy += 28f;
-                    }
+                    // THE FACTS LINE IS ONE ROW WITH ONE COLOURED WORD (1.1's heat
+                    // ramp, 05 §12): `6 seats · warm · wk 1` colours only "warm". A
+                    // chip that folded the heat into Facts printed it in the same
+                    // grey as the seat count and the whole point of the board — is
+                    // this deal warming or dying — went with it; a chip that gave
+                    // heat its own ROW cost the column a third of its height. Three
+                    // measured segments, one line.
+                    string facts = ch.Facts ?? "";
                     if (!string.IsNullOrEmpty(ch.Heat))
                     {
-                        // the heat WORD wears its color (10-interface §1.1; 05 §12)
-                        b.L(ch.Heat, cx, cy, Detail, HeatCol(ch.Heat), colW - 20f);
+                        string lead = ch.FactsLead ?? "";
+                        if (lead.Length == 0 && facts.Length > 0) { lead = facts; facts = ""; }
+                        float fx = cx;
+                        if (lead.Length > 0)
+                        {
+                            TextMeshProUGUI ll = b.L(lead + "  ·  ", fx, cy, Detail, Ink(0.7f),
+                                                     colW - 20f);
+                            ll.ForceMeshUpdate();
+                            fx += ll.textInfo.lineCount > 0
+                                ? ll.textBounds.size.x : 0f;
+                        }
+                        TextMeshProUGUI hl = b.L(ch.Heat, fx, cy, Detail, HeatCol(ch.Heat),
+                                                 colW - 20f);
+                        if (facts.Length > 0)
+                        {
+                            hl.ForceMeshUpdate();
+                            fx += hl.textBounds.size.x;
+                            b.L("  ·  " + facts, fx, cy, Detail, Ink(0.7f), colW - 20f);
+                        }
+                        cy += 28f;
+                    }
+                    else if (facts.Length > 0)
+                    {
+                        b.L(facts, cx, cy, Detail, Ink(0.7f), colW - 20f);
                         cy += 28f;
                     }
                     if (!string.IsNullOrEmpty(ch.Note))

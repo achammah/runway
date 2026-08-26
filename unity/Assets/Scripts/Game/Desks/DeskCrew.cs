@@ -127,7 +127,7 @@ namespace Runway.Game
                 b.Icon("cofd_tech", 10f, y - 4f, 44f);
                 string nm = (cf.Name ?? "").Trim();
                 b.L(string.Format("{0}{1} cofounder · {2:0}% equity · not on payroll",
-                    nm.Length > 0 ? nm + " — " : "", cf.Role,
+                    nm.Length > 0 ? nm + " — " : "", CofRole(cf.Role),
                     cf.EquityDiluted.HasValue ? cf.EquityDiluted.Value : cf.Equity),
                     66f, y + 4f, DeskKit.Row, DrawnUI.Ink, 1000f);
                 y += CoH;
@@ -245,11 +245,22 @@ namespace Runway.Game
             }
             else
             {
+                // THE QUIRK IS THE FIRST THING THAT YIELDS. This row is a fixed
+                // 66px, so a receipts line that wraps writes its second half through
+                // the next person's name — and the person BELOW is the one who
+                // disappears. The facts are measured first; the voice joins them only
+                // if it fits on the one line. (Burnout carries its scale: a bare 51 is
+                // not a number, it is trivia.)
+                string facts = string.Format("burnout {0}/100 · {1} wks here · paid {2:0.00}× fair",
+                    e.Burnout, SimLabor.TenureOf(st, e), salary / Gd.Maxf(fair, 1.0));
                 string quirk = (e.Quirk ?? "").Trim();
-                string tail = quirk.Length > 0 ? " · \"" + quirk + "\"" : "";
-                b.L(string.Format("burnout {0} · {1} wks here · paid {2:0.00}× fair{3}",
-                    e.Burnout, SimLabor.TenureOf(st, e), salary / Gd.Maxf(fair, 1.0), tail),
-                    66f, y + 32f, DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f), 690f);
+                TextMeshProUGUI rl = b.L(facts, 66f, y + 32f, DeskKit.Detail,
+                    DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f), 690f);
+                if (quirk.Length > 0)
+                {
+                    rl.text = facts + " · \"" + quirk + "\"";
+                    if (BinderScreen.Height(rl) > 34f) rl.text = facts;
+                }
             }
             int open = idx;
             DeskKit.Expand(b, DeskKit.XExpand, y, () =>
@@ -258,6 +269,23 @@ namespace Runway.Game
                 b.Desk["row"] = open;
             });
             return y + RowH;
+        }
+
+        /// <summary>THE COFOUNDER'S ROLE, AS A WORD. The draft stores the card the
+        /// founder picked as its INDEX (founder_draft_screen `{"role": i}`), and a
+        /// save carries that index straight through, so the page printed "Nico
+        /// Ferreira — 0 cofounder": a raw engine value, which is the one thing 3.8
+        /// says never prints. The names are the draft's own five cards; a save that
+        /// already holds a word keeps it.</summary>
+        static readonly string[] CofounderRoles = { "sales", "business", "tech", "hustler", "idea" };
+
+        static string CofRole(string role)
+        {
+            string r = (role ?? "").Trim();
+            int i;
+            if (int.TryParse(r, out i))
+                return i >= 0 && i < CofounderRoles.Length ? CofounderRoles[i] : "a";
+            return r.Length > 0 ? r.ToLowerInvariant() : "a";
         }
 
         static string Dept(string role)
@@ -288,7 +316,7 @@ namespace Runway.Game
                 return;
             }
             Employee e = st.Employees[idx];
-            DeskKit.Back(b, "◂ everyone", () =>
+            DeskKit.Back(b, "back to everyone", () =>
             {
                 b.Desk["mode"] = "";
                 b.Desk.Remove("row");
@@ -305,7 +333,9 @@ namespace Runway.Game
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 260f);
             float y = 124f;
             b.L(string.Format(
-                "${0}/wk on the payroll  ·  ${1}/wk FULLY LOADED  ·  {2} wks here  ·  burnout {3}",
+                // BURNOUT CARRIES ITS SCALE, here as on the roster: a bare 51 is not a
+                // number, it is trivia (3.2 — units always attached).
+                "${0}/wk on the payroll  ·  ${1}/wk FULLY LOADED  ·  {2} wks here  ·  burnout {3}/100",
                 GameUi.Money(salary), GameUi.Money(SimLabor.LoadedCost(st, salary)), tenure,
                 e.Burnout), 10f, y, DeskKit.Status, DrawnUI.Blue, 1100f);
             y += 40f;
@@ -315,29 +345,40 @@ namespace Runway.Game
                 SimLabor.AskMult(SimLabor.SkillOf(e)), GameUi.Money(fair)),
                 10f, y, DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.75f), 1100f);
             y += Mathf.Max(BinderScreen.Height(anchor), 28f) + 12f;
-            if (ratio < 0.85)
+            // THE CORAL BUDGET IS TWO WARNING LINES A PANE (1.1), and the footer's
+            // own warning already spends one. Once somebody has ASKED, the
+            // under-market line is the same fact told twice — the ask IS what being
+            // under the band produces — so the ratio yields its coral to the
+            // countdown and stays in the stepper's effect string, where the decision
+            // is actually made.
+            bool asking = e.WantsRaise;
+            if (ratio < 0.85 && !asking)
             {
                 string howLong = e.UnderpaidSince >= 0
                     ? string.Format(" for {0} wks now", Gd.Maxi(st.Week - e.UnderpaidSince, 0)) : "";
                 b.L(string.Format(
                     "you pay {0:0.00}× fair{1} — under 0.85× the asks start, and they compound into resignations.",
                     ratio, howLong), 10f, y, DeskKit.Status, DrawnUI.Coral, 1100f);
+                y += 44f;
             }
-            else
+            else if (!asking)
             {
                 b.L(string.Format(
                     "you pay {0:0.00}× fair — at or above the market band, nobody is counting the days.",
                     ratio), 10f, y, DeskKit.Status, DrawnUI.WithAlpha(DrawnUI.Ink, 0.75f), 1100f);
+                y += 44f;
             }
-            y += 44f;
-            if (e.WantsRaise)
+            if (asking)
             {
                 int left = Gd.Maxi(3 - (st.Week - e.AskedWeek), 0);
                 string clock = left <= 0
                     ? "they resign at the end of this week unless the pay moves."
                     : string.Format("about {0} wk{1} of patience left at this number.",
                         left, left == 1 ? "" : "s");
-                b.L("! they have asked. " + clock, 10f, y, DeskKit.Status, DrawnUI.Coral, 1100f);
+                // THE ONE CORAL LINE CARRIES THE ANCHOR TOO (3.4): what you pay
+                // against fair, and how long that number has left.
+                b.L(string.Format("! they have asked — you pay {0:0.00}× fair. ", ratio) + clock,
+                    10f, y, DeskKit.Status, DrawnUI.Coral, 1100f);
                 y += 44f;
             }
             y += 10f;
@@ -350,7 +391,10 @@ namespace Runway.Game
             y = DeskKit.Stepper(b, y, new DeskKit.StepRow
             {
                 Name = "their salary",
-                Why = "clamped to the market band: 0.5× to 2.5× the going rate for the role",
+                // ONE MEASURED LINE at 480px: the why column is 480 wide and a
+                // second line runs past the stepper's own 78px pitch into the
+                // let-go arm.
+                Why = "clamped to the market band: 0.5× to 2.5× the going rate",
                 Value = "$" + GameUi.Money(salary) + "/wk",
                 Effect = RaiseEffect(salary, fair),
                 AtMin = atMin,
@@ -420,9 +464,15 @@ namespace Runway.Game
                     "the advert against the MARKET RATE decides how many.");
                 y += 6f;
             }
+            // THE CORAL BUDGET, COUNTED (1.1: at most two warning lines a pane;
+            // 2.8: at most two inline marks). The footer's own warning spends one of
+            // the two before the page is drawn, so the role rows are handed what is
+            // left; past it the same sentence is still printed, in ink. Three coral
+            // lines and the founder stops seeing any of them.
+            int coral = Warning(st).Length > 0 ? 1 : 2;
             for (int i = 0; i < st.OpenRoles.Count; i++)
             {
-                y = RoleRow(b, st, st.OpenRoles[i], y);
+                y = RoleRow(b, st, st.OpenRoles[i], y, ref coral);
             }
             y = OpenLine(b, st, y);
             y = RecruiterRow(b, st, y);
@@ -453,7 +503,7 @@ namespace Runway.Game
             DeskKit.Footer(b, HiringComputed(st), Rules(st), Warning(st));
         }
 
-        static float RoleRow(BinderScreen b, GameState st, OpenRole row, float y)
+        static float RoleRow(BinderScreen b, GameState st, OpenRole row, float y, ref int coral)
         {
             string role = row.Role ?? "engineer";
             int market = SimLabor.MarketSalary(role, st.Era);
@@ -486,17 +536,26 @@ namespace Runway.Game
                 // game for a week of silence: below 0.8× the market rate the
                 // applicant flow is ZERO.
                 b.L(string.Format("{0:0.00}× market — under 0.8× nobody applies at all.", ratio),
-                    10f, y + 34f, DeskKit.Detail, DrawnUI.Coral, 460f);
+                    10f, y + 34f, DeskKit.Detail,
+                    coral > 0 ? DrawnUI.Coral : DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 460f);
+                coral--;
             }
             else
             {
                 b.L("the advert against the MARKET RATE decides who answers",
                     10f, y + 34f, DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 460f);
             }
-            DeskKit.Word(b, "close the role", 480f, y + 24f,
+            // AT x480 THIS WORD SAT INSIDE THE ADVERT'S OWN VALUE COLUMN, one line
+            // under the coral number, so the row read as a price with a caption
+            // rather than a number with a control (1.4's column grammar: value at
+            // 520, effect at 688, steppers at 1000/1064 — every band across the row
+            // is already spoken for). The one free paper is under the row's own
+            // words, and the pitch grows to hold it rather than borrowing the next
+            // row's.
+            DeskKit.Word(b, "close the role", 10f, y + 62f,
                 () => SimLabor.CloseRole(st, role), DeskKit.Detail,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f), 190f);
-            y += 92f;
+            y += 112f;
             if (SimLabor.SeatCap(st.Era) > 1)
             {
                 // HQ: one role row is a requisition batch, so the arrivals keep
@@ -539,7 +598,9 @@ namespace Runway.Game
                 if (!SimLabor.RoleUnlocked(r, st.Era)) continue;
                 if (SimLabor.OpenRoleRow(st, r) != null) continue;
                 string role = r;
-                DeskKit.Word(b, role, x, y - 8f,
+                // −5, not −8: a word button centres its text in 46px, so at −8 the
+                // role names sat five pixels above the "+ open:" they answer to.
+                DeskKit.Word(b, role, x, y - 5f,
                     () => SimLabor.OpenRoleAt(st, role, SimLabor.MarketSalary(role, st.Era)),
                     DeskKit.Status, DrawnUI.Ink, 160f);
                 x += 168f;

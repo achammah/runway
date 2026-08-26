@@ -86,6 +86,11 @@ static func _banner(b, state: GameState, y: float) -> float:
 const FULL_WK := 88.0
 const TIGHT_WK := 38.0
 const WRAP_WK := 124.0
+## THE "+N MORE" LINE IS PART OF THE BUDGET. The room check used to reserve only
+## the next ENTRY, so on the crowded page (an hq third rival, a live shock banner)
+## the closing line was drawn at the y that had just failed the test — off the
+## bottom of the pane and onto the clipboard's shadow.
+const MORE_WK := 34.0
 
 ## THE MONEY, still the founder's phone book. Full entries while the page has
 ## room; one line each when it does not — the street has to stay one page at
@@ -94,8 +99,11 @@ static func _investors(b, state: GameState, y: float) -> void:
 	var tight := y + float(state.investors.size()) * FULL_WK > DeskKit.PANE_H
 	var shown := 0
 	for inv in state.investors:
-		if shown >= DeskKit.LIST_CAP or y + (TIGHT_WK if tight else WRAP_WK) > DeskKit.PANE_H:
-			DeskKit.more(b, Vector2(DeskKit.X_ID, y), state.investors.size() - shown, "are in the book")
+		if shown >= DeskKit.LIST_CAP \
+				or y + (TIGHT_WK if tight else WRAP_WK) + MORE_WK > DeskKit.PANE_H:
+			if y + MORE_WK <= DeskKit.PANE_H:
+				DeskKit.more(b, Vector2(DeskKit.X_ID, y), state.investors.size() - shown,
+					"are in the book")
 			return
 		var d: Dictionary = inv
 		b.label("%s (%s)" % [String(d.get("name", "?")), String(d.get("archetype", ""))],

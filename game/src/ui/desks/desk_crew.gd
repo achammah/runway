@@ -83,7 +83,7 @@ static func _page_roster(b) -> void:
 		b.icon("cofd_tech", Vector2(10.0, y - 4.0), 44.0)
 		var cf_name := String(cfd.get("name", "")).strip_edges()
 		b.label("%s%s cofounder · %.0f%% equity · not on payroll" % [
-			(cf_name + " — ") if cf_name != "" else "", str(cfd.get("role", "?")),
+			(cf_name + " — ") if cf_name != "" else "", _cof_role(cfd.get("role", "")),
 			float(cfd.get("equity_diluted", cfd.get("equity", 0)))],
 			Vector2(66.0, y + 4.0), DeskKit.ROW, DeskKit.INK, 1000.0)
 		y += CO_H
@@ -183,15 +183,38 @@ static func _roster_row(b, state: GameState, idx: int, y: float) -> float:
 			SimLabor.grant_raise(state, idx, int(round(float(salary) * 1.1))),
 			DeskKit.STATUS, DeskKit.INK, 140.0)
 	else:
+		# THE QUIRK IS THE FIRST THING THAT YIELDS. This row is a fixed 66px, so a
+		# receipts line that wraps writes its second half through the next person's
+		# name — and the person BELOW is the one who disappears. The facts are
+		# measured first; the voice joins them only if it fits on the one line.
+		# (Burnout carries its scale: a bare 51 is not a number, it is trivia.)
+		var facts := "burnout %d/100 · %d wks here · paid %.2f× fair" % [int(e.get("burnout", 0)),
+			SimLabor.tenure_of(state, e), float(salary) / maxf(float(fair), 1.0)]
 		var quirk := String(e.get("quirk", "")).strip_edges()
-		var tail := " · \"%s\"" % quirk if quirk != "" else ""
-		b.label("burnout %d · %d wks here · paid %.2f× fair%s" % [int(e.get("burnout", 0)),
-			SimLabor.tenure_of(state, e), float(salary) / maxf(float(fair), 1.0), tail],
-			Vector2(66.0, y + 32.0), DeskKit.DETAIL, Color(DeskKit.INK, 0.45), 690.0)
+		if quirk != "":
+			var whole := facts + " · \"%s\"" % quirk
+			if b.wrap_h(whole, DeskKit.DETAIL, 690.0) <= 34.0:
+				facts = whole
+		b.label(facts, Vector2(66.0, y + 32.0), DeskKit.DETAIL, Color(DeskKit.INK, 0.45), 690.0)
 	DeskKit.expand(b, Vector2(DeskKit.X_EXPAND, y), func() -> void:
 		b.desk["mode"] = "person"
 		b.desk["row"] = idx)
 	return y + ROW_H
+
+## THE COFOUNDER'S ROLE, AS A WORD. The draft stores the card the founder picked
+## as its INDEX (founder_draft_screen `{"role": i}`), so a straight `str()` put
+## "Nico Ferreira — 0 cofounder" on the page: a raw engine value, which is the one
+## thing §3.8 says never prints. The names are the draft's own five cards; a save
+## that already holds a string keeps it.
+const COFOUNDER_ROLES := ["sales", "business", "tech", "hustler", "idea"]
+
+static func _cof_role(role) -> String:
+	if role is String and String(role).strip_edges() != "":
+		return String(role).to_lower()
+	var i := int(role) if (role is int or role is float) else -1
+	if i >= 0 and i < COFOUNDER_ROLES.size():
+		return String(COFOUNDER_ROLES[i])
+	return "a"
 
 static func _dept(role: String) -> String:
 	match role:
@@ -214,7 +237,7 @@ static func _page_person(b) -> void:
 		_page_roster(b)
 		return
 	var e: Dictionary = state.employees[idx]
-	DeskKit.back(b, "◂ everyone", func() -> void:
+	DeskKit.back(b, "back to everyone", func() -> void:
 		b.desk["mode"] = ""
 		b.desk.erase("row"))
 	var salary := int(e.get("salary", 0))
@@ -228,7 +251,9 @@ static func _page_person(b) -> void:
 	b.label("skill %d of 5" % SimLabor.skill_of(e), Vector2(870.0, 70.0),
 		DeskKit.DETAIL, Color(DeskKit.INK, 0.6), 260.0)
 	var y := 124.0
-	b.label("$%s/wk on the payroll  ·  $%s/wk FULLY LOADED  ·  %d wks here  ·  burnout %d" % [
+	# BURNOUT CARRIES ITS SCALE, here as on the roster: a bare 51 is not a number,
+	# it is trivia (§3.2 — units always attached).
+	b.label("$%s/wk on the payroll  ·  $%s/wk FULLY LOADED  ·  %d wks here  ·  burnout %d/100" % [
 		b.fmt(salary), b.fmt(SimLabor.loaded_cost(state, salary)), tenure,
 		int(e.get("burnout", 0))], Vector2(10.0, y), DeskKit.STATUS, DeskKit.BLUE, 1100.0)
 	y += 40.0
@@ -237,21 +262,31 @@ static func _page_person(b) -> void:
 		float(SimLabor.SKILL_ASK.get(SimLabor.skill_of(e), 1.0)), b.fmt(fair)]
 	b.label(anchor, Vector2(10.0, y), DeskKit.DETAIL, Color(DeskKit.INK, 0.75), 1100.0)
 	y += maxf(b.wrap_h(anchor, DeskKit.DETAIL, 1100.0), 28.0) + 12.0
-	if ratio < 0.85:
+	# THE CORAL BUDGET IS TWO WARNING LINES A PANE (§1.1), and the footer's own
+	# warning already spends one. Once somebody has ASKED, the under-market line is
+	# the same fact told twice — the ask IS what being under the band produces —
+	# so the ratio yields its coral to the countdown and stays in the stepper's
+	# effect string, where the decision is actually made.
+	var asking := bool(e.get("wants_raise", false))
+	if ratio < 0.85 and not asking:
 		var since := int(e.get("underpaid_since", -1))
 		b.label("you pay %.2f× fair%s — under 0.85× the asks start, and they compound into resignations."
 			% [ratio, (" for %d wks now" % maxi(state.week - since, 0)) if since >= 0 else ""],
 			Vector2(10.0, y), DeskKit.STATUS, DeskKit.PEN, 1100.0)
-	else:
+		y += 44.0
+	elif not asking:
 		b.label("you pay %.2f× fair — at or above the market band, nobody is counting the days."
 			% ratio, Vector2(10.0, y), DeskKit.STATUS, Color(DeskKit.INK, 0.75), 1100.0)
-	y += 44.0
-	if bool(e.get("wants_raise", false)):
+		y += 44.0
+	if asking:
 		var asked := int(e.get("asked_week", state.week))
 		var left := maxi(3 - (state.week - asked), 0)
-		b.label("! they have asked. %s" % ("they resign at the end of this week unless the pay moves."
+		# THE ONE CORAL LINE CARRIES THE ANCHOR TOO (§3.4): what you pay against
+		# fair, and how long that number has left.
+		b.label("! they have asked — you pay %.2f× fair. %s" % [ratio,
+			"they resign at the end of this week unless the pay moves."
 			if left <= 0 else "about %d wk%s of patience left at this number."
-			% [left, "" if left == 1 else "s"]),
+			% [left, "" if left == 1 else "s"]],
 			Vector2(10.0, y), DeskKit.STATUS, DeskKit.PEN, 1100.0)
 		y += 44.0
 	y += 10.0
@@ -260,7 +295,9 @@ static func _page_person(b) -> void:
 	var steps := SimLabor.salary_steps(market, 2.5)
 	y = DeskKit.stepper(b, y, {
 		"name": "their salary",
-		"why": "clamped to the market band: 0.5× to 2.5× the going rate for the role",
+		# ONE MEASURED LINE at 480px: the why column is 480 wide and a second line
+		# runs past the stepper's own 78px pitch into the let-go arm.
+		"why": "clamped to the market band: 0.5× to 2.5× the going rate",
 		"value": "$%s/wk" % b.fmt(salary),
 		"effect": _raise_effect(salary, fair),
 		"at_min": DeskKit.at_min(steps, float(salary)),
@@ -324,8 +361,14 @@ static func _page_hiring(b) -> void:
 			"nobody is hiring. open a role and the street starts sending people —",
 			"the advert against the MARKET RATE decides how many.")
 		y += 6.0
+	# THE CORAL BUDGET, COUNTED (§1.1: at most two warning lines a pane, §2.8: at
+	# most two inline marks). The footer's own warning spends one of the two before
+	# the page is drawn, so the role rows are handed what is left; past it the same
+	# sentence is still printed, in ink. Three coral lines and the founder stops
+	# seeing any of them.
+	var budget := {"coral": 2 - (1 if _warning(b, state) != "" else 0)}
 	for row in state.open_roles:
-		y = _role_row(b, state, row as Dictionary, y)
+		y = _role_row(b, state, row as Dictionary, y, budget)
 	y = _open_line(b, state, y)
 	y = _recruiter_row(b, state, y)
 	y = DeskKit.rule(b, y + 2.0)
@@ -347,7 +390,8 @@ static func _page_hiring(b) -> void:
 	DeskKit.footer(b, {"computed": _hiring_computed(b, state), "rules": _rules(state),
 		"warning": _warning(b, state)})
 
-static func _role_row(b, state: GameState, row: Dictionary, y: float) -> float:
+static func _role_row(b, state: GameState, row: Dictionary, y: float,
+		budget: Dictionary = {}) -> float:
 	var role := String(row.get("role", "engineer"))
 	var market := SimLabor.market_salary(role, state.era)
 	var offered := int(row.get("offered_salary", market))
@@ -372,14 +416,23 @@ static func _role_row(b, state: GameState, row: Dictionary, y: float) -> float:
 	if thin:
 		# THE ENGINE'S OWN READ, printed before the player blames the game for a
 		# week of silence: below 0.8× the market rate the applicant flow is ZERO.
+		var left := int(budget.get("coral", 2))
+		budget["coral"] = left - 1
 		b.label("%.2f× market — under 0.8× nobody applies at all." % ratio,
-			Vector2(10.0, y + 34.0), DeskKit.DETAIL, DeskKit.PEN, 460.0)
+			Vector2(10.0, y + 34.0), DeskKit.DETAIL,
+			DeskKit.PEN if left > 0 else Color(DeskKit.INK, 0.6), 460.0)
 	else:
 		b.label("the advert against the MARKET RATE decides who answers",
 			Vector2(10.0, y + 34.0), DeskKit.DETAIL, Color(DeskKit.INK, 0.6), 460.0)
-	DeskKit.word(b, "close the role", Vector2(480.0, y + 24.0), func() -> void:
+	# AT x480 THIS WORD SAT INSIDE THE ADVERT'S OWN VALUE COLUMN, one line under
+	# the coral number, so the row read as a price with a caption rather than a
+	# number with a control (§1.4's column grammar: value at 520, effect at 688,
+	# steppers at 1000/1064 — every band across the row is already spoken for).
+	# The one free paper is under the row's own words, and the pitch grows to hold
+	# it rather than borrowing the next row's.
+	DeskKit.word(b, "close the role", Vector2(10.0, y + 62.0), func() -> void:
 		SimLabor.close_role(state, role), DeskKit.DETAIL, Color(DeskKit.INK, 0.7), 190.0)
-	y += 92.0
+	y += 112.0
 	if SimLabor.seat_cap(state.era) > 1:
 		# HQ: one role row is a requisition batch, so the arrivals keep coming
 		# until the seats are filled.
@@ -412,7 +465,9 @@ static func _open_line(b, state: GameState, y: float) -> float:
 			continue
 		if not SimLabor.open_role_row(state, r).is_empty():
 			continue
-		DeskKit.word(b, r, Vector2(x, y - 8.0), func() -> void:
+		# −5, not −8: a word button centres its text in 46px, so at −8 the role names
+		# sat five pixels above the "+ open:" they answer to.
+		DeskKit.word(b, r, Vector2(x, y - 5.0), func() -> void:
 			SimLabor.open_role(state, r, SimLabor.market_salary(r, state.era)),
 			DeskKit.STATUS, DeskKit.INK, 160.0)
 		x += 168.0

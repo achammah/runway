@@ -37,6 +37,8 @@ const Y_FORECAST := 646.0
 const X_TOGGLE := 860.0
 const X_REPAY := 960.0
 const X_SPARK := 600.0
+## THE BOOKS' LAST LINE never crosses into the teaching footer at 700.
+const Y_BOTTOM_MAX := 654.0
 
 ## Draw the desk. `b` is the Binder itself (untyped to keep the two files free
 ## of a cyclic class dependency).
@@ -70,7 +72,10 @@ static func _draw_desk(b, state: GameState) -> void:
 		y = _quote_block(b, state)
 	y = _notes_block(b, state, y)
 	if state.era_index() >= 1:
-		_forecast_line(b, state)
+		# THE FORECAST IS A FLOOR, NOT A SLOT. Y_FORECAST is where it sits on an
+		# ordinary sheet; on a floor-era sheet the venture block and a fourth filed
+		# note push the notes down, and a fixed slot is a line drawn through them.
+		_forecast_line(b, state, maxf(Y_FORECAST, y + 8.0))
 	_desk_footer(b, state)
 
 ## NO BANK ANSWERS A GARAGE (docs/design/00-spine.md §9). The gate is TAUGHT,
@@ -109,6 +114,9 @@ static func _quote_block(b, state: GameState) -> float:
 	var term := int(b.desk.get("term", int(terms[mini(1, terms.size() - 1)])))
 	if not terms.has(term):
 		term = int(terms[0])
+	# where the block ACTUALLY ended: the venture note is the one line below the
+	# sign row, and the rule under it follows the ink rather than a constant
+	var block_end := Y_RULE2
 	var locked := SimBank.credit_locked(state)
 	var no_line := headroom < SimBank.MIN_DRAW
 	var dead := locked or no_line
@@ -134,8 +142,10 @@ static func _quote_block(b, state: GameState) -> float:
 		"on_minus": borrow_down,
 		"on_plus": borrow_up,
 	})
+	# THE WHY IS ONE MEASURED LINE. This sheet is a fixed grid (Y_* above), so a
+	# why that wraps writes its second line straight through the preview.
 	DeskKit.stepper(b, Y_TERM, {
-		"name": "over", "why": "the term — longer weeks, smaller payment, more interest in total",
+		"name": "over", "why": "the term — longer weeks, smaller payment, more interest",
 		"value": "%d weeks" % term,
 		"effect": ("%d payments" % term) if not dead else "",
 		"disabled": dead, "pitch": 62.0,
@@ -152,7 +162,10 @@ static func _quote_block(b, state: GameState) -> float:
 		b.label("no terms to preview until the bank answers.",
 			Vector2(DeskKit.X_ID, Y_PREVIEW), DeskKit.DETAIL, Color(Binder.INK, 0.5), 1100.0)
 	else:
-		b.label("→ $%s/wk  ·  ≈$%s all-in ($%s interest — that is what the time costs)" % [
+		# THE ARITHMETIC MARK IS THE HOUSE'S OWN `=` (the blue sum lines everywhere
+		# else on this desk). The hand carries no arrow at all, so a typed one
+		# arrives in a borrowed face here and as a box on a machine without it.
+		b.label("= $%s/wk  ·  ≈$%s all-in ($%s interest — that is what the time costs)" % [
 			b.fmt(pay), b.fmt(all_in), b.fmt(maxi(all_in - borrow, 0))],
 			Vector2(DeskKit.X_ID, Y_PREVIEW), DeskKit.STATUS, Binder.BLUE, 1100.0)
 	if locked:
@@ -182,10 +195,16 @@ static func _quote_block(b, state: GameState) -> float:
 				DeskKit.sign_stroke(b, vbtn, func() -> void:
 					SimBank.sign_note(state, "venture", vcap, SimBank.TERMS_VENTURE[0])
 					b.refresh()))
-			b.label("$%s at %.1f%%/wk, interest-only, balloon in %d wks · costs %.2f%% of the company in warrants" % [
+			# ONE MEASURED LINE at 690px, clear of the 46px word above it — and the
+			# rule below moves down to meet it. Wrapped and fixed, this line was
+			# drawn through both the button and the divider, and its tail landed in
+			# WHAT YOU OWE.
+			var vy := Y_SIGN + 48.0
+			b.label("$%s at %.1f%%/wk · interest-only · balloon in %d wks · %.2f%% in warrants" % [
 				b.fmt(vcap), vrate * 100.0, int(SimBank.TERMS_VENTURE[0]), SimBank.WARRANT_PCT],
-				Vector2(460.0, Y_SIGN + 40.0), DeskKit.LAW, Color(Binder.INK, 0.5), 690.0)
-	return DeskKit.rule(b, Y_RULE2)
+				Vector2(460.0, vy), DeskKit.LAW, Color(Binder.INK, 0.5), 690.0)
+			block_end = maxf(block_end, vy + 34.0)
+	return DeskKit.rule(b, block_end)
 
 ## THE FILED LETTERS. Each note carries what it costs, what is left, and how
 ## long — the cliff visible per note, never as one blended debt number.
@@ -260,9 +279,10 @@ static func _notes_block(b, state: GameState, y: float) -> float:
 	return DeskKit.more(b, Vector2(DeskKit.X_ID, y + 2.0), live - shown, "notes are filed behind these")
 
 ## THE FP&A STRIP: what the plan does to the bank account, before surprises.
-static func _forecast_line(b, state: GameState) -> void:
+static func _forecast_line(b, state: GameState, y: float) -> void:
 	var rows: Array = SimBank.forecast_cash(state, SimBank.FORECAST_WEEKS)
-	if rows.is_empty():
+	# the teaching footer owns 700 down: a forecast with no room yields to it
+	if rows.is_empty() or y + 34.0 > DeskKit.FOOTER_Y - 6.0:
 		return
 	var parts: Array = []
 	var below := false
@@ -272,8 +292,8 @@ static func _forecast_line(b, state: GameState) -> void:
 			below = true
 		parts.append(("−$%.1fk" % (absf(float(c)) / 1000.0)) if c < 0 else ("$%.1fk" % (float(c) / 1000.0)))
 	b.label("the next %d weeks, as planned: %s (before surprises)" % [
-		rows.size(), " → ".join(PackedStringArray(parts))],
-		Vector2(DeskKit.X_ID, Y_FORECAST), DeskKit.STATUS,
+		rows.size(), " -> ".join(PackedStringArray(parts))],
+		Vector2(DeskKit.X_ID, y), DeskKit.STATUS,
 		Binder.PEN if below else Color(Binder.INK, 0.8), 1100.0)
 
 ## THE DESK STATES ITS OWN LAWS, and the warning outranks them when one fires.
@@ -347,9 +367,14 @@ static func _draw_books(b, state: GameState) -> void:
 		b.fmt(int(pnl.get("interest", 0))), b.fmt(principal), b.fmt(int(pnl.get("tax", 0)))]], Binder.PEN)
 	var net := int(pnl.get("net", 0))
 	var be := SimBank.break_even_customers(state)
+	# THE BOTTOM LINE GETS THE WHOLE WIDTH and a ceiling. Nine lanes can all bill
+	# in one week: the groups above are a measured cursor, so on a busy week `y`
+	# arrives near the footer, and at 560px this line wrapped into the desk laws.
+	# The right column ends well above Y_BOTTOM_MAX, so the full width is free.
 	b.label("THE BOTTOM LINE: %s$%s a week  ·  %s" % ["+" if net >= 0 else "−", b.fmt(absi(net)),
 		("break-even %d customers (%d now)" % [be, state.traction]) if be > 0 else "no count breaks even"],
-		Vector2(DeskKit.X_ID, y + 4.0), DeskKit.ROW, Binder.SAGE if net >= 0 else Binder.PEN, 560.0)
+		Vector2(DeskKit.X_ID, minf(y + 4.0, Y_BOTTOM_MAX)), DeskKit.ROW,
+		Binder.SAGE if net >= 0 else Binder.PEN, 1100.0)
 	# ── the right column: the two series the bank itself prices you on
 	var sy := DeskKit.spark(b, _net_series(state), Vector2(X_SPARK, Y_QUOTE),
 		Vector2(540.0, 64.0), Binder.SAGE, "net, weekly:")
@@ -361,28 +386,35 @@ static func _draw_books(b, state: GameState) -> void:
 	var ebt := int(pnl.get("revenue", 0)) - int(pnl.get("burn", 0)) \
 			- int(pnl.get("liabilities_wk", 0)) - int(pnl.get("interest", 0))
 	if state.era_index() < SimBank.TAX_ERA:
-		b.label("nothing yet — profit is taxed from the office era up. Cash-basis and below the radar until then.",
-			Vector2(X_SPARK, sy), DeskKit.DETAIL, Color(Binder.INK, 0.7), 540.0)
+		sy = _tax_line(b, sy, "nothing yet — profit is taxed from the office era up. Cash-basis and below the radar until then.")
 	else:
-		b.label("20%% of EBT — earnings after interest, before tax. Last week's EBT: $%s → tax $%s" % [
-			b.fmt(ebt), b.fmt(int(pnl.get("tax", 0)))],
-			Vector2(X_SPARK, sy), DeskKit.DETAIL, Color(Binder.INK, 0.7), 540.0)
-	sy += 56.0
+		# SIGN OUTSIDE THE DOLLAR (10-interface-language §1.3): a loss-making week
+		# reads −$13,804, never $-13,804.
+		sy = _tax_line(b, sy, "20%% of EBT — earnings after interest, before tax. Last week's EBT: %s -> tax $%s" % [
+			_signed(b, ebt), b.fmt(int(pnl.get("tax", 0)))])
 	if state.tax_loss_carry > 0:
-		b.label("losses carried forward: $%s — they shelter the next profits before the taxman sees them" % b.fmt(state.tax_loss_carry),
-			Vector2(X_SPARK, sy), DeskKit.DETAIL, Color(Binder.INK, 0.7), 540.0)
-		sy += 56.0
+		sy = _tax_line(b, sy, "losses carried forward: $%s — they shelter the next profits before the taxman sees them" % b.fmt(state.tax_loss_carry))
 	if state.receivables.size() > 0:
 		var owed := 0
 		for r in state.receivables:
 			owed += int((r as Dictionary).get("cash_wk", 0))
-		b.label("net-30 float: $%s invoiced and not yet in the bank — profit is not cash" % b.fmt(owed),
-			Vector2(X_SPARK, sy), DeskKit.DETAIL, Color(Binder.INK, 0.7), 540.0)
+		sy = _tax_line(b, sy, "net-30 float: $%s invoiced and not yet in the bank — profit is not cash" % b.fmt(owed))
 	DeskKit.footer(b, {
 		"computed": "burn is OPERATING spend only · interest and tax sit outside it, which is why the bottom line is smaller than in − out",
 		"rules": "read it top to bottom: what came in, what serving cost, what the lights cost, "
 			+ "what you chose to spend, what nobody planned, what the bank and the state took",
 	})
+
+## ONE LINE OF THE TAXMAN BLOCK, cursor-advanced by MEASURED height. A fixed
+## 56px step wrote the loss-carryforward line straight through the second line of
+## the EBT sentence the week the numbers got long enough to wrap.
+static func _tax_line(b, sy: float, text: String) -> float:
+	b.label(text, Vector2(X_SPARK, sy), DeskKit.DETAIL, Color(Binder.INK, 0.7), 540.0)
+	return sy + maxf(b.wrap_h(text, DeskKit.DETAIL, 540.0), 28.0) + 14.0
+
+## Money with the sign OUTSIDE the dollar (§1.3): −$300, never $-300.
+static func _signed(b, v: int) -> String:
+	return ("−$%s" % b.fmt(absi(v))) if v < 0 else ("$%s" % b.fmt(v))
 
 ## One captioned group of the statement. Returns the y it ended at.
 static func _group(b, y: float, caption: String, lines: Array, col: Color) -> float:

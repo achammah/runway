@@ -325,7 +325,7 @@ namespace Runway.Core
                     double c = state.ContentEquity;
                     if (SpendOf(state, "content") <= 0.0)
                         return c >= 0.005 ? "fading −7%/wk" : "nothing written yet";
-                    return string.Format(CultureInfo.InvariantCulture, "equity {0}% → ~{1}/wk",
+                    return string.Format(CultureInfo.InvariantCulture, "equity {0}% -> ~{1}/wk",
                         Gd.RoundToInt(c * 100.0), Gd.RoundToInt(ReachContent(state)));
                 }
                 case "referrals":
@@ -650,7 +650,7 @@ namespace Runway.Core
             if (funded >= 2)
             {
                 lines.Add(string.Format(CultureInfo.InvariantCulture,
-                    "the mix: ads ${0}→{1:0.0} · content ${2}→{3:0.0} (equity {4}%) · referrals ${5}→{6:0.0} · outbound ${7}→{8:0.0}",
+                    "the mix: ads ${0}->{1:0.0} · content ${2}->{3:0.0} (equity {4}%) · referrals ${5}->{6:0.0} · outbound ${7}->{8:0.0}",
                     (int)bAds, Num(f, "signed_ads"), (int)bCon, Num(f, "signed_content"),
                     Gd.RoundToInt(Num(f, "equity") * 100.0), (int)bRef, Num(f, "signed_referrals"),
                     (int)bOb, Num(f, "signed_outbound")));

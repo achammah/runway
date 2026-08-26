@@ -40,6 +40,9 @@ const WEIGHT_STEPS := [0.2, 0.4, 0.6, 0.8, 1.0, 1.3, 1.6, 2.0, 2.5, 3.0]
 
 const ROW_PITCH := 62.0
 const ROWS_Y := 84.0
+## The last y a row may START at: the growth invitation and the two footer lines
+## own everything under it.
+const LIST_BOTTOM := 620.0
 ## The shelf itself never holds more than 8 (SimCatalog.ERA_OFFER_CAP), so this
 ## cap can only bite on a save that arrived from somewhere else — and then it
 ## says so rather than hiding a row behind nothing.
@@ -98,9 +101,16 @@ static func _list(b) -> void:
 		b.label("price war: the street's reference is %d%% down — the same price reads dearer this week" % war,
 			Vector2(DeskKit.X_ID, 58.0), DeskKit.LAW, DeskKit.PEN, 1100.0)
 		y += 26.0
-	var shown := mini(state.offers.size(), LIST_MAX)
-	for i in shown:
+	# ROWS ARE MEASURED, AND THEY STOP WHILE THERE IS STILL PAPER. A price war or
+	# a floor-era discount read makes the verdict wrap, which grows the row; eight
+	# grown rows do not fit 760px, so the list closes on "+N more" rather than
+	# writing the last one over the footer.
+	var shown := 0
+	for i in mini(state.offers.size(), LIST_MAX):
+		if y + ROW_PITCH > LIST_BOTTOM:
+			break
 		y = _row(b, y, i, lc, fm)
+		shown += 1
 	y = DeskKit.more(b, Vector2(DeskKit.X_ID, y), state.offers.size() - shown,
 		"are on the shelf behind these")
 	_new_offer_word(b, y + 8.0)
@@ -117,7 +127,7 @@ static func _list_footer(b, lc: float, fm: float) -> void:
 		var arpu := SimEngine.offers_arpu(state)
 		if arpu >= 0.0:
 			var cpc := SimEngine.offers_cogs_per_customer(state)
-			computed = "unit economics: ≈ $%.1f ARPU − $%.1f COGS = $%.1f contribution per customer per week  →  ≈ $%s/wk at %d customers" % [
+			computed = "unit economics: ≈ $%.1f ARPU − $%.1f COGS = $%.1f contribution per customer per week  ->  ≈ $%s/wk at %d customers" % [
 				arpu, cpc, arpu - cpc, b.fmt(int(round((arpu - cpc) * float(state.traction)))),
 				state.traction]
 		rules = "COGS bills only when you sell · fixed bills either way · price − variable = contribution margin"
@@ -151,7 +161,11 @@ static func _row(b, y: float, i: int, lc: float, fm: float) -> float:
 		Vector2(DeskKit.X_ID, y), 28, DeskKit.INK, 400.0)
 	b.label(_receipts(b, o, lc, fm), Vector2(DeskKit.X_ID, y + 32.0), 20,
 		Color(DeskKit.INK, 0.55), 410.0)
-	_status(b, o, y, lc, fm)
+	# THE ROW IS AS TALL AS ITS VERDICT. `about fair (−2% vs street)` and
+	# `absurd — ~nobody buys` both wrap the status column, and at a fixed 62px the
+	# second line was written into the next offer's own verdict — three rows of
+	# status that no longer lined up with the three names beside them.
+	var status_h := _status(b, o, y, lc, fm)
 	DeskKit.expand(b, Vector2(DeskKit.X_EXPAND, y), func() -> void:
 		b.desk["mode"] = "detail"
 		b.desk["row"] = i)
@@ -161,7 +175,7 @@ static func _row(b, y: float, i: int, lc: float, fm: float) -> float:
 		func() -> void: price_step(b, i, -1))
 	_step_btn(b, "+", Vector2(DeskKit.X_PLUS, y), DeskKit.at_max(steps, cur),
 		func() -> void: price_step(b, i, 1))
-	return y + ROW_PITCH
+	return y + maxf(ROW_PITCH, status_h + 14.0)
 
 ## The receipts under a name. The garage sees one number, because at the garage
 ## price is the only dial; real cost accounting appears at coworking (01 §5).
@@ -178,23 +192,26 @@ static func _receipts(b, o: Dictionary, lc: float, fm: float) -> String:
 ## THE THREE-STATE STATUS COLUMN: a giveaway the founder chose, a price nobody
 ## named, or the price with its verdict. COLOUR NEVER CARRIES ALONE — every one
 ## of them says it in words first.
-static func _status(b, o: Dictionary, y: float, lc: float, fm: float) -> void:
+## Returns the MEASURED height of the verdict, so the row can be as tall as what
+## the street had to say about the price.
+static func _status(b, o: Dictionary, y: float, lc: float, fm: float) -> float:
 	var price := float(o.get("price", 0.0))
 	var fair := float(o.get("fair_price", 1.0)) * fm
+	var text := ""
+	var col := DeskKit.INK
 	if price <= 0.0 and bool(o.get("price_set", false)):
-		b.label("FREE ON PURPOSE — pays in users, not dollars",
-			Vector2(DeskKit.X_VALUE, y + 4.0), 26, DeskKit.BLUE, 480.0)
-		return
-	if price <= 0.0:
-		b.label("! billing at the going rate $%s" % b.fmt(int(round(fair))),
-			Vector2(DeskKit.X_VALUE, y + 4.0), 26, DeskKit.PEN, 480.0)
-		return
-	var losing := SimCatalog.never_pays(o, lc)
-	b.label("$%s  ·  margin $%s/unit  ·  %s" % [b.fmt(int(round(price))),
-		b.fmt(int(round(SimCatalog.contribution(o, lc, fm)))), _verdict(b.state, o, price, fm)],
-		Vector2(DeskKit.X_VALUE, y + 4.0), 26,
-		DeskKit.PEN if losing or SimEngine.offer_demand(o, price, fm) <= 0.25 else DeskKit.INK,
-		480.0)
+		text = "FREE ON PURPOSE — pays in users, not dollars"
+		col = DeskKit.BLUE
+	elif price <= 0.0:
+		text = "! billing at the going rate $%s" % b.fmt(int(round(fair)))
+		col = DeskKit.PEN
+	else:
+		text = "$%s  ·  margin $%s/unit  ·  %s" % [b.fmt(int(round(price))),
+			b.fmt(int(round(SimCatalog.contribution(o, lc, fm)))), _verdict(b.state, o, price, fm)]
+		if SimCatalog.never_pays(o, lc) or SimEngine.offer_demand(o, price, fm) <= 0.25:
+			col = DeskKit.PEN
+	b.label(text, Vector2(DeskKit.X_VALUE, y + 4.0), 26, col, 480.0)
+	return 4.0 + maxf(b.wrap_h(text, 26, 480.0), 34.0)
 
 ## What the street makes of this price, in words. Discounting only gets NAMED as
 ## a strategy at office, where portfolio management unlocks (01 §5).
@@ -391,7 +408,9 @@ static func _weight_row(b, y: float, o: Dictionary) -> float:
 	return DeskKit.stepper(b, y, {
 		"name": "shelf weight", "why": "the slice of a customer's wallet this one claims",
 		"value": "%.1f" % cur,
-		"effect": "shelf: Σ%.1f of %.1f used" % [SimCatalog.shelf_weight(state), SimCatalog.SHELF_WEIGHT_CAP],
+		# ∑ (U+2211) is IN the hand; Σ (U+03A3, the Greek letter) is not, and the
+		# two are a pixel apart to read and a whole typeface apart to draw.
+		"effect": "shelf: ∑%.1f of %.1f used" % [SimCatalog.shelf_weight(state), SimCatalog.SHELF_WEIGHT_CAP],
 		"bound": "(the shelf is full)" if cur >= ceiling - 0.001 else "",
 		"x_value": DeskKit.X_VALUE, "pitch": 66.0,
 		"at_min": DeskKit.at_min(WEIGHT_STEPS, cur), "at_max": cur >= ceiling - 0.001,
@@ -410,7 +429,7 @@ static func _mini_pnl(b, y: float, o: Dictionary, lc: float, fm: float) -> float
 	var inc := sales * SimEngine.offer_billed_price(o, fm)
 	var variable := sales * SimCatalog.served_unit_cost(o, lc)
 	var fixed := float(o.get("fixed_wk", 0.0))
-	var text := "this offer, a week at current volume: ≈%d sales → $%s in − $%s variable − $%s fixed = $%s contribution" % [
+	var text := "this offer, a week at current volume: ≈%d sales -> $%s in − $%s variable − $%s fixed = $%s contribution" % [
 		int(round(sales)), b.fmt(int(round(inc))), b.fmt(int(round(variable))),
 		b.fmt(int(round(fixed))), b.fmt(int(round(inc - variable - fixed)))]
 	b.label(text, Vector2(DeskKit.X_ID, y), 22, DeskKit.BLUE, 1100.0)

@@ -74,7 +74,8 @@ static func _head(b, state: GameState) -> void:
 	var interest := int(round((1.0 - SimRoadmap.debt_drag(state)) * 100.0))
 	b.label("debt %d · outage ≈ %d%%/wk · TECH-DEBT INTEREST: −%d%% velocity"
 		% [int(state.tech_debt), outage, interest], Vector2(390, 16), 25,
-		Binder.PEN if state.tech_debt >= 40.0 else Color(Binder.INK, 0.75), 760.0)
+		Binder.PEN if state.tech_debt >= 40.0 and _bench_coral(state) < 2 \
+				else Color(Binder.INK, 0.75), 760.0)
 	# CAPACITY, by name and in the industry's own unit: one team, so many
 	# person-weeks a week, whatever the org happens to be made of.
 	b.label("the roadmap — one team, %.1f R&D-wks/wk of capacity"
@@ -113,7 +114,7 @@ static func _bet_card(b, bet: Dictionary, y: float, separator: bool) -> float:
 	var state: GameState = b.state
 	var standing := separator and String(bet.get("id", "")) == SimRoadmap.HARDENING_ID
 	if standing:
-		b.label("── standing ──", Vector2(DeskKit.X_ID, y), 20, Color(Binder.INK, 0.4))
+		b.label("—— standing ——", Vector2(DeskKit.X_ID, y), 20, Color(Binder.INK, 0.4))
 		y += 28.0
 	var cost := float(bet.get("cost_rnd_weeks", 0.0))
 	var dense := "%s R&D-wks · LAUNCH RISK: clean ship ~%d%% (DC %d vs build)" % [
@@ -149,7 +150,7 @@ static func _commit_block(b, bet: Dictionary, y: float) -> void:
 	if String(b.desk.get("armed", "")) == "on:" + id:
 		b.label("rnd money buys weeks, not polish", Vector2(BAR_X, y + 12.0), 22,
 			Binder.PEN, 280.0)
-	DeskKit.arm(b, "on:" + id, "point the team →", "sure?", Vector2(ACT_X, y + 4.0),
+	DeskKit.arm(b, "on:" + id, "point the team ->", "sure?", Vector2(ACT_X, y + 4.0),
 		func() -> void: SimRoadmap.commit_bet(state, id), 160.0, DeskKit.DETAIL)
 
 ## COMMITTED: the money is visibly going somewhere, with an honest ETA — and a
@@ -187,7 +188,7 @@ static func _ready_block(b, bet: Dictionary, y: float) -> void:
 		else "it slips out on its own this week", Vector2(BAR_X, y + 44.0), 21,
 		Color(Binder.INK, 0.55), 280.0)
 	var id := String(bet.get("id", ""))
-	var btn: Button = DeskKit.word(b, "SHIP IT →", Vector2(ACT_X, y + 4.0), Callable(),
+	var btn: Button = DeskKit.word(b, "SHIP IT ->", Vector2(ACT_X, y + 4.0), Callable(),
 		DeskKit.STATUS, Binder.INK, 160.0)
 	# THE PRESS OWNS ITS WHOLE BEAT — the review first if anything is open, then
 	# the stroke, then the dice. Letting `word` rebuild the pane would free the
@@ -270,7 +271,7 @@ static func _ship_card(b) -> void:
 		b.desk.clear()
 		draw(b)
 		return
-	DeskKit.back(b, "◂ back to the board", func() -> void:
+	DeskKit.back(b, "back to the board", func() -> void:
 		b.desk.clear())
 	var y := 90.0
 	b.label(String(res.get("event", "")), Vector2(DeskKit.X_ID, y), DeskKit.TITLE,
@@ -343,3 +344,15 @@ class _BetBar:
 		draw_rect(Rect2(2, 2, (w - 4.0) * clampf(fill, 0.0, 1.0), h - 4.0),
 			Color(Binder.SAGE, 0.6))
 		draw_rect(Rect2(0, 0, w, h), Binder.INK, false, 4.0)
+
+
+## SPINE RULING (coral budget, 10-interface §1.1): when the bench already
+## spends two coral lines (stockout/overstock/machine down), the standing
+## debt meter yields its color — the loudest problems keep the pen.
+static func _bench_coral(state: GameState) -> int:
+	var n := 0
+	for r in SimEngine.attention_items(state):
+		var k := String((r as Dictionary).get("key", ""))
+		if k == "stockout" or k == "overstock" or k == "machine_down":
+			n += 1
+	return n

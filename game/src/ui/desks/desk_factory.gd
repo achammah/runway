@@ -31,8 +31,16 @@ const Y_CARRY := 716.0    ## row 6: what the shelf costs to hold
 
 const X_AUTO := 120.0     ## the AUTO word sits in the stepper name's own gutter
 const W_AUTO := 300.0
-const X_BUY_2 := 560.0    ## the next rung of the ladder, dimmed with its reason
-const X_SELL := 870.0
+## THE BUY ROW, MEASURED ACROSS: `buy:` 10 · what you can sign for 70–470 · the
+## next rung 480–870, dimmed and wearing the engine's own refusal · the sell arm
+## 880–1160. At 300px the refusal wrapped and wrote its second line into the
+## make-vs-buy row 46px below, so the rung took the whole gap and one step down
+## in size instead.
+const W_BUY_1 := 400.0
+const X_BUY_2 := 480.0
+const W_BUY_2 := 390.0
+const SZ_BUY_2 := 19
+const X_SELL := 880.0
 
 ## Draw THE BENCH. `b` is the Binder itself (untyped to keep the two files free
 ## of a cyclic class dependency).
@@ -188,20 +196,27 @@ static func _buy(b, state: GameState, hw: Dictionary) -> void:
 					b.fmt(int(e.get("price", 0))), int(e.get("capacity_add", 0)),
 					b.fmt(int(e.get("upkeep_wk", 0)))],
 				Vector2(70.0, Y_BUY), func() -> void: handle(b, "buy:" + id),
-				DeskKit.LAW, DeskKit.INK, 470.0)
+				DeskKit.LAW, DeskKit.INK, W_BUY_1)
 			continue
-		# dimmed, wearing the reason: era gate, era spend cap, or cash short
+		# dimmed, wearing the engine's own refusal: era gate, era spend cap, or
+		# cash short. The rung takes the whole gap to the sell word at its own
+		# smaller size — see the constants above for why.
 		b.label("%s $%s — %s" % [String(e.get("name", id)), b.fmt(int(e.get("price", 0))),
 				String(c.get("why", ""))],
-			Vector2(70.0 if i == 0 else X_BUY_2, Y_BUY + 12.0), DeskKit.LAW,
-			Color(DeskKit.INK, 0.35), 470.0 if i == 0 else 300.0)
+			Vector2(70.0 if i == 0 else X_BUY_2, Y_BUY + 12.0),
+			DeskKit.LAW if i == 0 else SZ_BUY_2,
+			Color(DeskKit.INK, 0.35), W_BUY_1 if i == 0 else W_BUY_2)
 	var eq: Array = hw.get("equipment", [])
 	if eq.size() > 0:
 		var last: Dictionary = eq[eq.size() - 1]
 		var back := SimFactory.resale_value(String(last.get("id", "")))
+		# THE ARMED CAPTION HAS TO FIT ITS OWN BOX. A word button never wraps, so
+		# the long form ran the machine's name, the price AND the lesson straight off
+		# the right edge of the sheet. The invoice is what §2.9 asks the armed label
+		# to carry; the haircut is named in the one word `half`, and the machine is
+		# the last one on the row above.
 		DeskKit.arm(b, "sell_machine", "sell a machine",
-			"sell %s · $%s back (half — the secondhand haircut)" % [
-				String(last.get("name", "it")).substr(0, 20), b.fmt(back)],
+			"$%s back (half) — sure?" % b.fmt(back),
 			Vector2(X_SELL, Y_BUY), func() -> void: handle(b, "sell_last"),
 			280.0, DeskKit.LAW)
 
@@ -235,7 +250,11 @@ static func _carrying(b, state: GameState, hw: Dictionary) -> void:
 		b.fmt(int(round(float(stock) * rate))), stock]
 	var warn := SimFactory.overstock(state)
 	if warn:
-		line += " — OVERSTOCK: more than 8 weeks of cover is asleep"
+		# ONE MEASURED LINE at 1120px. The band's last row is at 716 and the pane
+		# ends at 760, so a second line falls off the bottom of the sheet: when the
+		# warning fires it takes the parenthetical's place rather than following it.
+		line = "carrying cost: $%s/wk on %d units — OVERSTOCK: more than 8 weeks of cover is asleep, and %d%%/wk of unit cost bills for every one of them" % [
+			b.fmt(int(round(float(stock) * rate))), stock, int(round(rate / maxf(SimFactory.unit_cost(state), 1.0) * 100.0))]
 	else:
 		var made := int(hw.get("produced_total", 0))
 		if made > 0:

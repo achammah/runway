@@ -29,7 +29,9 @@ extends RefCounted
 ## THE HAND HAS NO SYMBOL FONT. `✗` (U+2717) and `⚡` (U+26A1) are both absent
 ## from PatrickHand — a typed one arrives as a tofu box — so a strike is `×`
 ## (U+00D7, present) and the banner leads with the game's own alarm mark, the
-## same `!` the tab bangs and the term-sheet banner already wear.
+## same `!` the tab bangs and the term-sheet banner already wear. The same law
+## rules every other desk: the hand carries no arrows, triangles, clocks or box
+## rules either, and the whole binder writes `->` the way a pen does.
 const MARK_STRIKE := "×"
 const MARK_EMPTY := "·"
 
@@ -69,17 +71,35 @@ static func draw(b) -> void:
 	b.pie([
 		{"pct": founder, "col": Binder.PEN, "label": "you %.0f%%" % founder},
 		{"pct": cof, "col": Binder.BLUE, "label": "cofounders %.0f%%" % cof},
-		{"pct": pool, "col": Binder.YELL, "label": "option pool %.0f%%" % pool},
+		# THE WHEEL'S OWN TAG IS SHORT ON PURPOSE. This slice sits at nine
+		# o'clock, and there is only ~90px of paper left of the wheel there: the
+		# long form ran either off the sheet or back over its own wedge. The full
+		# term is named where it is taught, on the raise line below.
+		{"pct": pool, "col": Binder.YELL, "label": "pool %.0f%%" % pool},
 		{"pct": inv, "col": Binder.SAGE, "label": "investors %.0f%%" % inv},
 	], Vector2(40, 30), 430.0)
 	var y := 60.0
 	b.label("rounds:", Vector2(540, 30), 32)
 	if state.rounds_raised.is_empty():
+		# 620px, not 560: at 560 this exact sentence wrapped by two pixels and its
+		# second line landed on the valuation.
 		b.label("none yet. every point of the company is still on this table.",
-			Vector2(540, y + 20), 27, Color(Binder.INK, 0.7), 560.0)
+			Vector2(540, y + 20), 27, Color(Binder.INK, 0.7), 620.0)
+	# FOUR ROUNDS, then the count. The ladder allows six, and rounds five and six
+	# pushed the raise line down into the offer banner.
+	var shown_rounds := 0
 	for r in state.rounds_raised:
-		b.label("· %s — closed" % String(r), Vector2(540, y + 20), 28, Binder.INK, 560.0)
+		if shown_rounds >= 4:
+			b.label("+%d more closed" % (state.rounds_raised.size() - shown_rounds),
+				Vector2(540, y + 20), 24, Color(Binder.INK, 0.6), 560.0)
+			y += 44.0
+			break
+		# THE ROUND'S NAME AS A HUMAN SAYS IT: the engine's id carries an
+		# underscore, and a raw id is never what a page prints (§3.8).
+		b.label("· %s — closed" % String(r).replace("_", " "), Vector2(540, y + 20), 28,
+			Binder.INK, 560.0)
 		y += 44.0
+		shown_rounds += 1
 	var val := SimEngine.valuation(state)
 	b.label("valuation $%s" % b.fmt(val), Vector2(540, y + 80), 30)
 	b.label("your slice today: $%s" % b.fmt(int(float(val) * state.founder_pct / 100.0)),
@@ -102,23 +122,29 @@ static func draw(b) -> void:
 		# cycle is the decision a founder makes on this row.
 		var asked := fair_pct * 1.3 * (1.0 - warm / 100.0) * SimEngine.shock_spread_mult(state)
 		var pool_ask := SimBoard.pool_ask_pct(state)
-		b.label("raise ~$%s now: pre-money $%s%s → post $%s — they'd ask ≈ %.0f%%%s · your %.0f%% → ≈ %.0f%%%s" % [
+		# THE ARROWS ARE WRITTEN, NOT TYPED: `->` is in the hand, U+2192 is not, and
+		# a borrowed arrow is a second typeface inside a one-hand binder.
+		b.label("raise ~$%s now: pre-money $%s%s -> post $%s — they'd ask ≈ %.0f%%%s · your %.0f%% -> ≈ %.0f%%%s" % [
 			b.fmt(ask), b.fmt(val), _shock_note(state), b.fmt(val + ask), asked,
 			(" (%.0f%% off — they know you)" % warm) if warm > 0.0 else "",
 			state.founder_pct, state.founder_pct * (1.0 - asked / 100.0),
-			(" · plus a ~%d%% pool written pre-money" % int(pool_ask)) if pool_ask > 0.0 else ""],
+			(" · plus a ~%d%% OPTION POOL written pre-money" % int(pool_ask)) if pool_ask > 0.0 else ""],
 			Vector2(540, y + 216), 24, Color(Binder.INK, 0.7), 620.0)
 	if state.has_flag("fundraising_open"):
 		b.label("! TERM SHEETS ARE ON THE TABLE — sign in the journal before they expire",
 			Vector2(40, 480), 27, Binder.PEN, 1100.0)
-	_banner(b, state)
-	_board_block(b, state)
+	# THE BANNER IS A CURSOR, NOT A SLOT. It used to be drawn at a fixed 520 and
+	# the board block at a fixed 568, so the week a buyer's name or a nine-figure
+	# price pushed the banner onto a second line, that line was written straight
+	# through "the board:". The banner hands back where it ended; 568 stays the
+	# floor, so a one-line banner leaves the whole page exactly where it was.
+	var y_board := _board_block(b, state, maxf(_banner(b, state), 568.0))
 	# THE RENEWAL CALENDAR (05, DECISIONS.md): the board reads the book of
 	# business too. The pipeline lane writes one line here when it has one;
 	# nothing is drawn while the slot is empty.
 	var renewal := String(state.get_meta("cap_renewal_line", ""))
-	if renewal != "":
-		b.label(renewal, Vector2(40, 742), 24, Color(Binder.INK, 0.7), ROW_W)
+	if renewal != "" and y_board + 30.0 <= 760.0:
+		b.label(renewal, Vector2(40, y_board), 24, Color(Binder.INK, 0.7), ROW_W)
 
 ## Which weather is on the term sheet, or "" in ordinary money. The multiple is
 ## read live off the status catalog, so a rebalance can never make this line lie.
@@ -131,31 +157,36 @@ static func _shock_note(state: GameState) -> String:
 
 ## THE CLOCK, above the board block. An offer or an open window is time-boxed and
 ## has to be visible without opening the book — the banner says what is on the
-## table and where the pen is, and nothing else.
-static func _banner(b, state: GameState) -> void:
+## table and where the pen is, and nothing else. Returns the y it ENDED at, so
+## the block below can start under it however long the buyer's name turns out.
+static func _banner(b, state: GameState) -> float:
+	var text := ""
 	if not state.mna.is_empty():
 		var mo: Dictionary = state.mna
 		var price := int(mo.get("price", 0))
 		var left := maxi(int(mo.get("expires_week", 0)) - state.week, 0)
-		b.label("! ON THE TABLE: %s — $%s (%.2f× standalone) · your slice $%s · no-shop ends in %d wk. The journal signs." % [
+		text = "! ON THE TABLE: %s $%s (%.2f×) · your slice $%s · %d wk%s to sign, in the journal" % [
 			String(mo.get("buyer", "a buyer")), b.fmt(price), float(mo.get("premium", 1.0)),
-			b.fmt(int(float(price) * state.founder_pct / 100.0)), left],
-			Vector2(40, 520), 27, Binder.PEN, 1100.0)
+			b.fmt(int(float(price) * state.founder_pct / 100.0)), left,
+			"" if left == 1 else "s"]
 	elif state.has_flag("ipo_window"):
-		b.label("! THE IPO WINDOW IS OPEN — $%s at the bell, your slice $%s. The bell is in the journal. Windows close." % [
+		text = "! THE IPO WINDOW IS OPEN — $%s at the bell · your slice $%s · the bell is in the journal" % [
 			b.fmt(SimBoard.ipo_price(state)),
-			b.fmt(int(float(SimBoard.ipo_price(state)) * state.founder_pct / 100.0))],
-			Vector2(40, 520), 27, Binder.PEN, 1100.0)
+			b.fmt(int(float(SimBoard.ipo_price(state)) * state.founder_pct / 100.0))]
+	if text == "":
+		return 0.0
+	b.label(text, Vector2(40, 520), 27, Binder.PEN, 1100.0)
+	return 520.0 + maxf(b.wrap_h(text, 27, 1100.0), 34.0) + 14.0
 
 ## THE ROOM YOU ANSWER TO. Absent entirely until a round closes — the empty page
 ## is the bootstrap flex, and printing "no covenant" would be four words saying
 ## nothing.
-static func _board_block(b, state: GameState) -> void:
+static func _board_block(b, state: GameState, y0: float) -> float:
 	if state.board.is_empty():
-		return
+		return y0
 	var bd: Dictionary = state.board
 	var stage := SimBoard.board_stage(state)
-	b.label("the angel:" if stage == 0 else "the board:", Vector2(40, 568), 32)
+	b.label("the angel:" if stage == 0 else "the board:", Vector2(40, y0), 32)
 
 	var pnl: Dictionary = state.get_meta("pnl", {})
 	var now_rev := int(pnl.get("revenue", 0))
@@ -166,7 +197,7 @@ static func _board_block(b, state: GameState) -> void:
 		"the number you said" if stage == 0 else "growth covenant",
 		b.fmt(target), int(bd.get("review_week", 0)), b.fmt(now_rev),
 		("this week" if due <= 0 else ("1 wk left" if due == 1 else "%d wks left" % due))],
-		Vector2(40, 610), 28, Binder.INK, ROW_W)
+		Vector2(40, y0 + 42.0), 28, Binder.INK, ROW_W)
 
 	# THE MISS LADDER AS A VISIBLE TRACK. Marks, not a number: a founder should
 	# be able to see how many rungs are left without doing arithmetic.
@@ -185,16 +216,22 @@ static func _board_block(b, state: GameState) -> void:
 		room = "warm"
 	if stage == 0:
 		b.label("no strikes — an angel has expectations, not covenants · goodwill %d/3" % goodwill,
-			Vector2(40, 654), 28, Binder.SAGE, ROW_W)
+			Vector2(40, y0 + 86.0), 28, Binder.SAGE, ROW_W)
 	else:
-		b.label("strikes %s · goodwill %d/3 · the room is %s" % [track, goodwill, room],
-			Vector2(40, 654), 28, Binder.PEN if strikes > 0 else Binder.SAGE, ROW_W)
+		# THE COUNT RIDES THE TRACK. The empty rung is a middle dot and so is the
+		# line's own separator, so "strikes × × · · · goodwill" read as one run of
+		# marks; the parenthesis says where the track ends and gives the anchor
+		# every judgement number owes (§3.4).
+		b.label("strikes %s (%d of %d) · goodwill %d/3 · the room is %s" % [
+			track, strikes, cap, goodwill, room],
+			Vector2(40, y0 + 86.0), 28, Binder.PEN if strikes > 0 else Binder.SAGE, ROW_W)
 
 	var line := String(STAGE_LINE[clampi(stage, 0, STAGE_LINE.size() - 1)])
 	if line.contains("%s"):
 		var seats := state.board_seats_investor
 		line = line % ("1 investor seat" if seats == 1 else "%d investor seats" % seats)
-	b.label(line, Vector2(40, 698), 24, Color(Binder.INK, 0.7), ROW_W)
+	b.label(line, Vector2(40, y0 + 130.0), 24, Color(Binder.INK, 0.7), ROW_W)
+	return y0 + 174.0
 
 ## A press inside this desk. Nothing on the cap table commits: the signature
 ## lives in the journal, where a run-ending act gets its two-tap arm.

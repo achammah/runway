@@ -20,17 +20,24 @@ extends RefCounted
 
 # ── the two blocks ───────────────────────────────────────────────────────────
 ## [budget key, the word on the page, what the money actually does].
+##
+## EVERY WHY LINE IS ONE MEASURED LINE. This sheet is a FIXED grid — eight rows
+## at 58/62px pitch, then five slots that cannot move — so a why that wraps does
+## not push the row down, it writes itself through the NEXT lever's name and, at
+## the bottom, straight through the warning. Each string below measures under
+## 430px in the hand at its own size (18px channels, 21px org); a longer one is
+## a shipped overstrike, not a longer sentence.
 const CHANNEL_LEVERS := [
 	["ads", "ads", "paid reach — instant, saturates hard; runs only while fed"],
 	["content", "content", "the library — slow to build, works while you sleep, rots if starved"],
-	["referrals", "referrals", "promoters talking — multiplies word of mouth; needs product + care"],
+	["referrals", "referrals", "promoters talking — word of mouth, multiplied; needs care"],
 	["outbound", "outbound", "lists and cold calls — buys reach AND closing; born for enterprise"],
 ]
 const ORG_LEVERS := [
-	["sales", "sales", "closing — every $600/wk closes like one more part-time seller"],
-	["care", "care", "retention — up to 30% less churn as care approaches $3k"],
-	["rnd", "rnd", "product — ships ~+1 quality per $1,200/wk and pays down debt"],
-	["office", "office", "the office — food, perks, benefits; morale climbs toward +3/wk by ~$2k"],
+	["sales", "sales", "closing — $600/wk buys one more part-time seller"],
+	["care", "care", "retention — up to 30% less churn as care nears $3k"],
+	["rnd", "rnd", "product — ~+1 quality per $1,200/wk, and debt melts"],
+	["office", "office", "the office — food, perks; morale to +3/wk near $2k"],
 ]
 const LEVER_STEPS := [0, 250, 500, 1000, 2000, 4000, 8000]
 
@@ -106,7 +113,10 @@ static func draw(b: Binder) -> void:
 	var rw := SimEngine.runway_weeks(state)
 	var warns: Array[String] = []
 	if rw <= 4 and rw < 999:
-		warns.append("⚠ this spend kills the company in %d weeks — cut it or earn it" % rw)
+		# NO SYMBOL LEADS THIS LINE. The hand carries no warning sign (nor arrows,
+		# triangles or clocks), so a typed one arrives in a borrowed face — or, on
+		# another machine, as a box. Coral and the words do the alarming.
+		warns.append("this spend kills the company in %d weeks — cut it or earn it" % rw)
 	if state.cash < 0:
 		warns.append("THE RED: %d of 3 weeks below zero. At three, it's over." % state.weeks_in_red)
 	# WARNINGS OUTRANK WISDOM (§2.7), and when BOTH fire the unit-econ line

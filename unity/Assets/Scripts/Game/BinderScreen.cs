@@ -390,12 +390,16 @@ namespace Runway.Game
                     : ""),
                 10f, 432f, 27f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.8f));
             L("valuation, if anyone asked: $" + GameUi.Money(SimEngine.Valuation(_st)), 10f, 486f);
-            // the hype chart moved here when the roadmap took the product sheet (07)
-            L("hype:", 10f, 556f, 24f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f));
-            Spark("hype", 10f, 580f, 1120f, 120f, DrawnUI.Yellow);
+            // THE PRICE LINE OWNS 532–566 AT 27px, so the hype caption cannot start
+            // at 556: it was written over the line above it and its own spark's wash
+            // was drawn over it in turn. 574 clears both, and the spark still lands
+            // inside the 760 pane.
             L(string.Format("price ×{0:0.00}  ·  the market is {1}", _st.PriceMult,
                 _st.MarketTrend > 1.05 ? "warm" : (_st.MarketTrend < 0.95 ? "cold" : "even")),
                 10f, 532f, 27f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.8f));
+            // the hype chart moved here when the roadmap took the product sheet (07)
+            L("hype:", 10f, 574f, 24f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f));
+            Spark("hype", 10f, 606f, 1120f, 120f, DrawnUI.Yellow);
         }
 
         // ── tab 1: THE LEDGER — the levers, the math, the truth about the money ──
@@ -561,7 +565,11 @@ namespace Runway.Game
                 Status s = _st.Statuses[i];
                 StatusDef def = SimEngine.StatusEffect(s.Name);
                 bool buff = def != null && def.Kind == "buff";
-                L(string.Format("{0} {1} — {2} wks left", buff ? "▲" : "▼",
+                // THE WORD IS THE MARK. ▲/▼/↻ are all absent from the hand and only
+                // render at all through the borrowed face; the word says the same
+                // thing in the same ink on every machine, and §3.3 asks for it anyway
+                // — read the page in grey and every state is still there.
+                L(string.Format("{0} {1} — {2} wks left", buff ? "helping:" : "hurting:",
                     (s.Name ?? "").Replace("_", " "), s.WeeksLeft), 10f, y, 30f,
                     buff ? DrawnUI.Sage : DrawnUI.Coral);
                 y += 52f;
@@ -569,10 +577,18 @@ namespace Runway.Game
             for (int i = 0; i < _st.Commitments.Count; i++)
             {
                 Commitment c = _st.Commitments[i];
-                L(string.Format("↻ {0}: ${1}/wk for {2} more wks", c.Name, c.CashWk, c.WeeksLeft),
-                  10f, y, 30f, DrawnUI.Blue);
+                L(string.Format("standing: {0} — ${1}/wk for {2} more wks",
+                    c.Name, c.CashWk, c.WeeksLeft), 10f, y, 30f, DrawnUI.Blue);
                 y += 52f;
             }
+            // THE PAGE STATES ITS OWN LAW, like every desk does (2.7). Reading order
+            // ends on the lesson: this sheet is the overflow, and the thing it has to
+            // teach is that these rows are ranked and that the desks hold the
+            // controls.
+            L("the rules of this page: everything the company is shouting about, loudest first · "
+              + "a CLOCK fires on its week · a CONDITION expires on its own · a STANDING cost bills "
+              + "until it runs out · nothing is fixed here, and every row names the desk that owns it",
+              10f, 734f, 21f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 1100f);
         }
     }
 }
