@@ -776,6 +776,17 @@ static func weekly_tick(state: GameState) -> Dictionary:
 	if state.metric_history.size() > 90:
 		state.metric_history = state.metric_history.slice(state.metric_history.size() - 90)
 	state.clampi_meters()
+
+	# ── THE ATTENTION AGES (DAG3 S2/S5): "desk/key" -> the first week the row
+	# stood, kept ONLY while the row is current — a resolved ask forgets its
+	# age. attention_items stamps rows with since_wk from this field, so the
+	# threats page can say "3 wks" without a second list existing anywhere.
+	var ages := {}
+	for r_age in attention_items(state):
+		var k_age := "%s/%s" % [String((r_age as Dictionary).get("desk", "")),
+			String((r_age as Dictionary).get("key", ""))]
+		ages[k_age] = int(state.attention_ages.get(k_age, state.week))
+	state.attention_ages = ages
 	return rep
 
 # ─────────────────────────── status / clock helpers ──────────────────────────
@@ -1344,6 +1355,14 @@ static func attention_items(state: GameState) -> Array:
 		return int(a.get("_i", 0)) < int(b.get("_i", 0)))
 	for r3 in rows:
 		(r3 as Dictionary).erase("_i")
+		# DAG3 — every row carries its focus key (S2b: "" until a lane names
+		# the control it wants spotlit) and its age (S5: since_wk = the first
+		# week the ages field saw this row; a row born mid-week reads as now).
+		if not (r3 as Dictionary).has("control"):
+			(r3 as Dictionary)["control"] = ""
+		var age_key := "%s/%s" % [String((r3 as Dictionary).get("desk", "")),
+			String((r3 as Dictionary).get("key", ""))]
+		(r3 as Dictionary)["since_wk"] = int(state.attention_ages.get(age_key, state.week))
 	return rows
 
 ## Every attention row on one desk, highest severity first — the binder asks

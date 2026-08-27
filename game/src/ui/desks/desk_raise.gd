@@ -16,6 +16,25 @@ extends RefCounted
 
 const QUESTION := "who would fund us next, and at what true price?"
 
+## S8 — the raise sleeps through the garage: no paper signed, no raise opened,
+## nothing to pipeline. The tab stays on the map (the map is the curriculum)
+## at 60%; it wakes the week the era turns or money moves.
+static func is_dormant(state) -> bool:
+	var s: GameState = state
+	return s.era == "garage" and s.instruments.is_empty() \
+		and not bool(s.raise_state.get("active", false))
+
+## S10 — the tab's four-character read. Quiet while dormant; awake, the
+## interest score is the desk in one glance.
+static func micro_status(state) -> String:
+	var s: GameState = state
+	if is_dormant(s):
+		return ""
+	var terms := _terms_count(s)
+	if terms > 0:
+		return "%d offer%s" % [terms, "" if terms == 1 else "s"]
+	return "%.0f/100" % float(s.raise_state.get("interest_score", 0.0))
+
 static func hero_summary(state) -> Dictionary:
 	var s: GameState = state
 	var terms := _terms_count(s)

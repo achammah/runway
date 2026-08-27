@@ -723,6 +723,7 @@ func _go() -> void:
 		"family": "", "solidity": "solid", "keep_wk": 40, "unit_cost_add": 0.0,
 		"product_id": "", "born_wk": 1, "measured": 0.0}]
 	rt.buyout_offer = {"buyer": "Larkspur Depot", "cash": 1_200_000}
+	rt.attention_ages = {"pricing/unpriced": 3}
 	rt.employees = [{"name": "June Park", "role": "engineer", "salary": 1_500,
 		"burnout": 10, "quirk": "", "skill": 4, "hired_week": 3,
 		"site": "site_lyon"}]
@@ -774,10 +775,38 @@ func _go() -> void:
 		and String(((rt2.hardware.get("equipment", []) as Array)[0] as Dictionary).get("site", "")) == "site_lyon"
 		and String((rt2.offers[0] as Dictionary).get("product_id", "")) == "prod_flagship",
 		"the site tags and the product id persist on their records")
+	_ok(int(rt2.attention_ages.get("pricing/unpriced", 0)) == 3,
+		"the attention ages persist a save round-trip")
 	# and the saved run still ticks — a round-tripped state is a LIVE state
 	rt2.week += 1
 	var rt_rep := SimEngine.weekly_tick(rt2)
 	_ok(rt_rep.has("lines"), "a round-tripped run ticks without error")
+
+	# ── THE ATTENTION AGES (DAG3): a row's first-seen week is recorded at the
+	# tick, holds while the row stands, and vanishes with the resolved row;
+	# attention_items stamps every row with since_wk and a control key.
+	var ag := _state()
+	ag.set_flag("fundraising_open")   # a stable sev-3 registry row
+	SimEngine.weekly_tick(ag)
+	var born := int(ag.attention_ages.get("cap table/term_sheets", -1))
+	_ok(born == ag.week, "a new attention row is stamped with its first week")
+	ag.week += 1
+	SimEngine.weekly_tick(ag)
+	_ok(int(ag.attention_ages.get("cap table/term_sheets", -1)) == born
+		and ag.week - born == 1,
+		"a stable attention item ages by 1 across two ticks")
+	var aged_row := {}
+	for r_ag in SimEngine.attention_items(ag):
+		if String((r_ag as Dictionary).get("key", "")) == "term_sheets":
+			aged_row = r_ag
+	_ok(int(aged_row.get("since_wk", -1)) == born
+		and String(aged_row.get("control", "?")) == "",
+		"attention rows carry since_wk and a control key")
+	ag.flags.erase("fundraising_open")
+	ag.week += 1
+	SimEngine.weekly_tick(ag)
+	_ok(not ag.attention_ages.has("cap table/term_sheets"),
+		"a resolved attention item's key drops from the ages")
 
 	# ── THE LANES: each suite runs its own pins after the engine's
 	for lane_suite in [preload("res://tests/lanes/test_catalog.gd"),

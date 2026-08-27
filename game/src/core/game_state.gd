@@ -204,6 +204,12 @@ var features: Array = []         # [{id, name, job: pull|keep|charge|plumbing, f
 # a live offer extends the board lane's M&A offers with structure
 # {cash, stock+lockup, earnout+controller, retention} plus the fine-print flags.
 var buyout_offer: Dictionary = {}
+# ── DAG3 — THE ATTENTION AGES: attention-row identity ("desk/key") -> the
+# week the row first stood. weekly_tick's tail records new keys and drops
+# resolved ones; attention_items stamps every row with since_wk from here.
+# Additive with a safe default (an old save loads {} and every row reads as
+# born now), so SaveSystem.VERSION stays 2.
+var attention_ages: Dictionary = {}
 
 const RAMEN_PER_WEEK := 500    # founder personal burn, Dossier §10
 ## The founder's day-one bank, granted at run birth (archetype bonus, funding

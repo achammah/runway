@@ -139,6 +139,8 @@ namespace Runway.Game
             RefreshLock();
         }
 
+        RectTransform _lockBadge;
+
         /// READY = THE FOUNDER WROTE SOMETHING. The written move is the whole interface
         /// now; a verdict already in hand also counts.
         public void RefreshLock()
@@ -150,6 +152,15 @@ namespace Runway.Game
                 : (ready ? "ROLL THE WEEK" : "...decide first");
             _lockWord.color = ready ? DrawnUI.Coral : DrawnUI.WithAlpha(DrawnUI.Ink, 0.35f);
             if (_lockBtn != null) _lockBtn.interactable = ready;
+            // DAG3 — THE LOCK IN BADGE: the count of standing attention items
+            // rides the commit button all week (the binder-bang idiom with a
+            // number), so the player sees how much is unset BEFORE the
+            // pre-roll card has to say so.
+            if (_lockBadge != null) Object.Destroy(_lockBadge.gameObject);
+            _lockBadge = null;
+            int nAtt = St != null ? SimEngine.AttentionItems(St).Count : 0;
+            if (nAtt > 0 && _lockRow != null)
+                _lockBadge = DeskKit.CountBadge(_lockRow, 318f, -8f, nAtt);
         }
 
         /// THE COMMIT IS A CEREMONY, one beat long: the pen strikes a line under the
@@ -386,17 +397,20 @@ namespace Runway.Game
         }
 
         /// GO FIX IT: the book closes and the binder opens ON the loudest item's desk —
-        /// the founder lands looking at the thing the world stopped them for.
+        /// the founder lands looking at the thing the world stopped them for. DAG3 S2:
+        /// the jump goes through JumpToAsk, so a row that names its control lands with
+        /// the coach's spotlight already on the switch.
         public void PrerollFix()
         {
             if (Preroll == null) return;
             var rows = Preroll["items"] as JArray;
-            string toDesk = rows != null && rows.Count > 0
-                ? ContentDb.Str(rows[0] as JObject, "desk") : "";
+            var row = rows != null && rows.Count > 0 ? rows[0] as JObject : null;
+            string toDesk = row != null ? ContentDb.Str(row, "desk") : "";
+            string toControl = row != null ? ContentDb.Str(row, "control") : "";
             Written = ContentDb.Str(Preroll, "base");
             Preroll = null;
             _g.CloseJournal();
-            _g.OpenBinderOn(toDesk);
+            _g.OpenBinderOnAsk(toDesk, toControl);
         }
 
         /// ROLL ANYWAY: the week goes as written, and the card does not ask twice.

@@ -362,10 +362,12 @@ namespace Runway.Game
                 y += 34f;
             }
             y += 10f;
-            // confirm first, cancel second and never coral — cancel is safe, not scary
+            // confirm first, cancel second and never coral — cancel is safe, not
+            // scary. S9: the sign-tier control wears the family capsule and says so.
             float cy = y;
             Button confirm = null;
-            confirm = Word(b, c.Confirm, XId, cy, () =>
+            confirm = PaperWord(b, c.Confirm, TierWord("sign"), XId, cy, Row,
+                DrawnUI.Ink, 420f, false, () =>
             {
                 // THE SIGNATURE BEAT: the stroke draws under the words, THEN the
                 // books change
@@ -374,7 +376,7 @@ namespace Runway.Game
                     if (c.OnConfirm != null) c.OnConfirm();
                     b.Refresh();
                 });
-            }, Row, DrawnUI.Ink, 420f, false);
+            }, false);
             Word(b, c.Cancel, XId + 440f, cy, () =>
             {
                 if (c.OnCancel != null) c.OnCancel();
@@ -648,7 +650,11 @@ namespace Runway.Game
                            && cur.ToString() == id;
             string caption = isArmed ? armedCaption : plain;
             Button btn = null;
-            btn = Word(b, caption, x, y, () =>
+            // S9 — ONE ARM FAMILY: the confirm control wears the paper capsule
+            // and says its tier in small print, so the player learns the danger
+            // scale by shape.
+            btn = PaperWord(b, caption, TierWord("two-tap"), x, y, size,
+                isArmed ? DrawnUI.Coral : DrawnUI.Ink, w, isArmed, () =>
             {
                 object now;
                 bool armedNow = b.Desk.TryGetValue("armed", out now) && now != null
@@ -665,7 +671,7 @@ namespace Runway.Game
                 }
                 b.Desk["armed"] = id;   // arming a second control disarms the first
                 b.Refresh();
-            }, size, isArmed ? DrawnUI.Coral : DrawnUI.Ink, w, false);
+            }, false);
             return btn;
         }
 

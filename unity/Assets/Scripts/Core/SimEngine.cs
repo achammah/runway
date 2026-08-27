@@ -1130,6 +1130,22 @@ namespace Runway.Core
                     state.MetricHistory.Count - 90, 90);
             }
             state.ClampiMeters();
+
+            // ── THE ATTENTION AGES (DAG3 S2/S5): "desk/key" -> the first week
+            // the row stood, kept ONLY while the row is current — a resolved
+            // ask forgets its age. AttentionItems stamps rows with SinceWk from
+            // this field, so the threats page can say "3 wks" without a second
+            // list existing anywhere.
+            var ages = new Dictionary<string, int>();
+            foreach (AttentionItem rAge in AttentionItems(state))
+            {
+                string kAge = (rAge.Desk ?? "") + "/" + (rAge.Key ?? "");
+                int had;
+                ages[kAge] = state.AttentionAges != null
+                             && state.AttentionAges.TryGetValue(kAge, out had)
+                    ? had : state.Week;
+            }
+            state.AttentionAges = ages;
             return rep;
         }
 
@@ -1911,6 +1927,19 @@ namespace Runway.Core
             });
             var outp = new List<AttentionItem>();
             foreach (KeyValuePair<int, AttentionItem> kv in indexed) outp.Add(kv.Value);
+            // DAG3 — every row carries its focus key (S2b: "" until a lane
+            // names the control it wants spotlit) and its age (S5: SinceWk =
+            // the first week the ages field saw this row; a row born mid-week
+            // reads as now).
+            foreach (AttentionItem it in outp)
+            {
+                if (it.Control == null) it.Control = "";
+                string ageKey = (it.Desk ?? "") + "/" + (it.Key ?? "");
+                int seenWk;
+                it.SinceWk = state.AttentionAges != null
+                             && state.AttentionAges.TryGetValue(ageKey, out seenWk)
+                    ? seenWk : state.Week;
+            }
             return outp;
         }
 

@@ -295,8 +295,8 @@ static func review(b, cfg: Dictionary, y: float = 6.0) -> float:
 	# NO HANDLER FROM `word` HERE (an empty Callable leaves the button bare): the
 	# confirm press owns its whole beat — stroke first, books second, rebuild last.
 	# Letting word() rebuild the pane first freed the very button the stroke draws
-	# under.
-	var btn := word(b, confirm, Vector2(X_ID, y), Callable(), ROW, INK, 420.0)
+	# under. S9: the sign-tier control wears the family capsule and says so.
+	var btn := paper_word(b, confirm, tier_word("sign"), Vector2(X_ID, y), ROW, INK, 420.0)
 	btn.pressed.connect(func() -> void:
 		# THE SIGNATURE BEAT: the stroke draws under the words, THEN the books change
 		sign_stroke(b, btn, func() -> void:
@@ -496,18 +496,10 @@ static func footer(b, cfg: Dictionary) -> void:
 static func arm(b, id: String, plain: String, armed_caption: String, pos: Vector2,
 		on_fire: Callable, w: float = 300.0, sz: int = STATUS) -> Button:
 	var is_armed := String(b.desk.get("armed", "")) == id
-	var btn := Button.new()
-	btn.flat = true
-	btn.text = armed_caption if is_armed else plain
-	btn.position = pos
-	btn.size = Vector2(w, 46.0)
-	btn.add_theme_font_override("font", b.font())
-	btn.add_theme_font_size_override("font_size", sz)
-	btn.add_theme_color_override("font_color", PEN if is_armed else INK)
-	btn.add_theme_color_override("font_hover_color", PEN)
-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	for stn in ["normal", "hover", "pressed", "focus"]:
-		btn.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
+	# S9 — ONE ARM FAMILY: the confirm control wears the paper capsule and says
+	# its tier in small print, so the player learns the danger scale by shape.
+	var btn := paper_word(b, armed_caption if is_armed else plain, tier_word("two-tap"),
+		pos, sz, PEN if is_armed else INK, w, is_armed)
 	btn.pressed.connect(func() -> void:
 		if String(b.desk.get("armed", "")) == id:
 			b.desk.erase("armed")
@@ -517,8 +509,7 @@ static func arm(b, id: String, plain: String, armed_caption: String, pos: Vector
 			return
 		b.desk["armed"] = id   # arming a second control disarms the first
 		b.refresh())
-	b.pane().add_child(btn)
-	return btn
+	return btn   # paper_word's word() already parented the button
 
 ## THE SIGNATURE BEAT (§1.6.4): a coral rule draws under the pressed words in
 ## 0.14s, holds 0.10s, and only then does the act fire. The most consequential
@@ -1009,7 +1000,9 @@ static func ledger_row(b, sheet: Dictionary, cells: Array, cfg: Dictionary = {})
 			(Color(INK, 0.6) if (dim or i > 0) else INK)
 		if is_amount and dim:
 			cell_col = Color(INK, 0.42)
-		var lbl: Label = b.label(String(cells[i]), Vector2(float(col.get("x", 0.0)), y + 6.0),
+		# S6 — book cells receive free text (generated buys lines): one measured
+		# line per cell, never a wrap over the rule into the row below
+		var lbl: Label = fit_line(b, String(cells[i]), Vector2(float(col.get("x", 0.0)), y + 6.0),
 			22 if is_amount else 21, cell_col, float(col.get("w", 100.0)) - 10.0)
 		if String(col.get("align", "left")) == "right":
 			lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -1246,11 +1239,12 @@ static func wall_card(b, col_frame: Dictionary, cfg: Dictionary) -> float:
 	var sev := int(cfg.get("sev", 0))
 	if sev > 0:
 		sev_dot(b, x + w - SEV_BOX - 4.0, y + 6.0, sev)
-	b.label(String(cfg.get("title", "")), Vector2(x + 10.0, y + 6.0), 22,
+	# S6 — wall titles and facts are generated (bet names, measured lines)
+	fit_line(b, String(cfg.get("title", "")), Vector2(x + 10.0, y + 6.0), 22,
 		Color.WHITE if ship_ready else INK, w - (SEV_BOX + 22.0 if sev > 0 else 20.0))
 	var fy := y + 36.0
 	for f in facts:
-		b.label(String(f), Vector2(x + 10.0, fy), 17,
+		fit_line(b, String(f), Vector2(x + 10.0, fy), 17,
 			Color(1, 1, 1, 0.85) if ship_ready else Color(INK, 0.65), w - 20.0)
 		fy += 24.0
 	if progress >= 0.0:
@@ -1280,14 +1274,15 @@ static func ticket(b, x: float, y: float, w: float, cfg: Dictionary) -> float:
 	box.set_deferred("size", Vector2(w, h))
 	b.pane().add_child(box)
 	_dashrule(b, x + 10.0, y + 34.0, w - 20.0)
-	b.label(String(cfg.get("title", "")).to_upper(), Vector2(x + 14.0, y + 6.0), 20,
+	# S6 — ticket titles and lines carry generated words: measured, one line
+	fit_line(b, String(cfg.get("title", "")).to_upper(), Vector2(x + 14.0, y + 6.0), 20,
 		Color(INK, 0.6), w - 28.0)
 	var ly := y + 44.0
 	for ln in lines:
 		var d: Dictionary = ln
-		b.label(String(d.get("label", "")), Vector2(x + 14.0, ly), 21,
+		fit_line(b, String(d.get("label", "")), Vector2(x + 14.0, ly), 21,
 			Color(INK, 0.85), w * 0.6)
-		var v: Label = b.label(String(d.get("value", "")), Vector2(x + 14.0, ly), 21,
+		var v: Label = fit_line(b, String(d.get("value", "")), Vector2(x + 14.0, ly), 21,
 			d.get("col", INK), w - 28.0)
 		v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		ly += 32.0
@@ -1372,11 +1367,12 @@ static func hero_plate(b, x: float, y: float, name_text: String, version: String
 	box.position = Vector2(x, y)
 	box.set_deferred("size", Vector2(w, 78.0))
 	b.pane().add_child(box)
-	b.label(name_text, Vector2(x + 16.0, y + 6.0), 30, INK, w - 130.0)
+	# S6 — the plate's name and note are generated: measured, one line each
+	fit_line(b, name_text, Vector2(x + 16.0, y + 6.0), 30, INK, w - 130.0)
 	if version != "":
 		b.label(version, Vector2(x + w - 110.0, y + 10.0), 26, PEN, 100.0)
 	if note != "":
-		b.label(note, Vector2(x + 16.0, y + 46.0), 17, Color(INK, 0.6), w - 32.0)
+		fit_line(b, note, Vector2(x + 16.0, y + 46.0), 17, Color(INK, 0.6), w - 32.0)
 	return y + 92.0
 
 ## HERO ROW (rung-3 read face, DECISIONS default B): one calm row per product/
@@ -1483,12 +1479,13 @@ static func fold_row(b, x: float, y: float, n: int, label_text: String,
 	if n <= 0:
 		return y
 	_dashrule(b, x, y + 20.0, 1120.0 * 0.35)
-	var text := "the other %d %s" % [n, label_text]
+	# S6 — the label half is generated (counts + a lane's own words): measured
+	var text := fit_text(b, "the other %d %s" % [n, label_text], 384.0, DETAIL)
 	if on_press.is_valid():
 		word(b, text + "  ->", Vector2(x + 1120.0 * 0.36, y - 2.0), on_press, DETAIL,
 			Color(INK, 0.6), 420.0)
 	else:
-		b.label(text, Vector2(x + 1120.0 * 0.36, y + 4.0), DETAIL, Color(INK, 0.5), 420.0)
+		fit_line(b, text, Vector2(x + 1120.0 * 0.36, y + 4.0), DETAIL, Color(INK, 0.5), 420.0)
 	_dashrule(b, x + 1120.0 * 0.36 + 440.0, y + 20.0, 1120.0 - (1120.0 * 0.36 + 440.0))
 	return y + 44.0
 
@@ -1525,6 +1522,353 @@ static func under_construction(b, big: String, question: String, note: String) -
 	b.label("this desk is on the drafting table — its numbers land with the next wave",
 		Vector2(X_ID + 20.0, y), LAW, Color(INK, 0.4), 1060.0)
 	return y + 40.0
+
+# ═════════════════ THE UX SPINE PRIMITIVES (13-binder-ux, DAG3) ══════════════
+## The nine systems' kit half, built once for both engines: the zero state
+## (S1), the ask strip (S2a), the DO lane (S3), the receipt popover (S4), the
+## delta layer (S5), the measure law (S6), the arm family (S9) and the
+## suggestion probe. Focus, wayfinding and the seen store live on the binder;
+## everything HERE draws through `b` exactly like the rest of the kit.
+
+## THE DO LANE'S ONE ANCHOR (S3): bottom-right of the pane, above the money
+## desks' teaching foot (806) — every desk's actions in the same place, so the
+## eye learns ONE spot for "what can I do here".
+const DO_LANE_Y := 762.0
+
+## THE TIER SAID ON THE CONTROL (S9): the three confirm grammars keep their
+## mechanics and learn to introduce themselves — the danger scale in words.
+static func tier_word(tier: String) -> String:
+	match tier:
+		"two-tap":
+			return "two-tap"
+		"sign":
+			return "sign for it"
+		"type":
+			return "type the word"
+	return ""
+
+## THE ARM FAMILY'S ONE BODY (S9): a paper capsule behind the words — the
+## ADJUST square's grammar at word scale. Every confirm control in the game
+## wears this, and says its tier in small print inside. Returns the Button
+## (bare when on_press is empty — arm() wires its own beat).
+static func paper_word(b, text: String, note: String, pos: Vector2, sz: int = STATUS,
+		col: Color = INK, w: float = 200.0, armed: bool = false,
+		on_press: Callable = Callable()) -> Button:
+	var nw := 0.0
+	if note != "":
+		nw = b.font().get_string_size(note, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 10.0
+	# S6 GUARDS S9: the capsule never leaves the sheet — a caption wider than
+	# the room to the pane's right margin trims on its measure (flat words
+	# used to overflow invisibly; a drawn box may not).
+	var room := X_ID + 1120.0 - (pos.x - 8.0)
+	var cap := fit_text(b, text, maxf(room - nw - 26.0, 60.0), sz)
+	var tw: float = b.font().get_string_size(cap, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
+	var box := _PaperBtn.new()
+	box.armed = armed
+	box.lean = int(pos.x) % 7
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.position = Vector2(pos.x - 8.0, pos.y + 2.0)
+	box.set_deferred("size", Vector2(tw + nw + 22.0, minf(float(sz) + 20.0, 44.0)))
+	b.pane().add_child(box)
+	if note != "":
+		b.label(note, Vector2(pos.x + tw + 8.0, pos.y + maxf(float(sz) * 0.5 - 1.0, 8.0)),
+			12, Color(INK, 0.45), nw + 6.0)
+	return word(b, text, pos, on_press, sz, col, w)
+
+# ─────────────────────────── S1 · the zero state ─────────────────────────────
+
+## NO DESK OPENS ON BARE FURNITURE. Week 1 is the first thing a player ever
+## sees, so the empty desk is a TEACHING state: what this page WILL show (the
+## promise, in display type), what one unit WOULD earn/cost (hand ink, honest
+## subjunctive), the ONE action available now, and when the desk comes alive.
+## cfg: will_show · would_line · action_label · action_cb · wakes_hint
+static func zero_state(b, cfg: Dictionary) -> void:
+	var w := 860.0
+	var x := X_ID + (1120.0 - w) * 0.5
+	var y := 226.0
+	var will := String(cfg.get("will_show", ""))
+	if will != "":
+		var l: Label = b.label(will, Vector2(x, y), 40, INK, w)
+		l.add_theme_font_override("font", b.display_font())
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		y += maxf((b.display_font() as Font).get_multiline_string_size(will,
+			HORIZONTAL_ALIGNMENT_LEFT, w, 40).y, 54.0) + 24.0
+	var would := String(cfg.get("would_line", ""))
+	if would != "":
+		# the promise framed as promise, never as fact — dim hand ink
+		var l2: Label = b.label(would, Vector2(x, y), ROW, Color(INK, 0.55), w)
+		l2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		y += maxf(b.wrap_h(would, ROW, w), 34.0) + 38.0
+	var act := String(cfg.get("action_label", ""))
+	if act != "":
+		var tw: float = b.font().get_string_size(act, HORIZONTAL_ALIGNMENT_LEFT, -1, ROW).x
+		var bx := X_ID + (1120.0 - tw) * 0.5
+		paper_word(b, act, "", Vector2(bx, y), ROW, INK, tw + 40.0, false,
+			cfg.get("action_cb", Callable()))
+		b.mark_control("zero_action", Rect2(bx - 8.0, y, tw + 30.0, 48.0))
+	var wakes := String(cfg.get("wakes_hint", ""))
+	if wakes != "":
+		var l3: Label = b.label(wakes, Vector2(x, 806.0), LAW, Color(INK, 0.45), w)
+		l3.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+# ─────────────────────── S2a · the ask strip + its data ──────────────────────
+
+## The data half, shared with the quartet cards: this desk's attention labels,
+## old desk words aliased onto the new pages on BOTH sides of the compare.
+static func get_asks(state, desk_id: String) -> Array:
+	var want := String(Binder.LEGACY_TO_DESK.get(desk_id, desk_id))
+	var out: Array = []
+	for r in SimEngine.attention_items(state):
+		var rd: Dictionary = r
+		var did := String(Binder.LEGACY_TO_DESK.get(String(rd.get("desk", "")),
+			String(rd.get("desk", ""))))
+		if did == want:
+			out.append(String(rd.get("label", "")))
+	return out
+
+## RED SPEAKS ON THE PAGE (S2, the spend fix made law): one measured red line —
+## "!  <the asks> — <the verb>" — under the hero of any desk that carries
+## attention. Returns whether it drew, so a caller can spend the y.
+static func ask_strip(b, desk_id: String, x: float, y: float, w: float,
+		verb_hint: String) -> bool:
+	var asks := get_asks(b.state, desk_id)
+	if asks.is_empty():
+		return false
+	var line := "!  " + " · ".join(PackedStringArray(asks))
+	if verb_hint != "":
+		line += " — " + verb_hint
+	fit_line(b, line, Vector2(x, y), DETAIL, ALERT, w)
+	return true
+
+# ────────────────────────────── S3 · the DO lane ─────────────────────────────
+
+## EVERY DESK'S PRIMARY ACTIONS IN ONE SLOT: up to three paper word-buttons,
+## right-aligned on the DO_LANE_Y anchor, one grammar "verb — object", each in
+## the arm family with its tier said in small print. The focused one wears the
+## pen ring; ENTER presses it, TAB cycles it (binder-side). Controls register
+## as "do_0".."do_2" for the focus system.
+## actions: Array[{label, cb, tier ("" | "two-tap" | "sign" | "type")}]
+static func do_lane(b, actions: Array) -> void:
+	var n := mini(actions.size(), 3)
+	if n <= 0:
+		return
+	b.reset_do_lane()
+	var focus: int = b.do_focus()
+	# measure first, then lay left→right so the block right-aligns as one
+	var caps: Array = []
+	var notes: Array = []
+	var widths: Array = []
+	var total := 0.0
+	for i in n:
+		var a: Dictionary = actions[i]
+		var tier := String(a.get("tier", ""))
+		var cap := fit_text(b, String(a.get("label", "")), 330.0, DETAIL)
+		if tier == "two-tap" and String(b.desk.get("armed", "")) == "do_%d" % i:
+			cap = fit_text(b, String(a.get("label", "")) + " — sure?", 360.0, DETAIL)
+		var note := tier_word(tier)
+		var tw: float = b.font().get_string_size(cap, HORIZONTAL_ALIGNMENT_LEFT, -1, DETAIL).x
+		var nw := 0.0
+		if note != "":
+			nw = b.font().get_string_size(note, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 10.0
+		caps.append(cap)
+		notes.append(note)
+		widths.append(tw + nw + 24.0)
+		total += tw + nw + 24.0 + (14.0 if i > 0 else 0.0)
+	var x := X_ID + 1120.0 - total
+	for i2 in n:
+		var a2: Dictionary = actions[i2]
+		var tier2 := String(a2.get("tier", ""))
+		var cb: Callable = a2.get("cb", Callable())
+		var bw := float(widths[i2])
+		var id := "do_%d" % i2
+		var is_armed := String(b.desk.get("armed", "")) == id
+		var btn := paper_word(b, String(caps[i2]), String(notes[i2]), Vector2(x, DO_LANE_Y),
+			DETAIL, PEN if is_armed else INK, bw)
+		match tier2:
+			"two-tap":
+				btn.pressed.connect(func() -> void:
+					if String(b.desk.get("armed", "")) == id:
+						b.desk.erase("armed")
+						sign_stroke(b, btn, func() -> void:
+							if cb.is_valid():
+								cb.call()
+							b.refresh())
+						return
+					b.desk["armed"] = id
+					b.refresh())
+			"sign":
+				btn.pressed.connect(func() -> void:
+					b.desk.erase("armed")
+					sign_stroke(b, btn, func() -> void:
+						if cb.is_valid():
+							cb.call()
+						b.refresh()))
+			_:
+				# plain — and "type": the press opens the desk's own typed flow
+				btn.pressed.connect(func() -> void:
+					b.desk.erase("armed")
+					if cb.is_valid():
+						cb.call()
+					b.refresh())
+		var rect := Rect2(x - 8.0, DO_LANE_Y + 2.0, bw + 16.0, 44.0)
+		b.mark_control(id, rect)
+		b.register_do(btn)
+		if i2 == focus:
+			var ring := _FocusRing.new()
+			ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ring.position = rect.position - Vector2(4.0, 4.0)
+			ring.set_deferred("size", rect.size + Vector2(8.0, 8.0))
+			b.pane().add_child(ring)
+		x += bw + 14.0
+
+# ──────────────────────── S4 · press any number (receipt) ────────────────────
+
+## A PRESSABLE REGION → THE RECEIPT POPOVER: the terms that made the number,
+## on a small paper card near the press. `target` is a Rect2 (pane-local) or a
+## registered control id. lines: Array[{label, value}]. Dismissed by any
+## press or Esc; Esc will NOT pop the desk while a popover is open (the
+## binder's chain grew a level).
+static func press_receipt(b, target, title: String, lines: Array) -> void:
+	var rect := Rect2()
+	if target is String:
+		if not b.has_control(String(target)):
+			return
+		rect = b.control_rect(String(target))
+	elif target is Rect2:
+		rect = target
+	else:
+		return
+	var hit := word(b, "", rect.position, Callable(), DETAIL, INK, rect.size.x)
+	hit.size = rect.size
+	var tl := title
+	var ls := lines
+	var at := Vector2(rect.position.x, rect.end.y + 8.0)
+	hit.pressed.connect(func() -> void:
+		b.popover(tl, ls, at))
+
+## The convenience: a label that IS its own receipt — drawn with a subtle
+## underdot marking pressability, registered over its own measure.
+static func receipt_number(b, x: float, y: float, text: String, sz: int, col: Color,
+		title: String, lines: Array) -> Label:
+	var l: Label = b.label(text, Vector2(x, y), sz, col, 520.0)
+	var tw: float = b.font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
+	var lh: float = (b.font() as Font).get_height(sz)
+	var dot := _UnderDot.new()
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dot.position = Vector2(x + tw * 0.5 - 3.0, y + lh - 2.0)
+	dot.set_deferred("size", Vector2(7.0, 7.0))
+	b.pane().add_child(dot)
+	press_receipt(b, Rect2(x - 4.0, y - 2.0, tw + 8.0, lh + 8.0), title, lines)
+	return l
+
+# ─────────────────────────── S5 · the delta layer ────────────────────────────
+
+## WHAT CHANGED, beside the hero: a small drawn triangle — sage up, coral
+## down, nothing when equal. Drawn, never typed (the hand font carries no
+## ▲/▼, and a tofu box is a shipped bug).
+static func delta_arrow(b, x: float, y: float, now: float, prev: float) -> void:
+	if absf(now - prev) < 0.000001:
+		return
+	var tri := _DeltaTri.new()
+	tri.up = now > prev
+	tri.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tri.position = Vector2(x, y)
+	tri.set_deferred("size", Vector2(16.0, 14.0))
+	b.pane().add_child(tri)
+
+## A HAND-DRAWN ELLIPSE round a row that moved since the binder was last
+## opened — the pen circling the news on this week's paper.
+static func pen_circle(b, rect: Rect2) -> void:
+	var e := _PenEllipse.new()
+	e.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	e.position = rect.position - Vector2(10.0, 7.0)
+	e.set_deferred("size", rect.size + Vector2(20.0, 14.0))
+	b.pane().add_child(e)
+
+# ─────────────────────────── S6 · the measure law ────────────────────────────
+
+## GENERATED TEXT NEVER WRAPS BY SURPRISE: one line, measured, ellipsized at
+## its declared width — autowrap off, clipped, fixed size. Every lane that
+## renders a generated string comes through here or fit_par; the Godot/TMP
+## differences die inside.
+static func fit_line(b, text: String, pos: Vector2, sz: int, col: Color, w: float) -> Label:
+	var l: Label = b.label(text, pos, sz, col, w)
+	l.autowrap_mode = TextServer.AUTOWRAP_OFF
+	l.clip_text = true
+	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	var lh: float = (b.font() as Font).get_height(sz) + 2.0
+	l.custom_minimum_size = Vector2(w, lh)
+	l.size = Vector2(w, lh)
+	return l
+
+## The paragraph half: wraps to max_lines, then ellipsizes the last one.
+static func fit_par(b, text: String, pos: Vector2, sz: int, col: Color, w: float,
+		max_lines: int) -> Label:
+	var l: Label = b.label(text, pos, sz, col, w)
+	l.clip_text = true
+	l.max_lines_visible = maxi(max_lines, 1)
+	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	var lh: float = ((b.font() as Font).get_height(sz) + 2.0) * float(maxi(max_lines, 1))
+	l.custom_minimum_size = Vector2(w, lh)
+	l.size = Vector2(w, lh)
+	return l
+
+## The string half, for Button captions and draw_string sites: the measured
+## trim the spend book proved, promoted kit-wide.
+static func fit_text(b, s: String, w: float, sz: int) -> String:
+	if b.font().get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x <= w:
+		return s
+	var t := s
+	while t.length() > 1 and b.font().get_string_size(t + "…",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x > w:
+		t = t.substr(0, t.length() - 1)
+	return t.strip_edges() + "…"
+
+# ───────────────────── the suggestion interface (B-LOG's feed) ───────────────
+
+## DESKS MAY SPEAK UP: a desk exposes
+##   static func suggestions(state) -> Array[{label, kind: "prefill"|"jump", payload}]
+## and this-week collects them into THE WEEK'S CHIPS. Absent = no voice; the
+## probe never crashes on a desk that stays quiet. Each gathered row gains a
+## "desk" key naming its source.
+static func collect_suggestions(state, desk_ids: Array) -> Array:
+	var out: Array = []
+	for id in desk_ids:
+		var scr: Variant = Binder.desk_script(String(id))
+		if scr == null or not Binder.script_has(scr, "suggestions"):
+			continue
+		var rows: Variant = scr.call("suggestions", state)
+		if rows is Array:
+			for r in rows:
+				if r is Dictionary:
+					var d: Dictionary = (r as Dictionary).duplicate()
+					d["desk"] = String(id)
+					out.append(d)
+	return out
+
+## THE COUNT BADGE — the binder-bang idiom with a number in it: the LOCK IN
+## button's outstanding-attention count, and any small red tally.
+class _CountBadge:
+	extends Control
+	var count := 0
+	var font: Font
+	func _draw() -> void:
+		var c := size * 0.5
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 13
+		var pts := PackedVector2Array()
+		for i in 19:
+			var t := TAU * float(i) / 18.0
+			pts.append(c + Vector2(cos(t), sin(t)) * (size.x * 0.5 - 1.0
+				+ rng.randf_range(-0.6, 0.6)))
+		draw_colored_polygon(pts, DeskKit.ALERT)
+		pts.append(pts[0])
+		draw_polyline(pts, DeskKit.INK, 2.2, true)
+		if font != null:
+			var txt := str(count)
+			var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+			draw_string(font, Vector2(c.x - tw * 0.5, c.y + 6.0), txt,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color.WHITE)
 
 # ── the small drawn helpers the v2 primitives compose from ───────────────────
 
@@ -2041,3 +2385,100 @@ class _ClockChip:
 		draw_colored_polygon(pts, DeskKit.ALERT)
 		pts.append(pts[0])
 		draw_polyline(pts, DeskKit.INK, 2.2, true)
+
+# ───────────────────── the DAG3 spine's drawn pieces ─────────────────────────
+
+## THE ARM FAMILY'S CAPSULE (S9): paper2 under a wobbled ink edge with the
+## small thrown shadow — the ADJUST square's hand at word scale. An armed one
+## trades its ink edge for the pen.
+class _PaperBtn:
+	extends Control
+	var armed := false
+	var lean := 0
+	func _draw() -> void:
+		draw_rect(Rect2(2, 3, size.x, size.y), Color(0, 0, 0, 0.16))
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 73 + lean
+		var pts := PackedVector2Array()
+		var corners := [Vector2(1, 1), Vector2(size.x - 1, 1),
+			Vector2(size.x - 1, size.y - 1), Vector2(1, size.y - 1)]
+		for i in 4:
+			var a: Vector2 = corners[i]
+			var bb: Vector2 = corners[(i + 1) % 4]
+			for k in 8:
+				pts.append(a.lerp(bb, float(k) / 8.0)
+					+ Vector2(rng.randf_range(-0.9, 0.9), rng.randf_range(-0.9, 0.9)))
+		draw_colored_polygon(pts, DeskKit.PAPER2)
+		pts.append(pts[0])
+		draw_polyline(pts, DeskKit.PEN if armed else DeskKit.INK, 2.4, true)
+
+## THE DO LANE'S FOCUS RING: a pen rectangle round the focused action — what
+## ENTER will press, said in ink.
+class _FocusRing:
+	extends Control
+	func _draw() -> void:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 79
+		var pts := PackedVector2Array()
+		var corners := [Vector2(1, 1), Vector2(size.x - 1, 1),
+			Vector2(size.x - 1, size.y - 1), Vector2(1, size.y - 1)]
+		for i in 4:
+			var a: Vector2 = corners[i]
+			var bb: Vector2 = corners[(i + 1) % 4]
+			for k in 9:
+				pts.append(a.lerp(bb, float(k) / 9.0)
+					+ Vector2(rng.randf_range(-1.1, 1.1), rng.randf_range(-1.1, 1.1)))
+		pts.append(pts[0])
+		draw_polyline(pts, Color(DeskKit.PEN, 0.8), 3.0, true)
+
+## THE DELTA TRIANGLE (S5): drawn, never typed — sage points up, coral down.
+class _DeltaTri:
+	extends Control
+	var up := true
+	func _draw() -> void:
+		var w := size.x
+		var h := size.y
+		var pts: PackedVector2Array
+		if up:
+			pts = PackedVector2Array([Vector2(w * 0.5, 1), Vector2(w - 1, h - 1),
+				Vector2(1, h - 1)])
+		else:
+			pts = PackedVector2Array([Vector2(1, 1), Vector2(w - 1, 1),
+				Vector2(w * 0.5, h - 1)])
+		draw_colored_polygon(pts, DeskKit.SAGE if up else DeskKit.PEN)
+		var ring := PackedVector2Array(pts)
+		ring.append(pts[0])
+		draw_polyline(ring, Color(DeskKit.INK, 0.7), 1.6, true)
+
+## THE PEN CIRCLE (S5): a hand-drawn ellipse round the row that moved — the
+## founder circling this week's news.
+class _PenEllipse:
+	extends Control
+	func _draw() -> void:
+		var rx := size.x * 0.5 - 2.0
+		var ry := size.y * 0.5 - 2.0
+		var c := size * 0.5
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 83 + int(position.y) % 17
+		var pts := PackedVector2Array()
+		for i in 33:
+			var t := TAU * float(i) / 32.0
+			pts.append(c + Vector2(cos(t) * (rx + rng.randf_range(-2.0, 2.0)),
+				sin(t) * (ry + rng.randf_range(-1.6, 1.6))))
+		pts.append(pts[0])
+		draw_polyline(pts, Color(DeskKit.PEN, 0.85), 2.6, true)
+
+## THE UNDERDOT (S4): the smallest possible "you may press this" — a pen blot
+## under a receipt-bearing number.
+class _UnderDot:
+	extends Control
+	func _draw() -> void:
+		var c := size * 0.5
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 89
+		var pts := PackedVector2Array()
+		for i in 11:
+			var t := TAU * float(i) / 10.0
+			pts.append(c + Vector2(cos(t), sin(t)) * (size.x * 0.5 - 0.5
+				+ rng.randf_range(-0.4, 0.4)))
+		draw_colored_polygon(pts, Color(DeskKit.PEN, 0.75))

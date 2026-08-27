@@ -25,20 +25,33 @@ static func draw(b, gi: int) -> void:
 		var cy := y + float(i / 2) * (CARD_H + GAP)
 		_card(b, cx, cy, id, summary_for(b, id), int(sev.get(id, 0)))
 
-## One quartet card: hero number, hero sentence, the red state, the chevron.
+## One quartet card: hero number, hero sentence, the red state, the chevron —
+## and (DAG3) the S5 delta line when the hero moved since the last open, plus
+## the S2 ask line naming WHAT the red wants, not just that it wants.
 static func _card(b, x: float, y: float, id: String, s: Dictionary, severity: int) -> void:
 	var f := DeskKit.card_frame(b, x, y, CARD_W, CARD_H, id)
 	if severity > 0:
 		DeskKit.sev_dot(b, x + CARD_W - 78.0, y + 16.0, severity)
-	b.label(String(s.get("big", "—")), Vector2(f.content_x, f.content_y + 6.0),
+	var big := String(s.get("big", "—"))
+	b.label(big, Vector2(f.content_x, f.content_y + 6.0),
 		DeskKit.HERO_BIG, DeskKit.ALERT if severity >= 2 else DeskKit.INK,
 		CARD_W - DeskKit.CARD_PAD * 2.0)
 	b.label(String(s.get("line", "")), Vector2(f.content_x, f.content_y + 78.0),
 		DeskKit.DETAIL, Color(DeskKit.INK, 0.65), CARD_W - DeskKit.CARD_PAD * 2.0)
-	if severity > 0:
-		b.label("needs you — the red climbed here from the page",
-			Vector2(f.content_x, y + CARD_H - 44.0), DeskKit.LAW, DeskKit.ALERT,
+	# the delta line: the seen store remembers last open's hero verbatim
+	var prev: String = b.seen_prev(id, "quartet")
+	var moved: bool = b.seen(id, "quartet", big)
+	if moved and prev != "" and severity <= 0:
+		DeskKit.fit_line(b, "was %s when you last looked" % prev,
+			Vector2(f.content_x, y + CARD_H - 44.0), DeskKit.LAW, Binder.BLUE,
 			CARD_W - DeskKit.CARD_PAD * 2.0)
+	if severity > 0:
+		var asks: Array = DeskKit.get_asks(b.state, id)
+		var ask_line := "needs you — the red climbed here from the page"
+		if not asks.is_empty():
+			ask_line = "!  " + " · ".join(PackedStringArray(asks))
+		DeskKit.fit_line(b, ask_line, Vector2(f.content_x, y + CARD_H - 44.0),
+			DeskKit.LAW, DeskKit.ALERT, CARD_W - DeskKit.CARD_PAD * 2.0)
 	var did := id
 	var hit := DeskKit.word(b, "", Vector2(x, y), func() -> void:
 		b.open_page(did), DeskKit.DETAIL, DeskKit.INK, CARD_W)

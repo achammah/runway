@@ -51,13 +51,9 @@ namespace Runway.Game
                 Ink(0.7f), 420f);
             b.L("your book, written for YOUR business — every line sums into one of four engine buckets.",
                 SheetX, 62f, DeskKit.Detail, Ink(0.6f), 760f);
-            // RED MEANS ACT, AND THE PAGE NAMES THE ASK — this desk's own rows
-            var asksHere = new List<string>();
-            foreach (AttentionItem it in SimEngine.AttentionItems(state))
-                if (BinderScreen.DeskAlias(it.Desk) == "spend") asksHere.Add(it.Label);
-            if (asksHere.Count > 0)
-                b.L("!  " + string.Join(" · ", asksHere) + " — adopt the book or fund a line",
-                    SheetX, 86f, DeskKit.Detail, DeskKit.Alert, 1000f);
+            // RED MEANS ACT, AND THE PAGE NAMES THE ASK — the kit's ask strip,
+            // born on this desk (S2a).
+            DeskKit.AskStrip(b, "spend", SheetX, 86f, 1000f, "adopt the book or fund a line");
             if (suggested > 0 && suggested != total)
                 DeskKit.Arm(b, "adopt_book",
                     "adopt the suggested book — $" + GameUi.Money(suggested) + "/wk",

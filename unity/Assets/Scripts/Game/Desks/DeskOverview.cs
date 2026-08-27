@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using Runway.App;
 using Runway.Core;
@@ -47,19 +48,35 @@ namespace Runway.Game
             }
         }
 
+        /// One quartet card — and (DAG3) the S5 delta line when the hero moved
+        /// since the last open, plus the S2 ask line naming WHAT the red
+        /// wants, not just that it wants.
         static void Card(BinderScreen b, float x, float y, string id, string[] s,
                          int severity)
         {
             DeskKit.CardBox f = DeskKit.CardFrame(b, x, y, CardW, CardH, id);
             if (severity > 0) DeskKit.SevDot(b, x + CardW - 78f, y + 16f, severity);
-            b.L(s[0], f.ContentX, f.ContentY + 6f, DeskKit.HeroBig,
+            string big = s[0];
+            b.L(big, f.ContentX, f.ContentY + 6f, DeskKit.HeroBig,
                 severity >= 2 ? DeskKit.Alert : DrawnUI.Ink, CardW - DeskKit.CardPad * 2f);
             b.L(s[1], f.ContentX, f.ContentY + 78f, DeskKit.Detail,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.65f), CardW - DeskKit.CardPad * 2f);
-            if (severity > 0)
-                b.L("needs you — the red climbed here from the page", f.ContentX,
-                    y + CardH - 44f, DeskKit.Law, DeskKit.Alert,
+            // the delta line: the seen store remembers last open's hero verbatim
+            string prev = b.SeenPrev(id, "quartet");
+            bool moved = b.Seen(id, "quartet", big);
+            if (moved && prev != "" && severity <= 0)
+                DeskKit.FitLine(b, "was " + prev + " when you last looked", f.ContentX,
+                    y + CardH - 44f, DeskKit.Law, DrawnUI.Blue,
                     CardW - DeskKit.CardPad * 2f);
+            if (severity > 0)
+            {
+                List<string> asks = DeskKit.GetAsks(b.State, id);
+                string askLine = asks.Count > 0
+                    ? "!  " + string.Join(" · ", asks)
+                    : "needs you — the red climbed here from the page";
+                DeskKit.FitLine(b, askLine, f.ContentX, y + CardH - 44f, DeskKit.Law,
+                    DeskKit.Alert, CardW - DeskKit.CardPad * 2f);
+            }
             string did = id;
             var hit = DeskKit.Word(b, "", x, y, () => b.OpenPage(did), DeskKit.Detail,
                                    DrawnUI.Ink, CardW);

@@ -124,6 +124,31 @@ var _rail: Control
 var _content: Control
 var _close_btn: Button
 var _tour_demo_red := false
+## ── THE UX SPINE (13-binder-ux, DAG3) — the binder half of the nine systems.
+## THE CONTROL REGISTRY (S2b): desks call mark_control(id, rect) while they
+## draw; cleared at every refresh; focus_desk spotlights a registered rect.
+var _controls := {}
+## THE DO LANE's focus (S3/S7): index of the action ENTER presses; TAB cycles
+## it while a lane is on the page (TAB still closes a lane-less page).
+var _do_focus := 0
+var _do_buttons: Array = []
+## THE BACK STACK (S7): cross-desk jumps push {from_desk, label}; a pill at
+## the rail's foot (or BACKSPACE) pops. Never saved, dies with the binder.
+var _back_stack: Array = []
+## The drill breadcrumb (S7): a desk in a drilled state re-declares it every
+## draw (push_crumb); cleared at refresh like the control registry.
+var _crumb := ""
+## The receipt popover (S4) and the coach spotlight (S2b) — transient layers.
+var _popover: Control = null
+var _spot: Control = null
+## THE SEEN STORE (S5): per-run "what did this desk last show" values, beside
+## the mail read-marks (user://binder_seen_<seed>.json). Loaded lazily, the
+## open's values flushed when the binder leaves the tree.
+var _seen_loaded := false
+var _seen_store := {}
+var _seen_pending := {}
+## The rail probe cache: desk id + method -> "does the desk speak" (S8/S10).
+var _probe_cache := {}
 
 func setup(p_state: GameState, p_gen: EventGenerator = null) -> void:
 	generator = p_gen
@@ -174,29 +199,83 @@ func _ready() -> void:
 	gui_input.connect(func(ev: InputEvent) -> void:
 		if ev is InputEventMouseButton and ev.pressed:
 			_dismiss())
+	# the seen store flushes however the binder leaves — Esc, TAB, or the
+	# lock hook freeing it from outside
+	tree_exiting.connect(_seen_flush)
 	_refresh()
 
 ## ESC POPS BEFORE IT CLOSES (docs/design/10-interface-language.md §4.2): the
-## tour eats Esc as "skip"; then a desk's armed control, then its mode, then an
-## open overview, and only from a page's base state does Esc shut the binder.
-## TAB and B always shut it — the same keys that opened it.
+## tour eats Esc as "skip"; then an open receipt popover (S4 — one more
+## level), then a desk's armed control, then its mode, then an open overview,
+## and only from a page's base state does Esc shut the binder. B always shuts
+## it; TAB shuts it too UNLESS the page carries a DO lane — there TAB cycles
+## the lane's focus (S7) and B/Esc keep the way out.
+## THE REST OF THE KEYBOARD (S7): 1-4 open the groups, ←/→ walk the open
+## group's pages, ENTER presses the focused DO action, BACKSPACE pops the
+## back stack. All of it dead while the tour owns the binder.
 func _unhandled_key_input(ev: InputEvent) -> void:
-	if ev is InputEventKey and ev.pressed and ev.keycode in [KEY_ESCAPE, KEY_TAB, KEY_B]:
+	if not (ev is InputEventKey and ev.pressed):
+		return
+	var key: Key = (ev as InputEventKey).keycode
+	if key in [KEY_ESCAPE, KEY_TAB, KEY_B]:
 		accept_event()
 		if _tour >= 0:
-			if ev.keycode == KEY_ESCAPE:
+			if key == KEY_ESCAPE:
 				_tour_finish()
 				return
 			_tour_finish()
 			_dismiss()
 			return
-		if ev.keycode == KEY_ESCAPE and _desk_pop():
+		if key == KEY_TAB and not _do_buttons.is_empty():
+			_do_focus = (_do_focus + 1) % _do_buttons.size()
+			_refresh()
 			return
-		if ev.keycode == KEY_ESCAPE and _overview >= 0:
+		if key == KEY_ESCAPE and _popover != null and is_instance_valid(_popover):
+			close_popover()
+			return
+		if key == KEY_ESCAPE and _desk_pop():
+			return
+		if key == KEY_ESCAPE and _overview >= 0:
 			_overview = -1
 			_refresh()
 			return
 		_dismiss()
+		return
+	if _tour >= 0:
+		return
+	match key:
+		KEY_1, KEY_2, KEY_3, KEY_4:
+			accept_event()
+			press_group(int(key) - int(KEY_1))
+		KEY_LEFT:
+			accept_event()
+			_walk_page(-1)
+		KEY_RIGHT:
+			accept_event()
+			_walk_page(1)
+		KEY_ENTER, KEY_KP_ENTER:
+			if not _do_buttons.is_empty():
+				accept_event()
+				var btn: Button = _do_buttons[clampi(_do_focus, 0, _do_buttons.size() - 1)]
+				if is_instance_valid(btn) and not btn.disabled:
+					btn.pressed.emit()
+		KEY_BACKSPACE:
+			if not _back_stack.is_empty():
+				accept_event()
+				_back_pop()
+
+## ←/→ walk the open group's fan, momentary tabs included, wrapping at the
+## ends — the binder read at reading speed.
+func _walk_page(dir: int) -> void:
+	var pages: Array = ((GROUPS[_open_group] as Dictionary).get("desks", []) as Array).duplicate()
+	for m in _momentary:
+		if int((m as Dictionary).get("group", -1)) == _open_group:
+			pages.append(String((m as Dictionary).get("id", "")))
+	if pages.is_empty():
+		return
+	var i := pages.find(_page)
+	i = (i + dir + pages.size()) % pages.size() if i >= 0 else 0
+	open_page(String(pages[i]))
 
 ## One step back inside the current desk. True = something was popped, so the
 ## press is spent and the binder stays open. The arrange shell lives in
@@ -223,12 +302,41 @@ func _dismiss() -> void:
 
 ## Open the binder ON a desk — old names and new names both land. The pre-roll
 ## review's "go fix it" arrives with the attention row's own (old) desk word.
-func focus_desk(desk_name: String) -> void:
+## S2b — THE JUMP GETS TEETH: pass a control_id a desk registered during its
+## draw and the landing spotlights that control (the coach's scrim, ~2s or any
+## input). S7 — pass `source` (the desk the jump left) and a "back to" pill
+## waits at the rail's foot; BACKSPACE or its press returns.
+func focus_desk(desk_name: String, control_id: String = "", source: String = "") -> void:
 	var id := String(LEGACY_TO_DESK.get(desk_name, desk_name))
 	if _find_group(id) < 0:
 		return
+	if source != "":
+		var src := String(LEGACY_TO_DESK.get(source, source))
+		if src != id and _find_group(src) >= 0:
+			_back_stack.append({"from_desk": src, "label": src})
+			while _back_stack.size() > 8:
+				_back_stack.pop_front()
 	desk.clear()
 	open_page(id)
+	if control_id != "" and _controls.has(control_id):
+		spotlight(_controls[control_id] as Rect2)
+
+## THE ONE JUMP EVERY RED ROW SHARES (S2): the pre-roll review and the threats
+## page hand over the attention row itself; the desk word translates, the
+## row's `control` key (engine pass-through; lanes fill it) lands spotlit.
+func jump_to_ask(row: Dictionary, source: String = "") -> void:
+	focus_desk(String(row.get("desk", "")), String(row.get("control", "")), source)
+
+func _back_pop() -> void:
+	if _back_stack.is_empty():
+		return
+	var top: Dictionary = _back_stack.pop_back()
+	var target := String(top.get("from_desk", ""))
+	if _find_group(target) < 0:
+		_refresh()
+		return
+	desk.clear()
+	open_page(target)
 
 ## The page press: sets the active sheet, clears desk-local state, keeps the
 ## group. Also the overview's card press and the momentary tab press.
@@ -238,6 +346,7 @@ func open_page(id: String) -> void:
 		return
 	if _page != id:
 		desk.clear()
+		_do_focus = 0
 	_overview = -1
 	if gi != _open_group:
 		_open_group = gi
@@ -330,6 +439,12 @@ func _refresh() -> void:
 		c.queue_free()
 	for c2 in _rail.get_children():
 		c2.queue_free()
+	# the per-draw registries die with the sheet they described (S2b/S3/S7)
+	_controls.clear()
+	_do_buttons.clear()
+	_crumb = ""
+	_popover = null
+	_spot = null
 	_frame.queue_redraw()
 	# THE OFFER's gold tab follows the buyout folder (L-OWN): summoned while
 	# an offer is on the table, folded away when it leaves. resolve is guarded
@@ -492,9 +607,32 @@ func _build_rail() -> void:
 					"%d wks" % int(md.get("wks", 0)))
 				py += 40.0
 		y += box_h + 12.0
+	# S7 — the back pill at the rail's foot: the way home from a cross-desk
+	# jump, pressable, twinned with BACKSPACE.
+	if not _back_stack.is_empty():
+		var top: Dictionary = _back_stack[_back_stack.size() - 1]
+		var pill_y := minf(y + 2.0, FRAME_SIZE.y - 64.0)
+		var pill := _BackPill.new()
+		pill.label_text = "back to " + String(top.get("label", ""))
+		pill.font = _font
+		pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pill.position = Vector2(RAIL_X, pill_y)
+		pill.set_deferred("size", Vector2(RAIL_BOX_W, 40.0))
+		_rail.add_child(pill)
+		var hit := Button.new()
+		hit.flat = true
+		hit.text = ""
+		for stn in ["normal", "hover", "pressed", "focus"]:
+			hit.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
+		hit.position = Vector2(RAIL_X, pill_y)
+		hit.set_deferred("size", Vector2(RAIL_BOX_W, 40.0))
+		hit.pressed.connect(func() -> void: _back_pop())
+		_rail.add_child(hit)
 
 ## One page tab in the fan. Red-filled with the white bang when its desk has
-## attention; gold with the deadline clock when momentary.
+## attention; gold with the deadline clock when momentary. A desk that speaks
+## a micro-status wears it right-aligned in dim ink (S10); a dormant desk's
+## whole tab dims to 60% (S8) — red always outranks the dim.
 func _page_tab(id: String, y: float, severity: int, gold: bool, clock_text: String) -> void:
 	var tab := _PageTab.new()
 	tab.text_v = id
@@ -504,6 +642,10 @@ func _page_tab(id: String, y: float, severity: int, gold: bool, clock_text: Stri
 	tab.clock_text = clock_text
 	tab.font = _font
 	tab.font_d = _font_d
+	if not gold and severity <= 0:
+		tab.micro = _desk_micro(id)
+		if _desk_dormant(id):
+			tab.modulate.a = 0.6
 	tab.position = Vector2(RAIL_X + 8.0, y)
 	tab.set_deferred("size", Vector2(RAIL_BOX_W - 16.0, 36.0))
 	var did := id
@@ -548,13 +690,16 @@ func _animate_open(gi: int) -> void:
 	for c2 in _rail.get_children():
 		if c2 is _PageTab:
 			var tabc := c2 as _PageTab
+			# a dormant tab fades in to ITS alpha (S8's 60%), not to full —
+			# the fan tween must never overwrite the era dim
+			var target_a := tabc.modulate.a
 			tabc.modulate.a = 0.0
 			var from_x := tabc.position.x - 14.0
 			var to_x := tabc.position.x
 			tabc.position.x = from_x
 			var tw2 := tabc.create_tween()
 			tw2.tween_interval(0.04 * float(fan))
-			tw2.tween_property(tabc, "modulate:a", 1.0, 0.12)
+			tw2.tween_property(tabc, "modulate:a", target_a, 0.12)
 			var tw3 := tabc.create_tween()
 			tw3.tween_interval(0.04 * float(fan))
 			tw3.tween_property(tabc, "position:x", to_x, 0.12) \
@@ -806,6 +951,220 @@ func wrap_h(text: String, sz: int, w: float) -> float:
 func refresh() -> void:
 	_refresh()
 
+# ── the UX spine's public hand (13-binder-ux, DAG3) ──────────────────────────
+
+## S2b — a desk registers its controls WHILE IT DRAWS (pane-local rects);
+## the registry lives one frame and feeds focus_desk's spotlight and the
+## receipt press map.
+func mark_control(id: String, rect: Rect2) -> void:
+	_controls[id] = rect
+
+func has_control(id: String) -> bool:
+	return _controls.has(id)
+
+func control_rect(id: String) -> Rect2:
+	return _controls.get(id, Rect2()) as Rect2
+
+## S3 — the DO lane registers its buttons in draw order; ENTER presses the
+## focused one, TAB cycles.
+func register_do(btn: Button) -> void:
+	_do_buttons.append(btn)
+
+func reset_do_lane() -> void:
+	_do_buttons.clear()
+
+func do_focus() -> int:
+	return _do_focus
+
+## S2b — THE COACH'S SPOTLIGHT, reused: a scrim with a hole over one control,
+## a breathing pen ring round it, gone after ~2s or at any input.
+func spotlight(rect: Rect2) -> void:
+	if _spot != null and is_instance_valid(_spot):
+		_spot.queue_free()
+	var sp := _Spotlight.new()
+	sp.hole = rect.grow(10.0)
+	sp.mouse_filter = Control.MOUSE_FILTER_STOP
+	sp.set_deferred("size", CONTENT_SIZE)
+	sp.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and is_instance_valid(sp):
+			sp.queue_free())
+	_content.add_child(sp)
+	_spot = sp
+
+## S4 — THE RECEIPT POPOVER: a small paper card saying the terms that made a
+## number, near the press. Any press or Esc dismisses it; while it is open
+## Esc pops IT, never the desk (the chain grew one level).
+## lines: Array[{label, value}]
+func popover(title: String, lines: Array, at: Vector2) -> void:
+	close_popover()
+	var rootp := Control.new()
+	rootp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rootp.set_deferred("size", CONTENT_SIZE)
+	_content.add_child(rootp)
+	var catcher := Button.new()
+	catcher.flat = true
+	catcher.text = ""
+	for stn in ["normal", "hover", "pressed", "focus"]:
+		catcher.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
+	catcher.set_deferred("size", CONTENT_SIZE)
+	catcher.pressed.connect(close_popover)
+	rootp.add_child(catcher)
+	var w := 380.0
+	var h := 56.0 + float(lines.size()) * 30.0 + 14.0
+	var px := clampf(at.x, 4.0, PANE_W - w - 8.0)
+	var py := clampf(at.y, 4.0, CONTENT_SIZE.y - h - 8.0)
+	var card := _PopCard.new()
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.position = Vector2(px, py)
+	card.set_deferred("size", Vector2(w, h))
+	rootp.add_child(card)
+	var title_l := _pop_label(rootp, title, Vector2(px + 14.0, py + 6.0), 20,
+		Color(INK, 0.6), w - 28.0)
+	title_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title_l.autowrap_mode = TextServer.AUTOWRAP_OFF
+	var ly := py + 46.0
+	for ln in lines:
+		var d: Dictionary = ln
+		_pop_label(rootp, String(d.get("label", "")), Vector2(px + 14.0, ly), 19,
+			Color(INK, 0.85), w * 0.58)
+		var v := _pop_label(rootp, String(d.get("value", "")), Vector2(px + 14.0, ly), 19,
+			d.get("col", INK), w - 28.0)
+		v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		ly += 30.0
+	_popover = rootp
+
+func close_popover() -> void:
+	if _popover != null and is_instance_valid(_popover):
+		_popover.queue_free()
+	_popover = null
+
+## A label parented to the popover, so the card frees as one piece.
+func _pop_label(parent: Control, text: String, pos: Vector2, sz: int, col: Color,
+		w: float) -> Label:
+	var l := Label.new()
+	l.autowrap_mode = TextServer.AUTOWRAP_OFF
+	l.clip_text = true
+	l.add_theme_font_override("font", _font)
+	l.add_theme_font_size_override("font_size", sz)
+	l.add_theme_color_override("font_color", col)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.text = text
+	l.position = pos
+	l.custom_minimum_size = Vector2(w, 0)
+	l.set_deferred("size", Vector2(w, _font.get_height(sz) + 2.0))
+	parent.add_child(l)
+	return l
+
+## S5 — THE SEEN STORE: record what this desk shows and learn whether it moved
+## since the binder was last open. Returns false on the very first sighting
+## (news is what CHANGED, not what exists). Values are strings; the caller
+## formats. Flushed when the binder leaves the tree; keyed per run.
+func seen(desk_name: String, key: String, value: String) -> bool:
+	_seen_load()
+	var k := desk_name + "/" + key
+	_seen_pending[k] = value
+	return _seen_store.has(k) and String(_seen_store[k]) != value
+
+## The stored (last-open) value, "" when the store never saw the key — read it
+## BEFORE trusting a delta (delta_arrow wants last open's number).
+func seen_prev(desk_name: String, key: String) -> String:
+	_seen_load()
+	return String(_seen_store.get(desk_name + "/" + key, ""))
+
+func _seen_path() -> String:
+	return "user://binder_seen_%d.json" % (state.sim_seed if state != null else 0)
+
+func _seen_load() -> void:
+	if _seen_loaded:
+		return
+	_seen_loaded = true
+	if not FileAccess.file_exists(_seen_path()):
+		return
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(_seen_path()))
+	if parsed is Dictionary:
+		_seen_store = parsed
+
+func _seen_flush() -> void:
+	if _seen_pending.is_empty():
+		return
+	_seen_load()
+	var merged: Dictionary = _seen_store.duplicate()
+	for k in _seen_pending:
+		merged[k] = _seen_pending[k]
+	var f := FileAccess.open(_seen_path(), FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(merged))
+		f.close()
+	_seen_store = merged
+	_seen_pending = {}
+
+## S7 — THE BREADCRUMB: a drilled desk re-declares its trail every draw
+## ("Lyon ‹ the works" at the sheet's top-left); it dies with the drill state
+## because the next refresh simply isn't told again.
+func push_crumb(label_text: String) -> void:
+	_crumb = label_text
+	_label("%s ‹ %s" % [label_text, _page], Vector2(10.0, 0.0), 21, Color(INK, 0.55), 520.0)
+
+# ── the desk-script probes (S8/S10/S14 — desks MAY speak, never must) ────────
+
+## The one id→script map, so a probe or a suggestion sweep never reaches into
+## _dispatch. Returns the script class, or null off the taxonomy.
+static func desk_script(id: String) -> Variant:
+	match id:
+		"offers": return DeskOffers
+		"customers": return DeskCustomersPage
+		"in motion": return DeskInMotion
+		"growth": return DeskGrowth
+		"spend": return DeskSpend
+		"team": return DeskTeam
+		"recruitment": return DeskRecruit
+		"bills": return DeskBills
+		"the bank": return DeskBankPage
+		"the works": return DeskWorks
+		"what we make": return DeskMake
+		"cap table": return DeskCapPage
+		"the raise": return DeskRaise
+		"the street": return DeskStreetPage
+		"threats": return DeskThreatsPage
+		"pivot": return DeskPivot
+		"this week": return DeskThisWeek
+		"history": return DeskHistory
+		"events": return DeskEvents
+		"the offer": return DeskOffer
+	return null
+
+## `has_method` for a script class's STATICS: the method list carries them,
+## and a Variant-held script calls them — proven live on 4.7.
+static func script_has(scr, method: String) -> bool:
+	if scr == null:
+		return false
+	for m in (scr as Script).get_script_method_list():
+		if String((m as Dictionary).get("name", "")) == method:
+			return true
+	return false
+
+func _probe(id: String, method: String) -> bool:
+	var ck := id + "/" + method
+	if _probe_cache.has(ck):
+		return bool(_probe_cache[ck])
+	var ok := Binder.script_has(Binder.desk_script(id), method)
+	_probe_cache[ck] = ok
+	return ok
+
+## S10 — the tab's micro-status: what the desk would say in four characters.
+func _desk_micro(id: String) -> String:
+	if state == null or not _probe(id, "micro_status"):
+		return ""
+	var scr: Variant = Binder.desk_script(id)
+	return String(scr.call("micro_status", state))
+
+## S8 — era dimming, never hiding: a dormant desk stays on the map at 60%.
+func _desk_dormant(id: String) -> bool:
+	if state == null or not _probe(id, "is_dormant"):
+		return false
+	var scr: Variant = Binder.desk_script(id)
+	return bool(scr.call("is_dormant", state))
+
 ## THE VESSEL: a jar with a level — product's tech debt, and any "how full is it"
 ## read a desk needs. Ink outline round the whole height or it is not a jar.
 func debt_jar(fill: float, pos: Vector2, size_v: Vector2) -> void:
@@ -1023,6 +1382,7 @@ class _PageTab:
 	var sev := 0
 	var gold := false
 	var clock_text := ""
+	var micro := ""      ## S10 — the desk's four-character read, right-aligned
 	var font: Font
 	var font_d: Font
 	func _init() -> void:
@@ -1064,8 +1424,15 @@ class _PageTab:
 			draw_rect(Rect2(0, 0, w - 2.0, h - 2.0), Binder.INK, false, 2.4)
 		if font != null:
 			var col := Color.WHITE if red else Binder.INK
+			# a spoken micro-status takes the tab's right lane; the name yields
+			var mw := 0.0
+			if not red and micro != "":
+				mw = minf(font.get_string_size(micro, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x, 74.0)
 			draw_string(font, Vector2(9, h - 11), text_v, HORIZONTAL_ALIGNMENT_LEFT,
-				w - (44.0 if red else 18.0), 19, col)
+				w - (44.0 if red else (24.0 + mw if mw > 0.0 else 18.0)), 19, col)
+			if mw > 0.0:
+				draw_string(font, Vector2(w - 8.0 - mw, h - 12), micro,
+					HORIZONTAL_ALIGNMENT_LEFT, mw + 2.0, 15, Color(Binder.INK, 0.55))
 			if red:
 				draw_string(font, Vector2(w - 24, h - 10), "!", HORIZONTAL_ALIGNMENT_LEFT,
 					20, 22, Color.WHITE)
@@ -1098,6 +1465,106 @@ class _BangChip:
 		if font != null:
 			draw_string(font, Vector2(c.x - 4.0, c.y + 7.0), "!",
 				HORIZONTAL_ALIGNMENT_LEFT, 12, 17, Color.WHITE)
+
+## S2b — THE SPOTLIGHT: the coach's scrim with a hole cut over one control and
+## a pen ring breathing round it on the 12fps clock. ~2 seconds, or the first
+## input of any kind, and it is gone — a hand pointing, never a wall.
+class _Spotlight:
+	extends Control
+	var hole := Rect2()
+	var _age := 0.0
+	func _process(dt: float) -> void:
+		_age += dt
+		if _age > 2.0:
+			queue_free()
+			return
+		queue_redraw()
+	func _input(ev: InputEvent) -> void:
+		if ev is InputEventKey and ev.pressed:
+			queue_free()
+			get_viewport().set_input_as_handled()
+	func _draw() -> void:
+		var hr := hole.intersection(Rect2(Vector2.ZERO, size))
+		if hr.size.x <= 0.0 or hr.size.y <= 0.0:
+			hr = Rect2(size * 0.5 - Vector2(60, 30), Vector2(120, 60))
+		var col := Color(0.05, 0.05, 0.06, 0.38)
+		draw_rect(Rect2(0, 0, size.x, hr.position.y), col)
+		draw_rect(Rect2(0, hr.end.y, size.x, maxf(size.y - hr.end.y, 0.0)), col)
+		draw_rect(Rect2(0, hr.position.y, hr.position.x, hr.size.y), col)
+		draw_rect(Rect2(hr.end.x, hr.position.y, maxf(size.x - hr.end.x, 0.0), hr.size.y), col)
+		var t := floorf(Time.get_ticks_msec() / 1000.0 * 12.0) / 12.0
+		var a := 0.7 + 0.3 * sin(t * 4.0)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 91
+		var pts := PackedVector2Array()
+		var corners := [hr.position, Vector2(hr.end.x, hr.position.y), hr.end,
+			Vector2(hr.position.x, hr.end.y)]
+		for i in 4:
+			var aa: Vector2 = corners[i]
+			var bb: Vector2 = corners[(i + 1) % 4]
+			for k in 10:
+				pts.append(aa.lerp(bb, float(k) / 10.0)
+					+ Vector2(rng.randf_range(-1.6, 1.6), rng.randf_range(-1.6, 1.6)))
+		pts.append(pts[0])
+		draw_polyline(pts, Color(Binder.PEN, clampf(a, 0.0, 1.0)), 3.4, true)
+
+## S4 — THE RECEIPT CARD: a small paper slip near the pressed number — shadow,
+## wobbled edge, dashed head rule, exactly the ticket's hand at popover scale.
+class _PopCard:
+	extends Control
+	func _draw() -> void:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 97 + int(position.x) % 13
+		draw_rect(Rect2(6, 8, size.x, size.y), Color(0, 0, 0, 0.2))
+		var pts := PackedVector2Array()
+		var corners := [Vector2(2, 2), Vector2(size.x - 2, 2),
+			Vector2(size.x - 2, size.y - 2), Vector2(2, size.y - 2)]
+		for i in 4:
+			var a: Vector2 = corners[i]
+			var bb: Vector2 = corners[(i + 1) % 4]
+			for k in 13:
+				pts.append(a.lerp(bb, float(k) / 13.0)
+					+ Vector2(rng.randf_range(-1.8, 1.8), rng.randf_range(-1.8, 1.8)))
+		draw_colored_polygon(pts, Binder.PAPER2)
+		pts.append(pts[0])
+		draw_polyline(pts, Binder.INK, 2.6, true)
+		# the dashed head rule under the title — torn-off receipt paper
+		var x := 10.0
+		while x < size.x - 10.0:
+			draw_line(Vector2(x, 38.0), Vector2(minf(x + 9.0, size.x - 10.0), 38.0),
+				Color(Binder.INK, 0.45), 2.0)
+			x += 16.0
+
+## S7 — THE BACK PILL: the way home from a cross-desk jump, waiting at the
+## rail's foot. A drawn left-pointing triangle carries the arrow (the hand
+## font never shipped one).
+class _BackPill:
+	extends Control
+	var label_text := ""
+	var font: Font
+	func _draw() -> void:
+		var w := size.x
+		var h := size.y
+		draw_rect(Rect2(2, 3, w, h), Color(0, 0, 0, 0.16))
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 101
+		var pts := PackedVector2Array()
+		var corners := [Vector2(1, 1), Vector2(w - 1, 1), Vector2(w - 1, h - 1),
+			Vector2(1, h - 1)]
+		for i in 4:
+			var a: Vector2 = corners[i]
+			var bb: Vector2 = corners[(i + 1) % 4]
+			for k in 9:
+				pts.append(a.lerp(bb, float(k) / 9.0)
+					+ Vector2(rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0)))
+		draw_colored_polygon(pts, Binder.PAPER2)
+		pts.append(pts[0])
+		draw_polyline(pts, Binder.INK, 2.4, true)
+		draw_colored_polygon(PackedVector2Array([Vector2(22, h * 0.5),
+			Vector2(34, h * 0.5 - 8.0), Vector2(34, h * 0.5 + 8.0)]), Binder.INK)
+		if font != null:
+			draw_string(font, Vector2(42, h - 13), label_text, HORIZONTAL_ALIGNMENT_LEFT,
+				size.x - 52.0, 17, Binder.INK)
 
 ## THE DRAWN COVER — the portrait's instant placeholder and permanent
 ## fallback: a chunky kraft binder, four index tabs in the group colors,

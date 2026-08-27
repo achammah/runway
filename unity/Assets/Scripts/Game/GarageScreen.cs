@@ -788,6 +788,16 @@ namespace Runway.Game
             Sfx.CardFlip(); BinderScreen.Open(State, desk);
         }
 
+        /// DAG3 S2 — the same door with teeth: the ask row's desk AND control,
+        /// so the landing spotlights the switch when the row names one.
+        public void OpenBinderOnAsk(string desk, string control)
+        {
+            Sfx.CardFlip();
+            var b = BinderScreen.Open(State);
+            if (b != null)
+                b.JumpToAsk(new AttentionItem { Desk = desk ?? "", Control = control ?? "" });
+        }
+
         // ══ the journal ════════════════════════════════════════════════════════
 
         public void OpenJournal()

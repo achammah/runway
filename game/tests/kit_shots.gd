@@ -371,6 +371,140 @@ func _instruments() -> void:
 	DeskKit.clock_chip(b, cx + 10.0, y + 30.0, "3 wks left")
 	await _shot("kit_instruments")
 
+# ═══════════════ the DAG3 UX spine, photographed (Wave A) ════════════════════
+
+## S1 — the zero state: promise, subjunctive, one action, the wakes-hint.
+func _zero_state() -> void:
+	var b := await _blank()
+	DeskKit.zero_state(b, {
+		"will_show": "every offer on one card — price, cost, margin",
+		"would_line": "one customer's week WOULD earn ≈ $12 at the going rate",
+		"action_label": "set a price — the first offer",
+		"action_cb": func() -> void: pass,
+		"wakes_hint": "comes alive with your first priced offer",
+	})
+	await _shot("kit_zero_state")
+
+## S2a — the ask strip: a real attention row said out loud in red.
+func _ask_strip() -> void:
+	var b := await _blank()
+	b.state.set_flag("fundraising_open")   # a real sev-3 registry row
+	b.label("the ask strip", Vector2(DeskKit.X_ID, 6.0), DeskKit.TITLE)
+	var drew := DeskKit.ask_strip(b, "cap table", DeskKit.X_ID, 86.0, 1000.0,
+		"answer the sheets before they expire")
+	b.label("drew: %s" % str(drew), Vector2(DeskKit.X_ID, 130.0), DeskKit.LAW,
+		Color(DeskKit.INK, 0.5))
+	await _shot("kit_ask_strip")
+
+## S3 — the DO lane: three actions, three tiers, the focus ring on the first.
+func _do_lane() -> void:
+	var b := await _blank()
+	b.label("the DO lane — one slot, one grammar, tier said on the control",
+		Vector2(DeskKit.X_ID, 6.0), DeskKit.STATUS, Color(DeskKit.INK, 0.6))
+	DeskKit.do_lane(b, [
+		{"label": "set price — offer", "cb": func() -> void: pass, "tier": ""},
+		{"label": "stop the line", "cb": func() -> void: pass, "tier": "two-tap"},
+		{"label": "sign — best terms", "cb": func() -> void: pass, "tier": "sign"},
+	])
+	await _shot("kit_do_lane")
+
+## S4 — press any number: the underdot label and the receipt popover open.
+func _press_receipt() -> void:
+	var b := await _blank()
+	b.label("press any number", Vector2(DeskKit.X_ID, 6.0), DeskKit.TITLE)
+	DeskKit.receipt_number(b, DeskKit.X_ID, 120.0, "runway 7 wks", DeskKit.HERO_BIG,
+		DeskKit.INK, "runway = cash ÷ net burn", [
+			{"label": "cash on hand", "value": "$18,400"},
+			{"label": "net burn", "value": "-$2,600/wk"},
+			{"label": "runway", "value": "7 wks"},
+		])
+	b.popover("runway = cash ÷ net burn", [
+		{"label": "cash on hand", "value": "$18,400"},
+		{"label": "net burn", "value": "-$2,600/wk", "col": DeskKit.PEN},
+		{"label": "runway", "value": "7 wks"},
+	], Vector2(120.0, 210.0))
+	await _shot("kit_press_receipt")
+
+## S5 — the delta layer: sage up, coral down, the pen circle on a moved row.
+func _delta_layer() -> void:
+	var b := await _blank()
+	b.label("what changed", Vector2(DeskKit.X_ID, 6.0), DeskKit.TITLE)
+	b.label("$18,400", Vector2(DeskKit.X_ID, 90.0), DeskKit.HERO_BIG, DeskKit.INK, 400.0)
+	DeskKit.delta_arrow(b, 260.0, 106.0, 18400.0, 16200.0)
+	b.label("34 customers", Vector2(DeskKit.X_ID, 180.0), DeskKit.HERO_BIG,
+		DeskKit.INK, 460.0)
+	DeskKit.delta_arrow(b, 380.0, 196.0, 34.0, 41.0)
+	var f := DeskKit.card_frame(b, DeskKit.X_ID, 280.0, 640.0, 200.0, "the rows")
+	DeskKit.money_row(b, f, "rent", "$3,000/wk")
+	var ry := float(f["cursor"])
+	DeskKit.money_row(b, f, "payroll", "$3,950/wk")
+	DeskKit.money_row(b, f, "the shark", "-$2,232/wk", DeskKit.PEN)
+	DeskKit.pen_circle(b, Rect2(float(f["content_x"]), ry, 560.0, 30.0))
+	b.label("sage points up, coral points down · the pen circles what moved since last open",
+		Vector2(DeskKit.X_ID, 520.0), DeskKit.LAW, Color(DeskKit.INK, 0.5), 900.0)
+	await _shot("kit_delta_layer")
+
+## S7 — the back pill (a sourced jump) and the drill breadcrumb.
+func _back_crumb() -> void:
+	var b := await _open()
+	b.focus_desk("the bank", "", "bills")   # a bills → the bank jump, sourced
+	b.push_crumb("Lyon")                    # what a drilled desk declares
+	await _shot("kit_back_crumb")
+
+## S8 — era dim: a garage company's raise tab sleeps at 60%.
+func _dormant_rail() -> void:
+	var b := await _open()
+	b.state.era = "garage"
+	b.press_group(2)
+	await create_timer(0.5).timeout   # let the fan animation land first
+	await _shot("kit_rail_dormant")
+
+## S10 — the micro-status: the awake raise speaks its interest on the tab.
+func _rail_micro() -> void:
+	var b := await _open()
+	b.state.raise_state = {"active": true, "interest_score": 34.0, "stages": []}
+	b.press_group(2)
+	await create_timer(0.5).timeout
+	await _shot("kit_rail_micro")
+
+## S2b — the spotlight: the coach's scrim with a hole over one control.
+func _spotlight() -> void:
+	var b := await _blank()
+	var f := DeskKit.card_frame(b, DeskKit.X_ID, 90.0, 548.0, 200.0, "the control")
+	DeskKit.money_row(b, f, "ads", "$2,000/wk", DeskKit.INK,
+		func() -> void: pass, func() -> void: pass)
+	b.mark_control("demo", Rect2(DeskKit.X_ID, 90.0, 548.0, 200.0))
+	b.spotlight(b.control_rect("demo"))
+	await _shot("kit_focus_spotlight")
+
+## The LOCK IN badge: the binder-bang idiom with the outstanding count in it.
+func _lockin_badge() -> void:
+	if _b != null and is_instance_valid(_b):
+		_b.queue_free()
+		_b = null
+		await process_frame
+	var stage := ColorRect.new()
+	stage.color = Color("F2EAD3")
+	stage.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.add_child(stage)
+	var f: Font = load("res://assets/fonts/PatrickHand-Regular.ttf")
+	var lbl := Label.new()
+	lbl.text = "ROLL THE WEEK"
+	lbl.add_theme_font_override("font", f)
+	lbl.add_theme_font_size_override("font_size", 34)
+	lbl.add_theme_color_override("font_color", Color("E86A5C"))
+	lbl.position = Vector2(600, 480)
+	stage.add_child(lbl)
+	var bd := DeskKit._CountBadge.new()
+	bd.count = 3
+	bd.font = load("res://assets/fonts/Baloo2-Bold.ttf")
+	bd.position = Vector2(600 + 268.0, 470.0)
+	bd.set_deferred("size", Vector2(28.0, 28.0))
+	stage.add_child(bd)
+	await _shot("kit_lockin_badge")
+	stage.queue_free()
+	await process_frame
+
 # ═════════════════════════════════ the run ═══════════════════════════════════
 
 func _go() -> void:
@@ -390,5 +524,15 @@ func _go() -> void:
 	await _ledger()
 	await _zone_wall()
 	await _instruments()
+	await _zero_state()
+	await _ask_strip()
+	await _do_lane()
+	await _press_receipt()
+	await _delta_layer()
+	await _back_crumb()
+	await _dormant_rail()
+	await _rail_micro()
+	await _spotlight()
+	await _lockin_badge()
 	print("KIT SHOTS: %d captures -> %s" % [_shots.size(), _dir])
 	quit(0)

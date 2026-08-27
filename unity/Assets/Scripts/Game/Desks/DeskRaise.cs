@@ -19,6 +19,25 @@ namespace Runway.Game
     {
         public const string Question = "who would fund us next, and at what true price?";
 
+        /// S8 — the raise sleeps through the garage: no paper signed, no raise
+        /// opened, nothing to pipeline. The tab stays on the map at 60%; it
+        /// wakes the week the era turns or money moves.
+        public static bool IsDormant(GameState s)
+        {
+            return s.Era == "garage" && (s.Instruments == null || s.Instruments.Count == 0)
+                   && !(s.RaiseState != null && s.RaiseState.Active);
+        }
+
+        /// S10 — the tab's four-character read. Quiet while dormant; awake,
+        /// the interest score is the desk in one glance.
+        public static string MicroStatus(GameState s)
+        {
+            if (IsDormant(s)) return "";
+            int terms = SimOwnership.StagesIn(s, "terms").Count;
+            if (terms > 0) return terms + " offer" + (terms == 1 ? "" : "s");
+            return Gd.F(s.RaiseState != null ? s.RaiseState.InterestScore : 0.0, 0) + "/100";
+        }
+
         public static string[] HeroSummary(GameState s)
         {
             int terms = SimOwnership.StagesIn(s, "terms").Count;

@@ -2567,6 +2567,19 @@ func _lock_button() -> void:
 	b.set_deferred("size", Vector2(340, 48))
 	b.pressed.connect(_commit_week.bind(b))
 	_jp.space.add_child(b)
+	# DAG3 — THE LOCK IN BADGE: the count of standing attention items rides
+	# the commit button all week (the binder-bang idiom with a number), so the
+	# player sees how much is unset BEFORE the pre-roll card has to say so.
+	var n_att := SimEngine.attention_items(state).size()
+	if n_att > 0:
+		var bd := DeskKit._CountBadge.new()
+		bd.set_meta("lock", true)
+		bd.count = n_att
+		bd.font = _font_d
+		bd.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bd.position = b.position + Vector2(318.0, -8.0)
+		bd.set_deferred("size", Vector2(28.0, 28.0))
+		_jp.space.add_child(bd)
 
 ## THE COMMIT IS A CEREMONY, one beat long: the pen strikes a line under the
 ## words, the latch clicks, and only then does the week turn. An instant jump
@@ -2773,16 +2786,18 @@ func _preroll_card() -> void:
 			_preroll_roll())
 
 ## GO FIX IT: the book closes and the binder opens ON the loudest item's desk —
-## the founder lands looking at the thing the world stopped them for.
+## the founder lands looking at the thing the world stopped them for. DAG3 S2:
+## the jump goes through jump_to_ask, so a row that names its control lands
+## with the coach's spotlight already on the switch.
 func _preroll_fix() -> void:
 	var rows: Array = _preroll.get("items", [])
-	var to_desk := ""
-	if not rows.is_empty():
-		to_desk = String((rows[0] as Dictionary).get("desk", ""))
+	var row: Dictionary = rows[0] if not rows.is_empty() else {}
 	_free_text[1] = String(_preroll.get("base", _free_text.get(1, "")))
 	_preroll = {}
 	_close_journal()
-	_open_binder(to_desk)
+	_open_binder()
+	if not row.is_empty() and _binder != null and is_instance_valid(_binder):
+		_binder.jump_to_ask(row)
 
 ## ROLL ANYWAY: the week goes as written, and the card does not ask twice.
 func _preroll_roll() -> void:

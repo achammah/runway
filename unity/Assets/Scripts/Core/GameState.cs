@@ -144,6 +144,12 @@ namespace Runway.Core
         [JsonProperty("key")] public string Key = "";
         [JsonProperty("severity")] public int Severity = 1;   // 1 note, 2 warn, 3 alarm
         [JsonProperty("label")] public string Label = "";
+        /// DAG3 S2b — the desk control this row wants spotlit ("" until the
+        /// owning lane names one); rides the row through every consumer.
+        [JsonProperty("control")] public string Control = "";
+        /// DAG3 S5 — the week this row first stood (stamped by AttentionItems
+        /// from GameState.AttentionAges; a row born mid-week reads as now).
+        [JsonProperty("since_wk")] public int SinceWk;
     }
 
     public sealed class Commitment
@@ -830,6 +836,13 @@ namespace Runway.Core
         /// structure {cash, stock+lockup, earnout+controller, retention}.</summary>
         [JsonProperty("buyout_offer")] public Dictionary<string, object> BuyoutOffer =
             new Dictionary<string, object>();
+        /// <summary>DAG3 — THE ATTENTION AGES: attention-row identity
+        /// ("desk/key") -> the week the row first stood. WeeklyTick's tail
+        /// records new keys and drops resolved ones; AttentionItems stamps
+        /// every row's SinceWk from here. Additive with a safe default, so an
+        /// old save loads empty and every row reads as born now.</summary>
+        [JsonProperty("attention_ages")] public Dictionary<string, int> AttentionAges =
+            new Dictionary<string, int>();
 
         /// <summary>Godot's Object metadata, which the engine uses for prev_revenue / unit_econ / market_line.</summary>
         [JsonProperty("meta")] public Dictionary<string, object> Meta = new Dictionary<string, object>();

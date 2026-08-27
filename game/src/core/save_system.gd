@@ -128,6 +128,9 @@ static func state_to_dict(state: GameState) -> Dictionary:
 			"esop": state.esop, "instruments": state.instruments,
 			"raise_state": state.raise_state, "recruitment": state.recruitment,
 			"features": state.features, "buyout_offer": state.buyout_offer,
+			# ── DAG3 — additive key, same law: absent in an old save, the
+			# loader keeps the {} default and every attention row reads as new.
+			"attention_ages": state.attention_ages,
 	}
 
 static func has_run() -> bool:

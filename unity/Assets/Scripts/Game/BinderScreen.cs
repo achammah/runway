@@ -107,6 +107,27 @@ namespace Runway.Game
         public RectTransform Content { get { return _content; } }
         public static bool IsOpen { get; private set; }
 
+        // ── THE UX SPINE (13-binder-ux, DAG3) — the binder half of the nine
+        // systems, twin of binder.gd's block.
+        /// THE CONTROL REGISTRY (S2b): desks register rects while they draw;
+        /// cleared at every refresh; FocusDesk spotlights a registered rect.
+        readonly Dictionary<string, Rect> _controls = new Dictionary<string, Rect>();
+        /// THE DO LANE's focus (S3/S7): the action ENTER presses; TAB cycles
+        /// it while a lane is on the page (TAB still closes a lane-less page).
+        int _doFocus;
+        readonly List<Button> _doButtons = new List<Button>();
+        /// THE BACK STACK (S7): cross-desk jumps push {fromDesk, label}; the
+        /// pill at the rail's foot (or BACKSPACE) pops.
+        readonly List<string[]> _backStack = new List<string[]>();
+        string _crumb = "";
+        RectTransform _popover;
+        RectTransform _spot;
+        /// THE SEEN STORE (S5): per-run last-shown values, beside the mail
+        /// read-marks (binder_seen_<seed>.json); flushed on destroy.
+        bool _seenLoaded;
+        Dictionary<string, string> _seenStore = new Dictionary<string, string>();
+        readonly Dictionary<string, string> _seenPending = new Dictionary<string, string>();
+
         public static BinderScreen Open(GameState state, string onDesk = "")
         {
             if (IsOpen) return null;
@@ -123,16 +144,55 @@ namespace Runway.Game
         }
 
         /// Open the binder ON a desk — old names and new names both land.
-        public void FocusDesk(string deskName)
+        /// S2b — THE JUMP GETS TEETH: pass a controlId a desk registered
+        /// during its draw and the landing spotlights that control. S7 — pass
+        /// `source` and a "back to" pill waits at the rail's foot.
+        public void FocusDesk(string deskName, string controlId = "", string source = "")
         {
             string id;
             if (!LegacyToDesk.TryGetValue(deskName ?? "", out id)) id = deskName;
             if (FindGroup(id) < 0) return;
+            if (!string.IsNullOrEmpty(source))
+            {
+                string src;
+                if (!LegacyToDesk.TryGetValue(source, out src)) src = source;
+                if (src != id && FindGroup(src) >= 0)
+                {
+                    _backStack.Add(new[] { src, src });
+                    while (_backStack.Count > 8) _backStack.RemoveAt(0);
+                }
+            }
             Desk.Clear();
             OpenPage(id);
+            if (!string.IsNullOrEmpty(controlId) && _controls.ContainsKey(controlId))
+                Spotlight(_controls[controlId]);
         }
 
-        void OnDestroy() { IsOpen = false; Runway.Audio.RunwayMix.SetState("normal"); }
+        /// <summary>THE ONE JUMP EVERY RED ROW SHARES (S2): the pre-roll
+        /// review and the threats page hand over the attention row itself;
+        /// the desk word translates, the row's Control key lands spotlit.</summary>
+        public void JumpToAsk(AttentionItem row, string source = "")
+        {
+            if (row == null) return;
+            FocusDesk(row.Desk ?? "", row.Control ?? "", source);
+        }
+
+        void BackPop()
+        {
+            if (_backStack.Count == 0) return;
+            string[] top = _backStack[_backStack.Count - 1];
+            _backStack.RemoveAt(_backStack.Count - 1);
+            if (FindGroup(top[0]) < 0) { Refresh(); return; }
+            Desk.Clear();
+            OpenPage(top[0]);
+        }
+
+        void OnDestroy()
+        {
+            SeenFlush();
+            IsOpen = false;
+            Runway.Audio.RunwayMix.SetState("normal");
+        }
 
         void BuildParts()
         {
@@ -199,25 +259,72 @@ namespace Runway.Game
 
         bool _armed;
 
+        /// ESC POPS BEFORE IT CLOSES: the tour eats Esc as skip; then an open
+        /// receipt popover (S4 — one more level), then armed → mode, then the
+        /// overview, then the binder. B always closes; TAB closes too UNLESS
+        /// the page carries a DO lane — there TAB cycles the lane's focus
+        /// (S7). 1-4 open groups, ←/→ walk pages, ENTER presses the focused
+        /// DO action, BACKSPACE pops the back stack.
         void Update()
         {
             if (!_armed) { _armed = true; return; }
+            var sel = UnityEngine.EventSystems.EventSystem.current != null
+                ? UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject : null;
+            bool writing = sel != null && sel.GetComponent<TMP_InputField>() != null;
             if (Input.GetKeyDown(KeyCode.Escape))
             {
                 if (_tourStep >= 0) { TourFinish(); return; }
+                if (_popover != null) { ClosePopover(); return; }
                 if (DeskPop()) return;
                 if (_overview >= 0) { _overview = -1; Refresh(); return; }
                 Dismiss();
                 return;
             }
-            var sel = UnityEngine.EventSystems.EventSystem.current != null
-                ? UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject : null;
-            bool writing = sel != null && sel.GetComponent<TMP_InputField>() != null;
-            if (!writing && (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.B)))
+            if (!writing && Input.GetKeyDown(KeyCode.Tab))
+            {
+                if (_tourStep >= 0) { TourFinish(); Dismiss(); return; }
+                if (_doButtons.Count > 0)
+                {
+                    _doFocus = (_doFocus + 1) % _doButtons.Count;
+                    Refresh();
+                    return;
+                }
+                Dismiss();
+                return;
+            }
+            if (!writing && Input.GetKeyDown(KeyCode.B))
             {
                 if (_tourStep >= 0) TourFinish();
                 Dismiss();
+                return;
             }
+            if (_tourStep >= 0 || writing) return;
+            for (int k = 0; k < 4; k++)
+                if (Input.GetKeyDown(KeyCode.Alpha1 + k)) { PressGroup(k); return; }
+            if (Input.GetKeyDown(KeyCode.LeftArrow)) { WalkPage(-1); return; }
+            if (Input.GetKeyDown(KeyCode.RightArrow)) { WalkPage(1); return; }
+            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+            {
+                if (_doButtons.Count > 0)
+                {
+                    Button btn = _doButtons[Gd.Clampi(_doFocus, 0, _doButtons.Count - 1)];
+                    if (btn != null && btn.interactable) btn.onClick.Invoke();
+                }
+                return;
+            }
+            if (Input.GetKeyDown(KeyCode.Backspace) && _backStack.Count > 0) BackPop();
+        }
+
+        /// ←/→ walk the open group's fan, momentary tabs included, wrapping.
+        void WalkPage(int dir)
+        {
+            var pages = new List<string>(GroupDesks[_openGroup]);
+            for (int i = 0; i < _momentary.Count; i++)
+                if (int.Parse(_momentary[i][1]) == _openGroup) pages.Add(_momentary[i][0]);
+            if (pages.Count == 0) return;
+            int idx = pages.IndexOf(_page);
+            idx = idx >= 0 ? (idx + dir + pages.Count) % pages.Count : 0;
+            OpenPage(pages[idx]);
         }
 
         /// One step back inside the current desk. The arrange shell lives in
@@ -250,7 +357,7 @@ namespace Runway.Game
         {
             int gi = FindGroup(id);
             if (gi < 0) return;
-            if (_page != id) Desk.Clear();
+            if (_page != id) { Desk.Clear(); _doFocus = 0; }
             _overview = -1;
             _openGroup = gi;
             _page = id;
@@ -355,6 +462,12 @@ namespace Runway.Game
                 Destroy(_content.GetChild(i).gameObject);
             for (int i = _rail.childCount - 1; i >= 0; i--)
                 Destroy(_rail.GetChild(i).gameObject);
+            // the per-draw registries die with the sheet they described
+            _controls.Clear();
+            _doButtons.Clear();
+            _crumb = "";
+            _popover = null;
+            _spot = null;
             BuildRail();
             if (_tourStep >= 0) { DeskTour.Draw(this, _tourStep); return; }
             if (_overview >= 0) { DeskOverview.Draw(this, _overview); return; }
@@ -522,6 +635,35 @@ namespace Runway.Game
                 }
                 y += boxH + 12f;
             }
+            // S7 — the back pill at the rail's foot: the way home from a
+            // cross-desk jump, pressable, twinned with BACKSPACE.
+            if (_backStack.Count > 0)
+            {
+                string[] top = _backStack[_backStack.Count - 1];
+                float pillY = Mathf.Min(y + 2f, FrameH - 64f);
+                DrawnUI.Fill(_rail, "backpillsh", new Color(0f, 0f, 0f, 0.16f),
+                    RailX + 2f, pillY + 3f, RailBoxW, 40f).raycastTarget = false;
+                var pill = DrawnUI.Fill(_rail, "backpill", DeskKit.Paper2, RailX, pillY,
+                                        RailBoxW, 40f);
+                pill.raycastTarget = false;
+                DrawnUI.AddInkEdge(pill.rectTransform, new Vector2(RailBoxW, 40f),
+                    new DrawnUI.PaperStyle
+                    {
+                        ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
+                        StepsPerEdge = 9, Jitter = 1f, Thickness = 2.4f, Seed = 101,
+                    });
+                var tri = DrawnUI.Fill(_rail, "backtri", DrawnUI.Ink, RailX + 22f,
+                                       pillY + 12f, 12f, 16f);
+                tri.sprite = DeskKit.TriSprite(2, 12, 16);   // the drawn left arrow
+                tri.raycastTarget = false;
+                var lab = DrawnUI.HandLabel(_rail, "back to " + top[1], RailX + 42f,
+                    pillY + 8f, 17f, DrawnUI.Ink, RailBoxW - 52f);
+                lab.raycastTarget = false;
+                lab.textWrappingMode = TextWrappingModes.NoWrap;
+                lab.overflowMode = TextOverflowModes.Ellipsis;
+                GameUi.InkWord(_rail, "", RailX, pillY, RailBoxW, 40f, 17f, DrawnUI.Ink,
+                               () => BackPop());
+            }
         }
 
         /// One page tab in the fan: quiet row · active paper box · RED-filled
@@ -530,6 +672,18 @@ namespace Runway.Game
         void PageTab(string id, float y, int severity, bool gold, string clockText)
         {
             float x = RailX + 8f, w = RailBoxW - 16f, h = 36f;
+            // S10/S8 — a quiet desk MAY speak a micro-status and MAY be
+            // dormant; red always outranks the dim, gold never carries either.
+            string micro = "";
+            bool dormant = false;
+            if (!gold && severity <= 0)
+            {
+                micro = DeskMicro(id);
+                dormant = DeskDormant(id);
+            }
+            float dim = dormant ? 0.6f : 1f;
+            float mw = micro == ""
+                ? 0f : Mathf.Min(DrawnUI.MeasureWidth(micro, 15f), 74f);
             if (gold)
             {
                 var body = DrawnUI.Fill(_rail, "ptab_gold", DrawnUI.Yellow, x, y, w, h);
@@ -563,22 +717,58 @@ namespace Runway.Game
             {
                 DrawnUI.Fill(_rail, "ptab_sh", new Color(0f, 0f, 0f, 0.18f), x + 2f, y + 2f,
                              w - 2f, h - 2f).raycastTarget = false;
-                var body = DrawnUI.Fill(_rail, "ptab_on", DeskKit.Paper2, x, y, w - 2f,
-                                        h - 2f);
+                var body = DrawnUI.Fill(_rail, "ptab_on",
+                    DrawnUI.WithAlpha(DeskKit.Paper2, dim), x, y, w - 2f, h - 2f);
                 DrawnUI.AddInkEdge(body.rectTransform, new Vector2(w - 2f, h - 2f),
                     new DrawnUI.PaperStyle
                     {
                         ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
                         StepsPerEdge = 6, Jitter = 0.8f, Thickness = 2.4f, Seed = 29,
                     });
-                DrawnUI.HandLabel(_rail, id, x + 9f, y + 5f, 19f, DrawnUI.Ink, w - 18f);
+                DrawnUI.HandLabel(_rail, id, x + 9f, y + 5f, 19f,
+                    DrawnUI.WithAlpha(DrawnUI.Ink, dim),
+                    w - 18f - (mw > 0f ? mw + 6f : 0f));
             }
             else
             {
-                DrawnUI.HandLabel(_rail, id, x + 9f, y + 5f, 19f, DrawnUI.Ink, w - 18f);
+                DrawnUI.HandLabel(_rail, id, x + 9f, y + 5f, 19f,
+                    DrawnUI.WithAlpha(DrawnUI.Ink, dim),
+                    w - 18f - (mw > 0f ? mw + 6f : 0f));
+            }
+            if (mw > 0f)
+            {
+                var mlab = DrawnUI.HandLabel(_rail, micro, x + w - 8f - mw, y + 8f, 15f,
+                    DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f * dim), mw + 2f,
+                    TextAlignmentOptions.TopRight);
+                mlab.raycastTarget = false;
+                mlab.textWrappingMode = TextWrappingModes.NoWrap;
+                mlab.overflowMode = TextOverflowModes.Ellipsis;
             }
             string did = id;
             GameUi.InkWord(_rail, "", x, y, w, h, 19f, DrawnUI.Ink, () => OpenPage(did));
+        }
+
+        /// S10 — the desk's micro-status, reflection-probed: a desk MAY expose
+        /// `public static string MicroStatus(GameState)`; absent = "".
+        string DeskMicro(string id)
+        {
+            var mi = DeskStaticMethod(id, "MicroStatus");
+            if (mi == null || _st == null) return "";
+            try { return mi.Invoke(null, new object[] { _st }) as string ?? ""; }
+            catch (Exception) { return ""; }
+        }
+
+        /// S8 — era dimming, never hiding: `public static bool IsDormant(GameState)`.
+        bool DeskDormant(string id)
+        {
+            var mi = DeskStaticMethod(id, "IsDormant");
+            if (mi == null || _st == null) return false;
+            try
+            {
+                object v = mi.Invoke(null, new object[] { _st });
+                return v is bool && (bool)v;
+            }
+            catch (Exception) { return false; }
         }
 
         /// The live figure a closed divider carries.
@@ -938,6 +1128,260 @@ namespace Runway.Game
             for (int i = 0; i < LeverSteps.Length; i++) if (LeverSteps[i] <= cur) idx = i;
             idx = Gd.Clampi(idx + dir, 0, LeverSteps.Length - 1);
             return Gd.Mini(LeverSteps[idx], SimEngine.EraSpendCap(_st.Era));
+        }
+
+        // ── the UX spine's public hand (13-binder-ux, DAG3) ────────────────
+
+        /// S2b — a desk registers its controls WHILE IT DRAWS (pane-local
+        /// rects); the registry lives one frame and feeds FocusDesk's
+        /// spotlight and the receipt press map.
+        public void MarkControl(string id, Rect rect) { _controls[id] = rect; }
+
+        public bool HasControl(string id) { return _controls.ContainsKey(id); }
+
+        public Rect ControlRect(string id)
+        {
+            Rect r;
+            return _controls.TryGetValue(id, out r) ? r : new Rect();
+        }
+
+        /// S3 — the DO lane registers its buttons in draw order; ENTER
+        /// presses the focused one, TAB cycles.
+        public void RegisterDo(Button btn) { _doButtons.Add(btn); }
+
+        public void ResetDoLane() { _doButtons.Clear(); }
+
+        public int DoFocus() { return _doFocus; }
+
+        /// S2b — THE COACH'S SPOTLIGHT, reused: a scrim with a hole cut over
+        /// one control, a pen ring breathing round it, gone after ~2s or at
+        /// any input.
+        public void Spotlight(Rect rect)
+        {
+            if (_spot != null) Destroy(_spot.gameObject);
+            var rt = DrawnUI.Rect(_content, "spotlight", 0f, 0f, ContentW, ContentH);
+            rt.gameObject.AddComponent<BinderSpot>().Build(rect, ContentW, ContentH);
+            _spot = rt;
+        }
+
+        sealed class BinderSpot : MonoBehaviour
+        {
+            float _age;
+            Image _ring;
+            public void Build(Rect hole, float w, float h)
+            {
+                hole = new Rect(hole.x - 10f, hole.y - 10f, hole.width + 20f,
+                                hole.height + 20f);
+                var rt = GetComponent<RectTransform>();
+                var col = new Color(0.05f, 0.05f, 0.06f, 0.38f);
+                DrawnUI.Fill(rt, "s0", col, 0f, 0f, w, Mathf.Max(hole.y, 0f))
+                    .raycastTarget = false;
+                DrawnUI.Fill(rt, "s1", col, 0f, hole.yMax, w,
+                    Mathf.Max(h - hole.yMax, 0f)).raycastTarget = false;
+                DrawnUI.Fill(rt, "s2", col, 0f, hole.y, Mathf.Max(hole.x, 0f),
+                    hole.height).raycastTarget = false;
+                DrawnUI.Fill(rt, "s3", col, hole.xMax, hole.y,
+                    Mathf.Max(w - hole.xMax, 0f), hole.height).raycastTarget = false;
+                _ring = DrawnUI.Fill(rt, "sring", DrawnUI.Coral, hole.x - 3f, hole.y - 3f,
+                                     hole.width + 6f, hole.height + 6f);
+                _ring.sprite = DrawnUI.WobbleRectSprite(
+                    Mathf.Max((int)(hole.width + 6f), 4), Mathf.Max((int)(hole.height + 6f), 4),
+                    1f, 3.4f, 10, 1.6f, 91, 3);
+                _ring.raycastTarget = false;
+                // the scrim catches the first press and spends it on itself
+                GameUi.InkWord(rt, "", 0f, 0f, w, h, 19f, DrawnUI.Ink,
+                               () => Destroy(gameObject));
+            }
+            void Update()
+            {
+                _age += Time.deltaTime;
+                if (_age > 2f || Input.anyKeyDown) { Destroy(gameObject); return; }
+                if (_ring != null)
+                {
+                    float t = Mathf.Floor(Time.unscaledTime * 12f) / 12f;
+                    Color c = _ring.color;
+                    c.a = Mathf.Clamp01(0.7f + 0.3f * Mathf.Sin(t * 4f));
+                    _ring.color = c;
+                }
+            }
+        }
+
+        /// S4 — THE RECEIPT POPOVER: a small paper card saying the terms that
+        /// made a number, near the press. Any press or Esc dismisses it;
+        /// while it is open Esc pops IT, never the desk.
+        public void Popover(string title, IList<DeskKit.TicketLine> lines, Vector2 at)
+        {
+            ClosePopover();
+            var rootp = DrawnUI.Rect(_content, "popover", 0f, 0f, ContentW, ContentH);
+            GameUi.InkWord(rootp, "", 0f, 0f, ContentW, ContentH, 19f, DrawnUI.Ink,
+                           ClosePopover);
+            const float W = 380f;
+            float h = 56f + lines.Count * 30f + 14f;
+            float px = Mathf.Clamp(at.x, 4f, DeskKit.PaneW - W - 8f);
+            float py = Mathf.Clamp(at.y, 4f, ContentH - h - 8f);
+            DrawnUI.Fill(rootp, "popsh", new Color(0f, 0f, 0f, 0.2f), px + 6f, py + 8f,
+                         W, h).raycastTarget = false;
+            var body = DrawnUI.Fill(rootp, "popbody", DeskKit.Paper2, px, py, W, h);
+            body.raycastTarget = false;
+            DrawnUI.AddInkEdge(body.rectTransform, new Vector2(W, h),
+                new DrawnUI.PaperStyle
+                {
+                    ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 2f,
+                    StepsPerEdge = 13, Jitter = 1.8f, Thickness = 2.6f,
+                    Seed = 97 + Mathf.Abs((int)px % 13),
+                });
+            var tl = DrawnUI.HandLabel(rootp, title, px + 14f, py + 6f, 20f,
+                DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), W - 28f);
+            tl.raycastTarget = false;
+            tl.textWrappingMode = TextWrappingModes.NoWrap;
+            tl.overflowMode = TextOverflowModes.Ellipsis;
+            for (float dx = 10f; dx < W - 10f; dx += 16f)
+                DrawnUI.Fill(rootp, "popdash", DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f),
+                    px + dx, py + 38f, Mathf.Min(9f, W - 10f - dx), 2f).raycastTarget = false;
+            float ly = py + 46f;
+            for (int i = 0; i < lines.Count; i++)
+            {
+                var la = DrawnUI.HandLabel(rootp, lines[i].Label, px + 14f, ly, 19f,
+                    DrawnUI.WithAlpha(DrawnUI.Ink, 0.85f), W * 0.58f);
+                la.raycastTarget = false;
+                var va = DrawnUI.HandLabel(rootp, lines[i].Value, px + 14f, ly, 19f,
+                    lines[i].Col ?? DrawnUI.Ink, W - 28f, TextAlignmentOptions.TopRight);
+                va.raycastTarget = false;
+                ly += 30f;
+            }
+            _popover = rootp;
+        }
+
+        public void ClosePopover()
+        {
+            if (_popover != null) Destroy(_popover.gameObject);
+            _popover = null;
+        }
+
+        /// S5 — THE SEEN STORE: record what this desk shows and learn whether
+        /// it moved since the binder was last open. False on the very first
+        /// sighting (news is what CHANGED, not what exists). Values are
+        /// strings; the caller formats.
+        public bool Seen(string desk, string key, string value)
+        {
+            SeenLoad();
+            string k = desk + "/" + key;
+            _seenPending[k] = value;
+            string had;
+            return _seenStore.TryGetValue(k, out had) && had != value;
+        }
+
+        /// The stored (last-open) value, "" when the store never saw the key.
+        public string SeenPrev(string desk, string key)
+        {
+            SeenLoad();
+            string had;
+            return _seenStore.TryGetValue(desk + "/" + key, out had) ? had : "";
+        }
+
+        string SeenPath()
+        {
+            return RunwayPaths.User("binder_seen_" + (_st != null ? _st.SimSeed : 0)
+                                    + ".json");
+        }
+
+        void SeenLoad()
+        {
+            if (_seenLoaded) return;
+            _seenLoaded = true;
+            try
+            {
+                string p = SeenPath();
+                if (!System.IO.File.Exists(p)) return;
+                var parsed = Newtonsoft.Json.JsonConvert
+                    .DeserializeObject<Dictionary<string, string>>(
+                        System.IO.File.ReadAllText(p));
+                if (parsed != null) _seenStore = parsed;
+            }
+            catch (Exception) { }
+        }
+
+        void SeenFlush()
+        {
+            if (_seenPending.Count == 0) return;
+            SeenLoad();
+            try
+            {
+                var merged = new Dictionary<string, string>(_seenStore);
+                foreach (KeyValuePair<string, string> kv in _seenPending)
+                    merged[kv.Key] = kv.Value;
+                System.IO.File.WriteAllText(SeenPath(),
+                    Newtonsoft.Json.JsonConvert.SerializeObject(merged));
+                _seenStore = merged;
+                _seenPending.Clear();
+            }
+            catch (Exception) { }
+        }
+
+        /// S7 — THE BREADCRUMB: a drilled desk re-declares its trail every
+        /// draw ("Lyon ‹ the works" at the sheet's top-left); it dies with the
+        /// drill state because the next refresh simply isn't told again.
+        public void PushCrumb(string label)
+        {
+            _crumb = label;
+            var t = DrawnUI.HandLabel(_content, label + " ‹ " + _page, 10f, 0f, 21f,
+                DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), 520f);
+            t.raycastTarget = false;
+        }
+
+        // ── the desk-type probes (S8/S10/S14 — desks MAY speak, never must) ─
+
+        /// The one id→type map, so a probe or a suggestion sweep never reaches
+        /// into Dispatch. Null off the taxonomy.
+        public static Type DeskType(string id)
+        {
+            switch (id)
+            {
+                case "offers": return typeof(DeskOffers);
+                case "customers": return typeof(DeskCustomersPage);
+                case "in motion": return typeof(DeskInMotion);
+                case "growth": return typeof(DeskGrowth);
+                case "spend": return typeof(DeskSpend);
+                case "team": return typeof(DeskTeam);
+                case "recruitment": return typeof(DeskRecruit);
+                case "bills": return typeof(DeskBills);
+                case "the bank": return typeof(DeskBankPage);
+                case "the works": return typeof(DeskWorks);
+                case "what we make": return typeof(DeskMake);
+                case "cap table": return typeof(DeskCapPage);
+                case "the raise": return typeof(DeskRaise);
+                case "the street": return typeof(DeskStreetPage);
+                case "threats": return typeof(DeskThreatsPage);
+                case "pivot": return typeof(DeskPivot);
+                case "this week": return typeof(DeskThisWeek);
+                case "history": return typeof(DeskHistory);
+                case "events": return typeof(DeskEvents);
+                case "the offer": return typeof(DeskOffer);
+            }
+            return null;
+        }
+
+        static readonly Dictionary<string, System.Reflection.MethodInfo> _methodCache =
+            new Dictionary<string, System.Reflection.MethodInfo>();
+
+        /// `has_method` for a desk's statics, cached — the twin of the Godot
+        /// script-method probe.
+        public static System.Reflection.MethodInfo DeskStaticMethod(string id, string name)
+        {
+            string ck = id + "/" + name;
+            System.Reflection.MethodInfo mi;
+            if (_methodCache.TryGetValue(ck, out mi)) return mi;
+            Type t = DeskType(id);
+            mi = t == null ? null : t.GetMethod(name,
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            _methodCache[ck] = mi;
+            return mi;
+        }
+
+        /// The Godot line box, public for the kit's measure law (S6).
+        public static float LineBox(TMP_FontAsset f, float size)
+        {
+            return GodotLineBox(f, size);
         }
 
         /// `_wrap_h`'s twin — the Godot line box, not preferredHeight (the

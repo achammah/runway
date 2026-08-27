@@ -136,8 +136,10 @@ namespace Runway.Game
                 bool isAmount = i == sh.AmountI;
                 Color col = isAmount ? (cfg.Dim ? Ink(0.42f) : (cfg.Col ?? DrawnUI.Ink))
                                      : (cfg.Dim || i > 0 ? Ink(0.6f) : DrawnUI.Ink);
-                TextMeshProUGUI l = b.L(cells[i] ?? "", c.X, y + 6f, isAmount ? 22f : 21f,
-                                        col, c.W - 10f);
+                // S6 — book cells receive free text (generated buys lines):
+                // one measured line per cell, never a wrap over the rule
+                TextMeshProUGUI l = FitLine(b, cells[i] ?? "", c.X, y + 6f,
+                                            isAmount ? 22f : 21f, col, c.W - 10f);
                 if (c.Align == "right") l.alignment = TextAlignmentOptions.TopRight;
                 else if (c.Align == "center") l.alignment = TextAlignmentOptions.Top;
             }
@@ -374,12 +376,14 @@ namespace Runway.Game
                 Seed = 53 + Mathf.Abs((int)(x + y) % 5),
             });
             if (cfg.Sev > 0) SevDot(b, x + w - SevBox - 4f, y + 6f, cfg.Sev);
-            b.L(cfg.Title, x + 10f, y + 6f, 22f, cfg.Ready ? Color.white : DrawnUI.Ink,
+            // S6 — wall titles and facts are generated: measured, one line
+            FitLine(b, cfg.Title, x + 10f, y + 6f, 22f,
+                cfg.Ready ? Color.white : DrawnUI.Ink,
                 w - (cfg.Sev > 0 ? SevBox + 22f : 20f));
             float fy = y + 36f;
             for (int i = 0; i < cfg.Facts.Count; i++)
             {
-                b.L(cfg.Facts[i], x + 10f, fy, 17f,
+                FitLine(b, cfg.Facts[i], x + 10f, fy, 17f,
                     cfg.Ready ? new Color(1f, 1f, 1f, 0.85f) : Ink(0.65f), w - 20f);
                 fy += 24f;
             }
@@ -420,13 +424,14 @@ namespace Runway.Game
                 StepsPerEdge = 14, Jitter = 1f, Thickness = 2.6f, Seed = 59,
             });
             DashRule(b, x + 10f, y + 34f, w - 20f);
-            b.L((title ?? "").ToUpper(), x + 14f, y + 6f, 20f, Ink(0.6f), w - 28f);
+            // S6 — ticket titles and lines carry generated words: measured
+            FitLine(b, (title ?? "").ToUpper(), x + 14f, y + 6f, 20f, Ink(0.6f), w - 28f);
             float ly = y + 44f;
             for (int i = 0; i < lines.Count; i++)
             {
-                b.L(lines[i].Label, x + 14f, ly, 21f, Ink(0.85f), w * 0.6f);
-                TextMeshProUGUI v = b.L(lines[i].Value, x + 14f, ly, 21f,
-                                        lines[i].Col ?? DrawnUI.Ink, w - 28f);
+                FitLine(b, lines[i].Label, x + 14f, ly, 21f, Ink(0.85f), w * 0.6f);
+                TextMeshProUGUI v = FitLine(b, lines[i].Value, x + 14f, ly, 21f,
+                                            lines[i].Col ?? DrawnUI.Ink, w - 28f);
                 v.alignment = TextAlignmentOptions.TopRight;
                 ly += 32f;
             }
@@ -544,11 +549,12 @@ namespace Runway.Game
                     ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
                     StepsPerEdge = 12, Jitter = 1.2f, Thickness = 2.6f, Seed = 61,
                 });
-            b.L(name, x + 16f, y + 6f, 30f, DrawnUI.Ink, W - 130f);
+            // S6 — the plate's name and note are generated: measured, one line
+            FitLine(b, name, x + 16f, y + 6f, 30f, DrawnUI.Ink, W - 130f);
             if (!string.IsNullOrEmpty(version)) b.L(version, x + W - 110f, y + 10f, 26f,
                                                     DrawnUI.Coral, 100f);
-            if (!string.IsNullOrEmpty(note)) b.L(note, x + 16f, y + 46f, 17f, Ink(0.6f),
-                                                 W - 32f);
+            if (!string.IsNullOrEmpty(note)) FitLine(b, note, x + 16f, y + 46f, 17f,
+                                                     Ink(0.6f), W - 32f);
             return y + 92f;
         }
 
@@ -711,12 +717,13 @@ namespace Runway.Game
         {
             if (n <= 0) return y;
             DashRule(b, x, y + 20f, 1120f * 0.35f);
-            string text = "the other " + n + " " + label;
+            // S6 — the label half is generated (counts + a lane's words): measured
+            string text = FitText(b, "the other " + n + " " + label, 384f, Detail);
             if (onPress != null)
                 Word(b, text + "  ->", x + 1120f * 0.36f, y - 2f, onPress, Detail,
                      Ink(0.6f), 420f);
             else
-                b.L(text, x + 1120f * 0.36f, y + 4f, Detail, Ink(0.5f), 420f);
+                FitLine(b, text, x + 1120f * 0.36f, y + 4f, Detail, Ink(0.5f), 420f);
             DashRule(b, x + 1120f * 0.36f + 440f, y + 20f, 1120f - (1120f * 0.36f + 440f));
             return y + 44f;
         }
@@ -761,6 +768,470 @@ namespace Runway.Game
             b.L("this desk is on the drafting table — its numbers land with the next wave",
                 XId + 20f, y, Law, Ink(0.4f), 1060f);
             return y + 40f;
+        }
+
+        // ═══════════ THE UX SPINE PRIMITIVES (13-binder-ux, DAG3) ══════════
+        // The nine systems' kit half — the twin of components.gd's DAG3
+        // section: the zero state (S1), the ask strip (S2a), the DO lane
+        // (S3), the receipt popover press map (S4), the delta layer (S5), the
+        // measure law (S6), the arm family (S9) and the suggestion probe.
+
+        /// THE DO LANE'S ONE ANCHOR (S3): bottom-right of the pane, above the
+        /// money desks' teaching foot (806).
+        public const float DoLaneY = 762f;
+
+        /// <summary>THE TIER SAID ON THE CONTROL (S9): the three confirm
+        /// grammars keep their mechanics and learn to introduce themselves.</summary>
+        public static string TierWord(string tier)
+        {
+            switch (tier)
+            {
+                case "two-tap": return "two-tap";
+                case "sign": return "sign for it";
+                case "type": return "type the word";
+            }
+            return "";
+        }
+
+        /// <summary>THE ARM FAMILY'S ONE BODY (S9): a paper capsule behind the
+        /// words — the ADJUST square's grammar at word scale — with the tier
+        /// in small print inside. An armed one trades its ink edge for the
+        /// pen.</summary>
+        public static Button PaperWord(BinderScreen b, string text, string note,
+                                       float x, float y, float size, Color col,
+                                       float w, bool armed = false,
+                                       Action onPress = null, bool disarms = true)
+        {
+            float tw = DrawnUI.MeasureWidth(text ?? "", size);
+            float nw = string.IsNullOrEmpty(note) ? 0f : DrawnUI.MeasureWidth(note, 12f) + 10f;
+            float bw = tw + nw + 22f;
+            float bh = Mathf.Min(size + 20f, 44f);
+            var box = DrawnUI.Rect(b.Content, "paperbtn", x - 8f, y + 2f, bw, bh);
+            DrawnUI.Fill(box, "pbsh", new Color(0f, 0f, 0f, 0.16f), 2f, 3f, bw, bh)
+                .raycastTarget = false;
+            DrawnUI.Fill(box, "pbody", Paper2, 0f, 0f, bw, bh).raycastTarget = false;
+            var edge = DrawnUI.Fill(box, "pbedge", armed ? DrawnUI.Coral : DrawnUI.Ink,
+                                    -3f, -3f, bw + 6f, bh + 6f);
+            edge.sprite = DrawnUI.WobbleRectSprite(Mathf.Max((int)bw, 4), Mathf.Max((int)bh, 4),
+                1f, 2.4f, 8, 0.9f, 73 + Mathf.Abs((int)x % 7), 3);
+            edge.raycastTarget = false;
+            if (!string.IsNullOrEmpty(note))
+            {
+                var n = DrawnUI.HandLabel(b.Content, note, x + tw + 8f,
+                    y + Mathf.Max(size * 0.5f - 1f, 8f), 12f, Ink(0.45f), nw + 6f);
+                n.raycastTarget = false;
+            }
+            return Word(b, text, x, y, onPress, size, col, w, disarms);
+        }
+
+        // ── S1 · the zero state ────────────────────────────────────────────
+
+        public sealed class ZeroStateCfg
+        {
+            public string WillShow = "";
+            public string WouldLine = "";
+            public string ActionLabel = "";
+            public Action ActionCb;
+            public string WakesHint = "";
+        }
+
+        /// <summary>NO DESK OPENS ON BARE FURNITURE (S1): the empty desk is a
+        /// TEACHING state — what the page WILL show (display type), what one
+        /// unit WOULD earn (dim hand ink, honest subjunctive), the ONE action
+        /// available now, and when the desk comes alive.</summary>
+        public static void ZeroState(BinderScreen b, ZeroStateCfg cfg)
+        {
+            const float W = 860f;
+            float x = XId + (1120f - W) * 0.5f;
+            float y = 226f;
+            if (!string.IsNullOrEmpty(cfg.WillShow))
+            {
+                var l = DrawnUI.DisplayLabel(b.Content, cfg.WillShow, x, y, 40f,
+                    DrawnUI.Ink, W, TextAlignmentOptions.Top);
+                l.raycastTarget = false;
+                y += Mathf.Max(BinderScreen.Height(l), 54f) + 24f;
+            }
+            if (!string.IsNullOrEmpty(cfg.WouldLine))
+            {
+                var l2 = b.L(cfg.WouldLine, x, y, Row, Ink(0.55f), W);
+                l2.alignment = TextAlignmentOptions.Top;
+                y += Mathf.Max(BinderScreen.Height(l2), 34f) + 38f;
+            }
+            if (!string.IsNullOrEmpty(cfg.ActionLabel))
+            {
+                float tw = DrawnUI.MeasureWidth(cfg.ActionLabel, Row);
+                float bx = XId + (1120f - tw) * 0.5f;
+                PaperWord(b, cfg.ActionLabel, "", bx, y, Row, DrawnUI.Ink, tw + 40f,
+                          false, cfg.ActionCb);
+                b.MarkControl("zero_action", new Rect(bx - 8f, y, tw + 30f, 48f));
+            }
+            if (!string.IsNullOrEmpty(cfg.WakesHint))
+            {
+                var l3 = b.L(cfg.WakesHint, x, 806f, Law, Ink(0.45f), W);
+                l3.alignment = TextAlignmentOptions.Top;
+            }
+        }
+
+        // ── S2a · the ask strip + its data ─────────────────────────────────
+
+        /// <summary>The data half, shared with the quartet cards: this desk's
+        /// attention labels, old desk words aliased on BOTH sides.</summary>
+        public static List<string> GetAsks(GameState state, string deskId)
+        {
+            string want = BinderScreen.DeskAlias(deskId);
+            var outp = new List<string>();
+            foreach (AttentionItem it in SimEngine.AttentionItems(state))
+                if (BinderScreen.DeskAlias(it.Desk) == want) outp.Add(it.Label ?? "");
+            return outp;
+        }
+
+        /// <summary>RED SPEAKS ON THE PAGE (S2, the spend fix made law): one
+        /// measured red line — "!  &lt;asks&gt; — &lt;verb&gt;" — under the hero of any
+        /// desk carrying attention. Returns whether it drew.</summary>
+        public static bool AskStrip(BinderScreen b, string deskId, float x, float y,
+                                    float w, string verbHint)
+        {
+            List<string> asks = GetAsks(b.State, deskId);
+            if (asks.Count == 0) return false;
+            string line = "!  " + string.Join(" · ", asks);
+            if (!string.IsNullOrEmpty(verbHint)) line += " — " + verbHint;
+            FitLine(b, line, x, y, Detail, Alert, w);
+            return true;
+        }
+
+        // ── S3 · the DO lane ───────────────────────────────────────────────
+
+        public sealed class DoAction
+        {
+            public string Label = "";
+            public Action Cb;
+            public string Tier = "";   // "" | "two-tap" | "sign" | "type"
+        }
+
+        /// <summary>EVERY DESK'S PRIMARY ACTIONS IN ONE SLOT (S3): up to three
+        /// paper word-buttons, right-aligned on the DoLaneY anchor, one
+        /// grammar "verb — object", each saying its tier. The focused one
+        /// wears the pen ring; ENTER presses it, TAB cycles (binder-side).
+        /// Controls register as "do_0".."do_2".</summary>
+        public static void DoLane(BinderScreen b, IList<DoAction> actions)
+        {
+            int n = Mathf.Min(actions.Count, 3);
+            if (n <= 0) return;
+            b.ResetDoLane();
+            int focus = b.DoFocus();
+            var caps = new List<string>();
+            var notes = new List<string>();
+            var widths = new List<float>();
+            float total = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                DoAction a = actions[i];
+                string cap = FitText(b, a.Label ?? "", 330f, Detail);
+                object armedObj;
+                bool armedNow = b.Desk.TryGetValue("armed", out armedObj) && armedObj != null
+                                && armedObj.ToString() == "do_" + i;
+                if (a.Tier == "two-tap" && armedNow)
+                    cap = FitText(b, (a.Label ?? "") + " — sure?", 360f, Detail);
+                string note = TierWord(a.Tier ?? "");
+                float tw = DrawnUI.MeasureWidth(cap, Detail);
+                float nw = string.IsNullOrEmpty(note) ? 0f
+                    : DrawnUI.MeasureWidth(note, 12f) + 10f;
+                caps.Add(cap);
+                notes.Add(note);
+                widths.Add(tw + nw + 24f);
+                total += tw + nw + 24f + (i > 0 ? 14f : 0f);
+            }
+            float x = XId + 1120f - total;
+            for (int i = 0; i < n; i++)
+            {
+                DoAction a = actions[i];
+                string id = "do_" + i;
+                object cur;
+                bool isArmed = b.Desk.TryGetValue("armed", out cur) && cur != null
+                               && cur.ToString() == id;
+                float bw = widths[i];
+                Action cb = a.Cb;
+                string tier = a.Tier ?? "";
+                Button btn = null;
+                Action press;
+                if (tier == "two-tap")
+                {
+                    string capNow = caps[i];
+                    float bxNow = x;
+                    press = () =>
+                    {
+                        object now;
+                        bool armedNow2 = b.Desk.TryGetValue("armed", out now) && now != null
+                                         && now.ToString() == id;
+                        if (armedNow2)
+                        {
+                            b.Desk.Remove("armed");
+                            SignStroke(b, btn, capNow, bxNow, DoLaneY, () =>
+                            {
+                                if (cb != null) cb();
+                                b.Refresh();
+                            });
+                            return;
+                        }
+                        b.Desk["armed"] = id;
+                        b.Refresh();
+                    };
+                }
+                else if (tier == "sign")
+                {
+                    string capNow = caps[i];
+                    float bxNow = x;
+                    press = () =>
+                    {
+                        b.Desk.Remove("armed");
+                        SignStroke(b, btn, capNow, bxNow, DoLaneY, () =>
+                        {
+                            if (cb != null) cb();
+                            b.Refresh();
+                        });
+                    };
+                }
+                else
+                {
+                    // plain — and "type": the press opens the desk's own typed flow
+                    press = () =>
+                    {
+                        b.Desk.Remove("armed");
+                        if (cb != null) cb();
+                        b.Refresh();
+                    };
+                }
+                btn = PaperWord(b, caps[i], notes[i], x, DoLaneY, Detail,
+                    isArmed ? DrawnUI.Coral : DrawnUI.Ink, bw, isArmed, press, false);
+                var rect = new Rect(x - 8f, DoLaneY + 2f, bw + 16f, 44f);
+                b.MarkControl(id, rect);
+                b.RegisterDo(btn);
+                if (i == focus)
+                {
+                    var ring = DrawnUI.Fill(b.Content, "doring",
+                        DrawnUI.WithAlpha(DrawnUI.Coral, 0.8f),
+                        rect.x - 4f, rect.y - 4f, rect.width + 8f, rect.height + 8f);
+                    ring.sprite = DrawnUI.WobbleRectSprite((int)(rect.width + 8f),
+                        (int)(rect.height + 8f), 1f, 3f, 9, 1.1f, 79, 3);
+                    ring.raycastTarget = false;
+                }
+                x += bw + 14f;
+            }
+        }
+
+        // ── S4 · press any number (the receipt press map) ──────────────────
+
+        /// <summary>A PRESSABLE REGION → THE RECEIPT POPOVER: the terms that
+        /// made the number, on a small paper card near the press. Dismissed by
+        /// any press or Esc; Esc will NOT pop the desk while one is open.</summary>
+        public static void PressReceipt(BinderScreen b, Rect rect, string title,
+                                        IList<TicketLine> lines)
+        {
+            Button hit = Word(b, "", rect.x, rect.y, null, Detail, DrawnUI.Ink, rect.width);
+            hit.GetComponent<RectTransform>().sizeDelta = new Vector2(rect.width, rect.height);
+            string tl = title;
+            IList<TicketLine> ls = lines;
+            Vector2 at = new Vector2(rect.x, rect.yMax + 8f);
+            hit.onClick.AddListener(() => b.Popover(tl, ls, at));
+        }
+
+        /// <summary>The control-id overload: register against a rect a desk
+        /// marked during this draw.</summary>
+        public static void PressReceipt(BinderScreen b, string controlId, string title,
+                                        IList<TicketLine> lines)
+        {
+            if (!b.HasControl(controlId)) return;
+            PressReceipt(b, b.ControlRect(controlId), title, lines);
+        }
+
+        /// <summary>The convenience: a label that IS its own receipt — drawn
+        /// with a subtle underdot marking pressability.</summary>
+        public static TextMeshProUGUI ReceiptNumber(BinderScreen b, float x, float y,
+                                                    string text, float size, Color col,
+                                                    string title, IList<TicketLine> lines)
+        {
+            TextMeshProUGUI l = b.L(text, x, y, size, col, 520f);
+            float tw = DrawnUI.MeasureWidth(text ?? "", size);
+            float lh = BinderScreen.LineBox(l.font, size);
+            var dot = DrawnUI.Fill(b.Content, "underdot",
+                DrawnUI.WithAlpha(DrawnUI.Coral, 0.75f), x + tw * 0.5f - 3f, y + lh - 2f,
+                7f, 7f);
+            dot.sprite = DrawnUI.DiscSprite(3.5f, 1);
+            dot.raycastTarget = false;
+            PressReceipt(b, new Rect(x - 4f, y - 2f, tw + 8f, lh + 8f), title, lines);
+            return l;
+        }
+
+        // ── S5 · the delta layer ───────────────────────────────────────────
+
+        /// <summary>WHAT CHANGED, beside the hero: a small drawn triangle —
+        /// sage up, coral down, nothing when equal. Drawn, never typed (the
+        /// hand font carries no ▲/▼).</summary>
+        public static void DeltaArrow(BinderScreen b, float x, float y, float now,
+                                      float prev)
+        {
+            if (Mathf.Abs(now - prev) < 0.000001f) return;
+            bool up = now > prev;
+            var img = DrawnUI.Fill(b.Content, "delta", up ? DrawnUI.Sage : DrawnUI.Coral,
+                                   x, y, 16f, 14f);
+            img.sprite = TriSprite(up ? 0 : 1, 16, 14);
+            img.raycastTarget = false;
+        }
+
+        /// <summary>A HAND-DRAWN ELLIPSE round a row that moved since the
+        /// binder was last opened — the pen circling the news.</summary>
+        public static void PenCircle(BinderScreen b, Rect rect)
+        {
+            float rx = rect.width * 0.5f + 10f;
+            float ry = rect.height * 0.5f + 7f;
+            const float Thick = 2.6f;
+            const float Jit = 1.8f;
+            Sprite sp = DrawnChart.PenEllipse(rx, ry, Thick, Jit, 83,
+                DrawnUI.WithAlpha(DrawnUI.Coral, 0.85f));
+            int pad = Mathf.CeilToInt(Jit + Thick * 0.5f + 2f);
+            float w = Mathf.Ceil(rx * 2f) + pad * 2f;
+            float h = Mathf.Ceil(ry * 2f) + pad * 2f;
+            var img = DrawnChart.Mount(b.Content, "pencircle", sp,
+                rect.center.x - w * 0.5f, rect.center.y - h * 0.5f, w, h);
+            img.raycastTarget = false;
+        }
+
+        static readonly Dictionary<string, Sprite> _triSprites =
+            new Dictionary<string, Sprite>();
+
+        /// A tiny filled triangle sprite, tinted by the Image that mounts it —
+        /// the delta glyph (and the back pill's arrow) the hand font never
+        /// carried. dir: 0 = up, 1 = down, 2 = left.
+        internal static Sprite TriSprite(int dir, int w, int h)
+        {
+            string key = "tri|" + dir + "|" + w + "|" + h;
+            Sprite cached;
+            if (_triSprites.TryGetValue(key, out cached) && cached != null) return cached;
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            var px = new Color32[w * h];
+            var on = new Color32(255, 255, 255, 255);
+            if (dir == 2)
+            {
+                // apex at the left edge, full height at the right
+                for (int x = 0; x < w; x++)
+                {
+                    float frac = (float)x / (w - 1);
+                    int half = Mathf.RoundToInt(h * 0.5f * frac);
+                    int cy = h / 2;
+                    for (int y = cy - half; y <= cy + half - 1; y++)
+                        if (y >= 0 && y < h) px[y * w + x] = on;
+                }
+            }
+            else
+            {
+                for (int y = 0; y < h; y++)
+                {
+                    // texture row 0 is the bottom: an up arrow is widest there
+                    float frac = dir == 0 ? 1f - (float)y / (h - 1) : (float)y / (h - 1);
+                    int half = Mathf.RoundToInt(w * 0.5f * frac);
+                    int cx = w / 2;
+                    for (int x = cx - half; x <= cx + half - 1; x++)
+                        if (x >= 0 && x < w) px[y * w + x] = on;
+                }
+            }
+            tex.SetPixels32(px);
+            tex.Apply();
+            var sp = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f));
+            _triSprites[key] = sp;
+            return sp;
+        }
+
+        // ── S6 · the measure law ───────────────────────────────────────────
+
+        /// <summary>GENERATED TEXT NEVER WRAPS BY SURPRISE: one line, measured,
+        /// ellipsized at its declared width — TMP NoWrap + Ellipsis + a fixed
+        /// rect. The Godot/TMP differences die inside.</summary>
+        public static TextMeshProUGUI FitLine(BinderScreen b, string text, float x,
+                                              float y, float size, Color col, float w)
+        {
+            TextMeshProUGUI t = b.L(text, x, y, size, col, w);
+            t.textWrappingMode = TextWrappingModes.NoWrap;
+            t.overflowMode = TextOverflowModes.Ellipsis;
+            t.rectTransform.sizeDelta =
+                new Vector2(w, BinderScreen.LineBox(t.font, size) + 2f);
+            return t;
+        }
+
+        /// <summary>The paragraph half: wraps to maxLines, then ellipsizes.</summary>
+        public static TextMeshProUGUI FitPar(BinderScreen b, string text, float x,
+                                             float y, float size, Color col, float w,
+                                             int maxLines)
+        {
+            TextMeshProUGUI t = b.L(text, x, y, size, col, w);
+            t.textWrappingMode = TextWrappingModes.Normal;
+            t.overflowMode = TextOverflowModes.Ellipsis;
+            t.maxVisibleLines = Mathf.Max(maxLines, 1);
+            t.rectTransform.sizeDelta = new Vector2(w,
+                (BinderScreen.LineBox(t.font, size) + 2f) * Mathf.Max(maxLines, 1));
+            return t;
+        }
+
+        /// <summary>The string half, for Button captions and baked draws: the
+        /// measured trim the spend book proved, promoted kit-wide.</summary>
+        public static string FitText(BinderScreen b, string s, float w, float size)
+        {
+            if (DrawnUI.MeasureWidth(s ?? "", size) <= w) return s ?? "";
+            string t = s;
+            while (t.Length > 1 && DrawnUI.MeasureWidth(t + "…", size) > w)
+                t = t.Substring(0, t.Length - 1);
+            return t.TrimEnd() + "…";
+        }
+
+        // ── the suggestion interface (S14 — B-LOG's feed) ──────────────────
+
+        /// <summary>DESKS MAY SPEAK UP: a desk exposes
+        /// `public static List&lt;Dictionary&lt;string, object&gt;&gt; Suggestions(GameState)`
+        /// with rows {label, kind: "prefill"|"jump", payload}; this gathers
+        /// them (reflection-probed, absent = quiet) and stamps each row with
+        /// its source desk id under "desk".</summary>
+        public static List<Dictionary<string, object>> CollectSuggestions(
+            GameState state, IList<string> deskIds)
+        {
+            var outp = new List<Dictionary<string, object>>();
+            foreach (string id in deskIds)
+            {
+                var mi = BinderScreen.DeskStaticMethod(id, "Suggestions");
+                if (mi == null) continue;
+                object rows = null;
+                try { rows = mi.Invoke(null, new object[] { state }); }
+                catch (Exception) { continue; }
+                var list = rows as System.Collections.IEnumerable;
+                if (list == null) continue;
+                foreach (object r in list)
+                {
+                    var d = r as Dictionary<string, object>;
+                    if (d == null) continue;
+                    var copy = new Dictionary<string, object>(d);
+                    copy["desk"] = id;
+                    outp.Add(copy);
+                }
+            }
+            return outp;
+        }
+
+        /// <summary>THE COUNT BADGE — the binder-bang idiom with a number in
+        /// it: the LOCK IN button's outstanding-attention count.</summary>
+        public static RectTransform CountBadge(RectTransform parent, float x, float y,
+                                               int count)
+        {
+            var root = DrawnUI.Rect(parent, "countbadge", x, y, 28f, 28f);
+            var chip = DrawnUI.Fill(root, "cb", Alert, 0f, 0f, 28f, 28f);
+            chip.raycastTarget = false;
+            DrawnUI.AddInkEdge(chip.rectTransform, new Vector2(28f, 28f),
+                new DrawnUI.PaperStyle
+                {
+                    ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
+                    StepsPerEdge = 5, Jitter = 0.6f, Thickness = 2.2f, Seed = 13,
+                });
+            var t = DrawnUI.DisplayLabel(root, count.ToString(), 0f, 4f, 15f,
+                Color.white, 28f, TextAlignmentOptions.Center);
+            t.raycastTarget = false;
+            return root;
         }
 
         // ── the small drawn helpers the v2 primitives compose from ─────────

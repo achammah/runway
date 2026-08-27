@@ -871,6 +871,7 @@ namespace Runway.CoreTests
             {
                 { "buyer", "Larkspur Depot" }, { "cash", 1200000 },
             };
+            rt.AttentionAges = new Dictionary<string, int> { { "pricing/unpriced", 3 } };
             rt.Employees = new List<Employee> { new Employee { Name = "June Park",
                 Role = "engineer", Salary = 1500, Burnout = 10, Quirk = "",
                 Skill = 4, HiredWeek = 3, Site = "site_lyon" } };
@@ -926,10 +927,40 @@ namespace Runway.CoreTests
                && rt2.Hardware.Equipment[0].Site == "site_lyon"
                && rt2.Offers[0].ProductId == "prod_flagship",
                 "the site tags and the product id persist on their records");
+            Ok(rt2.AttentionAges != null && rt2.AttentionAges.ContainsKey("pricing/unpriced")
+               && rt2.AttentionAges["pricing/unpriced"] == 3,
+                "the attention ages persist a save round-trip");
             // and the saved run still ticks — a round-tripped state is a LIVE state
             rt2.Week += 1;
             WeeklyReport rtRep = SimEngine.WeeklyTick(rt2);
             Ok(rtRep != null && rtRep.Lines != null, "a round-tripped run ticks without error");
+
+            // ── THE ATTENTION AGES (DAG3): a row's first-seen week is recorded
+            // at the tick, holds while the row stands, and vanishes with the
+            // resolved row; AttentionItems stamps every row with since_wk and a
+            // control key.
+            GameState ag = NewState();
+            ag.SetFlag("fundraising_open");   // a stable sev-3 registry row
+            SimEngine.WeeklyTick(ag);
+            int born = ag.AttentionAges.ContainsKey("cap table/term_sheets")
+                ? ag.AttentionAges["cap table/term_sheets"] : -1;
+            Ok(born == ag.Week, "a new attention row is stamped with its first week");
+            ag.Week += 1;
+            SimEngine.WeeklyTick(ag);
+            Ok((ag.AttentionAges.ContainsKey("cap table/term_sheets")
+                ? ag.AttentionAges["cap table/term_sheets"] : -1) == born
+               && ag.Week - born == 1,
+                "a stable attention item ages by 1 across two ticks");
+            AttentionItem agedRow = null;
+            foreach (AttentionItem rAg in SimEngine.AttentionItems(ag))
+                if (rAg.Key == "term_sheets") agedRow = rAg;
+            Ok(agedRow != null && agedRow.SinceWk == born && agedRow.Control == "",
+                "attention rows carry since_wk and a control key");
+            ag.Flags.Remove("fundraising_open");
+            ag.Week += 1;
+            SimEngine.WeeklyTick(ag);
+            Ok(!ag.AttentionAges.ContainsKey("cap table/term_sheets"),
+                "a resolved attention item's key drops from the ages");
 
             // ── THE LANES: each suite runs its own pins after the engine's
             Action<bool, string> ok = Ok;
