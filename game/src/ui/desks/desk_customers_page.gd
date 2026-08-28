@@ -142,7 +142,9 @@ static func _hero(b, s: GameState, an: int, sc: Dictionary) -> void:
 		b.label("+%d won" % won, Vector2(bx + 150.0, 10.0), 27, Color("5D7A50"), 200.0)
 		b.label("−%s lost" % (str(lost) if lost >= 0 else "?"), Vector2(bx + 150.0, 44.0),
 			27, DeskKit.PEN, 200.0)
-		# S5 — the arrows: won and lost against the binder's last open
+		# S5 — the hero's arrow: won against the binder's last open. R4 — the
+		# lost line's second arrow died; a moved lost count is a gutter dot
+		# (coral when losses grew), and the arbiter keeps the worst row (R2).
 		var wprev: String = b.seen_prev("customers", "won")
 		if b.seen("customers", "won", str(won)) and wprev.is_valid_int():
 			var ww: float = b.font().get_string_size("+%d won" % won,
@@ -151,10 +153,8 @@ static func _hero(b, s: GameState, an: int, sc: Dictionary) -> void:
 		if lost >= 0:
 			var lprev: String = b.seen_prev("customers", "lost")
 			if b.seen("customers", "lost", str(lost)) and lprev.is_valid_int():
-				var lw: float = b.font().get_string_size("−%d lost" % lost,
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 27).x
-				DeskKit.delta_arrow(b, bx + 150.0 + lw + 8.0, 48.0, float(lost),
-					float(lprev.to_int()))
+				DeskKit.pen_circle(b, Rect2(bx + 150.0, 44.0, 120.0, 30.0),
+					lost > lprev.to_int(), absf(float(lost - lprev.to_int())))
 	var kept := int(sc.get("kept", -1))
 	if kept >= 0:
 		# S4 — kept% IS its own receipt: the cohort's terms one press down
@@ -170,25 +170,27 @@ static func _hero(b, s: GameState, an: int, sc: Dictionary) -> void:
 		else "invest in analytics to see who stays", Vector2(700.0, 52.0), 17,
 		Color(DeskKit.INK, 0.5), 420.0)
 	ks.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	# S2 — red speaks ON the page: this desk's asks in one measured line
-	var shift := 0.0
-	if DeskKit.ask_strip(b, "customers", DeskKit.X_ID, 84.0, 1100.0,
-			"the doors are on IN MOTION and GROWTH"):
-		shift = 28.0
+	# S2 — red speaks ON the page: this desk's asks in one measured line.
+	# R5 — the strip renders in its own slot (96-118); nothing below shifts.
+	DeskKit.ask_strip(b, "customers", DeskKit.X_ID, 84.0, 1100.0,
+		"the doors are on IN MOTION and GROWTH")
 	if an <= 0:
 		b.label("Traffic seems… decent? Someone signed up on Tuesday. The numbers live in a notebook you lost.",
-			Vector2(DeskKit.X_ID, 84.0 + shift), DeskKit.DETAIL, Color(DeskKit.INK, 0.6), 1100.0)
-		# S2 — the fog sells its own unlock: one press lands on the spend book
-		# (desk-level until the spend lane names the analytics line's control)
-		DeskKit.word(b, "!  the notebook is for sale — fund analytics on the spend book ->",
-			Vector2(DeskKit.X_ID, 112.0 + shift), func() -> void:
+			Vector2(DeskKit.X_ID, DeskKit.CONTENT_Y0), DeskKit.DETAIL,
+			Color(DeskKit.INK, 0.6), 1100.0)
+		# S2 — the fog sells its own unlock: one press lands on the spend book.
+		# R6 — coral, not the alarm red: the strip is the pane's one red line,
+		# and this is a door, not an alarm.
+		DeskKit.word(b, "the notebook is for sale — fund analytics on the spend book ->",
+			Vector2(DeskKit.X_ID, DeskKit.CONTENT_Y0 + 32.0), func() -> void:
 				b.focus_desk("spend", "", "customers"),
-			DeskKit.DETAIL, DeskKit.ALERT, 900.0)
-		DeskKit.pen_rule(b, 150.0 + shift)
+			DeskKit.DETAIL, DeskKit.PEN, 900.0)
+		DeskKit.pen_rule(b, DeskKit.CONTENT_Y0 + 70.0)
 		b.label("the whole run — the chart returns with a notebook that survives (analytics)",
-			Vector2(DeskKit.X_ID, 200.0 + shift), DeskKit.LAW, Color(DeskKit.INK, 0.4), 1100.0)
+			Vector2(DeskKit.X_ID, DeskKit.CONTENT_Y0 + 84.0), DeskKit.LAW,
+			Color(DeskKit.INK, 0.4), 1100.0)
 		return
-	b.label("the whole run", Vector2(DeskKit.X_ID, 84.0 + shift), DeskKit.LAW,
+	b.label("the whole run", Vector2(DeskKit.X_ID, DeskKit.CONTENT_Y0), DeskKit.LAW,
 		Color(DeskKit.INK, 0.45), 400.0)
 	DeskKit.pen_rule(b, 150.0)
 	b.spark(b.series("customers"), Vector2(10.0, 166.0), Vector2(1120.0, 148.0), DeskKit.SAGE)

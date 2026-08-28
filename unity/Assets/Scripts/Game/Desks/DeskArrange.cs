@@ -224,7 +224,7 @@ namespace Runway.Game
                 DeskKit.Word(b, "close", bx + 86f, y + BinH - 40f, () =>
                 {
                     b.Desk["teardown"] = captured;
-                }, DeskKit.Law, DeskKit.Alert, 80f);
+                }, DeskKit.Law, DrawnUI.Coral, 80f);   // R6 — the closing bin's drawn ring carries the alarm
             }
             if (DS(b, "edit") == id && !isHome)
                 EditPanel(b, s, id, bx, y + BinH + 4f);

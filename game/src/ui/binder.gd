@@ -136,8 +136,16 @@ var _do_buttons: Array = []
 ## the rail's foot (or BACKSPACE) pops. Never saved, dies with the binder.
 var _back_stack: Array = []
 ## The drill breadcrumb (S7): a desk in a drilled state re-declares it every
-## draw (push_crumb); cleared at refresh like the control registry.
+## draw (push_crumb); cleared at refresh like the control registry. R9 — the
+## crumb and the back pill share ONE top row (crumb first, pill after, 12px
+## gap), drawn by the frame AFTER the desk so the slot never double-books;
+## a desk may hand the crumb its way-back press (the works' drill).
 var _crumb := ""
+var _crumb_back := Callable()
+## THE ANNOTATION REGISTRY (14-quiet R2): desks register attention marks while
+## they draw; the kit renders the top three at end-of-draw and drops the rest.
+## Cleared at every refresh like the control registry.
+var marks: Array = []
 ## The receipt popover (S4) and the coach spotlight (S2b) — transient layers.
 var _popover: Control = null
 var _spot: Control = null
@@ -441,10 +449,12 @@ func _refresh() -> void:
 		c.queue_free()
 	for c2 in _rail.get_children():
 		c2.queue_free()
-	# the per-draw registries die with the sheet they described (S2b/S3/S7)
+	# the per-draw registries die with the sheet they described (S2b/S3/S7/R2)
 	_controls.clear()
 	_do_buttons.clear()
 	_crumb = ""
+	_crumb_back = Callable()
+	marks.clear()
 	_popover = null
 	_spot = null
 	_frame.queue_redraw()
@@ -458,14 +468,21 @@ func _refresh() -> void:
 		elif _find_group("the offer") >= 0:
 			resolve_momentary("the offer")
 	_build_rail()
-	# THE SHEET: tour > overview > the page's own desk
+	# THE SHEET: tour > overview > the page's own desk. After the sheet draws,
+	# the arbiter renders the pane's top three marks (R2) and the frame lays
+	# the crumb + back-pill row (R9) — always last, so the slot is never under
+	# something a desk drew.
 	if _tour >= 0:
 		DeskTour.draw(self, _tour)
 		return
 	if _overview >= 0:
 		DeskOverview.draw(self, _overview)
+		DeskKit.render_marks(self)
+		_top_row()
 		return
 	_dispatch(_page)
+	DeskKit.render_marks(self)
+	_top_row()
 
 ## THE DESK DISPATCH (docs/design/HOOKS.md): every page drawn by its own file.
 func _dispatch(id: String) -> void:
@@ -622,27 +639,8 @@ func _build_rail() -> void:
 					"%d wks" % int(md.get("wks", 0)))
 				py += 40.0
 		y += box_h + 12.0
-	# S7 — the back pill at the rail's foot: the way home from a cross-desk
-	# jump, pressable, twinned with BACKSPACE.
-	if not _back_stack.is_empty():
-		var top: Dictionary = _back_stack[_back_stack.size() - 1]
-		var pill_y := minf(y + 2.0, FRAME_SIZE.y - 64.0)
-		var pill := _BackPill.new()
-		pill.label_text = "back to " + String(top.get("label", ""))
-		pill.font = _font
-		pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		pill.position = Vector2(RAIL_X, pill_y)
-		pill.set_deferred("size", Vector2(RAIL_BOX_W, 40.0))
-		_rail.add_child(pill)
-		var hit := Button.new()
-		hit.flat = true
-		hit.text = ""
-		for stn in ["normal", "hover", "pressed", "focus"]:
-			hit.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
-		hit.position = Vector2(RAIL_X, pill_y)
-		hit.set_deferred("size", Vector2(RAIL_BOX_W, 40.0))
-		hit.pressed.connect(func() -> void: _back_pop())
-		_rail.add_child(hit)
+	# S7's back pill moved off the rail (14-quiet R9): it now shares the ONE
+	# top-left row with the crumb — see _top_row(), drawn after the sheet.
 
 ## One page tab in the fan. Red-filled with the white bang when its desk has
 ## attention; gold with the deadline clock when momentary. A desk that speaks
@@ -1114,11 +1112,67 @@ func _seen_flush() -> void:
 	_seen_pending = {}
 
 ## S7 — THE BREADCRUMB: a drilled desk re-declares its trail every draw
-## ("Lyon ‹ the works" at the sheet's top-left); it dies with the drill state
-## because the next refresh simply isn't told again.
-func push_crumb(label_text: String) -> void:
+## ("Lyon ‹ the works"); it dies with the drill state because the next refresh
+## simply isn't told again. R9 — the crumb no longer draws here: the frame
+## lays it in the ONE top-left row after the sheet (_top_row), so the crumb,
+## the back pill and a desk's way-back word can never stack. Pass `on_back`
+## and the crumb itself becomes the way back (the works' drill does).
+func push_crumb(label_text: String, on_back: Callable = Callable()) -> void:
 	_crumb = label_text
-	_label("%s ‹ %s" % [label_text, _page], Vector2(10.0, 0.0), 21, Color(INK, 0.55), 520.0)
+	_crumb_back = on_back
+
+## R9 — THE ONE TOP-LEFT SLOT: crumb first at the content edge, the back pill
+## immediately right with a 12px gap, one row at y 0..20. Drawn by the frame
+## AFTER the desk so nothing double-books the corner.
+func _top_row() -> void:
+	var x := 10.0
+	if _crumb != "":
+		var text := "%s ‹ %s" % [_crumb, _page]
+		var tw: float = minf(_font.get_string_size(text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 21).x, 512.0)
+		var l := _label(text, Vector2(x, 0.0), 21, Color(INK, 0.55), tw + 8.0)
+		l.autowrap_mode = TextServer.AUTOWRAP_OFF
+		if _crumb_back.is_valid():
+			var cb := _crumb_back
+			var hit := Button.new()
+			hit.flat = true
+			hit.text = ""
+			for stn in ["normal", "hover", "pressed", "focus"]:
+				hit.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
+			hit.position = Vector2(x - 4.0, 0.0)
+			hit.set_deferred("size", Vector2(tw + 8.0, 30.0))
+			hit.pressed.connect(func() -> void:
+				desk.erase("armed")
+				cb.call()
+				_refresh())
+			hit.mouse_entered.connect(func() -> void:
+				if is_instance_valid(l):
+					l.add_theme_color_override("font_color", PEN))
+			hit.mouse_exited.connect(func() -> void:
+				if is_instance_valid(l):
+					l.add_theme_color_override("font_color", Color(INK, 0.55)))
+			_content.add_child(hit)
+		x += tw + 12.0
+	if not _back_stack.is_empty():
+		var top: Dictionary = _back_stack[_back_stack.size() - 1]
+		var cap := "back to " + String(top.get("label", ""))
+		var pw: float = _font.get_string_size(cap, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x + 56.0
+		var pill := _BackPill.new()
+		pill.label_text = cap
+		pill.font = _font
+		pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pill.position = Vector2(x, 0.0)
+		pill.set_deferred("size", Vector2(pw, 22.0))
+		_content.add_child(pill)
+		var hit2 := Button.new()
+		hit2.flat = true
+		hit2.text = ""
+		for stn2 in ["normal", "hover", "pressed", "focus"]:
+			hit2.add_theme_stylebox_override(stn2, StyleBoxEmpty.new())
+		hit2.position = Vector2(x, 0.0)
+		hit2.set_deferred("size", Vector2(pw, 22.0))
+		hit2.pressed.connect(func() -> void: _back_pop())
+		_content.add_child(hit2)
 
 # ── the desk-script probes (S8/S10/S14 — desks MAY speak, never must) ────────
 
@@ -1440,14 +1494,17 @@ class _PageTab:
 		if font != null:
 			var col := Color.WHITE if red else Binder.INK
 			# a spoken micro-status takes the tab's right lane; the name yields
+			# R8 — the micro-status prints at the chip size (17), never a stray
 			var mw := 0.0
 			if not red and micro != "":
-				mw = minf(font.get_string_size(micro, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x, 74.0)
+				mw = minf(font.get_string_size(micro, HORIZONTAL_ALIGNMENT_LEFT, -1,
+					DeskKit.CHIP_S).x, 74.0)
 			draw_string(font, Vector2(9, h - 11), text_v, HORIZONTAL_ALIGNMENT_LEFT,
 				w - (44.0 if red else (24.0 + mw if mw > 0.0 else 18.0)), 19, col)
 			if mw > 0.0:
 				draw_string(font, Vector2(w - 8.0 - mw, h - 12), micro,
-					HORIZONTAL_ALIGNMENT_LEFT, mw + 2.0, 15, Color(Binder.INK, 0.55))
+					HORIZONTAL_ALIGNMENT_LEFT, mw + 2.0, DeskKit.CHIP_S,
+					Color(Binder.INK, 0.55))
 			if red:
 				draw_string(font, Vector2(w - 24, h - 10), "!", HORIZONTAL_ALIGNMENT_LEFT,
 					20, 22, Color.WHITE)
@@ -1550,9 +1607,10 @@ class _PopCard:
 				Color(Binder.INK, 0.45), 2.0)
 			x += 16.0
 
-## S7 — THE BACK PILL: the way home from a cross-desk jump, waiting at the
-## rail's foot. A drawn left-pointing triangle carries the arrow (the hand
-## font never shipped one).
+## S7 — THE BACK PILL: the way home from a cross-desk jump. R9 — it rides the
+## ONE top-left row beside the crumb now (compact, 22px), never the rail. A
+## drawn left-pointing triangle carries the arrow (the hand font never shipped
+## one).
 class _BackPill:
 	extends Control
 	var label_text := ""
@@ -1575,11 +1633,11 @@ class _BackPill:
 		draw_colored_polygon(pts, Binder.PAPER2)
 		pts.append(pts[0])
 		draw_polyline(pts, Binder.INK, 2.4, true)
-		draw_colored_polygon(PackedVector2Array([Vector2(22, h * 0.5),
-			Vector2(34, h * 0.5 - 8.0), Vector2(34, h * 0.5 + 8.0)]), Binder.INK)
+		draw_colored_polygon(PackedVector2Array([Vector2(10, h * 0.5),
+			Vector2(20, h * 0.5 - 7.0), Vector2(20, h * 0.5 + 7.0)]), Binder.INK)
 		if font != null:
-			draw_string(font, Vector2(42, h - 13), label_text, HORIZONTAL_ALIGNMENT_LEFT,
-				size.x - 52.0, 17, Binder.INK)
+			draw_string(font, Vector2(28, h - 5.0), label_text, HORIZONTAL_ALIGNMENT_LEFT,
+				size.x - 36.0, 17, Binder.INK)
 
 ## THE DRAWN COVER — the portrait's instant placeholder and permanent
 ## fallback: a chunky kraft binder, four index tabs in the group colors,

@@ -57,8 +57,11 @@ namespace Runway.Game
             DeskKit.CardBox f = DeskKit.CardFrame(b, x, y, CardW, CardH, id);
             if (severity > 0) DeskKit.SevDot(b, x + CardW - 78f, y + 16f, severity);
             string big = s[0];
+            // R6 — the ask line below is the card's one red; the number stays
+            // ink (four red heroes at once made the quartet shout — the sev
+            // dot and the ask line already carry the alarm)
             b.L(big, f.ContentX, f.ContentY + 6f, DeskKit.HeroBig,
-                severity >= 2 ? DeskKit.Alert : DrawnUI.Ink, CardW - DeskKit.CardPad * 2f);
+                DrawnUI.Ink, CardW - DeskKit.CardPad * 2f);
             b.L(s[1], f.ContentX, f.ContentY + 78f, DeskKit.Detail,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.65f), CardW - DeskKit.CardPad * 2f);
             // the delta line: the seen store remembers last open's hero verbatim

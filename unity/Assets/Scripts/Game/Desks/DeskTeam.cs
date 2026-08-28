@@ -159,10 +159,11 @@ namespace Runway.Game
             float mx = SheetX + SheetW - mw - 4f;
             b.L(mtxt, mx, 64f, DeskKit.Law, Ink(0.42f), mw + 8f);
             DeskKit.DeltaArrow(b, mx - 24f, 66f, state.Morale, MoralePrev(state));
-            // S2a — red speaks on the page; the sheet drops 8px clear
-            float sheetY = YSheet;
-            if (DeskKit.AskStrip(b, "team", SheetX, 86f, 1000f, "answer the ask before it walks"))
-                sheetY += 8f;
+            // S2a — red speaks on the page. R5 — the strip renders in its
+            // own slot (96-118); the sheet holds the content slot whether or
+            // not the desk is red — stability beats density.
+            float sheetY = DeskKit.ContentY0;
+            DeskKit.AskStrip(b, "team", SheetX, 86f, 1000f, "answer the ask before it walks");
 
             // ── the sheet
             var sheet = DeskKit.LedgerSheet(b, SheetX, sheetY, SheetW, new List<DeskKit.LedgerCol>

@@ -66,11 +66,13 @@ static func draw(b) -> void:
 			b.fmt(absi(net))], "col": DeskKit.SAGE if net >= 0 else DeskKit.PEN},
 		{"label": "runway = cash ÷ net burn", "value": "%d wk" % SimEngine.runway_weeks(s)},
 		{"label": "the verdict", "value": band.to_lower()}])
-	# S5 — the pen circles the situation line when the band moved since last open
+	# S5/R3 — a moved situation line earns the gutter dot (the rect starts at
+	# 24 so the dot's 14px gutter lands inside the page edge; the sentence
+	# rides at +58 since the slot grid)
 	if b.seen("this week", "band", band):
 		var lw: float = b.font().get_string_size(hero_line,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, DeskKit.ROW).x
-		DeskKit.pen_circle(b, Rect2(DeskKit.X_ID, 72.0, minf(lw, 900.0), 34.0))
+		DeskKit.pen_circle(b, Rect2(24.0, 64.0, minf(lw, 900.0), 34.0))
 
 	# 1 · THE CARD — the event and its bite, art slot left; without a seeded
 	# card this zone is THE OUTCOME VIEW (13-binder § this week, post-roll):
@@ -178,11 +180,11 @@ static func draw(b) -> void:
 			b.label("%d outstanding — the review will stop you once" % outstanding.size(),
 				Vector2(float(z4.content_x), ay), DeskKit.DETAIL, DeskKit.PEN, 700.0)
 	else:
+		# R7 — one line: the outstanding count already rides the LOCK IN badge
+		# (the garage idiom below) and the review says it again; the second
+		# line here printed through the zone's own border.
 		b.label("the journal rolls the week — close the binder (TAB) and press LOCK IN",
 			Vector2(float(z4.content_x), ay), DeskKit.DETAIL, Color(DeskKit.INK, 0.55), 900.0)
-		if not outstanding.is_empty():
-			b.label("%d outstanding items wait in the review" % outstanding.size(),
-				Vector2(float(z4.content_x), ay + 28.0), DeskKit.DETAIL, DeskKit.PEN, 700.0)
 
 	# S3 — THE DO LANE: the die and the pen, one slot, above the teaching foot.
 	var actions: Array = []

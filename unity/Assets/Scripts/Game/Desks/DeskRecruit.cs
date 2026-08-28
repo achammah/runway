@@ -21,7 +21,7 @@ namespace Runway.Game
     /// two-tap — it replaced the in-zone SEND arm), S4 the hero pipeline
     /// receipt, the odds ticket that ANIMATES on stepper press (the number
     /// ticks over ~0.25s, the marginal foot re-inks). The page compacted for
-    /// the lane's 762 anchor: money-desk hero, zones 156/244/222, the zone
+    /// the lane's 762 anchor: money-desk hero, zones 156/230/222, the zone
     /// lessons relocated to the column subs and the new teaching foot, the
     /// ticket one fact line tall.
     /// </summary>
@@ -179,11 +179,12 @@ namespace Runway.Game
                     new DeskKit.TicketLine { Label = "seats left this era",
                         Value = SimLabor.SeatsLeft(state).ToString() },
                 });
-            // S2a — red speaks on the page; the zones drop 8px clear
-            float y = 108f;
-            if (DeskKit.AskStrip(b, "recruitment", SheetX, 86f, 1000f,
-                    "a lapsed offer is heard on the street"))
-                y += 8f;
+            // S2a — red speaks on the page. R5 — the strip renders in its
+            // own slot (96-118); the zones hold the content slot whether or
+            // not the desk is red.
+            float y = DeskKit.ContentY0;
+            DeskKit.AskStrip(b, "recruitment", SheetX, 86f, 1000f,
+                "a lapsed offer is heard on the street");
 
             // ── zone 1 · THE OPEN SEATS
             DeskKit.CardBox z1 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 156f, 1,
@@ -223,9 +224,12 @@ namespace Runway.Game
             y += 156f + 10f;
 
             // ── zone 2 · THE CANDIDATES
-            DeskKit.CardBox z2 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 244f, 2,
+            // R9 — 230 tall, not 244: the old slack rode below the fold
+            // note, and with the zones at ContentY0 the composer would cross
+            // the DO lane.
+            DeskKit.CardBox z2 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 230f, 2,
                 "the candidates", "");
-            const float colW = 268f;
+            const float colW = 264f;   // R9 — 4×264 + 3×16 sits inside the zone; 268 poked out
             const float colH = 154f;
             float cx = z2.ContentX - 6f;
             // the old zone lesson lives on the columns now, split where it lands
@@ -286,7 +290,7 @@ namespace Runway.Game
                     b.L("+" + (cands.Count - shown) + " more wait behind", col.ContentX + 2f,
                         col.Y + colH + 4f, 16f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), colW - 20f);
             }
-            y += 244f + 10f;
+            y += 230f + 10f;
 
             // ── zone 3 · THE OFFER COMPOSER
             DeskKit.CardBox z3 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 222f, 3,

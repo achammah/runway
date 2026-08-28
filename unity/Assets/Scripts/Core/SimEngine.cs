@@ -1889,7 +1889,8 @@ namespace Runway.Core
                 rows.Add(new AttentionItem { Desk = "the ledger", Key = "losing_week", Severity = 2,
                     Label = "losing week — burn beat revenue" });
             if (state.HasFlag("fundraising_open"))
-                rows.Add(new AttentionItem { Desk = "cap table", Key = "term_sheets", Severity = 3,
+                rows.Add(new AttentionItem { Desk = "the raise", Key = "term_sheets", Severity = 3,
+                    Control = "sign_terms",
                     Label = "term sheets waiting — they expire" });
             // ── the nine lanes, each owning its own predicates
             var laneRows = new List<List<AttentionItem>>

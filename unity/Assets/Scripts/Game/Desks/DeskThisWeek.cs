@@ -90,9 +90,11 @@ namespace Runway.Game
                     new DeskKit.TicketLine { Label = "the verdict",
                         Value = band.ToLowerInvariant() },
                 });
-            // S5 — the pen circles the situation line when the band moved
+            // S5/R3 — a moved situation line earns the gutter dot (the rect
+            // starts at 24 so the dot's 14px gutter lands inside the page
+            // edge; the sentence rides at +58 since the slot grid)
             if (b.Seen("this week", "band", band))
-                DeskKit.PenCircle(b, new Rect(DeskKit.XId, 72f,
+                DeskKit.PenCircle(b, new Rect(24f, 64f,
                     Mathf.Min(DrawnUI.MeasureWidth(heroLine, DeskKit.Row), 900f), 34f));
 
             // 1 · THE CARD — the event and its bite, art slot left; without a
@@ -217,12 +219,11 @@ namespace Runway.Game
             }
             else
             {
+                // R7 — one line: the outstanding count already rides the LOCK
+                // IN badge (the garage idiom) and the review says it again;
+                // the second line printed through the zone's own border.
                 b.L("the journal rolls the week — close the binder (TAB) and press LOCK IN",
                     z4.ContentX, ay, DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), 900f);
-                if (outstanding.Count > 0)
-                    b.L(string.Format("{0} outstanding items wait in the review",
-                        outstanding.Count), z4.ContentX, ay + 28f, DeskKit.Detail,
-                        DrawnUI.Coral, 700f);
             }
 
             // S3 — THE DO LANE: the die and the pen, one slot.

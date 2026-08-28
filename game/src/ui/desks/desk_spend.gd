@@ -129,10 +129,10 @@ static func draw(b) -> void:
 		Vector2(SHEET_X, 62.0), DeskKit.DETAIL, Color(DeskKit.INK, 0.6), 760.0)
 	# RED MEANS ACT, AND THE PAGE NAMES THE ASK (owner: "exclamation mark but
 	# unclear what is asked") — the kit's ask strip, born on this desk (S2a).
-	# The strip owns its y: when it draws, the sheet drops 8px clear of it.
-	var sheet_y := Y_SHEET
-	if DeskKit.ask_strip(b, "spend", SHEET_X, 86.0, 1000.0, "adopt the book or fund a line"):
-		sheet_y += 8.0
+	# R5 — the strip renders in its own slot (96-118) and the sheet holds the
+	# content slot whether or not the desk is red: stability beats density.
+	var sheet_y := DeskKit.CONTENT_Y0
+	DeskKit.ask_strip(b, "spend", SHEET_X, 86.0, 1000.0, "adopt the book or fund a line")
 	# the whole-book adopt arm (the ruling): one press-pair prices the book
 	if suggested > 0 and suggested != total:
 		var fire_book := func() -> void:

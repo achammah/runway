@@ -115,12 +115,12 @@ namespace Runway.Game
             string clockTxt = DeadlineText(state);
             if (clockTxt != "") DeskKit.ClockChip(b, 910f, 68f, clockTxt);
 
-            // S2a — red speaks on the page: the strip gets its own y under
-            // the hero sentence and pushes the zones down only when it drew
-            float y = 96f;
-            if (DeskKit.AskStrip(b, "the bank", SheetX, 88f, 1000f,
-                    "find the Monday or repay the note"))
-                y = 118f;
+            // S2a — red speaks on the page. R5 — the strip renders in its
+            // own slot (96-118); the zones hold the content slot whether or
+            // not the desk is red.
+            float y = DeskKit.ContentY0;
+            DeskKit.AskStrip(b, "the bank", SheetX, 88f, 1000f,
+                "find the Monday or repay the note");
             y = ZoneStanding(b, state, y, rate);
             y = ZoneOwed(b, state, y);
             // zones 3 and 4 share the lower page: one open, the other a bar
@@ -335,8 +335,11 @@ namespace Runway.Game
                     cx, cy, DeskKit.Detail, Ink(0.6f), 1060f);
                 return y + h + 4f;
             }
+            // R9 — a lone note gets the wide card (800): at 532 the repay
+            // capsule and "still owe" shared the same 74px
+            float cardW = shown > 1 ? 532f : 800f;
             for (int k = 0; k < shown; k++)
-                NoteCard(b, state, notes[k], cx + k * 552f, cy - 6f, 532f, CardH);
+                NoteCard(b, state, notes[k], cx + k * 552f, cy - 6f, cardW, CardH);
             TailLine(b, state, notes.Count - shown, cx, cy + CardH + 6f);
             return y + h + 4f;
         }
@@ -365,12 +368,14 @@ namespace Runway.Game
             b.MarkControl("note_" + idx, new Rect(x, y, w, h));
             float cx = frame.ContentX;
             float cy = frame.ContentY;
-            b.L(chip, x + w - 176f, y + 14f, 15f, kind == "bank" ? Pos : DrawnUI.Coral, 162f);
+            b.L(chip, x + w - 176f, y + 14f, DeskKit.ChipS, kind == "bank" ? Pos : DrawnUI.Coral, 162f);
             int paid = Math.Max(principal - bal, 0);
             DeskKit.Meter(b, cx, cy, w - 240f, (float)paid / Math.Max(principal, bal),
                 kind == "bank" ? DrawnUI.Sage : DrawnUI.Coral);
-            b.L("paid off $" + GameUi.Money(paid), cx, cy + 24f, 15f, Ink(0.55f), 200f);
-            b.L("still owe $" + GameUi.Money(bal), cx + 210f, cy + 24f, 15f, DrawnUI.Ink, 200f);
+            // R9 — still-owe sits at +150 so its tail clears the repay
+            // capsule's column on the NARROW two-note card too
+            b.L("paid off $" + GameUi.Money(paid), cx, cy + 24f, DeskKit.ChipS, Ink(0.55f), 144f);
+            b.L("still owe $" + GameUi.Money(bal), cx + 150f, cy + 24f, DeskKit.ChipS, DrawnUI.Ink, 146f);
             // the Monday split, one compact line — the lesson in the arithmetic
             string split;
             switch (kind)
@@ -403,13 +408,15 @@ namespace Runway.Game
             // and trims with an ellipsis instead of printing under it
             int quote = Math.Min(state.Cash - GameState.RAMEN_PER_WEEK, bal);
             bool hasArm = idx >= 0 && quote > 0;
-            TextMeshProUGUI sl = b.L(split, cx, cy + 42f, 15f,
+            TextMeshProUGUI sl = b.L(split, cx, cy + 42f, DeskKit.ChipS,
                 (kind != "bank" || note.Missed > 0) ? DrawnUI.Coral : Ink(0.7f),
                 hasArm ? (w - 36f - 212f) : (w - 36f));
             sl.enableWordWrapping = false;
             sl.overflowMode = TextOverflowModes.Ellipsis;
             if (hasArm)
             {
+                // the wide lone card keeps this column clear of the money
+                // lines (R9)
                 int fireIdx = idx;
                 DeskKit.Arm(b, "repay_" + idx, "repay ▸", "−$" + GameUi.Money(quote) + " now — sure?",
                     x + w - 216f, cy + 34f, () => SimBank.RepayNote(state, fireIdx), 200f, 17f);
@@ -510,7 +517,7 @@ namespace Runway.Game
             const float RcptW = 420f;
             var inked = new List<TextMeshProUGUI>();
             inked.Add(b.L("THE RECEIPT — shorter term: smaller price, heavier Mondays",
-                rx, cy - 6f, 15f, Ink(0.5f), RcptW));
+                rx, cy - 6f, DeskKit.ChipS, Ink(0.5f), RcptW));
             inked.AddRange(RcptRow(b, rx, cy + 16f, RcptW, "every Monday",
                 "$" + GameUi.Money(pay2), DrawnUI.Ink));
             inked.AddRange(RcptRow(b, rx, cy + 40f, RcptW, "you will hand back, in all",
@@ -610,16 +617,20 @@ namespace Runway.Game
         /// the lane's buttons; the ladder's story waits inside the zone.
         static float Zone4Bar(BinderScreen b, float y)
         {
-            DeskKit.PenRule(b, y + 2f, SheetX, ZoneW, Ink(0.2f));
-            DeskKit.Word(b, "4 · IF A MONDAY IS MISSED — the three stairs ▸",
-                SheetX + 8f, y + 8f, () => { b.Desk["zone4"] = true; }, 19f, Ink(0.7f), 330f);
-            return y + 42f;
+            return Bar(b, y, "4 · IF A MONDAY IS MISSED — the stairs ▸",
+                () => { b.Desk["zone4"] = true; });
         }
 
+        /// R9 — a folded-zone bar that lands in the DO lane's band keeps its
+        /// word (left, measured, clear of the capsules) and stops its rule
+        /// short of the lane, so nothing ever prints under the actions.
         static float Bar(BinderScreen b, float y, string text, Action onPress)
         {
-            DeskKit.PenRule(b, y + 2f, SheetX, ZoneW, Ink(0.2f));
-            DeskKit.Word(b, text, SheetX + 8f, y + 8f, onPress, 19f, Ink(0.7f), ZoneW - 16f);
+            float w = ZoneW;
+            if (y + 42f > DeskKit.DoLaneY - 8f) w = 560f;
+            DeskKit.PenRule(b, y + 2f, SheetX, w, Ink(0.2f));
+            DeskKit.Word(b, DeskKit.FitText(b, text, w - 24f, 19f),
+                SheetX + 8f, y + 8f, onPress, 19f, Ink(0.7f), w - 16f);
             return y + 42f;
         }
 
@@ -652,7 +663,7 @@ namespace Runway.Game
             DrawnUI.Fill(b.Content, "se", DrawnUI.Ink, x + w - 2.6f, y, 2.6f, h).raycastTarget = false;
             Color ink = i == 2 ? Color.white : DrawnUI.Ink;
             b.L(head, x + 10f, y + 2f, 18f, ink, w - 20f);
-            b.L(line, x + 10f, y + 24f, 13f,
+            b.L(line, x + 10f, y + 24f, DeskKit.ChipS,
                 i == 2 ? new Color(1f, 1f, 1f, 0.9f) : Ink(0.6f), w - 20f);
         }
 
@@ -668,7 +679,7 @@ namespace Runway.Game
             foreach (SimBank.ForecastWeek r in rows)
             {
                 DeskKit.CardFrame(b, x, y, 128f, 48f, "");
-                b.L("wk " + r.Wk, x + 10f, y + 2f, 14f, Ink(0.5f), 108f);
+                b.L("wk " + r.Wk, x + 10f, y + 2f, DeskKit.ChipS, Ink(0.5f), 108f);
                 int c = r.Cash;
                 string txt = c < 0 ? "−$" + (Math.Abs((double)c) / 1000.0).ToString("0.0") + "k"
                                    : "$" + (c / 1000.0).ToString("0.0") + "k";

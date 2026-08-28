@@ -171,16 +171,15 @@ namespace Runway.Game
             // HERO — the weather answers the tab's question in one second
             float y = DeskKit.HeroBand(b, SeasonBig(s), WeekSentence(s), SeasonCol(s));
 
-            // S2 — a red street names its ask under the hero; the wire below is
-            // the offending surface, so the strip's jump target is marked
-            // there. The 24px the strip spends is reclaimed from the zones'
-            // own air (twin constants).
-            bool red = DeskKit.AskStrip(b, "the street", DeskKit.XId, y, 1120f,
+            // S2 — a red street names its ask in the strip slot (96-118);
+            // the wire below is the offending surface, so the strip's jump
+            // target is marked there. R5 — ONE geometry, red or calm: the
+            // zones hold their ground and keep the roomier air.
+            DeskKit.AskStrip(b, "the street", DeskKit.XId, y, 1120f,
                 "read the wire below");
-            if (red) y += 24f;
-            float gap = red ? 8f : 12f;
-            float z1H = red ? 86f : 92f;
-            float z3H = red ? 112f : 118f;
+            const float gap = 12f;
+            const float z1H = 92f;
+            const float z3H = 118f;
 
             // 1 · THE WEATHER
             DeskKit.CardBox z1 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, z1H, 1,
@@ -215,10 +214,15 @@ namespace Runway.Game
                 // S5 — the pen circles a rival whose latest act is news since
                 // last open (the log entry carries its own week stamp)
                 if (b.Seen("the street", "act:" + rd.Name, ActStamp(rd)))
-                    DeskKit.PenCircle(b, new Rect(z2.ContentX + 26f, ry - 8f, 268f, 38f));
+                    // R3 — the dot marks the LOG line (the news itself); on
+                    // the name it crowded the sev dot's gutter
+                    DeskKit.PenCircle(b, new Rect(z2.ContentX + 34f, ry + 58f, 268f, 24f),
+                        CameAtYou(rd), CameAtYou(rd) ? 14f : 10f);
                 if (CameAtYou(rd))
+                    // R6 — coral, not the alarm red: the strip is the pane's
+                    // one red line; the face-up pin still reads at a glance
                     b.L("-> they came at YOU", z2.ContentX + 430f, ry, DeskKit.Detail,
-                        DeskKit.Alert, 300f);
+                        DrawnUI.Coral, 300f);
                 b.L(SimEngine.Fuzz(rd.Strength), z2.ContentX + 900f, ry, DeskKit.Detail,
                     DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 180f);
                 float cx = z2.ContentX + 34f;

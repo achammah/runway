@@ -641,9 +641,11 @@ static func hero_band(b, big_text: String, sentence: String, col: Color = INK,
 	var bottom := y + 74.0
 	if sentence != "":
 		# ONE PLAIN SENTENCE, in words a tired founder reads without decoding —
-		# the number said again in English, never a second number.
-		b.label(sentence, Vector2(x, y + 66.0), ROW, Color(INK, 0.7), w)
-		bottom = y + 66.0 + maxf(b.wrap_h(sentence, ROW, w), 34.0)
+		# the number said again in English, never a second number. R5/R7 — the
+		# sentence sits at +58 so its ink clears the strip slot (96-118) with
+		# the air floor intact.
+		b.label(sentence, Vector2(x, y + 58.0), ROW, Color(INK, 0.7), w)
+		bottom = y + 58.0 + maxf(b.wrap_h(sentence, ROW, w), 34.0)
 	bottom = maxf(bottom, y + BAND_MIN)
 	pen_rule(b, bottom + 10.0)
 	return bottom + 26.0
@@ -1317,9 +1319,14 @@ static func capbars(b, x: float, y: float, w: float, rows: Array) -> float:
 		bar.position = Vector2(x + 260.0, y + 2.0)
 		bar.set_deferred("size", Vector2(maxf(track * pct / 100.0, 8.0), 24.0))
 		b.pane().add_child(bar)
-		b.label("%.1f%%" % pct, Vector2(x + 260.0 + maxf(track * pct / 100.0, 8.0) + 16.0,
-			y), DETAIL, Color(INK, 0.85), 90.0)
+		# R9 — at 100% the +16 offset still walked the pct into the note column
+		# (track end + 16 lands 6px past the note's left edge): the label clears
+		# the bar's end tick AND stops short of the note lane, whichever bites.
 		var note := String(d.get("note", ""))
+		var pct_x := x + 260.0 + maxf(track * pct / 100.0, 8.0) + 16.0
+		var pct_lim := (x + w - 200.0 - 84.0) if note != "" else (x + w - 92.0)
+		b.label("%.1f%%" % pct, Vector2(minf(pct_x, pct_lim), y), DETAIL,
+			Color(INK, 0.85), 90.0)
 		if note != "":
 			b.label(note, Vector2(x + w - 200.0, y + 2.0), 17, Color(INK, 0.5), 200.0)
 		y += 40.0
@@ -1508,7 +1515,11 @@ static func clock_chip(b, x: float, y: float, text: String) -> float:
 ## navigation is testable before the lanes land. On a page that embeds a
 ## shipped desk the question rides the sheet's quiet bottom-right corner —
 ## below the old pane's 760, inside the new 880 — so nothing collides.
+## R7/R9 — duplicate captions die: a desk whose teaching foot already says the
+## question declares `b.desk["foot_carries_question"] = true` and this yields.
 static func hero_question(b, q: String) -> void:
+	if bool(b.desk.get("foot_carries_question", false)):
+		return
 	var l: Label = b.label(q, Vector2(560.0, 846.0), LAW, Color(INK, 0.4), 560.0)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
@@ -1535,6 +1546,137 @@ static func under_construction(b, big: String, question: String, note: String) -
 ## eye learns ONE spot for "what can I do here".
 const DO_LANE_Y := 762.0
 
+## THE SLOT GRID (14-quiet R5): fixed vertical slots, identical on every desk.
+## hero 6-96 · ask strip 96-118 (drawn only when red; content NEVER creeps into
+## the slot when it is empty — stability beats density) · content 126 to
+## DO_LANE_Y-8 · the DO lane · the teaching foot. Nothing renders in another
+## slot; deep stacks fold (fold_row) rather than slide the foot.
+const HERO_Y0 := 6.0
+const HERO_Y1 := 96.0
+const STRIP_Y := 96.0
+const STRIP_H := 22.0
+const CONTENT_Y0 := 126.0
+const FOOT_Y := 806.0
+
+## THE CHIP SIZE (14-quiet R8): the smallest sanctioned print — tier notes,
+## micro-statuses, badge counts. Strays at 11-15px snap here or to DETAIL,
+## nothing in between.
+const CHIP_S := 17
+
+## THE ANNOTATION BUDGET (14-quiet R2): beyond the tab's own red, a pane may
+## carry at most THREE attention annotations — the ask strip (when red), the
+## hero delta, and ONE more (the single worst changed row). A page where
+## everything is marked has marked nothing.
+const MARK_BUDGET := 3
+
+# ─────────────────── R2 · THE ARBITER (14-quiet, the quiet law) ──────────────
+
+## MARKS REGISTER, THE KIT RENDERS: a desk never draws an attention annotation
+## directly — it registers {kind, priority, payload} and at end-of-draw the
+## binder renders the top THREE by priority and silently drops the rest.
+## kind ∈ {strip (100 — always wins its slot), hero_delta (50 — only ONE per
+## pane, R4), row_dot (by |change| or caller priority)}.
+static func note_mark(b, kind: String, priority: float, payload: Dictionary) -> void:
+	b.marks.append({"kind": kind, "priority": priority, "payload": payload})
+
+## The binder calls this once, after the desk's draw returns. Renders at most
+## MARK_BUDGET annotations: one strip, one hero delta, dots by priority.
+static func render_marks(b) -> void:
+	var rows: Array = b.marks.duplicate()
+	b.marks.clear()
+	rows.sort_custom(func(a, c) -> bool:
+		return float((a as Dictionary).get("priority", 0.0)) \
+			> float((c as Dictionary).get("priority", 0.0)))
+	var kept := 0
+	var strips := 0
+	var heroes := 0
+	for m in rows:
+		if kept >= MARK_BUDGET:
+			break
+		var md: Dictionary = m
+		var payload: Dictionary = md.get("payload", {})
+		match String(md.get("kind", "")):
+			"strip":
+				if strips >= 1:
+					continue
+				strips += 1
+				_draw_strip(b, payload)
+			"hero_delta":
+				if heroes >= 1:
+					continue   # R4 — ONE DELTA PER PANE: the hero's is the only one
+				heroes += 1
+				_draw_delta(b, payload)
+			"row_dot":
+				_draw_row_dot(b, payload)
+			_:
+				continue
+		kept += 1
+
+## The strip's drawing half (R6 — THE RED SINGLETON: the pane's one red line).
+static func _draw_strip(b, p: Dictionary) -> void:
+	var l: Label = fit_line(b, String(p.get("line", "")),
+		Vector2(float(p.get("x", X_ID)), STRIP_Y), DETAIL, ALERT,
+		float(p.get("w", 1120.0)))
+	l.set_meta("quiet_mark", "strip")
+
+## The delta's drawing half — the sage/coral triangle beside the hero.
+static func _draw_delta(b, p: Dictionary) -> void:
+	var tri := _DeltaTri.new()
+	tri.up = bool(p.get("up", true))
+	tri.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tri.position = Vector2(float(p.get("x", 0.0)), float(p.get("y", 0.0)))
+	tri.set_deferred("size", Vector2(16.0, 14.0))
+	tri.set_meta("quiet_mark", "hero_delta")
+	b.pane().add_child(tri)
+
+## THE GUTTER DOT's drawing half (R3): a 6px filled dot in the LEFT GUTTER of
+## the row's rect (x = rect.x − 14, centered vertically) — sage when the change
+## is good/neutral, coral when the caller says it is bad. Never an ellipse
+## round content (the circle fights the row's own borders and doubles the ink;
+## the drawn circle is the spotlight/tour's alone now).
+static func _draw_row_dot(b, p: Dictionary) -> void:
+	var rect: Rect2 = p.get("rect", Rect2())
+	var d := _GutterDot.new()
+	d.bad = bool(p.get("bad", false))
+	d.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	d.position = Vector2(rect.position.x - 14.0, rect.position.y + rect.size.y * 0.5 - 3.0)
+	d.set_deferred("size", Vector2(6.0, 6.0))
+	d.set_meta("quiet_mark", "row_dot")
+	b.pane().add_child(d)
+
+## R6/R10 AUDIT — the probe's counting rules, kit-owned so both gates agree.
+## Annotations = nodes the arbiter rendered (tagged quiet_mark).
+static func annotation_count(b) -> int:
+	return _count_meta(b.pane())
+
+static func _count_meta(n: Node) -> int:
+	var c := 0
+	for ch in n.get_children():
+		if (ch as Node).has_meta("quiet_mark"):
+			c += 1
+		c += _count_meta(ch)
+	return c
+
+## ALERT-colored TEXT objects per pane: Labels/Buttons whose font_color is the
+## alarm red. Row clock chips are exempt by construction — they are drawn
+## chips (a red polygon under WHITE words), not text labels colored ALERT.
+static func alert_text_count(b) -> int:
+	return _count_alert(b.pane())
+
+static func _count_alert(n: Node) -> int:
+	var c := 0
+	for ch in n.get_children():
+		if ch is Label:
+			if (ch as Label).get_theme_color("font_color").is_equal_approx(ALERT) \
+					and String((ch as Label).text).strip_edges() != "":
+				c += 1
+		elif ch is Button:
+			if (ch as Button).get_theme_color("font_color").is_equal_approx(ALERT) \
+					and String((ch as Button).text).strip_edges() != "":
+				c += 1
+		c += _count_alert(ch)
+	return c
+
 ## THE TIER SAID ON THE CONTROL (S9): the three confirm grammars keep their
 ## mechanics and learn to introduce themselves — the danger scale in words.
 static func tier_word(tier: String) -> String:
@@ -1556,7 +1698,8 @@ static func paper_word(b, text: String, note: String, pos: Vector2, sz: int = ST
 		on_press: Callable = Callable()) -> Button:
 	var nw := 0.0
 	if note != "":
-		nw = b.font().get_string_size(note, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 10.0
+		# R8 — the tier note prints at the chip size, the smallest sanctioned hand
+		nw = b.font().get_string_size(note, HORIZONTAL_ALIGNMENT_LEFT, -1, CHIP_S).x + 10.0
 	# S6 GUARDS S9: the capsule never leaves the sheet — a caption wider than
 	# the room to the pane's right margin trims on its measure (flat words
 	# used to overflow invisibly; a drawn box may not).
@@ -1572,7 +1715,7 @@ static func paper_word(b, text: String, note: String, pos: Vector2, sz: int = ST
 	b.pane().add_child(box)
 	if note != "":
 		b.label(note, Vector2(pos.x + tw + 8.0, pos.y + maxf(float(sz) * 0.5 - 1.0, 8.0)),
-			12, Color(INK, 0.45), nw + 6.0)
+			CHIP_S, Color(INK, 0.45), nw + 6.0)
 	return word(b, text, pos, on_press, sz, col, w)
 
 # ─────────────────────────── S1 · the zero state ─────────────────────────────
@@ -1627,9 +1770,14 @@ static func get_asks(state, desk_id: String) -> Array:
 	return out
 
 ## RED SPEAKS ON THE PAGE (S2, the spend fix made law): one measured red line —
-## "!  <the asks> — <the verb>" — under the hero of any desk that carries
-## attention. Returns whether it drew, so a caller can spend the y.
-static func ask_strip(b, desk_id: String, x: float, y: float, w: float,
+## "!  <the asks> — <the verb>" — in the STRIP SLOT of any desk that carries
+## attention. Returns whether it will draw, so a caller knows the slot is live.
+## R5 — the strip renders AT STRIP_Y always; the y argument is DEPRECATED and
+## ignored (kept so every shipped call site lands unchanged). Content never
+## re-flows when the strip is absent: the slot stays empty, not reclaimed.
+## R2 — this registers with the arbiter (priority 100: the strip always wins
+## its slot) and is rendered at end-of-draw with the pane's other marks.
+static func ask_strip(b, desk_id: String, x: float, _y_deprecated: float, w: float,
 		verb_hint: String) -> bool:
 	var asks := get_asks(b.state, desk_id)
 	if asks.is_empty():
@@ -1637,7 +1785,7 @@ static func ask_strip(b, desk_id: String, x: float, y: float, w: float,
 	var line := "!  " + " · ".join(PackedStringArray(asks))
 	if verb_hint != "":
 		line += " — " + verb_hint
-	fit_line(b, line, Vector2(x, y), DETAIL, ALERT, w)
+	note_mark(b, "strip", 100.0, {"line": line, "x": x, "w": w})
 	return true
 
 # ────────────────────────────── S3 · the DO lane ─────────────────────────────
@@ -1669,7 +1817,7 @@ static func do_lane(b, actions: Array) -> void:
 		var tw: float = b.font().get_string_size(cap, HORIZONTAL_ALIGNMENT_LEFT, -1, DETAIL).x
 		var nw := 0.0
 		if note != "":
-			nw = b.font().get_string_size(note, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 10.0
+			nw = b.font().get_string_size(note, HORIZONTAL_ALIGNMENT_LEFT, -1, CHIP_S).x + 10.0
 		caps.append(cap)
 		notes.append(note)
 		widths.append(tw + nw + 24.0)
@@ -1766,24 +1914,20 @@ static func receipt_number(b, x: float, y: float, text: String, sz: int, col: Co
 ## WHAT CHANGED, beside the hero: a small drawn triangle — sage up, coral
 ## down, nothing when equal. Drawn, never typed (the hand font carries no
 ## ▲/▼, and a tofu box is a shipped bug).
+## R4 — ONE DELTA PER PANE: this registers with the arbiter (priority 50) and
+## only the first hero_delta renders; a desk's second arrow silently dies.
 static func delta_arrow(b, x: float, y: float, now: float, prev: float) -> void:
 	if absf(now - prev) < 0.000001:
 		return
-	var tri := _DeltaTri.new()
-	tri.up = now > prev
-	tri.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tri.position = Vector2(x, y)
-	tri.set_deferred("size", Vector2(16.0, 14.0))
-	b.pane().add_child(tri)
+	note_mark(b, "hero_delta", 50.0, {"x": x, "y": y, "up": now > prev})
 
-## A HAND-DRAWN ELLIPSE round a row that moved since the binder was last
-## opened — the pen circling the news on this week's paper.
-static func pen_circle(b, rect: Rect2) -> void:
-	var e := _PenEllipse.new()
-	e.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	e.position = rect.position - Vector2(10.0, 7.0)
-	e.set_deferred("size", rect.size + Vector2(20.0, 14.0))
-	b.pane().add_child(e)
+## A row that moved since the binder was last opened. R3 — the rendering is
+## THE GUTTER DOT now, never the drawn ellipse (the circle fought the row's
+## own borders and doubled the ink; the spotlight/tour keeps its own ring).
+## `bad` colours the dot coral; `priority` is |change| when the caller has
+## one — the arbiter keeps the worst row and drops the rest (R2).
+static func pen_circle(b, rect: Rect2, bad: bool = false, priority: float = 10.0) -> void:
+	note_mark(b, "row_dot", priority, {"rect": rect, "bad": bad})
 
 # ─────────────────────────── S6 · the measure law ────────────────────────────
 
@@ -1865,10 +2009,11 @@ class _CountBadge:
 		pts.append(pts[0])
 		draw_polyline(pts, DeskKit.INK, 2.2, true)
 		if font != null:
+			# R8 — badge counts print at the chip size, never an 11-15px stray
 			var txt := str(count)
-			var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+			var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, DeskKit.CHIP_S).x
 			draw_string(font, Vector2(c.x - tw * 0.5, c.y + 6.0), txt,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color.WHITE)
+				HORIZONTAL_ALIGNMENT_LEFT, -1, DeskKit.CHIP_S, Color.WHITE)
 
 # ── the small drawn helpers the v2 primitives compose from ───────────────────
 
@@ -2450,23 +2595,22 @@ class _DeltaTri:
 		ring.append(pts[0])
 		draw_polyline(ring, Color(DeskKit.INK, 0.7), 1.6, true)
 
-## THE PEN CIRCLE (S5): a hand-drawn ellipse round the row that moved — the
-## founder circling this week's news.
-class _PenEllipse:
+## THE GUTTER DOT (14-quiet R3): a 6px blot of the founder's pen in the row's
+## left gutter — sage for good/neutral news, coral for bad. The quietest
+## possible "this moved"; the drawn ellipse is the spotlight/tour's alone.
+class _GutterDot:
 	extends Control
+	var bad := false
 	func _draw() -> void:
-		var rx := size.x * 0.5 - 2.0
-		var ry := size.y * 0.5 - 2.0
 		var c := size * 0.5
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 83 + int(position.y) % 17
 		var pts := PackedVector2Array()
-		for i in 33:
-			var t := TAU * float(i) / 32.0
-			pts.append(c + Vector2(cos(t) * (rx + rng.randf_range(-2.0, 2.0)),
-				sin(t) * (ry + rng.randf_range(-1.6, 1.6))))
-		pts.append(pts[0])
-		draw_polyline(pts, Color(DeskKit.PEN, 0.85), 2.6, true)
+		for i in 13:
+			var t := TAU * float(i) / 12.0
+			pts.append(c + Vector2(cos(t), sin(t)) * (size.x * 0.5 - 0.4
+				+ rng.randf_range(-0.4, 0.4)))
+		draw_colored_polygon(pts, DeskKit.PEN if bad else DeskKit.SAGE)
 
 ## THE UNDERDOT (S4): the smallest possible "you may press this" — a pen blot
 ## under a receipt-bearing number.

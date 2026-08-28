@@ -570,7 +570,7 @@ static func _live_band(b, state: GameState) -> void:
 static func _job_row(b, state: GameState, job: String, members: Array, y: float,
 		rung2: bool) -> float:
 	members = _attention_first(members, state)
-	b.label(String(JOB_LABEL.get(job, job)).to_upper(), Vector2(10.0, y + 8.0), 15,
+	b.label(String(JOB_LABEL.get(job, job)).to_upper(), Vector2(10.0, y + 8.0), DeskKit.CHIP_S,
 		Color(Binder.INK, 0.55), 148.0)
 	var slots: Array = []
 	var folded_n := 0
@@ -636,7 +636,7 @@ static func _feature_card(b, state: GameState, x: float, y: float, fd: Dictionar
 	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	var note := _feature_note(state, fd)
 	if note != "":
-		b.label(note, Vector2(cx, y + 32.0), 14, Binder.PEN if sev > 0
+		b.label(note, Vector2(cx, y + 32.0), DeskKit.CHIP_S, Binder.PEN if sev > 0
 			else Color(Binder.INK, 0.5), 270.0)
 	# THE CREAK CARD PRESSES (the plan's one-press): arm the shelf's rebuild
 	if sev > 0:
@@ -668,7 +668,7 @@ static func _family_card(b, state: GameState, x: float, y: float, sd: Dictionary
 		Color(Binder.INK, 0.6), 96.0)
 	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	if worst > 0 and creaky_name != "":
-		b.label("1 creaky member — %s" % creaky_name, Vector2(cx, y + 32.0), 14,
+		b.label("1 creaky member — %s" % creaky_name, Vector2(cx, y + 32.0), DeskKit.CHIP_S,
 			Binder.PEN, 270.0)
 	var open_fam := func() -> void:
 		b.desk["mode"] = "family"
@@ -777,9 +777,9 @@ static func _lineup(b, state: GameState) -> void:
 	b.label("press a product — its whole wall opens. Red climbs from any feature to this page.",
 		Vector2(10.0, 58.0), 20, Color(Binder.INK, 0.6), 1100.0)
 	var y := 108.0
-	b.label("VERSION", Vector2(430.0, y), 15, Color(Binder.INK, 0.42), 100.0)
-	b.label("FEATURES · BUILDING", Vector2(560.0, y), 15, Color(Binder.INK, 0.42), 220.0)
-	b.label("KEEP+BUILD", Vector2(930.0, y), 15, Color(Binder.INK, 0.42), 180.0)
+	b.label("VERSION", Vector2(430.0, y), DeskKit.CHIP_S, Color(Binder.INK, 0.42), 100.0)
+	b.label("FEATURES · BUILDING", Vector2(560.0, y), DeskKit.CHIP_S, Color(Binder.INK, 0.42), 220.0)
+	b.label("KEEP+BUILD", Vector2(930.0, y), DeskKit.CHIP_S, Color(Binder.INK, 0.42), 180.0)
 	y += 24.0
 	y = _lineup_row(b, state, "", String(state.topics.get("make_name",
 		state.company_name)), y)
@@ -873,7 +873,7 @@ static func _product_page(b) -> void:
 			continue   # the flagship's plumbing lives on the SHARED band
 		if members.is_empty():
 			continue
-		b.label(String(JOB_LABEL.get(job, job)), Vector2(10.0, y + 8.0), 15,
+		b.label(String(JOB_LABEL.get(job, job)), Vector2(10.0, y + 8.0), DeskKit.CHIP_S,
 			Color(Binder.INK, 0.55), 148.0)
 		var x := 160.0
 		var pn := 0

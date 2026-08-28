@@ -138,7 +138,10 @@ namespace Runway.Game
                 b.L("+" + won + " won", bx + 150f, 10f, 27f, Pos, 200f);
                 b.L("−" + (lost >= 0 ? lost.ToString(CultureInfo.InvariantCulture) : "?") + " lost",
                     bx + 150f, 44f, 27f, DrawnUI.Coral, 200f);
-                // S5 — the arrows: won and lost against the binder's last open
+                // S5 — the hero's arrow: won against the binder's last open.
+                // R4 — the lost line's second arrow died; a moved lost count
+                // is a gutter dot (coral when losses grew) and the arbiter
+                // keeps the worst row (R2).
                 string wprev = b.SeenPrev("customers", "won");
                 int wp;
                 if (b.Seen("customers", "won", won.ToString(CultureInfo.InvariantCulture))
@@ -153,10 +156,8 @@ namespace Runway.Game
                     int lp;
                     if (b.Seen("customers", "lost", lost.ToString(CultureInfo.InvariantCulture))
                         && int.TryParse(lprev, out lp))
-                    {
-                        float lw = DrawnUI.MeasureWidth("−" + lost + " lost", 27f);
-                        DeskKit.DeltaArrow(b, bx + 150f + lw + 8f, 48f, lost, lp);
-                    }
+                        DeskKit.PenCircle(b, new Rect(bx + 150f, 44f, 120f, 30f),
+                            lost > lp, Mathf.Abs(lost - lp));
                 }
             }
             if (kept >= 0)
@@ -177,24 +178,29 @@ namespace Runway.Game
                 : "invest in analytics to see who stays", 700f, 52f, 17f,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 420f);
             ks.alignment = TextAlignmentOptions.TopRight;
-            // S2 — red speaks ON the page: this desk's asks in one measured line
-            float shift = DeskKit.AskStrip(b, "customers", DeskKit.XId, 84f, 1100f,
-                "the doors are on IN MOTION and GROWTH") ? 28f : 0f;
+            // S2 — red speaks ON the page: this desk's asks in one measured
+            // line. R5 — the strip renders in its own slot (96-118); nothing
+            // below shifts.
+            DeskKit.AskStrip(b, "customers", DeskKit.XId, 84f, 1100f,
+                "the doors are on IN MOTION and GROWTH");
             if (an <= 0)
             {
                 b.L("Traffic seems… decent? Someone signed up on Tuesday. The numbers live in a notebook you lost.",
-                    DeskKit.XId, 84f + shift, DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 1100f);
-                // S2 — the fog sells its own unlock: one press lands on the spend
-                // book (desk-level until the spend lane names the line's control)
-                DeskKit.Word(b, "!  the notebook is for sale — fund analytics on the spend book ->",
-                    DeskKit.XId, 112f + shift, () => b.FocusDesk("spend", "", "customers"),
-                    DeskKit.Detail, DeskKit.Alert, 900f);
-                DeskKit.PenRule(b, 150f + shift);
+                    DeskKit.XId, DeskKit.ContentY0, DeskKit.Detail,
+                    DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 1100f);
+                // S2 — the fog sells its own unlock: one press lands on the
+                // spend book. R6 — coral, not the alarm red: the strip is the
+                // pane's one red line, and this is a door, not an alarm.
+                DeskKit.Word(b, "the notebook is for sale — fund analytics on the spend book ->",
+                    DeskKit.XId, DeskKit.ContentY0 + 32f, () => b.FocusDesk("spend", "", "customers"),
+                    DeskKit.Detail, DrawnUI.Coral, 900f);
+                DeskKit.PenRule(b, DeskKit.ContentY0 + 70f);
                 b.L("the whole run — the chart returns with a notebook that survives (analytics)",
-                    DeskKit.XId, 200f + shift, DeskKit.Law, DrawnUI.WithAlpha(DrawnUI.Ink, 0.4f), 1100f);
+                    DeskKit.XId, DeskKit.ContentY0 + 84f, DeskKit.Law,
+                    DrawnUI.WithAlpha(DrawnUI.Ink, 0.4f), 1100f);
                 return;
             }
-            b.L("the whole run", DeskKit.XId, 84f + shift, DeskKit.Law,
+            b.L("the whole run", DeskKit.XId, DeskKit.ContentY0, DeskKit.Law,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f), 400f);
             DeskKit.PenRule(b, 150f);
             b.Spark("customers", 10f, 166f, 1120f, 148f, DrawnUI.Sage);
@@ -335,7 +341,7 @@ namespace Runway.Game
             }
             if (!known)
                 b.L("unlocks at analytics 2 — below that nobody counts who stays",
-                    cx + 320f, y + 56f, 15f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f), 290f);
+                    cx + 320f, y + 56f, DeskKit.ChipS, DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f), 290f);
         }
 
         /// SMB: the biggest-5 strip — named when accounts have names, counted

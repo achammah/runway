@@ -30,7 +30,7 @@ namespace Runway.Game
 
         const float SheetX = 10f;
         const float SheetW = 1120f;
-        const float YSheet = 108f;
+        const float YSheet = DeskKit.ContentY0;   // R5 — the content slot, same on every desk
         const float YFoot = 806f;
         const float YRules = 840f;
         const int ToolsMax = 5;
@@ -131,8 +131,10 @@ namespace Runway.Game
                       + " — the machine feeds itself";
                 float memoY = sheet.Cursor;
                 DeskKit.LedgerMemo(b, sheet, "revenue last week", "$" + GameUi.Money(revenue), memoNote);
-                // S5 — the memo wears the pen when the ratio moved since the
-                // last open: the circle marks the news, the arrow the way
+                // S5/R4 — a moved ratio is the gutter dot alone now (coral
+                // when the floor eats more): the memo's second arrow died —
+                // the hero's is the pane's only delta glyph, and the dot's
+                // weight competes by |change|.
                 string prevRatio = b.SeenPrev("bills", "eats_ratio");
                 bool moved = b.Seen("bills", "eats_ratio",
                     ratio.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture));
@@ -140,10 +142,8 @@ namespace Runway.Game
                 if (moved && double.TryParse(prevRatio,
                         System.Globalization.NumberStyles.Float,
                         System.Globalization.CultureInfo.InvariantCulture, out prevR))
-                {
-                    DeskKit.PenCircle(b, new Rect(SheetX + 48f, memoY + 4f, 560f, 32f));
-                    DeskKit.DeltaArrow(b, SheetX + 16f, memoY + 12f, (float)ratio, (float)prevR);
-                }
+                    DeskKit.PenCircle(b, new Rect(SheetX + 48f, memoY + 4f, 560f, 32f),
+                        ratio > prevR, Mathf.Abs((float)(ratio - prevR)) * 100f);
             }
             else
                 DeskKit.LedgerMemo(b, sheet, "revenue last week", "$0",

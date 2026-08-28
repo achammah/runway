@@ -25,7 +25,7 @@ const QUESTION := "what must be paid every Monday?"
 
 const SHEET_X := 10.0
 const SHEET_W := 1120.0
-const Y_SHEET := 108.0
+const Y_SHEET := DeskKit.CONTENT_Y0   ## R5 — the content slot, same on every desk
 const Y_FOOT := 806.0
 const Y_RULES := 840.0
 ## Expanded tool lines cap here; the rest fold into "+N more".
@@ -109,12 +109,13 @@ static func draw(b) -> void:
 			memo_note = "revenue covers the floor ×%.1f — the machine feeds itself" % (1.0 / maxf(ratio, 0.01))
 		var memo_y := float(sheet.get("cursor", 0.0))
 		DeskKit.ledger_memo(b, sheet, "revenue last week", "$" + b.fmt(revenue), memo_note)
-		# S5 — the memo wears the pen when the ratio moved since the last open:
-		# the circle marks the news, the small arrow says which way it went
+		# S5/R4 — a moved ratio is the gutter dot alone now (coral when the
+		# floor eats more): the memo's second arrow died — the hero's is the
+		# pane's only delta glyph, and the dot's weight competes by |change|.
 		var prev_ratio: String = b.seen_prev("bills", "eats_ratio")
 		if b.seen("bills", "eats_ratio", "%.2f" % ratio) and prev_ratio != "":
-			DeskKit.pen_circle(b, Rect2(SHEET_X + 48.0, memo_y + 4.0, 560.0, 32.0))
-			DeskKit.delta_arrow(b, SHEET_X + 16.0, memo_y + 12.0, ratio, float(prev_ratio))
+			DeskKit.pen_circle(b, Rect2(SHEET_X + 48.0, memo_y + 4.0, 560.0, 32.0),
+				ratio > float(prev_ratio), absf(ratio - float(prev_ratio)) * 100.0)
 	else:
 		DeskKit.ledger_memo(b, sheet, "revenue last week", "$0",
 			"the floor waits for nobody")

@@ -177,8 +177,10 @@ static func _one_bin(b, s: GameState, bx: float, y: float, id: String, picked: S
 		DeskKit.word(b, "edit", Vector2(bx + 6.0, y + BIN_H - 40.0), func() -> void:
 			b.desk["edit"] = id
 			b.desk["open_roof"] = false, DeskKit.LAW, Color(DeskKit.INK, 0.7), 70.0)
+		# R6 — coral, not the alarm red: the closing bin's drawn ALERT ring
+		# already carries the alarm; a verb is a control, not a siren
 		DeskKit.word(b, "close", Vector2(bx + 86.0, y + BIN_H - 40.0), func() -> void:
-			b.desk["teardown"] = id, DeskKit.LAW, DeskKit.ALERT, 80.0)
+			b.desk["teardown"] = id, DeskKit.LAW, DeskKit.PEN, 80.0)
 	# the edit panel rides just under its bin (draw() budgets the room)
 	if String(b.desk.get("edit", "")) == id and not is_home:
 		_edit_panel(b, s, id, bx, y + BIN_H + 4.0)

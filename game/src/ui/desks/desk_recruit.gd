@@ -21,7 +21,7 @@ extends RefCounted
 ## replaced the in-zone SEND arm), S4 the hero pipeline receipt, the odds
 ## ticket that ANIMATES on stepper press (the number ticks over ~0.25s, the
 ## marginal foot re-inks). The page compacted for the lane's 762 anchor:
-## money-desk hero, zones 156/244/222, the zone lessons relocated to the
+## money-desk hero, zones 156/230/222, the zone lessons relocated to the
 ## column subs and the new teaching foot, the ticket one fact line tall.
 
 const QUESTION := "who are we hiring, and will they say yes?"
@@ -125,11 +125,11 @@ static func draw(b) -> void:
 		{"label": "applicants they pull", "value": "≈%.1f/wk" % rate_total},
 		{"label": "seats left this era", "value": str(SimLabor.seats_left(state))},
 	])
-	# S2a — red speaks on the page; the zones drop 8px clear of the strip
-	var y := 108.0
-	if DeskKit.ask_strip(b, "recruitment", SHEET_X, 86.0, 1000.0,
-			"a lapsed offer is heard on the street"):
-		y += 8.0
+	# S2a — red speaks on the page. R5 — the strip renders in its own slot
+	# (96-118); the zones hold the content slot whether or not the desk is red.
+	var y := DeskKit.CONTENT_Y0
+	DeskKit.ask_strip(b, "recruitment", SHEET_X, 86.0, 1000.0,
+		"a lapsed offer is heard on the street")
 
 	# ── zone 1 · THE OPEN SEATS — every seat priced by the labor market
 	var z1 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 156.0, 1, "the open seats", "")
@@ -161,9 +161,11 @@ static func draw(b) -> void:
 		b.desk["mode"] = "seats", DeskKit.DETAIL, Color(DeskKit.INK, 0.7), 170.0)
 	y += 156.0 + 10.0
 
-	# ── zone 2 · THE CANDIDATES — four columns, the founder's week is a cost
-	var z2 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 244.0, 2, "the candidates", "")
-	var col_w := 268.0
+	# ── zone 2 · THE CANDIDATES — four columns, the founder's week is a cost.
+	# R9 — 230 tall, not 244: the old slack rode below the fold note, and with
+	# the zones starting at CONTENT_Y0 the composer would cross the DO lane.
+	var z2 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 230.0, 2, "the candidates", "")
+	var col_w := 264.0   ## R9 — 4×264 + 3×16 sits inside the zone; 268 poked out
 	var col_h := 154.0
 	var cx := float(z2.content_x) - 6.0
 	# the old zone lesson lives on the columns now, split where it lands
@@ -215,7 +217,7 @@ static func draw(b) -> void:
 			# never prints through it
 			b.label("+%d more wait behind" % (cands.size() - shown), Vector2(float(col.content_x) + 2.0,
 				float(col.y) + col_h + 4.0), 16, Color(DeskKit.INK, 0.5), col_w - 20.0)
-	y += 244.0 + 10.0
+	y += 230.0 + 10.0
 
 	# ── zone 3 · THE OFFER COMPOSER — comp is a mix you design
 	var z3 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 222.0, 3, "the offer composer", "")

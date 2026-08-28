@@ -115,12 +115,11 @@ static func _draw_meeting(b, state: GameState) -> void:
 	if clock_txt != "":
 		DeskKit.clock_chip(b, 910.0, 68.0, clock_txt)
 
-	# S2a — red speaks on the page: the strip gets its own y under the hero
-	# sentence and pushes the zones down only when it drew
-	var y := 96.0
-	if DeskKit.ask_strip(b, "the bank", SHEET_X, 88.0, 1000.0,
-			"find the Monday or repay the note"):
-		y = 118.0
+	# S2a — red speaks on the page. R5 — the strip renders in its own slot
+	# (96-118); the zones hold the content slot whether or not the desk is red.
+	var y := DeskKit.CONTENT_Y0
+	DeskKit.ask_strip(b, "the bank", SHEET_X, 88.0, 1000.0,
+		"find the Monday or repay the note")
 	y = _zone_standing(b, state, y, rate)
 	y = _zone_owed(b, state, y)
 	# zones 3 and 4 share the lower page: one open, the other a bar
@@ -299,8 +298,11 @@ static func _zone_owed(b, state: GameState, y: float) -> float:
 		b.label("you owe nobody anything. rare, and worth noticing — debt buys time, and time is what a runway is made of.",
 			Vector2(cx, cy), DeskKit.DETAIL, Color(DeskKit.INK, 0.6), 1060.0)
 		return y + h + 4.0
+	# R9 — a lone note gets the wide card (800): at 532 the repay capsule and
+	# "still owe" shared the same 74px and one of them always lost
+	var card_w := 532.0 if shown > 1 else 800.0
 	for k in shown:
-		_note_card(b, state, notes[k], cx + float(k) * 552.0, cy - 6.0, 532.0, card_h)
+		_note_card(b, state, notes[k], cx + float(k) * 552.0, cy - 6.0, card_w, card_h)
 	_tail_line(b, state, notes.size() - shown, cx, cy + card_h + 6.0)
 	return y + h + 4.0
 
@@ -332,13 +334,17 @@ static func _note_card(b, state: GameState, n: Dictionary, x: float, y: float,
 	b.mark_control("note_%d" % idx, Rect2(x, y, w, h))
 	var cx := float(frame.get("content_x", x))
 	var cy := float(frame.get("content_y", y))
-	b.label(chip, Vector2(x + w - 176.0, y + 14.0), 15,
+	b.label(chip, Vector2(x + w - 176.0, y + 14.0), DeskKit.CHIP_S,
 		POS if kind == "bank" else Binder.PEN, 162.0)
 	var paid := maxi(principal - bal, 0)
 	DeskKit.meter(b, cx, cy + 0.0, w - 240.0, float(paid) / float(maxi(principal, bal)),
 		DeskKit.SAGE if kind == "bank" else Binder.PEN)
-	b.label("paid off $%s" % b.fmt(paid), Vector2(cx, cy + 24.0), 15, Color(DeskKit.INK, 0.55), 200.0)
-	b.label("still owe $%s" % b.fmt(bal), Vector2(cx + 210.0, cy + 24.0), 15, DeskKit.INK, 200.0)
+	# R9 — still-owe sits at +150 so its tail clears the repay capsule's
+	# column on the NARROW two-note card too (at +210 the two shared 60px)
+	b.label("paid off $%s" % b.fmt(paid), Vector2(cx, cy + 24.0), DeskKit.CHIP_S,
+		Color(DeskKit.INK, 0.55), 144.0)
+	b.label("still owe $%s" % b.fmt(bal), Vector2(cx + 150.0, cy + 24.0), DeskKit.CHIP_S,
+		DeskKit.INK, 146.0)
 	# the Monday split, one compact line — the lesson in the arithmetic
 	var split := ""
 	match kind:
@@ -360,13 +366,14 @@ static func _note_card(b, state: GameState, n: Dictionary, x: float, y: float,
 	# trims with an ellipsis instead of printing under it
 	var quote: int = mini(state.cash - GameState.RAMEN_PER_WEEK, bal)
 	var has_arm := idx >= 0 and quote > 0
-	var sl: Label = b.label(split, Vector2(cx, cy + 42.0), 15,
+	var sl: Label = b.label(split, Vector2(cx, cy + 42.0), DeskKit.CHIP_S,
 		Binder.PEN if (kind != "bank" or int(note.get("missed", 0)) > 0)
 		else Color(DeskKit.INK, 0.7),
 		(w - 36.0 - 212.0) if has_arm else (w - 36.0))
 	sl.autowrap_mode = TextServer.AUTOWRAP_OFF
 	sl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	# repay — the existing two-tap op
+	# repay — the existing two-tap op (the wide lone card keeps this column
+	# clear of the money lines — R9)
 	if has_arm:
 		var fire := func() -> void:
 			SimBank.repay_note(state, idx)
@@ -547,16 +554,20 @@ static func _zone3_bar(b, state: GameState, y: float, rate: float) -> float:
 ## right-aligned at 762) — a short door never runs under the lane's buttons;
 ## the ladder's full story waits inside the opened zone.
 static func _zone4_bar(b, _state: GameState, y: float) -> float:
-	DeskKit.pen_rule(b, y + 2.0, SHEET_X, ZONE_W, Color(DeskKit.INK, 0.2))
-	DeskKit.word(b, "4 · IF A MONDAY IS MISSED — the three stairs ▸",
-		Vector2(SHEET_X + 8.0, y + 8.0), func() -> void: b.desk["zone4"] = true,
-		19, Color(DeskKit.INK, 0.7), 330.0)
-	return y + 42.0
+	return _bar(b, y, "4 · IF A MONDAY IS MISSED — the stairs ▸",
+		func() -> void: b.desk["zone4"] = true)
 
+## R9 — a folded-zone bar that lands in the DO lane's band keeps its word
+## (left, measured, clear of the capsules) and stops its rule short of the
+## lane, so nothing ever prints under the actions.
 static func _bar(b, y: float, text: String, on_press: Callable) -> float:
-	DeskKit.pen_rule(b, y + 2.0, SHEET_X, ZONE_W, Color(DeskKit.INK, 0.2))
-	DeskKit.word(b, text, Vector2(SHEET_X + 8.0, y + 8.0), on_press, 19,
-		Color(DeskKit.INK, 0.7), ZONE_W - 16.0)
+	var w := ZONE_W
+	if y + 42.0 > DeskKit.DO_LANE_Y - 8.0:
+		w = 560.0
+	DeskKit.pen_rule(b, y + 2.0, SHEET_X, w, Color(DeskKit.INK, 0.2))
+	DeskKit.word(b, DeskKit.fit_text(b, text, w - 24.0, 19),
+		Vector2(SHEET_X + 8.0, y + 8.0), on_press, 19,
+		Color(DeskKit.INK, 0.7), w - 16.0)
 	return y + 42.0
 
 ## Zone 4 — the engine's own miss ladder (SimBank._miss), drawn as stairs.
@@ -594,7 +605,7 @@ static func _stair(b, x: float, base: float, w: float, h: float, head: String,
 		b.pane().add_child(e)
 	var ink := Color.WHITE if i == 2 else DeskKit.INK
 	b.label(head, Vector2(x + 10.0, y + 2.0), 18, ink, w - 20.0)
-	b.label(line, Vector2(x + 10.0, y + 24.0), 13,
+	b.label(line, Vector2(x + 10.0, y + 24.0), DeskKit.CHIP_S,
 		Color(1, 1, 1, 0.9) if i == 2 else Color(DeskKit.INK, 0.6), w - 20.0)
 
 ## The cash-ahead strip: the forecast's own cells, before surprises.
@@ -611,7 +622,7 @@ static func _forecast_strip(b, state: GameState, y: float) -> void:
 		var rd: Dictionary = r
 		var cell := DeskKit.card_frame(b, x, y, 128.0, 48.0, "")
 		var _c := cell
-		b.label("wk %d" % int(rd.get("wk", 0)), Vector2(x + 10.0, y + 2.0), 14,
+		b.label("wk %d" % int(rd.get("wk", 0)), Vector2(x + 10.0, y + 2.0), DeskKit.CHIP_S,
 			Color(DeskKit.INK, 0.5), 108.0)
 		var c := int(rd.get("cash", 0))
 		var txt := ("−$%.1fk" % (absf(float(c)) / 1000.0)) if c < 0 else ("$%.1fk" % (float(c) / 1000.0))

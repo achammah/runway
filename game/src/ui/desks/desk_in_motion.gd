@@ -232,7 +232,7 @@ static func _consumer(b, s: GameState) -> void:
 	if not DeskKit.ask_strip(b, "in motion", DeskKit.X_ID, 74.0, 1100.0, "push what's cooling"):
 		b.label("consumer — nobody has a name until they pay: the page is rates, sources and word of mouth",
 			Vector2(DeskKit.X_ID, 74.0), DeskKit.LAW, Color(DeskKit.INK, 0.5), 1100.0)
-	var y := DeskKit.pen_rule(b, 112.0) + 8.0
+	var y := DeskKit.pen_rule(b, 122.0) + 6.0   # R5 - the rule sits under the strip slot (96-118), content at 126+
 	y = _river_card(b, s, y)
 	_sources_card(b, s, y)
 	_taste_card(b, s, y)
@@ -438,7 +438,7 @@ static func _smb(b, s: GameState) -> void:
 	if not DeskKit.ask_strip(b, "in motion", DeskKit.X_ID, 74.0, 1100.0, "push what's cooling"):
 		b.label("SMB — dozens of small shops, a handful worth chasing by name",
 			Vector2(DeskKit.X_ID, 74.0), DeskKit.LAW, Color(DeskKit.INK, 0.5), 1100.0)
-	var y := DeskKit.pen_rule(b, 112.0) + 8.0
+	var y := DeskKit.pen_rule(b, 122.0) + 6.0   # R5 - the rule sits under the strip slot (96-118), content at 126+
 	y = _hot_list(b, s, f, y, HOT_SHOW)
 	_do_push_lane(b, s)
 	_drafted_chip(b)
@@ -529,7 +529,7 @@ static func _smb_all(b, s: GameState) -> void:
 
 static func _enterprise(b, s: GameState) -> void:
 	_ent_hero(b, s)
-	var y := DeskKit.pen_rule(b, 112.0) + 8.0
+	var y := DeskKit.pen_rule(b, 122.0) + 6.0   # R5 - the rule sits under the strip slot (96-118), content at 126+
 	if s.leads.size() >= SLIM_AT:
 		_ent_slim(b, s, y)
 	else:

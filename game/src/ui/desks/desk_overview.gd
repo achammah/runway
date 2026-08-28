@@ -32,9 +32,12 @@ static func _card(b, x: float, y: float, id: String, s: Dictionary, severity: in
 	var f := DeskKit.card_frame(b, x, y, CARD_W, CARD_H, id)
 	if severity > 0:
 		DeskKit.sev_dot(b, x + CARD_W - 78.0, y + 16.0, severity)
+	# R6 — the ask line below is the card's one red; the number stays ink
+	# (four red heroes at once made the quartet shout — the sev dot and the
+	# ask line already carry the alarm)
 	var big := String(s.get("big", "—"))
 	b.label(big, Vector2(f.content_x, f.content_y + 6.0),
-		DeskKit.HERO_BIG, DeskKit.ALERT if severity >= 2 else DeskKit.INK,
+		DeskKit.HERO_BIG, DeskKit.INK,
 		CARD_W - DeskKit.CARD_PAD * 2.0)
 	b.label(String(s.get("line", "")), Vector2(f.content_x, f.content_y + 78.0),
 		DeskKit.DETAIL, Color(DeskKit.INK, 0.65), CARD_W - DeskKit.CARD_PAD * 2.0)

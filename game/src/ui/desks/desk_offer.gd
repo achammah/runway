@@ -50,10 +50,10 @@ static func draw(b) -> void:
 	var nb: Label = b.label("while it lives, the raise is frozen by their no-shop ask",
 		Vector2(700.0, 44.0), 18, Color(DeskKit.INK, 0.5), 420.0)
 	nb.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	# S2 — the live letter IS the red: the strip says the ask and the clock
-	if DeskKit.ask_strip(b, "the offer", DeskKit.X_ID, y, 1120.0,
-			"accept, counter, or decline below"):
-		y += 24.0
+	# S2 — the live letter IS the red: the strip says the ask in its own slot
+	# (R5 — the zones hold their ground whether or not it draws)
+	DeskKit.ask_strip(b, "the offer", DeskKit.X_ID, y, 1120.0,
+		"accept, counter, or decline below")
 
 	# ── zone 1 · WHAT'S ON THE TABLE — the headline, decomposed honestly
 	var z1 := DeskKit.zone(b, DeskKit.X_ID, y, 548.0, 312.0, 1, "what's on the table",

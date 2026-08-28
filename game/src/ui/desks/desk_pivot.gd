@@ -89,7 +89,9 @@ static func draw(b) -> void:
 		var pv := SimPivot.preview(s, door)
 		var cx := float(z2.content_x)
 		DeskKit.fit_line(b, "KEEP", Vector2(cx, py), 21, DeskKit.SAGE, 200.0)
-		DeskKit.fit_line(b, "DIES", Vector2(cx + 560.0, py), 21, DeskKit.ALERT, 200.0)
+		# R6 — coral, not the alarm red: a column header is a label, and the
+		# pane's one red line is the ask strip
+		DeskKit.fit_line(b, "DIES", Vector2(cx + 560.0, py), 21, DeskKit.PEN, 200.0)
 		py += 24.0
 		var ky := py
 		for kr in _keep_rows(s, door, pv):
@@ -146,10 +148,12 @@ static func draw(b) -> void:
 				Vector2(ax + 460.0, ay + 2.0), DeskKit.DETAIL,
 				Color(DeskKit.INK, 0.45), 620.0)
 
+	# R7 — duplicate captions die: both door cards already carry DEBTS_LINE;
+	# the foot says it once less.
 	DeskKit.footer(b, {
 		"computed": "",
-		"rules": "pivot #%d would be this run's — rare, deliberate, dangerous · %s"
-			% [s.pivots + 1, DEBTS_LINE], "rules_y": 856.0})
+		"rules": "pivot #%d would be this run's — rare, deliberate, dangerous"
+			% (s.pivots + 1), "rules_y": 856.0})
 
 ## One door: its costs in its own words, the survival line, the debts line —
 ## and, once chosen, the destination chips.
@@ -332,13 +336,14 @@ static func _arm_caption(s: GameState, door: String, target: String) -> String:
 static func _draw_armed(b, s: GameState, a: Dictionary) -> void:
 	var kind := String(a.get("kind", ""))
 	var target := String(a.get("target", ""))
+	# R6 — the strip below is the pane's one alarm-red line; the hero wears
+	# coral heat instead, and its sentence stops repeating the strip's verb
+	# (duplicate captions die — R7).
 	var y := DeskKit.hero_band(b, "ARMED",
-		"the %s pivot fires at the next LOCK IN — disarm keeps the company"
-		% kind, DeskKit.ALERT)
-	# S2 — the armed desk is red: the strip names the ask under the hero
-	if DeskKit.ask_strip(b, "pivot", DeskKit.X_ID, y, 1120.0,
-			"disarm below keeps the company"):
-		y += 24.0
+		"the %s pivot fires at the next LOCK IN" % kind, DeskKit.PEN)
+	# S2 — the armed desk is red: the strip names the ask in its own slot (R5)
+	DeskKit.ask_strip(b, "pivot", DeskKit.X_ID, y, 1120.0,
+		"disarm below keeps the company")
 	var pv := SimPivot.preview(s, kind)
 	var lines: Array = []
 	for l in _preview_lines(s, kind, pv):

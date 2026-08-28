@@ -846,9 +846,11 @@ namespace Runway.Game
             if (!string.IsNullOrEmpty(sentence))
             {
                 // ONE PLAIN SENTENCE, in words a tired founder reads without
-                // decoding — the number said again in English, never a second one.
-                TextMeshProUGUI s = b.L(sentence, x, y + 66f, Row, Ink(0.7f), w);
-                bottom = y + 66f + Mathf.Max(BinderScreen.Height(s), 34f);
+                // decoding — the number said again in English, never a second
+                // one. R5/R7 — the sentence sits at +58 so its ink clears the
+                // strip slot (96-118) with the air floor intact.
+                TextMeshProUGUI s = b.L(sentence, x, y + 58f, Row, Ink(0.7f), w);
+                bottom = y + 58f + Mathf.Max(BinderScreen.Height(s), 34f);
             }
             bottom = Mathf.Max(bottom, y + BandMin);
             PenRule(b, bottom + 10f);

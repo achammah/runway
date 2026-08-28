@@ -100,7 +100,9 @@ namespace Runway.Game
                 PivotPreview pv = SimPivot.Preview(s, door);
                 float cx = z2.ContentX;
                 DeskKit.FitLine(b, "KEEP", cx, py, 21f, DrawnUI.Sage, 200f);
-                DeskKit.FitLine(b, "DIES", cx + 560f, py, 21f, DeskKit.Alert, 200f);
+                // R6 — coral, not the alarm red: a column header is a label, and
+                // the pane's one red line is the ask strip
+                DeskKit.FitLine(b, "DIES", cx + 560f, py, 21f, DrawnUI.Coral, 200f);
                 py += 24f;
                 float ky = py;
                 foreach (LedgerRow kr in KeepRows(s, door, pv))
@@ -172,9 +174,11 @@ namespace Runway.Game
                         DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f), 620f);
             }
 
+            // R7 — duplicate captions die: both door cards already carry
+            // DebtsLine; the foot says it once less.
             DeskKit.Footer(b, "",
-                string.Format("pivot #{0} would be this run's — rare, deliberate, dangerous · {1}",
-                    s.Pivots + 1, DebtsLine), "", DeskKit.FooterY, 856f);
+                string.Format("pivot #{0} would be this run's — rare, deliberate, dangerous",
+                    s.Pivots + 1), "", DeskKit.FooterY, 856f);
         }
 
         static void Door(BinderScreen b, GameState s, DeskKit.CardBox z, float dx,
@@ -454,13 +458,15 @@ namespace Runway.Game
 
         static void DrawArmed(BinderScreen b, GameState s, PivotArmed a)
         {
+            // R6 — the strip below is the pane's one alarm-red line; the
+            // hero wears coral heat instead, and its sentence stops repeating
+            // the strip's verb (duplicate captions die — R7).
             float y = DeskKit.HeroBand(b, "ARMED",
-                string.Format("the {0} pivot fires at the next LOCK IN — disarm keeps the company",
-                    a.Kind), DeskKit.Alert);
-            // S2 — the armed desk is red: the strip names the ask under the hero
-            if (DeskKit.AskStrip(b, "pivot", DeskKit.XId, y, 1120f,
-                    "disarm below keeps the company"))
-                y += 24f;
+                string.Format("the {0} pivot fires at the next LOCK IN", a.Kind),
+                DrawnUI.Coral);
+            // S2 — the armed desk is red: the strip names the ask in its own slot (R5)
+            DeskKit.AskStrip(b, "pivot", DeskKit.XId, y, 1120f,
+                "disarm below keeps the company");
             List<string[]> rows = PreviewLines(s, a.Kind, out List<Color> cols);
             var lines = new List<DeskKit.TicketLine>();
             for (int i = 0; i < rows.Count; i++)

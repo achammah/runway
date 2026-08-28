@@ -201,9 +201,10 @@ namespace Runway.Game
                     DeskKit.DeltaArrow(b, DeskKit.XId + bw + 14f, 26f, net, prevN);
                 }
             }
-            // S2 — red speaks ON the page: the pricing asks in one measured line
-            if (DeskKit.AskStrip(b, "offers", DeskKit.XId, y, 1100f, "set the price below"))
-                y += 28f;
+            // S2 — red speaks ON the page: the pricing asks in one measured
+            // line. R5 — the strip renders in its own slot (96-118); content
+            // holds its position whether or not the desk is red.
+            DeskKit.AskStrip(b, "offers", DeskKit.XId, y, 1100f, "set the price below");
             // the per-customer two-bar: pays against serve
             if (arpu >= 0.0)
             {
@@ -298,7 +299,7 @@ namespace Runway.Game
                 double units = s.Traction * o.Weight * SimEngine.OfferCadence(o.Unit ?? "");
                 sub += " · ≈" + Gd.RoundToInt(units) + "/wk";
             }
-            b.L(sub, ColNameX, y + 27f, 15f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f), ColNameW);
+            b.L(sub, ColNameX, y + 27f, DeskKit.ChipS, DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f), ColNameW);
             double price = o.Price;
             double fair = o.FairPrice * fm;
             double margin = SimCatalog.Contribution(o, lc, fm);
@@ -325,11 +326,13 @@ namespace Runway.Game
             Button vbtn = DeskKit.Word(b, vWord, ColVerdictX, y - 4f,
                 () => b.Desk["mode"] = "verdict:" + idx, 22f, vCol, ColVerdictW);
             vbtn.GetComponent<RectTransform>().sizeDelta = new Vector2(ColVerdictW, 44f);
-            // S5 — the pen circles a verdict that moved since the last open
+            // S5/R3 — a moved verdict earns the gutter dot (coral when the
+            // new word is a losing one); the arbiter keeps the worst row (R2)
             if (b.Seen("offers", "vd_" + (o.Name ?? i.ToString(CultureInfo.InvariantCulture)), vWord))
             {
                 float vtw = Mathf.Min(DrawnUI.MeasureWidth(vWord, 22f), ColVerdictW);
-                DeskKit.PenCircle(b, new Rect(ColVerdictX, y + 2f, vtw, 24f));
+                DeskKit.PenCircle(b, new Rect(ColVerdictX, y + 2f, vtw, 24f),
+                    vCol == DrawnUI.Coral);
             }
             DeskKit.Expand(b, ColExpandX, y - 4f, () =>
             {

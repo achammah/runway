@@ -136,10 +136,11 @@ namespace Runway.Game
             b.L("your book, written for YOUR business — every line sums into one of four engine buckets.",
                 SheetX, 62f, DeskKit.Detail, Ink(0.6f), 760f);
             // RED MEANS ACT, AND THE PAGE NAMES THE ASK — the kit's ask strip,
-            // born on this desk (S2a). It owns its y: the sheet drops 8px clear.
-            float sheetY = YSheet;
-            if (DeskKit.AskStrip(b, "spend", SheetX, 86f, 1000f, "adopt the book or fund a line"))
-                sheetY += 8f;
+            // born on this desk (S2a). R5 — the strip renders in its own slot
+            // (96-118) and the sheet holds the content slot whether or not the
+            // desk is red: stability beats density.
+            float sheetY = DeskKit.ContentY0;
+            DeskKit.AskStrip(b, "spend", SheetX, 86f, 1000f, "adopt the book or fund a line");
             if (suggested > 0 && suggested != total)
             {
                 DeskKit.Arm(b, "adopt_book",

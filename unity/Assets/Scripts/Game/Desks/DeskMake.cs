@@ -395,13 +395,13 @@ namespace Runway.Game
             // lines) never leaves the box
             if (c1.Cursor <= ColY + ColH - 56f)
                 b.L("write your own in THIS WEEK — the world prices it",
-                    c1.ContentX, c1.Cursor + 2f, 15f, Ink(0.45f), ColW - 20f);
+                    c1.ContentX, c1.Cursor + 2f, DeskKit.ChipS, Ink(0.45f), ColW - 20f);
             // ── NEXT: the committed queue, reorder freely
             DeskKit.WallCol c2 = DeskKit.WallColumn(b, 292f, ColY, ColW, ColH,
                 "NEXT", "the queue — reorder freely");
             if (queued.Count == 0)
                 b.L("nothing waits — the shelf commits straight to the team",
-                    c2.ContentX, c2.Cursor + 4f, 15f, Ink(0.45f), ColW - 20f);
+                    c2.ContentX, c2.Cursor + 4f, DeskKit.ChipS, Ink(0.45f), ColW - 20f);
             int qn = 0;
             foreach (Bet qbet in queued)
             {
@@ -455,7 +455,7 @@ namespace Runway.Game
                 DeskKit.More(b, c3.ContentX, c3.Cursor, building.Count - bn, "building behind");
             if (building.Count == 0)
                 b.L("nothing committed — the rnd money polishes base quality",
-                    c3.ContentX, c3.Cursor + 4f, 15f, Ink(0.45f), ColW - 20f);
+                    c3.ContentX, c3.Cursor + 4f, DeskKit.ChipS, Ink(0.45f), ColW - 20f);
             // ── READY: ship it, or it ships itself
             DeskKit.WallCol c4 = DeskKit.WallColumn(b, 856f, ColY, ColW, ColH,
                 "READY", "ship it, or it ships itself");
@@ -484,7 +484,7 @@ namespace Runway.Game
             }
             if (ready.Count == 0)
                 b.L("nothing built yet — a finished bet waits here for the dice",
-                    c4.ContentX, c4.Cursor + 4f, 15f, Ink(0.45f), ColW - 20f);
+                    c4.ContentX, c4.Cursor + 4f, DeskKit.ChipS, Ink(0.45f), ColW - 20f);
         }
 
         /// THE SHELF ROWS: the roadmap's own candidates first, then the lane's.
@@ -565,7 +565,7 @@ namespace Runway.Game
             if (!CiteJob.TryGetValue(job, out noun)) noun = job;
             DeskKit.FitLine(b, string.Format(CultureInfo.InvariantCulture,
                 "your last {0}-bet measured {1:+0.0;-0.0}", noun, recs[0].Measured),
-                x, y, 15f, Ink(0.55f), ColW - 24f);
+                x, y, DeskKit.ChipS, Ink(0.55f), ColW - 24f);
             var lines = new List<DeskKit.TicketLine>();
             for (int i = 0; i < recs.Count && i < 4; i++)
             {
@@ -707,7 +707,7 @@ namespace Runway.Game
             members = AttentionFirst(members, st);
             string lbl;
             if (!JobLabel.TryGetValue(job, out lbl)) lbl = job;
-            b.L(lbl.ToUpper(), 10f, y + 8f, 15f, Ink(0.55f), 148f);
+            b.L(lbl.ToUpper(), 10f, y + 8f, DeskKit.ChipS, Ink(0.55f), 148f);
             var featSlots = new List<Feature>();
             var famSlots = new List<FamSlot>();
             int foldedN = 0;
@@ -757,7 +757,7 @@ namespace Runway.Game
                 {
                     b.Desk["mode"] = "job";
                     b.Desk["job"] = jobCopy;
-                }, 15f, Ink(0.5f), 148f);
+                }, DeskKit.ChipS, Ink(0.5f), 148f);
             }
             return y + 64f;
         }
@@ -778,7 +778,7 @@ namespace Runway.Game
             v.alignment = TMPro.TextAlignmentOptions.TopRight;
             string note = FeatureNote(st, fd);
             if (note != "")
-                b.L(note, cx, y + 32f, 14f, sev > 0 ? DrawnUI.Coral : Ink(0.5f), 270f);
+                b.L(note, cx, y + 32f, DeskKit.ChipS, sev > 0 ? DrawnUI.Coral : Ink(0.5f), 270f);
             // THE CREAK CARD PRESSES (the plan's one-press): arm the rebuild
             if (sev > 0)
             {
@@ -810,7 +810,7 @@ namespace Runway.Game
                 x + 306f - 110f, y + 8f, 18f, Ink(0.6f), 96f);
             v.alignment = TMPro.TextAlignmentOptions.TopRight;
             if (worst > 0 && creakyName != "")
-                b.L("1 creaky member — " + creakyName, cx, y + 32f, 14f, DrawnUI.Coral, 270f);
+                b.L("1 creaky member — " + creakyName, cx, y + 32f, DeskKit.ChipS, DrawnUI.Coral, 270f);
             string famCopy = fs.Family;
             Button hit = DeskKit.Word(b, "", x, y, () =>
             {
@@ -928,9 +928,9 @@ namespace Runway.Game
             b.L("press a product — its whole wall opens. Red climbs from any feature to this page.",
                 10f, 58f, 20f, Ink(0.6f), 1100f);
             float y = 108f;
-            b.L("VERSION", 430f, y, 15f, Ink(0.42f), 100f);
-            b.L("FEATURES · BUILDING", 560f, y, 15f, Ink(0.42f), 220f);
-            b.L("KEEP+BUILD", 930f, y, 15f, Ink(0.42f), 180f);
+            b.L("VERSION", 430f, y, DeskKit.ChipS, Ink(0.42f), 100f);
+            b.L("FEATURES · BUILDING", 560f, y, DeskKit.ChipS, Ink(0.42f), 220f);
+            b.L("KEEP+BUILD", 930f, y, DeskKit.ChipS, Ink(0.42f), 180f);
             y += 24f;
             y = LineupRow(b, st, "", Topic(st, "make_name", st.CompanyName), y);
             foreach (string pid in pids)

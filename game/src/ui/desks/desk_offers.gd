@@ -146,9 +146,10 @@ static func _rate_card(b) -> void:
 			var bw: float = b.font().get_string_size(String(h.get("big", "")),
 				HORIZONTAL_ALIGNMENT_LEFT, -1, DeskKit.HERO_BIG).x
 			DeskKit.delta_arrow(b, DeskKit.X_ID + bw + 14.0, 26.0, float(net), float(prev))
-	# S2 — red speaks ON the page: the pricing asks in one measured line
-	if DeskKit.ask_strip(b, "offers", DeskKit.X_ID, y, 1100.0, "set the price below"):
-		y += 28.0
+	# S2 — red speaks ON the page: the pricing asks in one measured line.
+	# R5 — the strip renders in its own slot (96-118); content holds its
+	# position whether or not the desk is red — stability beats density.
+	DeskKit.ask_strip(b, "offers", DeskKit.X_ID, y, 1100.0, "set the price below")
 	# the per-customer two-bar: pays against serve — the shape before the digits
 	var arpu := float(h.get("arpu", -1.0))
 	if arpu >= 0.0:
@@ -234,7 +235,8 @@ static func _row(b, y: float, i: int, s: GameState, lc: float, fm: float) -> flo
 		var units := float(s.traction) * float(o.get("weight", 1.0)) \
 			* SimEngine.offer_cadence(String(o.get("unit", "")))
 		sub += " · ≈%d/wk" % int(round(units))
-	b.label(sub, Vector2(COL_NAME_X, y + 27.0), 15, Color(DeskKit.INK, 0.45), COL_NAME_W)
+	b.label(sub, Vector2(COL_NAME_X, y + 27.0), DeskKit.CHIP_S, Color(DeskKit.INK, 0.45),
+		COL_NAME_W)
 	var price := float(o.get("price", 0.0))
 	var fair := float(o.get("fair_price", 0.0)) * fm
 	var margin := SimCatalog.contribution(o, lc, fm)
@@ -256,11 +258,13 @@ static func _row(b, y: float, i: int, s: GameState, lc: float, fm: float) -> flo
 	var vbtn := DeskKit.word(b, vword, Vector2(COL_VERDICT_X, y - 4.0), func() -> void:
 		b.desk["mode"] = "verdict:%d" % i, 22, vd.get("col", DeskKit.INK), COL_VERDICT_W)
 	vbtn.size = Vector2(COL_VERDICT_W, 44.0)
-	# S5 — the pen circles a verdict that moved since the binder last opened
+	# S5/R3 — a moved verdict earns the gutter dot (coral when the new word
+	# is a losing one); the arbiter keeps the worst row on the pane (R2)
 	if b.seen("offers", "vd_" + String(o.get("name", str(i))), vword):
 		var vtw: float = minf(b.font().get_string_size(vword,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x, COL_VERDICT_W)
-		DeskKit.pen_circle(b, Rect2(COL_VERDICT_X, y + 2.0, vtw, 24.0))
+		DeskKit.pen_circle(b, Rect2(COL_VERDICT_X, y + 2.0, vtw, 24.0),
+			vd.get("col", DeskKit.INK) == DeskKit.PEN)
 	DeskKit.expand(b, Vector2(COL_EXPAND_X, y - 4.0), func() -> void:
 		b.desk["mode"] = "detail"
 		b.desk["row"] = i)

@@ -85,10 +85,10 @@ namespace Runway.Game
             TextMeshProUGUI nb = b.L("while it lives, the raise is frozen by their no-shop ask",
                 700f, 44f, 18f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 420f);
             nb.alignment = TextAlignmentOptions.TopRight;
-            // S2 — the live letter IS the red: the strip says the ask + clock
-            if (DeskKit.AskStrip(b, "the offer", DeskKit.XId, y, 1120f,
-                    "accept, counter, or decline below"))
-                y += 24f;
+            // S2 — the live letter IS the red: the strip says the ask in its
+            // own slot (R5 — the zones hold their ground whether or not it draws)
+            DeskKit.AskStrip(b, "the offer", DeskKit.XId, y, 1120f,
+                "accept, counter, or decline below");
 
             // ── zone 1 · WHAT'S ON THE TABLE
             DeskKit.CardBox z1 = DeskKit.Zone(b, DeskKit.XId, y, 548f, 312f, 1, "what's on the table",

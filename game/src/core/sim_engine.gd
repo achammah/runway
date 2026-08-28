@@ -1321,7 +1321,8 @@ static func attention_items(state: GameState) -> Array:
 		rows.append({"desk": "the ledger", "key": "losing_week", "severity": 2,
 			"label": "losing week — burn beat revenue"})
 	if state.has_flag("fundraising_open"):
-		rows.append({"desk": "cap table", "key": "term_sheets", "severity": 3,
+		rows.append({"desk": "the raise", "key": "term_sheets", "severity": 3,
+			"control": "sign_terms",
 			"label": "term sheets waiting — they expire"})
 	# ── the lanes, each owning its own predicates
 	for lane_rows in [SimCatalog.attention(state), SimLabor.attention(state),

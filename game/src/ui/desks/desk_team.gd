@@ -149,10 +149,11 @@ static func draw(b) -> void:
 	var mx := SHEET_X + SHEET_W - mw - 4.0
 	b.label(mtxt, Vector2(mx, 64.0), DeskKit.LAW, Color(DeskKit.INK, 0.42), mw + 8.0)
 	DeskKit.delta_arrow(b, mx - 24.0, 66.0, float(state.morale), _morale_prev(state))
-	# S2a — red speaks on the page; the sheet drops 8px clear of the strip
-	var sheet_y := Y_SHEET
-	if DeskKit.ask_strip(b, "team", SHEET_X, 86.0, 1000.0, "answer the ask before it walks"):
-		sheet_y += 8.0
+	# S2a — red speaks on the page. R5 — the strip renders in its own slot
+	# (96-118); the sheet holds the content slot whether or not the desk is
+	# red — stability beats density.
+	var sheet_y := DeskKit.CONTENT_Y0
+	DeskKit.ask_strip(b, "team", SHEET_X, 86.0, 1000.0, "answer the ask before it walks")
 
 	# ── the sheet
 	var sheet := DeskKit.ledger_sheet(b, SHEET_X, sheet_y, SHEET_W, {

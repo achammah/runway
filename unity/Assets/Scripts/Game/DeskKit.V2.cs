@@ -485,10 +485,14 @@ namespace Runway.Game
                         ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
                         StepsPerEdge = 6, Jitter = 1f, Thickness = 2.5f, Seed = (int)y,
                     });
-                b.L(pct.ToString("0.0") + "%", x + 260f + bw + 16f, y, Detail,
-                    Ink(0.85f), 90f);
-                if (!string.IsNullOrEmpty(r.Note)) b.L(r.Note, x + w - 200f, y + 2f, 17f,
-                                                       Ink(0.5f), 200f);
+                // R9 — at 100% the +16 offset still walked the pct into the note
+                // column (track end + 16 lands 6px past its left edge): the label
+                // clears the bar's end AND stops short of the note lane.
+                bool hasNote = !string.IsNullOrEmpty(r.Note);
+                float pctX = Mathf.Min(x + 260f + bw + 16f,
+                    hasNote ? x + w - 200f - 84f : x + w - 92f);
+                b.L(pct.ToString("0.0") + "%", pctX, y, Detail, Ink(0.85f), 90f);
+                if (hasNote) b.L(r.Note, x + w - 200f, y + 2f, 17f, Ink(0.5f), 200f);
                 y += 40f;
             }
             return y + 6f;
@@ -749,9 +753,15 @@ namespace Runway.Game
         // ── the desk-stub furniture ────────────────────────────────────────
 
         /// <summary>THE QUESTION LINE (DAG2 W1): rides the sheet's quiet
-        /// bottom-right corner on pages that embed a shipped desk.</summary>
+        /// bottom-right corner on pages that embed a shipped desk.
+        /// R7/R9 — duplicate captions die: a desk whose teaching foot already
+        /// says the question declares b.Desk["foot_carries_question"] = true
+        /// and this yields.</summary>
         public static void HeroQuestion(BinderScreen b, string q)
         {
+            object fc;
+            if (b.Desk.TryGetValue("foot_carries_question", out fc) && fc is bool
+                && (bool)fc) return;
             TextMeshProUGUI l = b.L(q, 560f, 846f, Law, Ink(0.4f), 560f);
             l.alignment = TextAlignmentOptions.TopRight;
         }
@@ -780,6 +790,139 @@ namespace Runway.Game
         /// money desks' teaching foot (806).
         public const float DoLaneY = 762f;
 
+        /// THE SLOT GRID (14-quiet R5): fixed vertical slots, identical on
+        /// every desk. hero 6-96 · ask strip 96-118 (drawn only when red;
+        /// content NEVER creeps into the slot when it is empty) · content 126
+        /// to DoLaneY-8 · the DO lane · the teaching foot. Deep stacks fold
+        /// (FoldRow) rather than slide the foot.
+        public const float HeroY0 = 6f;
+        public const float HeroY1 = 96f;
+        public const float StripY = 96f;
+        public const float StripH = 22f;
+        public const float ContentY0 = 126f;
+        public const float FootY = 806f;
+
+        /// THE CHIP SIZE (14-quiet R8): the smallest sanctioned print — tier
+        /// notes, micro-statuses, badge counts. Strays at 11-15px snap here or
+        /// to Detail, nothing in between.
+        public const float ChipS = 17f;
+
+        /// THE ANNOTATION BUDGET (14-quiet R2): beyond the tab's own red, a
+        /// pane carries at most THREE attention annotations.
+        public const int MarkBudget = 3;
+
+        // ── R2 · THE ARBITER (14-quiet, the quiet law) ─────────────────────
+
+        public sealed class Mark
+        {
+            public string Kind = "";      // strip | hero_delta | row_dot
+            public float Priority;
+            public string Line = "";      // strip
+            public float X, Y, W;         // strip / hero_delta
+            public bool Up;               // hero_delta
+            public Rect RowRect;          // row_dot
+            public bool Bad;              // row_dot
+        }
+
+        /// <summary>MARKS REGISTER, THE KIT RENDERS: a desk never draws an
+        /// attention annotation directly — it registers and at end-of-draw the
+        /// binder renders the top THREE by priority, dropping the rest. kind ∈
+        /// {strip (100, always wins its slot), hero_delta (50, only ONE per
+        /// pane — R4), row_dot (by |change| or caller priority)}.</summary>
+        public static void NoteMark(BinderScreen b, Mark m)
+        {
+            b.Marks.Add(m);
+        }
+
+        /// <summary>The binder calls this once, after the desk's draw returns.</summary>
+        public static void RenderMarks(BinderScreen b)
+        {
+            var rows = new List<Mark>(b.Marks);
+            b.Marks.Clear();
+            rows.Sort((a, c) => c.Priority.CompareTo(a.Priority));
+            int kept = 0, strips = 0, heroes = 0;
+            foreach (Mark m in rows)
+            {
+                if (kept >= MarkBudget) break;
+                switch (m.Kind)
+                {
+                    case "strip":
+                        if (strips >= 1) continue;
+                        strips++;
+                        DrawStrip(b, m);
+                        break;
+                    case "hero_delta":
+                        if (heroes >= 1) continue;   // R4 — ONE DELTA PER PANE
+                        heroes++;
+                        DrawDelta(b, m);
+                        break;
+                    case "row_dot":
+                        DrawRowDot(b, m);
+                        break;
+                    default:
+                        continue;
+                }
+                kept++;
+            }
+        }
+
+        /// The strip's drawing half (R6 — THE RED SINGLETON: the one red line).
+        static void DrawStrip(BinderScreen b, Mark m)
+        {
+            TextMeshProUGUI l = FitLine(b, m.Line, m.X, StripY, Detail, Alert, m.W);
+            l.gameObject.name = "quietmark_strip";
+        }
+
+        /// The delta's drawing half — the sage/coral triangle beside the hero.
+        static void DrawDelta(BinderScreen b, Mark m)
+        {
+            var img = DrawnUI.Fill(b.Content, "quietmark_delta",
+                m.Up ? DrawnUI.Sage : DrawnUI.Coral, m.X, m.Y, 16f, 14f);
+            img.sprite = TriSprite(m.Up ? 0 : 1, 16, 14);
+            img.raycastTarget = false;
+        }
+
+        /// THE GUTTER DOT's drawing half (R3): a 6px filled dot in the LEFT
+        /// GUTTER of the row's rect (x = rect.x − 14, centered vertically) —
+        /// sage when the change is good/neutral, coral when the caller says
+        /// bad. Never an ellipse round content (the circle fought the row's
+        /// own borders and doubled the ink; the spotlight/tour keeps its own).
+        static void DrawRowDot(BinderScreen b, Mark m)
+        {
+            var dot = DrawnUI.Fill(b.Content, "quietmark_dot",
+                m.Bad ? DrawnUI.Coral : DrawnUI.Sage,
+                m.RowRect.x - 14f, m.RowRect.y + m.RowRect.height * 0.5f - 3f, 6f, 6f);
+            dot.sprite = DrawnUI.DiscSprite(3f, 1);
+            dot.raycastTarget = false;
+        }
+
+        /// <summary>R6/R10 AUDIT — annotations the arbiter rendered this draw
+        /// (tagged quietmark_*), so both engines' gates count the same way.</summary>
+        public static int AnnotationCount(BinderScreen b)
+        {
+            int c = 0;
+            foreach (Transform t in b.Content.GetComponentsInChildren<Transform>(true))
+                if (t.name.StartsWith("quietmark_", StringComparison.Ordinal)) c++;
+            return c;
+        }
+
+        /// <summary>ALERT-colored TEXT objects per pane. Row clock chips are
+        /// exempt by construction — they are drawn chips (a red polygon under
+        /// WHITE words), not text labels colored ALERT.</summary>
+        public static int AlertTextCount(BinderScreen b)
+        {
+            int c = 0;
+            foreach (TextMeshProUGUI t in
+                     b.Content.GetComponentsInChildren<TextMeshProUGUI>(true))
+            {
+                if (string.IsNullOrEmpty(t.text) || t.text.Trim().Length == 0) continue;
+                Color col = t.color;
+                if (Mathf.Abs(col.r - Alert.r) < 0.01f && Mathf.Abs(col.g - Alert.g) < 0.01f
+                    && Mathf.Abs(col.b - Alert.b) < 0.01f) c++;
+            }
+            return c;
+        }
+
         /// <summary>THE TIER SAID ON THE CONTROL (S9): the three confirm
         /// grammars keep their mechanics and learn to introduce themselves.</summary>
         public static string TierWord(string tier)
@@ -803,7 +946,8 @@ namespace Runway.Game
                                        Action onPress = null, bool disarms = true)
         {
             float tw = DrawnUI.MeasureWidth(text ?? "", size);
-            float nw = string.IsNullOrEmpty(note) ? 0f : DrawnUI.MeasureWidth(note, 12f) + 10f;
+            // R8 — the tier note prints at the chip size, never an 11-15px stray
+            float nw = string.IsNullOrEmpty(note) ? 0f : DrawnUI.MeasureWidth(note, ChipS) + 10f;
             float bw = tw + nw + 22f;
             float bh = Mathf.Min(size + 20f, 44f);
             var box = DrawnUI.Rect(b.Content, "paperbtn", x - 8f, y + 2f, bw, bh);
@@ -818,7 +962,7 @@ namespace Runway.Game
             if (!string.IsNullOrEmpty(note))
             {
                 var n = DrawnUI.HandLabel(b.Content, note, x + tw + 8f,
-                    y + Mathf.Max(size * 0.5f - 1f, 8f), 12f, Ink(0.45f), nw + 6f);
+                    y + Mathf.Max(size * 0.5f - 1f, 8f), ChipS, Ink(0.45f), nw + 6f);
                 n.raycastTarget = false;
             }
             return Word(b, text, x, y, onPress, size, col, w, disarms);
@@ -886,16 +1030,21 @@ namespace Runway.Game
         }
 
         /// <summary>RED SPEAKS ON THE PAGE (S2, the spend fix made law): one
-        /// measured red line — "!  &lt;asks&gt; — &lt;verb&gt;" — under the hero of any
-        /// desk carrying attention. Returns whether it drew.</summary>
-        public static bool AskStrip(BinderScreen b, string deskId, float x, float y,
+        /// measured red line — "!  &lt;asks&gt; — &lt;verb&gt;" — in the STRIP SLOT of
+        /// any desk carrying attention. Returns whether it will draw.
+        /// R5 — the strip renders AT StripY always; the y argument is
+        /// DEPRECATED and ignored (kept so every shipped call site lands
+        /// unchanged). Content never re-flows when the strip is absent.
+        /// R2 — registers with the arbiter (priority 100: the strip always
+        /// wins its slot); rendered at end-of-draw with the pane's marks.</summary>
+        public static bool AskStrip(BinderScreen b, string deskId, float x, float yDeprecated,
                                     float w, string verbHint)
         {
             List<string> asks = GetAsks(b.State, deskId);
             if (asks.Count == 0) return false;
             string line = "!  " + string.Join(" · ", asks);
             if (!string.IsNullOrEmpty(verbHint)) line += " — " + verbHint;
-            FitLine(b, line, x, y, Detail, Alert, w);
+            NoteMark(b, new Mark { Kind = "strip", Priority = 100f, Line = line, X = x, W = w });
             return true;
         }
 
@@ -935,7 +1084,7 @@ namespace Runway.Game
                 string note = TierWord(a.Tier ?? "");
                 float tw = DrawnUI.MeasureWidth(cap, Detail);
                 float nw = string.IsNullOrEmpty(note) ? 0f
-                    : DrawnUI.MeasureWidth(note, 12f) + 10f;
+                    : DrawnUI.MeasureWidth(note, ChipS) + 10f;
                 caps.Add(cap);
                 notes.Add(note);
                 widths.Add(tw + nw + 24f);
@@ -1066,34 +1215,31 @@ namespace Runway.Game
 
         /// <summary>WHAT CHANGED, beside the hero: a small drawn triangle —
         /// sage up, coral down, nothing when equal. Drawn, never typed (the
-        /// hand font carries no ▲/▼).</summary>
+        /// hand font carries no ▲/▼). R4 — registers with the arbiter
+        /// (priority 50); only the FIRST hero_delta renders per pane.</summary>
         public static void DeltaArrow(BinderScreen b, float x, float y, float now,
                                       float prev)
         {
             if (Mathf.Abs(now - prev) < 0.000001f) return;
-            bool up = now > prev;
-            var img = DrawnUI.Fill(b.Content, "delta", up ? DrawnUI.Sage : DrawnUI.Coral,
-                                   x, y, 16f, 14f);
-            img.sprite = TriSprite(up ? 0 : 1, 16, 14);
-            img.raycastTarget = false;
+            NoteMark(b, new Mark
+            {
+                Kind = "hero_delta", Priority = 50f, X = x, Y = y, Up = now > prev,
+            });
         }
 
-        /// <summary>A HAND-DRAWN ELLIPSE round a row that moved since the
-        /// binder was last opened — the pen circling the news.</summary>
-        public static void PenCircle(BinderScreen b, Rect rect)
+        /// <summary>A row that moved since the binder was last opened. R3 —
+        /// the rendering is THE GUTTER DOT now, never the drawn ellipse (the
+        /// circle fought the row's own borders and doubled the ink; the
+        /// spotlight/tour keeps its own ring). `bad` colours the dot coral;
+        /// `priority` is |change| when the caller has one — the arbiter keeps
+        /// the worst row and drops the rest (R2).</summary>
+        public static void PenCircle(BinderScreen b, Rect rect, bool bad = false,
+                                     float priority = 10f)
         {
-            float rx = rect.width * 0.5f + 10f;
-            float ry = rect.height * 0.5f + 7f;
-            const float Thick = 2.6f;
-            const float Jit = 1.8f;
-            Sprite sp = DrawnChart.PenEllipse(rx, ry, Thick, Jit, 83,
-                DrawnUI.WithAlpha(DrawnUI.Coral, 0.85f));
-            int pad = Mathf.CeilToInt(Jit + Thick * 0.5f + 2f);
-            float w = Mathf.Ceil(rx * 2f) + pad * 2f;
-            float h = Mathf.Ceil(ry * 2f) + pad * 2f;
-            var img = DrawnChart.Mount(b.Content, "pencircle", sp,
-                rect.center.x - w * 0.5f, rect.center.y - h * 0.5f, w, h);
-            img.raycastTarget = false;
+            NoteMark(b, new Mark
+            {
+                Kind = "row_dot", Priority = priority, RowRect = rect, Bad = bad,
+            });
         }
 
         static readonly Dictionary<string, Sprite> _triSprites =
@@ -1228,7 +1374,8 @@ namespace Runway.Game
                     ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
                     StepsPerEdge = 5, Jitter = 0.6f, Thickness = 2.2f, Seed = 13,
                 });
-            var t = DrawnUI.DisplayLabel(root, count.ToString(), 0f, 4f, 15f,
+            // R8 — badge counts print at the chip size, never an 11-15px stray
+            var t = DrawnUI.DisplayLabel(root, count.ToString(), 0f, 4f, ChipS,
                 Color.white, 28f, TextAlignmentOptions.Center);
             t.raycastTarget = false;
             return root;

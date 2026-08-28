@@ -289,7 +289,7 @@ namespace Runway.Game
             if (!DeskKit.AskStrip(b, "in motion", DeskKit.XId, 74f, 1100f, "push what's cooling"))
                 b.L("consumer — nobody has a name until they pay: the page is rates, sources and word of mouth",
                     DeskKit.XId, 74f, DeskKit.Law, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 1100f);
-            float y = DeskKit.PenRule(b, 112f) + 8f;
+            float y = DeskKit.PenRule(b, 122f) + 6f;   // R5 - the rule sits under the strip slot (96-118)
             y = RiverCard(b, s, y);
             SourcesCard(b, s, y);
             TasteCard(b, s, y);
@@ -571,7 +571,7 @@ namespace Runway.Game
             if (!DeskKit.AskStrip(b, "in motion", DeskKit.XId, 74f, 1100f, "push what's cooling"))
                 b.L("SMB — dozens of small shops, a handful worth chasing by name",
                     DeskKit.XId, 74f, DeskKit.Law, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 1100f);
-            float y = DeskKit.PenRule(b, 112f) + 8f;
+            float y = DeskKit.PenRule(b, 122f) + 6f;   // R5 - the rule sits under the strip slot (96-118)
             HotList(b, s, f, y, HotShow);
             DoPushLane(b, s);
             DraftedChip(b);
@@ -674,7 +674,7 @@ namespace Runway.Game
         static void Enterprise(BinderScreen b, GameState s)
         {
             EntHero(b, s);
-            float y = DeskKit.PenRule(b, 112f) + 8f;
+            float y = DeskKit.PenRule(b, 122f) + 6f;   // R5 - the rule sits under the strip slot (96-118)
             if (s.Leads.Count >= SlimAt) EntSlim(b, s, y);
             else EntBoard(b, s, y);
             DoPushLane(b, s);

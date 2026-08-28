@@ -146,16 +146,15 @@ static func draw(b) -> void:
 	var y := DeskKit.hero_band(b, _season_big(s), _week_sentence(s),
 		_season_col(s), 6.0, false)
 
-	# S2 — a red street names its ask under the hero; the wire below is the
-	# offending surface, so the strip's jump target is marked there. The 24px
-	# the strip spends is reclaimed from the zones' own air (twin constants).
-	var red := DeskKit.ask_strip(b, "the street", DeskKit.X_ID, y, 1120.0,
+	# S2 — a red street names its ask in the strip slot (96-118); the wire
+	# below is the offending surface, so the strip's jump target is marked
+	# there. R5 — ONE geometry, red or calm: the zones hold their ground and
+	# keep the roomier air (stability beats density).
+	DeskKit.ask_strip(b, "the street", DeskKit.X_ID, y, 1120.0,
 		"read the wire below")
-	if red:
-		y += 24.0
-	var gap := 8.0 if red else 12.0
-	var z1_h := 86.0 if red else 92.0
-	var z3_h := 112.0 if red else 118.0
+	var gap := 12.0
+	var z1_h := 92.0
+	var z3_h := 118.0
 
 	# 1 · THE WEATHER — the drawn season band, weeks left on the clock chip
 	var z1 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, z1_h, 1, "the weather", "")
@@ -193,10 +192,15 @@ static func draw(b) -> void:
 		# (the log entry carries its own week stamp, so a repeat act next month
 		# still reads as news)
 		if b.seen("the street", "act:" + String(rd.get("name", "?")), _act_stamp(rd)):
-			DeskKit.pen_circle(b, Rect2(float(z2.content_x) + 26.0, ry - 8.0, 268.0, 38.0))
+			# R3 — the dot marks the LOG line (the news itself); on the name it
+			# crowded the sev dot's gutter
+			DeskKit.pen_circle(b, Rect2(float(z2.content_x) + 34.0, ry + 58.0, 268.0, 24.0),
+				_came_at_you(rd), 14.0 if _came_at_you(rd) else 10.0)
 		if _came_at_you(rd):
+			# R6 — coral, not the alarm red: the strip is the pane's one red
+			# line; the face-up pin still reads at a glance
 			b.label("-> they came at YOU", Vector2(float(z2.content_x) + 430.0, ry),
-				DeskKit.DETAIL, DeskKit.ALERT, 300.0)
+				DeskKit.DETAIL, DeskKit.PEN, 300.0)
 		b.label(SimEngine._fuzz(float(rd.get("strength", 20.0))),
 			Vector2(float(z2.content_x) + 900.0, ry), DeskKit.DETAIL,
 			Color(DeskKit.INK, 0.6), 180.0)

@@ -93,6 +93,9 @@ namespace Runway.Game
         public static void Draw(BinderScreen b)
         {
             GameState s = b.State;
+            // R7 — this desk's feet and heroes already say its question; the
+            // corner question line yields everywhere here (duplicate captions die)
+            b.Desk["foot_carries_question"] = true;
             if (DS(b, "mode") == "arrange") { DeskArrange.Draw(b); return; }
             foreach (string k in new[] { "teardown", "open_roof", "edit", "staged2", "chip_k" })
                 b.Desk.Remove(k);
@@ -100,6 +103,7 @@ namespace Runway.Game
                 () => { b.Desk["mode"] = "arrange"; }, DeskKit.Status, DrawnUI.Blue, 160f);
             if (s.Offers.Count == 0) { DrawEmpty(b, s); return; }
             if (DS(b, "page") == "capacity") { CapacitySheet(b, s, DS(b, "row")); return; }
+            if (DS(b, "page") == "tickets") { TicketSheet(b, s); return; }
             string opened = DS(b, "row");
             if (SimDivisions.Rung(s) >= 3 && opened.Length == 0) { Empire(b, s); return; }
             HouseOrBoutique(b, s, opened);
@@ -126,6 +130,16 @@ namespace Runway.Game
             DeskKit.HeroQuestion(b, Question);
         }
 
+        /// R9 — THE FOLDED TICKET BOOK OPENED: when the face's stack ran
+        /// deep the cost tickets folded to one row; this page is where that
+        /// row lands, the same zone drawn with the whole sheet to itself.
+        static void TicketSheet(BinderScreen b, GameState s)
+        {
+            DeskKit.Back(b, "back to the works", () => b.Desk.Remove("page"));
+            bool house = SimDivisions.Rung(s) >= 2 && DS(b, "row").Length == 0;
+            ZoneTicket(b, s, 64f, house);
+        }
+
         // ─────────────────────── rungs 1-2 (one roof) ──────────────────────
 
         static void HouseOrBoutique(BinderScreen b, GameState s, string openedSite)
@@ -136,10 +150,10 @@ namespace Runway.Game
             bool scoped = openedSite.Length > 0;
             if (scoped)
             {
-                // S7 — the drill declares its trail every draw ("Lyon ‹ the
-                // works"); the crumb owns the top-left, the way back moves right
-                b.PushCrumb(SiteName(s, openedSite));
-                DeskKit.Back(b, "back to the lineup", () => b.Desk.Remove("row"), 620f, 6f);
+                // S7/R9 — the drill declares its trail every draw ("Lyon ‹
+                // the works") and the crumb ITSELF is the way back now: one
+                // top-left slot, no second word at 620
+                b.PushCrumb(SiteName(s, openedSite), () => b.Desk.Remove("row"));
             }
             double demand = SimWorks.Num(w, "demand_units");
             double cap = SimWorks.Num(w, "capacity_units");
@@ -212,11 +226,13 @@ namespace Runway.Game
                         "who walked, and what it was worth", WalkedLines(s));
                 }
             }
-            // S2a — red speaks on the page: the strip spends its own line
-            // under the hero's rule; the zones give way, the foot slides
-            bool redSaid = DeskKit.AskStrip(b, "the works", DeskKit.XId, y, 1000f,
-                "open the valves or add hands");
-            if (redSaid) y += 30f;
+            // S2a — red speaks on the page. R5 — the strip renders in its
+            // own slot (96-118) and the zones hold their ground; the drill
+            // keeps its page calm (its hero owns the slot's band).
+            bool redSaid = false;
+            if (!scoped)
+                redSaid = DeskKit.AskStrip(b, "the works", DeskKit.XId, y, 1000f,
+                    "open the valves or add hands");
             bool house = SimDivisions.Rung(s) >= 2 && !scoped;
             y = house ? ZoneDemandMix(b, s, y, unit) : ZoneCapbars(b, s, y, w, unit, openedSite);
             y = ZoneTicket(b, s, y, house);
@@ -228,16 +244,15 @@ namespace Runway.Game
                     Cb = () => { b.Desk["page"] = "capacity"; }, Tier = "" },
             });
             double unbilled = SimWorks.Num(w, "unbilled");
-            // the foot rides BELOW the last zone when the stack runs deep —
-            // the blue line never prints across zone 4 (the scrolling QA law)
-            float fy = Math.Max(806f, y + 4f);
+            // R9 — THE FOOT NEVER SLIDES: deep stacks folded above (the zones
+            // yield, never the frame), so the teaching foot keeps its slot.
             // ≤2 coral stories: when the ask strip already told the walk-away
-            // story at the top, the foot does not tell it again
+            // story at the top, the foot does not tell it again (R6).
             DeskKit.Footer(b,
                 "the works reads your team for hands, your offers for the ticket — one desk, every cost of delivering",
                 "", unbilled >= 1.0 && !redSaid
                     ? string.Format("${0}/wk walks away — relief valves or hires close it",
-                        M(unbilled)) : "", fy, fy + 34f);
+                        M(unbilled)) : "", 806f, 840f);
             DeskKit.HeroQuestion(b, Question);
         }
 
@@ -369,6 +384,12 @@ namespace Runway.Game
                 lines.Add(new DeskKit.TicketLine { Label = "sells for", Value = "$" + M(SimWorks.Num(t, "sells")) });
                 float th = 46f + lines.Count * 32f + 44f + 30f + 14f;
                 float h = 84f + th;
+                // R9 — DEEP STACKS FOLD: a zone that cannot fit above the DO
+                // lane folds to one pressable row instead of sliding the foot
+                if (y + h > DeskKit.DoLaneY - 8f)
+                    return DeskKit.FoldRow(b, DeskKit.XId, y + 2f,
+                        Math.Max(s.Offers.Count, 1), "cost tickets — the book",
+                        () => { b.Desk["page"] = "tickets"; });
                 DeskKit.CardBox z = DeskKit.Zone(b, DeskKit.XId, y, 1120f, h, 2, "WHAT ONE COSTS",
                     string.Format("practice makes every {0} cheaper — the learning curve is real money",
                         SimWorks.Vocab(s)["unit_word"]));
@@ -402,6 +423,12 @@ namespace Runway.Game
             int preLines = Gd.Mini(preRaw.Count, 3) + (preRaw.Count > 3 ? 1 : 0) + 1;
             bool preFoot = SimWorks.Num(pre, "lc") < 0.995;
             h2 = Mathf.Max(h2, 84f + 46f + preLines * 32f + 44f + 30f + (preFoot ? 14f : 0f) + 12f);
+            // R9 — DEEP STACKS FOLD: the house face's book + open ticket
+            // cannot fit under the demand mix — it folds to one pressable row
+            // (the old face slid the teaching foot below the pane instead)
+            if (y + h2 > DeskKit.DoLaneY - 8f)
+                return DeskKit.FoldRow(b, DeskKit.XId, y + 2f, Math.Max(rows2.Count, 1),
+                    "cost tickets — the book", () => { b.Desk["page"] = "tickets"; });
             DeskKit.CardBox z2 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, h2, 2,
                 "WHAT ONE COSTS — THE TICKET BOOK",
                 "one row per offer; press a row and its ticket opens itemized");
@@ -501,6 +528,25 @@ namespace Runway.Game
                         s.Hardware != null ? s.Hardware.Equipment.Count : 0,
                         Gd.RoundToInt(SimFactory.Capacity(s)));
                     break;
+            }
+            // R9 — DEEP STACKS FOLD: the two bands fold to one pressable
+            // row when the stack above ran deep, and yield entirely when even
+            // that cannot fit — the DO lane's [set relief — the valves] is
+            // the same door, always there.
+            if (y + 108f > DeskKit.DoLaneY - 8f)
+            {
+                if (y + 44f <= DeskKit.DoLaneY - 8f)
+                {
+                    float fy2 = DeskKit.FoldRow(b, DeskKit.XId, y + 2f, 2,
+                        "bands — capacity + the valves",
+                        () => { b.Desk["page"] = "capacity"; });
+                    b.MarkControl("capacity", new Rect(DeskKit.XId, y, 1120f, 40f));
+                    b.MarkControl("relief", new Rect(DeskKit.XId, y, 1120f, 40f));
+                    return fy2;
+                }
+                b.MarkControl("capacity", new Rect(DeskKit.XId + 700f, DeskKit.DoLaneY, 420f, 44f));
+                b.MarkControl("relief", new Rect(DeskKit.XId + 700f, DeskKit.DoLaneY, 420f, 44f));
+                return y;
             }
             PenRow(b, y, 3, "WHAT MAKES THE CAPACITY", facts, () => { b.Desk["page"] = "capacity"; });
             PenRow(b, y + 52f, 4, "THE RELIEF VALVES", ReliefLine(s), () => { b.Desk["page"] = "capacity"; });
@@ -716,21 +762,26 @@ namespace Runway.Game
                 float hw = DrawnUI.MeasureWidth(empireBig, DeskKit.HeroBig);
                 DeskKit.DeltaArrow(b, DeskKit.XId + hw + 10f, 24f, dispTotal, prevI);
             }
-            // S2a — a bleeding roof says so on the page, not just on the rail
-            if (DeskKit.AskStrip(b, "the works", DeskKit.XId, y, 1000f,
-                    "open its works — fix or close"))
-                y += 30f;
+            // S2a — a bleeding roof says so on the page, not just on the
+            // rail. R5 — the strip renders in its own slot (96-118); the
+            // lineup holds its ground whether or not a roof is red.
+            DeskKit.AskStrip(b, "the works", DeskKit.XId, y, 1000f,
+                "open its works — fix or close");
+            // the slice control rides the top of the content slot, clear of
+            // the strip band (R5).
+            y = Mathf.Max(y, DeskKit.ContentY0 + 40f);
             if (axes.Count > 1)
             {
                 string nextAxis = axes[(axes.IndexOf(slice) + 1) % axes.Count];
                 DeskKit.Word(b, string.Format("sliced by {0} — slice by {1} instead ▸",
                         AxisWord(slice, 2), AxisWord(nextAxis, 2)),
-                    DeskKit.XId + 640f, y - 40f, () => { b.Desk["slice"] = nextAxis; },
+                    DeskKit.XId + 640f, DeskKit.ContentY0, () => { b.Desk["slice"] = nextAxis; },
                     DeskKit.Detail, DrawnUI.Blue, 420f);
             }
             else
             {
-                b.L("sliced by " + AxisWord(slice, 2), DeskKit.XId + 760f, y - 36f,
+                b.L("sliced by " + AxisWord(slice, 2), DeskKit.XId + 760f,
+                    DeskKit.ContentY0 + 4f,
                     DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 320f);
             }
             int shown = Gd.Mini(divs.Count, 5);
@@ -783,7 +834,10 @@ namespace Runway.Game
                     }, DeskKit.Detail, DrawnUI.Blue, 720f);
                 y += 46f;
             }
-            if (divs.Count >= 2) y = ScaleLesson(b, divs, y, unit);
+            // R9 — on a crowded lineup the lesson yields (deleted, never
+            // shrunk): the SHARED strip and the DO lane keep their slots.
+            if (divs.Count >= 2 && y + 190f <= DeskKit.DoLaneY - 8f)
+                y = ScaleLesson(b, divs, y, unit);
             b.L("SHARED / HQ — " + shared["note"], DeskKit.XId, y, DeskKit.Detail,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 800f);
             TextMeshProUGUI sv = b.L("−$" + Commas(-Convert.ToInt32(shared["net_wk"],

@@ -70,6 +70,9 @@ static func hero_summary(state) -> Dictionary:
 
 static func draw(b) -> void:
 	var s: GameState = b.state
+	# R7 — this desk's feet and heroes already say its question; the corner
+	# question line yields everywhere here (duplicate captions die)
+	b.desk["foot_carries_question"] = true
 	if String(b.desk.get("mode", "")) == "arrange":
 		DeskArrange.draw(b)
 		return
@@ -84,11 +87,23 @@ static func draw(b) -> void:
 	if String(b.desk.get("page", "")) == "capacity":
 		_capacity_sheet(b, s, String(b.desk.get("row", "")))
 		return
+	if String(b.desk.get("page", "")) == "tickets":
+		_ticket_sheet(b, s)
+		return
 	var opened := String(b.desk.get("row", ""))
 	if SimDivisions.rung(s) >= 3 and opened == "":
 		_empire(b, s)
 		return
 	_house_or_boutique(b, s, opened)
+
+## R9 — THE FOLDED TICKET BOOK OPENED: when the face's stack ran deep the
+## cost tickets folded to one row; this page is where that row lands, the
+## same zone drawn with the whole sheet to itself.
+static func _ticket_sheet(b, s: GameState) -> void:
+	DeskKit.back(b, "back to the works", func() -> void:
+		b.desk.erase("page"))
+	var house := SimDivisions.rung(s) >= 2 and String(b.desk.get("row", "")) == ""
+	_zone_ticket(b, s, 64.0, house)
 
 ## S1 — the zero state proper: the promise in display type, one unit's cost
 ## in the honest subjunctive, the ONE action (to the offers desk, with the
@@ -116,11 +131,11 @@ static func _house_or_boutique(b, s: GameState, opened_site: String) -> void:
 	var unit := String(vw.get("unit_word", "unit"))
 	var scoped := opened_site != ""
 	if scoped:
-		# S7 — the drill declares its trail every draw ("Lyon ‹ the works");
-		# the crumb owns the top-left, so the way back moves to the right
-		b.push_crumb(_site_name(s, opened_site))
-		DeskKit.back(b, "back to the lineup", func() -> void:
-			b.desk.erase("row"), Vector2(620.0, 6.0))
+		# S7/R9 — the drill declares its trail every draw ("Lyon ‹ the works")
+		# and the crumb ITSELF is the way back now: one top-left slot, no
+		# second word at 620 (the two used to share the header line)
+		b.push_crumb(_site_name(s, opened_site), func() -> void:
+			b.desk.erase("row"))
 	# ── THE HERO: the tab's question answered in one second
 	var demand := float(w.get("demand_units", 0.0))
 	var cap := float(w.get("capacity_units", 0.0))
@@ -176,12 +191,13 @@ static func _house_or_boutique(b, s: GameState, opened_site: String) -> void:
 				-1, DeskKit.DETAIL).x
 			DeskKit.press_receipt(b, Rect2(940.0 - tw, 42.0, tw + 8.0, 30.0),
 				"who walked, and what it was worth", _walked_lines(b, s))
-	# S2a — red speaks on the page: the strip spends its own line under the
-	# hero's rule; the zones give way and the foot slides with them
-	var red_said := DeskKit.ask_strip(b, "the works", DeskKit.X_ID, y, 1000.0,
-		"open the valves or add hands")
-	if red_said:
-		y += 30.0
+	# S2a — red speaks on the page. R5 — the strip renders in its own slot
+	# (96-118) and the zones hold their ground; the drill keeps its page calm
+	# (its hero owns the slot's band) and the tab still carries the red.
+	var red_said := false
+	if not scoped:
+		red_said = DeskKit.ask_strip(b, "the works", DeskKit.X_ID, y, 1000.0,
+			"open the valves or add hands")
 	# ── ZONE 1 · CAN WE SERVE?
 	var house := SimDivisions.rung(s) >= 2 and not scoped
 	if house:
@@ -195,14 +211,13 @@ static func _house_or_boutique(b, s: GameState, opened_site: String) -> void:
 	# S3 — the rung's one primary action, in the one slot every desk keeps
 	DeskKit.do_lane(b, [{"label": "set relief — the valves",
 		"cb": func() -> void: b.desk["page"] = "capacity", "tier": ""}])
-	# the foot rides BELOW the last zone when the stack runs deep — the blue
-	# line never prints across zone 4 (the scrolling QA law)
-	var fy := maxf(806.0, y + 4.0)
+	# R9 — THE FOOT NEVER SLIDES: deep stacks folded above (the zones yield,
+	# never the frame), so the teaching foot keeps its slot on every face.
 	# ≤2 coral stories: when the ask strip already told the walk-away story
-	# at the top, the foot does not tell it again
-	DeskKit.footer(b, {"y": fy,
+	# at the top, the foot does not tell it again (R6's fold-into-the-strip).
+	DeskKit.footer(b, {"y": 806.0,
 		"computed": "the works reads your team for hands, your offers for the ticket — one desk, every cost of delivering",
-		"rules": "" if walk < 1.0 else "", "rules_y": fy + 34.0,
+		"rules": "", "rules_y": 840.0,
 		"warning": ("$%s/wk walks away — relief valves or hires close it" % _m(float(w.get("unbilled", 0.0)))) \
 			if float(w.get("unbilled", 0.0)) >= 1.0 and not red_said else ""})
 	DeskKit.hero_question(b, QUESTION)
@@ -311,6 +326,12 @@ static func _zone_ticket(b, s: GameState, y: float, house: bool) -> float:
 		# the kit ticket's own height formula: head + lines + double-ruled total + foot
 		var th := 46.0 + float(lines.size()) * 32.0 + 44.0 + 30.0 + 14.0
 		var h := 84.0 + th
+		# R9 — DEEP STACKS FOLD: a zone that cannot fit above the DO lane
+		# folds to one pressable row instead of sliding the foot off the page
+		if y + h > DeskKit.DO_LANE_Y - 8.0:
+			return DeskKit.fold_row(b, DeskKit.X_ID, y + 2.0, maxi(s.offers.size(), 1),
+				"cost tickets — the book", func() -> void:
+					b.desk["page"] = "tickets")
 		var z := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, h, 2, "WHAT ONE COSTS",
 			"practice makes every %s cheaper — the learning curve is real money" % String(SimWorks.vocab(s).get("unit_word", "unit")))
 		var lc := float(t.get("lc", 1.0))
@@ -340,6 +361,13 @@ static func _zone_ticket(b, s: GameState, y: float, house: bool) -> float:
 	var pre_lines := mini(pre_raw.size(), 3) + (1 if pre_raw.size() > 3 else 0) + 1
 	var pre_foot := float(pre.get("lc", 1.0)) < 0.995
 	h2 = maxf(h2, 84.0 + 46.0 + float(pre_lines) * 32.0 + 44.0 + 30.0 + (14.0 if pre_foot else 0.0) + 12.0)
+	# R9 — DEEP STACKS FOLD: the house face's book + open ticket cannot fit
+	# under the demand mix — it folds to one pressable row (the old face slid
+	# the teaching foot below the pane instead)
+	if y + h2 > DeskKit.DO_LANE_Y - 8.0:
+		return DeskKit.fold_row(b, DeskKit.X_ID, y + 2.0, maxi(rows.size(), 1),
+			"cost tickets — the book", func() -> void:
+				b.desk["page"] = "tickets")
 	var z2 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, h2, 2, "WHAT ONE COSTS — THE TICKET BOOK",
 		"one row per offer; press a row and its ticket opens itemized")
 	var opened := int(b.desk.get("ticket", 0))
@@ -416,6 +444,20 @@ static func _capacity_band(b, s: GameState, y: float, site: String) -> float:
 			facts = "MACHINES ×%d — %d units/wk" % [(s.hardware.get("equipment", []) as Array).size(),
 				int(round(SimFactory.capacity(s)))]
 	var relief_txt := _relief_line(s)
+	# R9 — DEEP STACKS FOLD: the two bands fold to one pressable row when the
+	# stack above ran deep, and yield entirely when even that cannot fit —
+	# the DO lane's [set relief — the valves] is the same door, always there.
+	if y + 108.0 > DeskKit.DO_LANE_Y - 8.0:
+		if y + 44.0 <= DeskKit.DO_LANE_Y - 8.0:
+			var fy := DeskKit.fold_row(b, DeskKit.X_ID, y + 2.0, 2,
+				"bands — capacity + the valves", func() -> void:
+					b.desk["page"] = "capacity")
+			b.mark_control("capacity", Rect2(DeskKit.X_ID, y, 1120.0, 40.0))
+			b.mark_control("relief", Rect2(DeskKit.X_ID, y, 1120.0, 40.0))
+			return fy
+		b.mark_control("capacity", Rect2(DeskKit.X_ID + 700.0, DeskKit.DO_LANE_Y, 420.0, 44.0))
+		b.mark_control("relief", Rect2(DeskKit.X_ID + 700.0, DeskKit.DO_LANE_Y, 420.0, 44.0))
+		return y
 	pen_row(b, y, 3, "WHAT MAKES THE CAPACITY", facts, func() -> void:
 		b.desk["page"] = "capacity")
 	pen_row(b, y + 52.0, 4, "THE RELIEF VALVES", relief_txt, func() -> void:
@@ -606,19 +648,22 @@ static func _empire(b, s: GameState) -> void:
 			-1, DeskKit.HERO_BIG).x
 		DeskKit.delta_arrow(b, DeskKit.X_ID + hw + 10.0, 24.0,
 			float(disp_total), float(prev_served))
-	# S2a — a bleeding roof says so on the page, not just on the rail
-	if DeskKit.ask_strip(b, "the works", DeskKit.X_ID, y, 1000.0,
-			"open its works — fix or close"):
-		y += 30.0
-	# the slice control: only axes with ≥2 divisions exist to be pressed
+	# S2a — a bleeding roof says so on the page, not just on the rail.
+	# R5 — the strip renders in its own slot (96-118); the lineup holds its
+	# ground whether or not a roof is red.
+	DeskKit.ask_strip(b, "the works", DeskKit.X_ID, y, 1000.0,
+		"open its works — fix or close")
+	# the slice control: only axes with ≥2 divisions exist to be pressed.
+	# R5 — it rides the top of the content slot, clear of the strip band.
+	y = maxf(y, DeskKit.CONTENT_Y0 + 40.0)
 	if axes.size() > 1:
 		var next_axis := String(axes[(axes.find(slice) + 1) % axes.size()])
 		DeskKit.word(b, "sliced by %s — slice by %s instead ▸" % [_axis_word(s, slice, 2), _axis_word(s, next_axis, 2)],
-			Vector2(DeskKit.X_ID + 640.0, y - 40.0), func() -> void:
+			Vector2(DeskKit.X_ID + 640.0, DeskKit.CONTENT_Y0), func() -> void:
 				b.desk["slice"] = next_axis, DeskKit.DETAIL, DeskKit.BLUE, 420.0)
 	else:
-		b.label("sliced by %s" % _axis_word(s, slice, 2), Vector2(DeskKit.X_ID + 760.0, y - 36.0),
-			DeskKit.DETAIL, Color(DeskKit.INK, 0.5), 320.0)
+		b.label("sliced by %s" % _axis_word(s, slice, 2), Vector2(DeskKit.X_ID + 760.0,
+			DeskKit.CONTENT_Y0 + 4.0), DeskKit.DETAIL, Color(DeskKit.INK, 0.5), 320.0)
 	# the rows: worst face-up first is already the book's honesty; keep state
 	# order (home first) — red wears its sev dot and the clock line
 	var shown := mini(divs.size(), 5)
@@ -658,8 +703,10 @@ static func _empire(b, s: GameState) -> void:
 				b.desk["mode"] = "arrange"
 				b.desk["open_roof"] = true, DeskKit.DETAIL, DeskKit.BLUE, 720.0)
 		y += 46.0
-	# THE LESSON OF SCALE: same unit, different books — best vs worst, drawn
-	if divs.size() >= 2:
+	# THE LESSON OF SCALE: same unit, different books — best vs worst, drawn.
+	# R9 — on a crowded lineup the lesson yields (deleted, never shrunk):
+	# the SHARED strip and the DO lane keep their slots.
+	if divs.size() >= 2 and y + 190.0 <= DeskKit.DO_LANE_Y - 8.0:
 		y = _scale_lesson(b, s, divs, y, unit)
 	# the company strip: totals + the honest SHARED row
 	b.label("SHARED / HQ — %s" % String(shared.get("note", "")), Vector2(DeskKit.X_ID, y),
