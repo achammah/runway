@@ -12,8 +12,12 @@ namespace Runway.Game
     /// zone 1 decomposes the headline, zone 2 applies THE WATERFALL
     /// (SimOwnership.Waterfall, pure), zone 3 reads the fishy flags aloud
     /// (computed fields), zone 4 resolves WHO CAN SAY NO from the signed
-    /// instruments. ACCEPT (two-tap, the existing exit seam) · NEGOTIATE
-    /// (one counter) · DECLINE (the street hears). W2 lane: L-OWN.
+    /// instruments. The DO lane (S3) carries the three answers in one slot —
+    /// [accept — the company sells] (two-tap, the tier said on the control) ·
+    /// [negotiate — one counter] (once spent, the lane drops it and the sheet
+    /// says "counter spent" plainly) · [decline — the street hears]. The
+    /// clock chip re-computes from state every draw, so it ticks weekly.
+    /// W2 lane: L-OWN.
     /// </summary>
     public static class DeskOffer
     {
@@ -60,20 +64,31 @@ namespace Runway.Game
             Dictionary<string, object> bo = state.BuyoutOffer;
             if (bo.Count == 0)
             {
-                DeskKit.HeroBand(b, "the letter left the table",
-                    "the offer this tab was summoned for is gone — the tab folds into HISTORY.");
-                DeskKit.Word(b, "fold the tab away", DeskKit.XId, 180f,
-                    () => b.ResolveMomentary("the offer"), DeskKit.Status, DrawnUI.Ink, 300f);
+                // S1 — the letter is gone: the empty gold tab teaches what
+                // summons it
+                DeskKit.ZeroState(b, new DeskKit.ZeroStateCfg
+                {
+                    WillShow = "a buyout letter, decomposed",
+                    WouldLine = "when a buyer writes, this gold tab appears — the headline split into cash, stock and earnout, the waterfall applied, the fine print read aloud",
+                    ActionLabel = "fold the tab away",
+                    ActionCb = () => b.ResolveMomentary("the offer"),
+                    WakesHint = "summoned by the next letter — answered offers fold into HISTORY",
+                });
                 return;
             }
             int price = Di(bo, "headline", 0);
             int left = Gd.Maxi(Di(bo, "expires_wk", 0) - state.Week, 0);
             float y = DeskKit.HeroBand(b, Ds(bo, "buyer", "a buyer") + " offers $" + GameUi.Money(price),
                 "this desk appeared when the letter did — it leaves when you answer.");
+            // the clock is computed from state on every draw — it ticks weekly
             DeskKit.ClockChip(b, 880f, 12f, "expires in " + left + " wk" + (left == 1 ? "" : "s"));
             TextMeshProUGUI nb = b.L("while it lives, the raise is frozen by their no-shop ask",
                 700f, 44f, 18f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 420f);
             nb.alignment = TextAlignmentOptions.TopRight;
+            // S2 — the live letter IS the red: the strip says the ask + clock
+            if (DeskKit.AskStrip(b, "the offer", DeskKit.XId, y, 1120f,
+                    "accept, counter, or decline below"))
+                y += 24f;
 
             // ── zone 1 · WHAT'S ON THE TABLE
             DeskKit.CardBox z1 = DeskKit.Zone(b, DeskKit.XId, y, 548f, 312f, 1, "what's on the table",
@@ -170,24 +185,42 @@ namespace Runway.Game
             }
             y += 216f + 14f;
 
-            // ── the three answers
-            DeskKit.Arm(b, "offer_accept", "ACCEPT — the two-tap", "press again — the company sells",
-                DeskKit.XId, y, () =>
-                {
-                    SimOwnership.BuyoutAccept(b.State);
-                    b.ResolveMomentary("the offer");
-                }, 300f);
-            if (Dbo(bo, "countered", false))
-                b.L("one counter is all the room there was", DeskKit.XId + 330f, y + 8f,
-                    DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.4f), 300f);
-            else
-                DeskKit.Word(b, "NEGOTIATE — one counter", DeskKit.XId + 330f, y,
-                    () => SimOwnership.BuyoutNegotiate(b.State), DeskKit.Status, DrawnUI.Ink, 310f);
-            DeskKit.Word(b, "DECLINE", DeskKit.XId + 680f, y, () =>
+            // ── the three answers — the DO lane mirrors the whole desk (S3):
+            // accept says its tier (S9's two-tap), the counter rides while it
+            // lasts, decline is as pressable as yes
+            var actions = new List<DeskKit.DoAction>
             {
-                SimOwnership.BuyoutDecline(b.State);
-                b.ResolveMomentary("the offer");
-            }, DeskKit.Status, DrawnUI.WithAlpha(DrawnUI.Coral, 0.9f), 200f);
+                new DeskKit.DoAction
+                {
+                    Label = "accept — the company sells", Tier = "two-tap",
+                    Cb = () =>
+                    {
+                        SimOwnership.BuyoutAccept(b.State);
+                        b.ResolveMomentary("the offer");
+                    },
+                },
+            };
+            if (Dbo(bo, "countered", false))
+                // the spent counter, said plainly where the answer lane lives
+                DeskKit.FitLine(b, "NEGOTIATE — counter spent · one was all the room there was",
+                    DeskKit.XId, DeskKit.DoLaneY + 10f, DeskKit.Detail,
+                    DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f), 560f);
+            else
+                actions.Add(new DeskKit.DoAction
+                {
+                    Label = "negotiate — one counter", Tier = "",
+                    Cb = () => SimOwnership.BuyoutNegotiate(b.State),
+                });
+            actions.Add(new DeskKit.DoAction
+            {
+                Label = "decline — the street hears", Tier = "",
+                Cb = () =>
+                {
+                    SimOwnership.BuyoutDecline(b.State);
+                    b.ResolveMomentary("the offer");
+                },
+            });
+            DeskKit.DoLane(b, actions);
             DeskKit.Footer(b,
                 "answered -> this tab folds into HISTORY · declined offers can sour, or come back higher",
                 "the street hears everything", "", 812f, 846f);
@@ -213,6 +246,20 @@ namespace Runway.Game
         public static void Handle(BinderScreen b, string id)
         {
             if (id == "resolve") Resolve(b);
+        }
+
+        // ── the desk conventions (S8) — the rail reads these ─────────────────
+
+        public static bool IsDormant(GameState _s) { return false; }
+
+        /// The rail's right-aligned word: the countdown, while the letter lives.
+        public static string MicroStatus(GameState s)
+        {
+            if (s.BuyoutOffer.Count == 0) return "";
+            object ew;
+            int exp = s.BuyoutOffer.TryGetValue("expires_wk", out ew) && ew != null
+                ? Convert.ToInt32(ew) : 0;
+            return string.Format("{0} wk", Gd.Maxi(exp - s.Week, 0));
         }
     }
 }

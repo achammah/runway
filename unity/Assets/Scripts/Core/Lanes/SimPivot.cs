@@ -318,7 +318,7 @@ namespace Runway.Core
             return new List<AttentionItem>
             {
                 new AttentionItem { Desk = "pivot", Key = "pivot_armed", Severity = 3,
-                    Label = "the pivot is armed — it fires at LOCK IN" },
+                    Label = "the pivot is armed — it fires at LOCK IN", Control = "disarm" },
             };
         }
     }

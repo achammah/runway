@@ -139,6 +139,13 @@ namespace Runway.Game
             return DrawnUI.Blue;
         }
 
+        /// The seen-store value for a rival: their latest logged act, week
+        /// stamp and all ("wk34: cut prices") — silence reads as "quiet".
+        static string ActStamp(Rival rd)
+        {
+            return rd.Log != null && rd.Log.Count > 0 ? rd.Log[rd.Log.Count - 1] : "quiet";
+        }
+
         public static void Draw(BinderScreen b)
         {
             GameState s = b.State;
@@ -149,11 +156,34 @@ namespace Runway.Game
                 return;
             }
 
+            // S1 — a world with nobody in it yet teaches what the page becomes
+            if (s.Rivals.Count == 0 && Wire(s).Count == 0)
+            {
+                DeskKit.ZeroState(b, new DeskKit.ZeroStateCfg
+                {
+                    WillShow = "the world outside your window — the weather, the rivals, the investors' mood",
+                    WouldLine = "a rival's every act WOULD land here with its week stamp — the record is the tell, and THE RAISE reads the mood",
+                    WakesHint = "wakes when the street makes its first move — rivals act weekly once the world fills in",
+                });
+                return;
+            }
+
             // HERO — the weather answers the tab's question in one second
             float y = DeskKit.HeroBand(b, SeasonBig(s), WeekSentence(s), SeasonCol(s));
 
+            // S2 — a red street names its ask under the hero; the wire below is
+            // the offending surface, so the strip's jump target is marked
+            // there. The 24px the strip spends is reclaimed from the zones'
+            // own air (twin constants).
+            bool red = DeskKit.AskStrip(b, "the street", DeskKit.XId, y, 1120f,
+                "read the wire below");
+            if (red) y += 24f;
+            float gap = red ? 8f : 12f;
+            float z1H = red ? 86f : 92f;
+            float z3H = red ? 112f : 118f;
+
             // 1 · THE WEATHER
-            DeskKit.CardBox z1 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 92f, 1,
+            DeskKit.CardBox z1 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, z1H, 1,
                 "the weather", "");
             DeskKit.Meter(b, z1.ContentX, z1.ContentY + 4f, 560f, 1f, SeasonCol(s),
                 SimStreet.SeasonRead(s.MarketTrend));
@@ -163,7 +193,7 @@ namespace Runway.Game
             if (shock != "")
                 DeskKit.ClockChip(b, z1.ContentX + 950f, z1.ContentY + 2f,
                     string.Format("{0} wks left", SimStreet.WeeksLeft(s, shock)));
-            y = z1.Bottom + 12f;
+            y = z1.Bottom + gap;
 
             // 2 · THE RIVALS — the record is the tell
             List<Rival> ranked = Ranked(s);
@@ -182,6 +212,10 @@ namespace Runway.Game
                 Rival rd = ranked[i];
                 DeskKit.SevDot(b, z2.ContentX, ry + 2f, Heat(s, rd));
                 b.L(rd.Name, z2.ContentX + 34f, ry - 4f, DeskKit.Row, DrawnUI.Ink, 380f);
+                // S5 — the pen circles a rival whose latest act is news since
+                // last open (the log entry carries its own week stamp)
+                if (b.Seen("the street", "act:" + rd.Name, ActStamp(rd)))
+                    DeskKit.PenCircle(b, new Rect(z2.ContentX + 26f, ry - 8f, 268f, 38f));
                 if (CameAtYou(rd))
                     b.L("-> they came at YOU", z2.ContentX + 430f, ry, DeskKit.Detail,
                         DeskKit.Alert, 300f);
@@ -208,15 +242,22 @@ namespace Runway.Game
             if (ranked.Count > 3)
                 DeskKit.FoldRow(b, z2.ContentX, ry, ranked.Count - 3, "rivals",
                     () => { b.Desk["mode"] = "rivals"; });
-            y = z2.Bottom + 12f;
+            y = z2.Bottom + gap;
 
             // 3 · THE INVESTORS' MOOD — the raise's radar reads this
-            DeskKit.CardBox z3 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 118f, 3,
+            DeskKit.CardBox z3 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, z3H, 3,
                 "the investors' mood", "");
-            b.L(string.Format("the street pays ×{0:0.0} the usual  ·  appetite: {1}",
-                SimEngine.ShockValMult(s), Appetite(s)),
+            b.L(string.Format("the street pays ×{0:0.0} the usual  ·",
+                SimEngine.ShockValMult(s)),
                 z3.ContentX, z3.ContentY, DeskKit.Detail,
-                DrawnUI.WithAlpha(DrawnUI.Ink, 0.85f), 800f);
+                DrawnUI.WithAlpha(DrawnUI.Ink, 0.85f), 320f);
+            DeskKit.FitLine(b, "appetite: " + Appetite(s),
+                z3.ContentX + 340f, z3.ContentY, DeskKit.Detail,
+                DrawnUI.WithAlpha(DrawnUI.Ink, 0.85f), 440f);
+            // S5 — a mood swing since last open gets the pen's circle
+            if (b.Seen("the street", "mood", Appetite(s)))
+                DeskKit.PenCircle(b, new Rect(z3.ContentX + 334f,
+                    z3.ContentY - 4f, 452f, 30f));
             var names = new List<string>();
             for (int i = 0; i < Math.Min(s.Investors.Count, 3); i++)
                 names.Add(s.Investors[i].Name);
@@ -228,15 +269,17 @@ namespace Runway.Game
             b.L(book, z3.ContentX, z3.ContentY + 30f, DeskKit.Detail,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 760f);
             DeskKit.Word(b, "feeds THE RAISE ->", z3.ContentX + 840f, z3.ContentY + 12f,
-                () => b.FocusDesk("the raise"), DeskKit.Detail,
+                () => b.FocusDesk("the raise", "", "the street"), DeskKit.Detail,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f), 260f);
-            y = z3.Bottom + 12f;
+            y = z3.Bottom + gap;
 
             // 4 · TAKEN FROM US / THE WIRE — every row names its counter-desk
             List<WireRow> wire = Wire(s);
             float z4H = 52f + Math.Max(Math.Min(wire.Count, 2) * 30f, 28f) + 6f;
             DeskKit.CardBox z4 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, z4H, 4,
                 "taken from us", "");
+            // S2b — a threats jump on the street's red lands spotlit on the wire
+            b.MarkControl("wire", new Rect(z4.X, z4.Y, 1120f, z4H));
             float wy = z4.ContentY - 14f;
             if (wire.Count == 0)
                 b.L("nothing taken this week — the street is only resting.",
@@ -251,8 +294,10 @@ namespace Runway.Game
                 b.L(row.Label + tail, z4.ContentX + 32f, wy, DeskKit.Detail,
                     DrawnUI.WithAlpha(DrawnUI.Ink, 0.85f), 810f);
                 string dsk = row.Desk;
+                // S7 — every counter-desk jump leaves the free back pill
                 DeskKit.Word(b, dsk + " ->", z4.ContentX + 880f, wy - 6f,
-                    () => b.FocusDesk(dsk), DeskKit.Detail, DrawnUI.Coral, 200f);
+                    () => b.FocusDesk(dsk, "", "the street"), DeskKit.Detail,
+                    DrawnUI.Coral, 200f);
                 wy += 30f;
             }
 
@@ -272,6 +317,11 @@ namespace Runway.Game
         static void DrawAllRivals(BinderScreen b, GameState s)
         {
             DeskKit.Back(b, "← the street", () => { b.Desk.Remove("mode"); });
+            // S7 — the drill wears its breadcrumb; S5 — reading the full list
+            // records every rival's latest act as seen
+            b.PushCrumb("the rivals");
+            for (int i = 0; i < s.Rivals.Count; i++)
+                b.Seen("the street", "act:" + s.Rivals[i].Name, ActStamp(s.Rivals[i]));
             // the drill still answers the tab's question before the list starts
             int came = 0;
             for (int i = 0; i < s.Rivals.Count; i++)
@@ -300,9 +350,24 @@ namespace Runway.Game
 
         public static void Handle(BinderScreen b, string id)
         {
-            if (id.StartsWith("go:")) b.FocusDesk(id.Substring(3));
+            if (id.StartsWith("go:")) b.FocusDesk(id.Substring(3), "", "the street");
             else if (id == "rivals") b.Desk["mode"] = "rivals";
             else if (id == "back") b.Desk.Remove("mode");
+        }
+
+        // ── the desk conventions (S8) — the rail reads these ─────────────────
+
+        public static bool IsDormant(GameState _s) { return false; }
+
+        /// The rail's right-aligned word: the sky in one glance.
+        public static string MicroStatus(GameState s)
+        {
+            switch (SimStreet.Season(s))
+            {
+                case "winter": return "winter";
+                case "boom": return "boom";
+            }
+            return SimStreet.TrendBand(s.MarketTrend);
         }
     }
 }

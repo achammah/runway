@@ -398,7 +398,12 @@ namespace Runway.Game
         public void SummonMomentary(string id, string groupName, string label, int wks)
         {
             for (int i = 0; i < _momentary.Count; i++)
-                if (_momentary[i][0] == id) return;
+                if (_momentary[i][0] == id)
+                {
+                    _momentary[i][2] = label;
+                    _momentary[i][3] = wks.ToString();
+                    return;
+                }
             int gi = Array.IndexOf(GroupNames, groupName);
             if (gi < 0) gi = 2;
             _momentary.Add(new[] { id, gi.ToString(), label, wks.ToString() });

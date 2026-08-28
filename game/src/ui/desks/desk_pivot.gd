@@ -6,13 +6,15 @@ extends RefCounted
 ## docs/design/12-binder-rework-2.md § pivot (the four zones).
 ##
 ##   1 THE TWO DOORS   audience pivot / product pivot — each door lists its
-##                     exact costs in its own words; debts survive BOTH,
-##                     said on both. Pressing a door chooses it; the
-##                     audience door then asks where you are going.
-##   2 THE PREVIEW     computed from live state, never asserted: N customers,
-##                     the well's $X, N named deals, v0.62 -> v0.1, what
-##                     regenerates. The product roll shows its honest RANGE —
-##                     the die is cast at the press, not the preview.
+##                     exact costs in its own words plus ONE line of history
+##                     ("audience pivots are rarer — and bloodier"); debts
+##                     survive BOTH, said on both. Pressing a door chooses it;
+##                     the audience door then asks where you are going.
+##   2 THE PREVIEW     a two-column KEEP (sage) / DIES (red) ledger, computed
+##                     from live state, never asserted. Every number is
+##                     pressable — its receipt says the source ("31 customers
+##                     — all Consumer traction"). The product roll shows its
+##                     honest RANGE — the die is cast at the press, not here.
 ##   3 THE WEEK AFTER  what the first post-pivot week looks like.
 ##   4 THE ARM         the word PIVOT typed + the two-tap. Esc keeps the
 ##                     company (desk-local state dies with the visit). The
@@ -50,6 +52,9 @@ const PROD_DIES: Array[String] = [
 ]
 const PROD_LIVES := "survives: channel + sales learning · the well · the cash"
 const DEBTS_LINE := "the debts survive. the bank does not forget."
+## One line of history per door — how these choices tend to go (13-binder-ux).
+const AUD_FRAME := "audience pivots are rarer — and bloodier: the market resets to zero"
+const PROD_FRAME := "the common door — the audience stays while the machine reboots"
 
 static func draw(b) -> void:
 	var s: GameState = b.state
@@ -66,32 +71,45 @@ static func draw(b) -> void:
 		"the escape hatch — the money survives; what burns depends on the axis",
 		DeskKit.INK)
 
-	# 1 · THE TWO DOORS
-	var z1 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 296.0, 1, "the two doors",
-		"each door lists its exact costs — pick one and the preview prices it")
+	# 1 · THE TWO DOORS — the doors speak for themselves (the lesson line's
+	# room now carries each door's one line of history)
+	var z1 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 296.0, 1, "the two doors", "")
 	_door(b, s, z1, 0.0, "audience", door, target)
 	_door(b, s, z1, 560.0, "product", door, target)
 	y = float(z1.bottom) + 12.0
 
-	# 2 · THE PREVIEW — computed, not asserted
-	var z2 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 188.0, 2, "the preview",
-		"computed from the live books — nothing here is a guess")
+	# 2 · THE PREVIEW — a KEEP / DIES ledger, computed, not asserted; every
+	# number pressable, its receipt naming the source (S4)
+	var z2 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 192.0, 2, "the preview", "")
 	var py := float(z2.cursor) - 8.0
 	if door == "":
 		DeskKit.empty(b, Vector2(float(z2.content_x), py),
 			"pick a door — the preview prices it against the live books.", "")
 	else:
 		var pv := SimPivot.preview(s, door)
-		var lines := _preview_lines(s, door, pv)
-		for ln in lines:
-			var l: Dictionary = ln
-			b.label(String(l.get("label", "")), Vector2(float(z2.content_x), py),
-				DeskKit.DETAIL, Color(DeskKit.INK, 0.85), 700.0)
-			var v: Label = b.label(String(l.get("value", "")),
-				Vector2(float(z2.content_x), py), DeskKit.DETAIL,
-				l.get("col", DeskKit.PEN), float(z2.money_x) - float(z2.content_x))
-			v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-			py += 26.0
+		var cx := float(z2.content_x)
+		DeskKit.fit_line(b, "KEEP", Vector2(cx, py), 21, DeskKit.SAGE, 200.0)
+		DeskKit.fit_line(b, "DIES", Vector2(cx + 560.0, py), 21, DeskKit.ALERT, 200.0)
+		py += 24.0
+		var ky := py
+		for kr in _keep_rows(s, door, pv):
+			_col_row(b, cx, ky, kr as Dictionary, DeskKit.SAGE)
+			ky += 24.0
+		var dy := py
+		for dr in _dies_rows(s, door, pv):
+			_col_row(b, cx + 560.0, dy, dr as Dictionary, DeskKit.PEN)
+			dy += 24.0
+		# the debts, once, across the whole ledger — kept, and against you
+		var by := py + 96.0
+		DeskKit.fit_line(b, "the debts stay owed — the bank does not forget",
+			Vector2(cx, by), 20, DeskKit.PEN, 700.0)
+		var bv: Label = DeskKit.fit_line(b, "$%s" % _fmt(int(pv.get("debts", 0))),
+			Vector2(float(z2.money_x) - 200.0, by), 20, DeskKit.PEN, 200.0)
+		bv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		DeskKit.press_receipt(b, Rect2(float(z2.money_x) - 200.0, by - 2.0, 200.0, 24.0),
+			"the bank's ledger", [
+				{"label": "owed to the bank", "value": "$%s" % _fmt(int(pv.get("debts", 0)))},
+				{"label": "survives any pivot — audience or product", "value": ""}])
 	y = float(z2.bottom) + 12.0
 
 	# 3 · THE WEEK AFTER — ONE measured line, so nothing ever crosses into
@@ -153,7 +171,11 @@ static func _door(b, s: GameState, z: Dictionary, dx: float, kind: String,
 		DeskKit.DETAIL, DeskKit.SAGE, 530.0)
 	ly += 24.0
 	b.label(DEBTS_LINE, Vector2(x, ly), DeskKit.DETAIL, DeskKit.PEN, 530.0)
-	ly += 28.0
+	ly += 24.0
+	# one line of history — how this door tends to go
+	b.label(AUD_FRAME if kind == "audience" else PROD_FRAME, Vector2(x, ly),
+		DeskKit.LAW, Color(DeskKit.INK, 0.55), 530.0)
+	ly += 26.0
 	# the destination chips, once this door is the chosen one
 	if chosen:
 		var cx := x
@@ -205,6 +227,91 @@ static func _preview_lines(s: GameState, door: String, pv: Dictionary) -> Array:
 			"col": DeskKit.PEN},
 	]
 
+## One ledger row inside a KEEP/DIES column: label left, the number right —
+## and the number wears its receipt (S4) when the row carries one.
+static func _col_row(b, x: float, y: float, r: Dictionary, val_col: Color) -> void:
+	DeskKit.fit_line(b, String(r.get("label", "")), Vector2(x, y), 20,
+		Color(DeskKit.INK, 0.8), 320.0)
+	var v: Label = DeskKit.fit_line(b, String(r.get("value", "")),
+		Vector2(x + 330.0, y), 20, val_col, 190.0)
+	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	var lines: Array = r.get("lines", [])
+	if not lines.is_empty():
+		DeskKit.press_receipt(b, Rect2(x + 330.0, y - 2.0, 190.0, 24.0),
+			String(r.get("title", "")), lines)
+
+## What the chosen door KEEPS, numbers sourced from the live books.
+static func _keep_rows(s: GameState, door: String, pv: Dictionary) -> Array:
+	if door == "audience":
+		return [
+			{"label": "the product, as built", "value": String(pv.get("version", "v0.1")),
+				"title": "%s — the product survives whole" % String(pv.get("version", "v0.1")),
+				"lines": [{"label": "product score", "value": "%d of 100" % s.product},
+					{"label": "carried whole through an audience pivot", "value": ""}]},
+			{"label": "the team", "value": "%d people" % s.employees.size(),
+				"title": "%d people stay" % s.employees.size(),
+				"lines": [{"label": "on payroll", "value": str(s.employees.size())},
+					{"label": "the team survives the market", "value": ""}]},
+			{"label": "the cash", "value": "$%s" % _fmt(s.cash),
+				"title": "the cash survives",
+				"lines": [{"label": "cash on hand", "value": "$%s" % _fmt(s.cash)},
+					{"label": "cash never burns in a pivot", "value": ""}]},
+		]
+	return [
+		{"label": "channel + sales learning", "value": "kept"},
+		{"label": "the content well", "value": "$%s" % _fmt(int(round(s.content_equity))),
+			"title": "the well survives a product pivot",
+			"lines": [{"label": "content equity built", "value": "$%s" % _fmt(int(round(s.content_equity)))},
+				{"label": "the channel still remembers you", "value": ""}]},
+		{"label": "the cash", "value": "$%s" % _fmt(s.cash),
+			"title": "the cash survives",
+			"lines": [{"label": "cash on hand", "value": "$%s" % _fmt(s.cash)},
+				{"label": "cash never burns in a pivot", "value": ""}]},
+		{"label": "tech debt", "value": "clears −%d" % int(pv.get("debt_cleared", 0)),
+			"title": "the rebuild pays the debt",
+			"lines": [{"label": "tech debt on the books", "value": str(int(pv.get("debt_cleared", 0)))},
+				{"label": "a fresh v0.1 owes nobody", "value": ""}]},
+	]
+
+## What the chosen door KILLS — the numbers say where they came from.
+static func _dies_rows(s: GameState, door: String, pv: Dictionary) -> Array:
+	if door == "audience":
+		return [
+			{"label": "customers walk", "value": "all %d" % int(pv.get("customers_lost", 0)),
+				"title": "%d customers — all %s traction" % [int(pv.get("customers_lost", 0)), s.biz_who],
+				"lines": [{"label": "traction on the books", "value": str(int(pv.get("customers_lost", 0)))},
+					{"label": "audience", "value": s.biz_who},
+					{"label": "an audience pivot starts traction at zero", "value": ""}]},
+			{"label": "the content well drains", "value": "$%s" % _fmt(int(pv.get("well", 0))),
+				"title": "the well dies with its market",
+				"lines": [{"label": "content equity built", "value": "$%s" % _fmt(int(pv.get("well", 0)))},
+					{"label": "drained — the channel forgets you", "value": ""}]},
+			{"label": "named deals die", "value": str(int(pv.get("deals_dead", 0))),
+				"title": "%d deals — dead with their market" % int(pv.get("deals_dead", 0)),
+				"lines": [{"label": "named deals on the board", "value": str(int(pv.get("deals_dead", 0)))},
+					{"label": "their buyers live in the old market", "value": ""}]},
+			{"label": "the market re-fogs", "value": "beliefs reset"},
+		]
+	return [
+		{"label": "customers — the roll decides", "value": "50–100%% of %d" % int(pv.get("customers_at_risk", 0)),
+			"title": "%d customers — all %s traction" % [int(pv.get("customers_at_risk", 0)), s.biz_who],
+			"lines": [{"label": "traction on the books", "value": str(int(pv.get("customers_at_risk", 0)))},
+				{"label": "the die is cast at the press, not the preview", "value": ""}]},
+		{"label": "the version", "value": "%s -> %s" % [String(pv.get("version_from", "")),
+				String(pv.get("version_to", ""))],
+			"title": "every advance dies",
+			"lines": [{"label": "version today", "value": String(pv.get("version_from", ""))},
+				{"label": "the rebuild starts at", "value": String(pv.get("version_to", ""))}]},
+		{"label": "bets on the wall", "value": str(int(pv.get("bets_dead", 0))),
+			"title": "%d bets die with the build" % int(pv.get("bets_dead", 0)),
+			"lines": [{"label": "bets on the wall", "value": str(int(pv.get("bets_dead", 0)))},
+				{"label": "platform bets die with the platform", "value": ""}]},
+		{"label": "named deals knock back", "value": str(int(pv.get("deals_knocked", 0))),
+			"title": "%d deals return to the first meeting" % int(pv.get("deals_knocked", 0)),
+			"lines": [{"label": "named deals on the board", "value": str(int(pv.get("deals_knocked", 0)))},
+				{"label": "they will want to see the new build first", "value": ""}]},
+	]
+
 ## Money wears its commas everywhere on the desk (the accounting rules law).
 static func _fmt(n: int) -> String:
 	var t := str(absi(n))
@@ -228,6 +335,10 @@ static func _draw_armed(b, s: GameState, a: Dictionary) -> void:
 	var y := DeskKit.hero_band(b, "ARMED",
 		"the %s pivot fires at the next LOCK IN — disarm keeps the company"
 		% kind, DeskKit.ALERT)
+	# S2 — the armed desk is red: the strip names the ask under the hero
+	if DeskKit.ask_strip(b, "pivot", DeskKit.X_ID, y, 1120.0,
+			"disarm below keeps the company"):
+		y += 24.0
 	var pv := SimPivot.preview(s, kind)
 	var lines: Array = []
 	for l in _preview_lines(s, kind, pv):
@@ -242,6 +353,8 @@ static func _draw_armed(b, s: GameState, a: Dictionary) -> void:
 		"foot": "the DM narrates the week it fires · new topics and paintings follow"})
 	DeskKit.word(b, "disarm — keep the company", Vector2(DeskKit.X_ID, y + 10.0),
 		func() -> void: SimPivot.disarm(b.state), DeskKit.ROW, DeskKit.INK, 520.0)
+	# S2b — the threats row's jump lands spotlit on the way out
+	b.mark_control("disarm", Rect2(DeskKit.X_ID - 6.0, y + 6.0, 532.0, 44.0))
 	DeskKit.footer(b, {
 		"computed": "armed pivots read as a sev-3 alarm — the tab wears it until this fires",
 		"rules": DEBTS_LINE, "y": 820.0, "rules_y": 852.0})
@@ -281,3 +394,13 @@ static func handle(b, id: String) -> void:
 			b.desk.erase("chip")
 		"disarm":
 			SimPivot.disarm(b.state)
+
+# ── the desk conventions (S8) — the rail reads these ─────────────────────────
+
+static func is_dormant(_state) -> bool:
+	return false
+
+## The rail's right-aligned word: silence, until the hatch is armed.
+static func micro_status(state) -> String:
+	var s: GameState = state
+	return "ARMED" if not SimPivot.armed(s).is_empty() else ""

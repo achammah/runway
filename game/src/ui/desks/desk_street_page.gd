@@ -133,12 +133,32 @@ static func draw(b) -> void:
 		_draw_all_rivals(b, s)
 		return
 
+	# S1 — a world with nobody in it yet teaches what the page will become
+	if s.rivals.is_empty() and _wire_rows(s).is_empty():
+		DeskKit.zero_state(b, {
+			"will_show": "the world outside your window — the weather, the rivals, the investors' mood",
+			"would_line": "a rival's every act WOULD land here with its week stamp — the record is the tell, and THE RAISE reads the mood",
+			"wakes_hint": "wakes when the street makes its first move — rivals act weekly once the world fills in",
+		})
+		return
+
 	# HERO — the weather answers the tab's question in one second
 	var y := DeskKit.hero_band(b, _season_big(s), _week_sentence(s),
 		_season_col(s), 6.0, false)
 
+	# S2 — a red street names its ask under the hero; the wire below is the
+	# offending surface, so the strip's jump target is marked there. The 24px
+	# the strip spends is reclaimed from the zones' own air (twin constants).
+	var red := DeskKit.ask_strip(b, "the street", DeskKit.X_ID, y, 1120.0,
+		"read the wire below")
+	if red:
+		y += 24.0
+	var gap := 8.0 if red else 12.0
+	var z1_h := 86.0 if red else 92.0
+	var z3_h := 112.0 if red else 118.0
+
 	# 1 · THE WEATHER — the drawn season band, weeks left on the clock chip
-	var z1 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 92.0, 1, "the weather", "")
+	var z1 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, z1_h, 1, "the weather", "")
 	var band_col := _season_col(s)
 	DeskKit.meter(b, float(z1.content_x), float(z1.content_y) + 4.0, 560.0, 1.0,
 		band_col, SimStreet.season_read(s.market_trend))
@@ -149,7 +169,7 @@ static func draw(b) -> void:
 	if shock != "":
 		DeskKit.clock_chip(b, float(z1.content_x) + 950.0, float(z1.content_y) + 2.0,
 			"%d wks left" % SimStreet.weeks_left(s, shock))
-	y = float(z1.bottom) + 12.0
+	y = float(z1.bottom) + gap
 
 	# 2 · THE RIVALS — the record is the tell
 	var ranked := _ranked_rivals(s)
@@ -169,6 +189,11 @@ static func draw(b) -> void:
 		DeskKit.sev_dot(b, float(z2.content_x), ry + 2.0, _heat(s, rd))
 		b.label(String(rd.get("name", "?")), Vector2(float(z2.content_x) + 34.0, ry - 4.0),
 			DeskKit.ROW, DeskKit.INK, 380.0)
+		# S5 — the pen circles a rival whose latest act is news since last open
+		# (the log entry carries its own week stamp, so a repeat act next month
+		# still reads as news)
+		if b.seen("the street", "act:" + String(rd.get("name", "?")), _act_stamp(rd)):
+			DeskKit.pen_circle(b, Rect2(float(z2.content_x) + 26.0, ry - 8.0, 268.0, 38.0))
 		if _came_at_you(rd):
 			b.label("-> they came at YOU", Vector2(float(z2.content_x) + 430.0, ry),
 				DeskKit.DETAIL, DeskKit.ALERT, 300.0)
@@ -194,14 +219,21 @@ static func draw(b) -> void:
 	if ranked.size() > 3:
 		DeskKit.fold_row(b, float(z2.content_x), ry, ranked.size() - 3, "rivals",
 			func() -> void: b.desk["mode"] = "rivals")
-	y = float(z2.bottom) + 12.0
+	y = float(z2.bottom) + gap
 
 	# 3 · THE INVESTORS' MOOD — the raise's radar reads this
-	var z3 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 118.0, 3, "the investors' mood", "")
-	b.label("the street pays ×%.1f the usual  ·  appetite: %s"
-		% [SimEngine.shock_val_mult(s), _appetite(s)],
+	var z3 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, z3_h, 3, "the investors' mood", "")
+	b.label("the street pays ×%.1f the usual  ·" % SimEngine.shock_val_mult(s),
 		Vector2(float(z3.content_x), float(z3.content_y)), DeskKit.DETAIL,
-		Color(DeskKit.INK, 0.85), 800.0)
+		Color(DeskKit.INK, 0.85), 320.0)
+	DeskKit.fit_line(b, "appetite: %s" % _appetite(s),
+		Vector2(float(z3.content_x) + 340.0, float(z3.content_y)), DeskKit.DETAIL,
+		Color(DeskKit.INK, 0.85), 440.0)
+	# S5 — a mood swing since last open gets the pen's circle (the word is the
+	# store's key value: same word, no news)
+	if b.seen("the street", "mood", _appetite(s)):
+		DeskKit.pen_circle(b, Rect2(float(z3.content_x) + 334.0,
+			float(z3.content_y) - 4.0, 452.0, 30.0))
 	var names := PackedStringArray()
 	for inv in s.investors.slice(0, 3):
 		names.append(String((inv as Dictionary).get("name", "?")))
@@ -212,14 +244,17 @@ static func draw(b) -> void:
 	b.label(book, Vector2(float(z3.content_x), float(z3.content_y) + 30.0),
 		DeskKit.DETAIL, Color(DeskKit.INK, 0.6), 760.0)
 	DeskKit.word(b, "feeds THE RAISE ->", Vector2(float(z3.content_x) + 840.0,
-		float(z3.content_y) + 12.0), func() -> void: b.focus_desk("the raise"),
+		float(z3.content_y) + 12.0), func() -> void:
+			b.focus_desk("the raise", "", "the street"),
 		DeskKit.DETAIL, Color(DeskKit.INK, 0.7), 260.0)
-	y = float(z3.bottom) + 12.0
+	y = float(z3.bottom) + gap
 
 	# 4 · TAKEN FROM US / THE WIRE — every row names its counter-desk
 	var wire := _wire_rows(s)
 	var z4_h := 52.0 + maxf(float(mini(wire.size(), 2)) * 30.0, 28.0) + 6.0
 	var z4 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, z4_h, 4, "taken from us", "")
+	# S2b — a threats jump on the street's red lands spotlit on the wire
+	b.mark_control("wire", Rect2(float(z4.x), float(z4.y), 1120.0, z4_h))
 	var wy := float(z4.content_y) - 14.0
 	if wire.is_empty():
 		b.label("nothing taken this week — the street is only resting.",
@@ -233,8 +268,10 @@ static func draw(b) -> void:
 			Vector2(float(z4.content_x) + 32.0, wy),
 			DeskKit.DETAIL, Color(DeskKit.INK, 0.85), 810.0)
 		var dsk := String(row.get("desk", ""))
+		# S7 — every counter-desk jump leaves the free back pill
 		DeskKit.word(b, dsk + " ->", Vector2(float(z4.content_x) + 880.0, wy - 6.0),
-			func() -> void: b.focus_desk(dsk), DeskKit.DETAIL, DeskKit.PEN, 200.0)
+			func() -> void: b.focus_desk(dsk, "", "the street"),
+			DeskKit.DETAIL, DeskKit.PEN, 200.0)
 		wy += 30.0
 
 	var pressure := 0.0
@@ -253,6 +290,12 @@ static func draw(b) -> void:
 static func _draw_all_rivals(b, s: GameState) -> void:
 	DeskKit.back(b, "← the street", func() -> void:
 		b.desk.erase("mode"))
+	# S7 — the drill wears its breadcrumb; S5 — reading the full list records
+	# every rival's latest act as seen (the fold hides nothing forever)
+	b.push_crumb("the rivals")
+	for rv1 in s.rivals:
+		b.seen("the street", "act:" + String((rv1 as Dictionary).get("name", "?")),
+			_act_stamp(rv1 as Dictionary))
 	# the drill still answers the tab's question before the list starts
 	var came := 0
 	for rv0 in s.rivals:
@@ -275,11 +318,32 @@ static func _draw_all_rivals(b, s: GameState) -> void:
 
 static func handle(b, id: String) -> void:
 	if id.begins_with("go:"):
-		b.focus_desk(id.substr(3))
+		b.focus_desk(id.substr(3), "", "the street")
 	elif id == "rivals":
 		b.desk["mode"] = "rivals"
 	elif id == "back":
 		b.desk.erase("mode")
+
+## The seen-store value for a rival: their latest logged act, week stamp and
+## all ("wk34: cut prices under you") — silence reads as "quiet".
+static func _act_stamp(rd: Dictionary) -> String:
+	var lg: Array = rd.get("log", [])
+	return String(lg.back()) if not lg.is_empty() else "quiet"
+
+# ── the desk conventions (S8) — the rail reads these ─────────────────────────
+
+static func is_dormant(_state) -> bool:
+	return false
+
+## The rail's right-aligned word: the sky in one glance.
+static func micro_status(state) -> String:
+	var s: GameState = state
+	match SimStreet.season(s):
+		"winter":
+			return "winter"
+		"boom":
+			return "boom"
+	return SimStreet.trend_band(s.market_trend)
 
 static func _season_col(s: GameState) -> Color:
 	match SimStreet.season(s):

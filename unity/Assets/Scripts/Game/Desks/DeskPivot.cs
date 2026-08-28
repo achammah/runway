@@ -13,11 +13,13 @@ namespace Runway.Game
     /// W2 lane: L-COMPANY. THE QUESTION: "what survives if we change course?"
     /// Spec: DECISIONS.md § THE PIVOT + 12-binder-rework-2.md § pivot.
     ///
-    /// 1 THE TWO DOORS (exact costs on each; debts survive both, said on
-    /// both) · 2 THE PREVIEW (computed from live state; the product roll
-    /// shows its honest RANGE) · 3 THE WEEK AFTER · 4 THE ARM (the word
-    /// PIVOT typed + the two-tap; Esc keeps the company). The armed pivot
-    /// resolves at the next LOCK IN (SimPivot.ResolveArmed).
+    /// 1 THE TWO DOORS (exact costs on each + ONE line of history per door;
+    /// debts survive both, said on both) · 2 THE PREVIEW (a two-column KEEP
+    /// (sage) / DIES (red) ledger computed from live state; every number
+    /// pressable — its receipt says the source: "31 customers — all Consumer
+    /// traction"; the product roll shows its honest RANGE) · 3 THE WEEK
+    /// AFTER · 4 THE ARM (the word PIVOT typed + the two-tap; Esc keeps the
+    /// company). The armed pivot resolves at the next LOCK IN.
     /// </summary>
     public static class DeskPivot
     {
@@ -40,6 +42,9 @@ namespace Runway.Game
         };
         const string ProdLives = "survives: channel + sales learning · the well · the cash";
         const string DebtsLine = "the debts survive. the bank does not forget.";
+        /// One line of history per door — how these choices tend to go.
+        const string AudFrame = "audience pivots are rarer — and bloodier: the market resets to zero";
+        const string ProdFrame = "the common door — the audience stays while the machine reboots";
 
         public static string[] HeroSummary(GameState s)
         {
@@ -74,33 +79,56 @@ namespace Runway.Game
                 "the escape hatch — the money survives; what burns depends on the axis",
                 DrawnUI.Ink);
 
-            // 1 · THE TWO DOORS
+            // 1 · THE TWO DOORS — the doors speak for themselves (the lesson
+            // line's room now carries each door's one line of history)
             DeskKit.CardBox z1 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 296f, 1,
-                "the two doors",
-                "each door lists its exact costs — pick one and the preview prices it");
+                "the two doors", "");
             Door(b, s, z1, 0f, "audience", door, target);
             Door(b, s, z1, 560f, "product", door, target);
             y = z1.Bottom + 12f;
 
-            // 2 · THE PREVIEW — computed, not asserted
-            DeskKit.CardBox z2 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 188f, 2,
-                "the preview", "computed from the live books — nothing here is a guess");
+            // 2 · THE PREVIEW — a KEEP / DIES ledger, computed, not asserted;
+            // every number pressable, its receipt naming the source (S4)
+            DeskKit.CardBox z2 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 192f, 2,
+                "the preview", "");
             float py = z2.Cursor - 8f;
             if (door == "")
                 DeskKit.Empty(b, z2.ContentX, py,
                     "pick a door — the preview prices it against the live books.", "");
             else
             {
-                List<string[]> lines = PreviewLines(s, door, out List<Color> cols);
-                for (int i = 0; i < lines.Count; i++)
+                PivotPreview pv = SimPivot.Preview(s, door);
+                float cx = z2.ContentX;
+                DeskKit.FitLine(b, "KEEP", cx, py, 21f, DrawnUI.Sage, 200f);
+                DeskKit.FitLine(b, "DIES", cx + 560f, py, 21f, DeskKit.Alert, 200f);
+                py += 24f;
+                float ky = py;
+                foreach (LedgerRow kr in KeepRows(s, door, pv))
                 {
-                    b.L(lines[i][0], z2.ContentX, py, DeskKit.Detail,
-                        DrawnUI.WithAlpha(DrawnUI.Ink, 0.85f), 700f);
-                    TextMeshProUGUI v = b.L(lines[i][1], z2.ContentX, py, DeskKit.Detail,
-                        cols[i], z2.MoneyX - z2.ContentX);
-                    v.alignment = TextAlignmentOptions.TopRight;
-                    py += 26f;
+                    ColRow(b, cx, ky, kr, DrawnUI.Sage);
+                    ky += 24f;
                 }
+                float dy = py;
+                foreach (LedgerRow dr in DiesRows(s, door, pv))
+                {
+                    ColRow(b, cx + 560f, dy, dr, DrawnUI.Coral);
+                    dy += 24f;
+                }
+                // the debts, once, across the whole ledger — kept, against you
+                float by = py + 96f;
+                DeskKit.FitLine(b, "the debts stay owed — the bank does not forget",
+                    cx, by, 20f, DrawnUI.Coral, 700f);
+                TextMeshProUGUI bv = DeskKit.FitLine(b, "$" + GameUi.Money(pv.Debts),
+                    z2.MoneyX - 200f, by, 20f, DrawnUI.Coral, 200f);
+                bv.alignment = TextAlignmentOptions.TopRight;
+                DeskKit.PressReceipt(b, new Rect(z2.MoneyX - 200f, by - 2f, 200f, 24f),
+                    "the bank's ledger", new List<DeskKit.TicketLine>
+                    {
+                        new DeskKit.TicketLine { Label = "owed to the bank",
+                            Value = "$" + GameUi.Money(pv.Debts) },
+                        new DeskKit.TicketLine { Label = "survives any pivot — audience or product",
+                            Value = "" },
+                    });
             }
             y = z2.Bottom + 12f;
 
@@ -170,7 +198,11 @@ namespace Runway.Game
                 DrawnUI.Sage, 530f);
             ly += 24f;
             b.L(DebtsLine, x, ly, DeskKit.Detail, DrawnUI.Coral, 530f);
-            ly += 28f;
+            ly += 24f;
+            // one line of history — how this door tends to go
+            b.L(kind == "audience" ? AudFrame : ProdFrame, x, ly, DeskKit.Law,
+                DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), 530f);
+            ly += 26f;
             if (chosen)
             {
                 float cx = x;
@@ -217,6 +249,165 @@ namespace Runway.Game
                 }, DeskKit.Detail, DrawnUI.Ink, 540f);
                 hit.GetComponent<RectTransform>().sizeDelta = new Vector2(544f, 240f);
             }
+        }
+
+        sealed class LedgerRow
+        {
+            public string Label = "";
+            public string Value = "";
+            public string Title = "";
+            public List<DeskKit.TicketLine> Lines;
+        }
+
+        /// One ledger row inside a KEEP/DIES column: label left, the number
+        /// right — and the number wears its receipt (S4) when the row has one.
+        static void ColRow(BinderScreen b, float x, float y, LedgerRow r, Color valCol)
+        {
+            DeskKit.FitLine(b, r.Label, x, y, 20f,
+                DrawnUI.WithAlpha(DrawnUI.Ink, 0.8f), 320f);
+            TextMeshProUGUI v = DeskKit.FitLine(b, r.Value, x + 330f, y, 20f,
+                valCol, 190f);
+            v.alignment = TextAlignmentOptions.TopRight;
+            if (r.Lines != null && r.Lines.Count > 0)
+                DeskKit.PressReceipt(b, new Rect(x + 330f, y - 2f, 190f, 24f),
+                    r.Title, r.Lines);
+        }
+
+        static DeskKit.TicketLine Tl(string label, string value)
+        {
+            return new DeskKit.TicketLine { Label = label, Value = value };
+        }
+
+        /// What the chosen door KEEPS, numbers sourced from the live books.
+        static List<LedgerRow> KeepRows(GameState s, string door, PivotPreview pv)
+        {
+            if (door == "audience")
+                return new List<LedgerRow>
+                {
+                    new LedgerRow { Label = "the product, as built", Value = pv.Version,
+                        Title = pv.Version + " — the product survives whole",
+                        Lines = new List<DeskKit.TicketLine>
+                        {
+                            Tl("product score", string.Format("{0} of 100", s.Product)),
+                            Tl("carried whole through an audience pivot", ""),
+                        } },
+                    new LedgerRow { Label = "the team",
+                        Value = string.Format("{0} people", s.Employees.Count),
+                        Title = string.Format("{0} people stay", s.Employees.Count),
+                        Lines = new List<DeskKit.TicketLine>
+                        {
+                            Tl("on payroll", s.Employees.Count.ToString()),
+                            Tl("the team survives the market", ""),
+                        } },
+                    new LedgerRow { Label = "the cash", Value = "$" + GameUi.Money(s.Cash),
+                        Title = "the cash survives",
+                        Lines = new List<DeskKit.TicketLine>
+                        {
+                            Tl("cash on hand", "$" + GameUi.Money(s.Cash)),
+                            Tl("cash never burns in a pivot", ""),
+                        } },
+                };
+            int well = (int)Math.Round(s.ContentEquity);
+            return new List<LedgerRow>
+            {
+                new LedgerRow { Label = "channel + sales learning", Value = "kept" },
+                new LedgerRow { Label = "the content well", Value = "$" + GameUi.Money(well),
+                    Title = "the well survives a product pivot",
+                    Lines = new List<DeskKit.TicketLine>
+                    {
+                        Tl("content equity built", "$" + GameUi.Money(well)),
+                        Tl("the channel still remembers you", ""),
+                    } },
+                new LedgerRow { Label = "the cash", Value = "$" + GameUi.Money(s.Cash),
+                    Title = "the cash survives",
+                    Lines = new List<DeskKit.TicketLine>
+                    {
+                        Tl("cash on hand", "$" + GameUi.Money(s.Cash)),
+                        Tl("cash never burns in a pivot", ""),
+                    } },
+                new LedgerRow { Label = "tech debt",
+                    Value = string.Format("clears −{0}", pv.DebtCleared),
+                    Title = "the rebuild pays the debt",
+                    Lines = new List<DeskKit.TicketLine>
+                    {
+                        Tl("tech debt on the books", pv.DebtCleared.ToString()),
+                        Tl("a fresh v0.1 owes nobody", ""),
+                    } },
+            };
+        }
+
+        /// What the chosen door KILLS — the numbers say where they came from.
+        static List<LedgerRow> DiesRows(GameState s, string door, PivotPreview pv)
+        {
+            if (door == "audience")
+                return new List<LedgerRow>
+                {
+                    new LedgerRow { Label = "customers walk",
+                        Value = string.Format("all {0}", pv.CustomersLost),
+                        Title = string.Format("{0} customers — all {1} traction",
+                            pv.CustomersLost, s.BizWho),
+                        Lines = new List<DeskKit.TicketLine>
+                        {
+                            Tl("traction on the books", pv.CustomersLost.ToString()),
+                            Tl("audience", s.BizWho),
+                            Tl("an audience pivot starts traction at zero", ""),
+                        } },
+                    new LedgerRow { Label = "the content well drains",
+                        Value = "$" + GameUi.Money(pv.Well),
+                        Title = "the well dies with its market",
+                        Lines = new List<DeskKit.TicketLine>
+                        {
+                            Tl("content equity built", "$" + GameUi.Money(pv.Well)),
+                            Tl("drained — the channel forgets you", ""),
+                        } },
+                    new LedgerRow { Label = "named deals die",
+                        Value = pv.DealsDead.ToString(),
+                        Title = string.Format("{0} deals — dead with their market",
+                            pv.DealsDead),
+                        Lines = new List<DeskKit.TicketLine>
+                        {
+                            Tl("named deals on the board", pv.DealsDead.ToString()),
+                            Tl("their buyers live in the old market", ""),
+                        } },
+                    new LedgerRow { Label = "the market re-fogs", Value = "beliefs reset" },
+                };
+            return new List<LedgerRow>
+            {
+                new LedgerRow { Label = "customers — the roll decides",
+                    Value = string.Format("50–100% of {0}", pv.CustomersAtRisk),
+                    Title = string.Format("{0} customers — all {1} traction",
+                        pv.CustomersAtRisk, s.BizWho),
+                    Lines = new List<DeskKit.TicketLine>
+                    {
+                        Tl("traction on the books", pv.CustomersAtRisk.ToString()),
+                        Tl("the die is cast at the press, not the preview", ""),
+                    } },
+                new LedgerRow { Label = "the version",
+                    Value = string.Format("{0} -> {1}", pv.VersionFrom, pv.VersionTo),
+                    Title = "every advance dies",
+                    Lines = new List<DeskKit.TicketLine>
+                    {
+                        Tl("version today", pv.VersionFrom),
+                        Tl("the rebuild starts at", pv.VersionTo),
+                    } },
+                new LedgerRow { Label = "bets on the wall",
+                    Value = pv.BetsDead.ToString(),
+                    Title = string.Format("{0} bets die with the build", pv.BetsDead),
+                    Lines = new List<DeskKit.TicketLine>
+                    {
+                        Tl("bets on the wall", pv.BetsDead.ToString()),
+                        Tl("platform bets die with the platform", ""),
+                    } },
+                new LedgerRow { Label = "named deals knock back",
+                    Value = pv.DealsKnocked.ToString(),
+                    Title = string.Format("{0} deals return to the first meeting",
+                        pv.DealsKnocked),
+                    Lines = new List<DeskKit.TicketLine>
+                    {
+                        Tl("named deals on the board", pv.DealsKnocked.ToString()),
+                        Tl("they will want to see the new build first", ""),
+                    } },
+            };
         }
 
         static List<string[]> PreviewLines(GameState s, string door, out List<Color> cols)
@@ -266,6 +457,10 @@ namespace Runway.Game
             float y = DeskKit.HeroBand(b, "ARMED",
                 string.Format("the {0} pivot fires at the next LOCK IN — disarm keeps the company",
                     a.Kind), DeskKit.Alert);
+            // S2 — the armed desk is red: the strip names the ask under the hero
+            if (DeskKit.AskStrip(b, "pivot", DeskKit.XId, y, 1120f,
+                    "disarm below keeps the company"))
+                y += 24f;
             List<string[]> rows = PreviewLines(s, a.Kind, out List<Color> cols);
             var lines = new List<DeskKit.TicketLine>();
             for (int i = 0; i < rows.Count; i++)
@@ -277,6 +472,8 @@ namespace Runway.Game
                 "the DM narrates the week it fires · new topics and paintings follow");
             DeskKit.Word(b, "disarm — keep the company", DeskKit.XId, y + 10f,
                 () => SimPivot.Disarm(b.State), DeskKit.Row, DrawnUI.Ink, 520f);
+            // S2b — the threats row's jump lands spotlit on the way out
+            b.MarkControl("disarm", new Rect(DeskKit.XId - 6f, y + 6f, 532f, 44f));
             DeskKit.Footer(b,
                 "armed pivots read as a sev-3 alarm — the tab wears it until this fires",
                 DebtsLine, "", 820f, 852f);
@@ -347,6 +544,16 @@ namespace Runway.Game
                     SimPivot.Disarm(b.State);
                     break;
             }
+        }
+
+        // ── the desk conventions (S8) — the rail reads these ─────────────────
+
+        public static bool IsDormant(GameState _s) { return false; }
+
+        /// The rail's right-aligned word: silence, until the hatch is armed.
+        public static string MicroStatus(GameState s)
+        {
+            return SimPivot.Armed(s) != null ? "ARMED" : "";
         }
     }
 }

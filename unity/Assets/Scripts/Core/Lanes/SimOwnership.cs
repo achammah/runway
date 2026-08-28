@@ -1406,7 +1406,7 @@ namespace Runway.Core
                 rows.Add(new AttentionItem { Desk = "the offer", Key = "buyout_live",
                     Severity = 3,
                     Label = Gd.Left("buyout expires in " + left.ToString(CultureInfo.InvariantCulture)
-                        + " wk — answer it", 40) });
+                        + " wk — answer it", 40), Control = "do_0" });
             }
             foreach (var st in StagesIn(state, "terms"))
             {

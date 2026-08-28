@@ -242,7 +242,7 @@ namespace Runway.Core
             if (alert.Length > 0 && MetaLines(state, "street_beats").Count > 0)
             {
                 rows.Add(new AttentionItem { Desk = "the street", Key = "street_beat",
-                    Severity = 2, Label = Gd.Left(alert, 40) });
+                    Severity = 2, Label = Gd.Left(alert, 40), Control = "wire" });
             }
             if (SimEngine.HasStatus(state, "price_war"))
             {

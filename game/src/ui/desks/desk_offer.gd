@@ -11,9 +11,12 @@ extends RefCounted
 ## some offers are written fishy on purpose) · zone 4 resolves WHO CAN SAY
 ## NO from the instruments signed years earlier (protective, drag-along).
 ##
-## Resolution: ACCEPT (two-tap; the run ends through the existing exit
-## seam) · NEGOTIATE (one counter — the world reprices once) · DECLINE (the
-## street hears). Every resolution folds the gold tab away.
+## Resolution: the DO lane (S3) carries the three answers in one slot —
+## [accept — the company sells] (two-tap, the tier said on the control) ·
+## [negotiate — one counter] (the world reprices once; once spent, the lane
+## drops it and the sheet says "counter spent" plainly) · [decline — the
+## street hears]. Every resolution folds the gold tab away. The clock chip
+## re-computes from state every draw, so it ticks down weekly on its own.
 
 const QUESTION := "should we take their money?"
 
@@ -29,19 +32,28 @@ static func draw(b) -> void:
 	var state: GameState = b.state
 	var bo: Dictionary = state.buyout_offer
 	if bo.is_empty():
-		DeskKit.hero_band(b, "the letter left the table",
-			"the offer this tab was summoned for is gone — the tab folds into HISTORY.")
-		DeskKit.word(b, "fold the tab away", Vector2(DeskKit.X_ID, 180.0), func() -> void:
-			b.resolve_momentary("the offer"), DeskKit.STATUS, DeskKit.INK, 300.0)
+		# S1 — the letter is gone: the empty gold tab teaches what summons it
+		DeskKit.zero_state(b, {
+			"will_show": "a buyout letter, decomposed",
+			"would_line": "when a buyer writes, this gold tab appears — the headline split into cash, stock and earnout, the waterfall applied, the fine print read aloud",
+			"action_label": "fold the tab away",
+			"action_cb": func() -> void: b.resolve_momentary("the offer"),
+			"wakes_hint": "summoned by the next letter — answered offers fold into HISTORY",
+		})
 		return
 	var price := int(bo.get("headline", 0))
 	var left := maxi(int(bo.get("expires_wk", 0)) - state.week, 0)
 	var y := DeskKit.hero_band(b, "%s offers $%s" % [String(bo.get("buyer", "a buyer")), b.fmt(price)],
 		"this desk appeared when the letter did — it leaves when you answer.")
+	# the clock is computed from state on every draw — it ticks down weekly
 	DeskKit.clock_chip(b, 880.0, 12.0, "expires in %d wk%s" % [left, "" if left == 1 else "s"])
 	var nb: Label = b.label("while it lives, the raise is frozen by their no-shop ask",
 		Vector2(700.0, 44.0), 18, Color(DeskKit.INK, 0.5), 420.0)
 	nb.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	# S2 — the live letter IS the red: the strip says the ask and the clock
+	if DeskKit.ask_strip(b, "the offer", DeskKit.X_ID, y, 1120.0,
+			"accept, counter, or decline below"):
+		y += 24.0
 
 	# ── zone 1 · WHAT'S ON THE TABLE — the headline, decomposed honestly
 	var z1 := DeskKit.zone(b, DeskKit.X_ID, y, 548.0, 312.0, 1, "what's on the table",
@@ -124,20 +136,27 @@ static func draw(b) -> void:
 		py += maxf(b.wrap_h(String(pd.get("line", "")), 17, 360.0), 26.0) + 8.0
 	y += 216.0 + 14.0
 
-	# ── the three answers — accept armed, one counter, decline
-	DeskKit.arm(b, "offer_accept", "ACCEPT — the two-tap", "press again — the company sells",
-		Vector2(DeskKit.X_ID, y), func() -> void:
+	# ── the three answers — the DO lane mirrors the whole desk (S3): accept
+	# says its tier (S9's two-tap), the counter rides while it lasts, decline
+	# is as pressable as yes
+	var actions: Array = [{
+		"label": "accept — the company sells", "tier": "two-tap",
+		"cb": func() -> void:
 			SimOwnership.buyout_accept(b.state)
-			b.resolve_momentary("the offer"), 300.0)
+			b.resolve_momentary("the offer")}]
 	if bool(bo.get("countered", false)):
-		b.label("one counter is all the room there was", Vector2(DeskKit.X_ID + 330.0, y + 8.0),
-			DeskKit.DETAIL, Color(DeskKit.INK, 0.4), 300.0)
+		# the spent counter, said plainly where the answer lane lives
+		DeskKit.fit_line(b, "NEGOTIATE — counter spent · one was all the room there was",
+			Vector2(DeskKit.X_ID, DeskKit.DO_LANE_Y + 10.0), DeskKit.DETAIL,
+			Color(DeskKit.INK, 0.45), 560.0)
 	else:
-		DeskKit.word(b, "NEGOTIATE — one counter", Vector2(DeskKit.X_ID + 330.0, y), func() -> void:
-			SimOwnership.buyout_negotiate(b.state), DeskKit.STATUS, DeskKit.INK, 310.0)
-	DeskKit.word(b, "DECLINE", Vector2(DeskKit.X_ID + 680.0, y), func() -> void:
-		SimOwnership.buyout_decline(b.state)
-		b.resolve_momentary("the offer"), DeskKit.STATUS, Color(DeskKit.PEN, 0.9), 200.0)
+		actions.append({"label": "negotiate — one counter", "tier": "",
+			"cb": func() -> void: SimOwnership.buyout_negotiate(b.state)})
+	actions.append({"label": "decline — the street hears", "tier": "",
+		"cb": func() -> void:
+			SimOwnership.buyout_decline(b.state)
+			b.resolve_momentary("the offer")})
+	DeskKit.do_lane(b, actions)
 	DeskKit.footer(b, {
 		"computed": "answered -> this tab folds into HISTORY · declined offers can sour, or come back higher",
 		"rules": "the street hears everything",
@@ -160,3 +179,15 @@ static func _resolve(b) -> void:
 static func handle(b, id: String) -> void:
 	if id == "resolve":
 		_resolve(b)
+
+# ── the desk conventions (S8) — the rail reads these ─────────────────────────
+
+static func is_dormant(_state) -> bool:
+	return false
+
+## The rail's right-aligned word: the countdown, while the letter lives.
+static func micro_status(state) -> String:
+	var s: GameState = state
+	if s.buyout_offer.is_empty():
+		return ""
+	return "%d wk" % maxi(int(s.buyout_offer.get("expires_wk", 0)) - s.week, 0)

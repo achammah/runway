@@ -188,7 +188,7 @@ static func attention(state: GameState) -> Array:
 	var alert := String(state.get_meta("street_alert", ""))
 	if alert != "" and not (state.get_meta("street_beats", []) as Array).is_empty():
 		rows.append({"desk": "the street", "key": "street_beat", "severity": 2,
-			"label": alert.left(40)})
+			"label": alert.left(40), "control": "wire"})
 	if SimEngine.has_status(state, "price_war"):
 		var down := int(round((1.0 - SimEngine.street_fair_mult(state)) * 100.0))
 		rows.append({"desk": "threats", "key": "price_war", "severity": 2,

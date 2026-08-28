@@ -272,4 +272,4 @@ static func attention(state: GameState) -> Array:
 	if a.is_empty():
 		return []
 	return [{"desk": "pivot", "key": "pivot_armed", "severity": 3,
-		"label": "the pivot is armed — it fires at LOCK IN"}]
+		"label": "the pivot is armed — it fires at LOCK IN", "control": "disarm"}]

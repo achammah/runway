@@ -1325,7 +1325,8 @@ static func attention(state: GameState) -> Array:
 	if not state.buyout_offer.is_empty():
 		var left := maxi(int(state.buyout_offer.get("expires_wk", 0)) - state.week, 0)
 		rows.append({"desk": "the offer", "key": "buyout_live", "severity": 3,
-			"label": ("buyout expires in %d wk — answer it" % left).left(40)})
+			"label": ("buyout expires in %d wk — answer it" % left).left(40),
+			"control": "do_0"})
 	for st in _stages_in(state, "terms"):
 		var t: Dictionary = (st as Dictionary).get("terms", {})
 		rows.append({"desk": "the raise", "key": "terms_open", "severity": 2,

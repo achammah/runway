@@ -390,6 +390,8 @@ func _find_group(id: String) -> int:
 func summon_momentary(id: String, group_name: String, label: String, wks: int) -> void:
 	for m in _momentary:
 		if String((m as Dictionary).get("id", "")) == id:
+			(m as Dictionary)["label"] = label
+			(m as Dictionary)["wks"] = wks
 			return
 	var gi := 2
 	for i in GROUPS.size():
