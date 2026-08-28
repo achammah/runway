@@ -994,11 +994,13 @@ namespace Runway.Core
                 if (sev >= 3)
                     rows.Add(new AttentionItem { Desk = "the works", Key = "site_bleeds_" + id,
                         Severity = 3,
-                        Label = (nm.Length > 20 ? nm.Substring(0, 20) : nm) + " bleeds — fix or close" });
+                        Label = (nm.Length > 20 ? nm.Substring(0, 20) : nm) + " bleeds — fix or close",
+                        Control = "site_" + id });
                 else if (sev == 2)
                     rows.Add(new AttentionItem { Desk = "the works", Key = "site_neg_" + id,
                         Severity = 2,
-                        Label = (nm.Length > 24 ? nm.Substring(0, 24) : nm) + " runs at a loss" });
+                        Label = (nm.Length > 24 ? nm.Substring(0, 24) : nm) + " runs at a loss",
+                        Control = "site_" + id });
             }
             return rows;
         }

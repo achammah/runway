@@ -604,15 +604,15 @@ namespace Runway.Core
             double unbilled = Num(w, "unbilled");
             if (unbilled >= 1.0)
                 rows.Add(new AttentionItem { Desk = "the works", Key = "works_gap",
-                    Severity = 2, Label = "$" + Gd.RoundToInt(unbilled) + "/wk walks — capacity short" });
+                    Severity = 2, Label = "$" + Gd.RoundToInt(unbilled) + "/wk walks — capacity short", Control = "relief" });
             if ((int)Num(w, "degrade_walked") > 0)
                 rows.Add(new AttentionItem { Desk = "the works", Key = "works_degrade",
-                    Severity = 2, Label = "past the ceiling — churn is the queue" });
+                    Severity = 2, Label = "past the ceiling — churn is the queue", Control = "relief" });
             double used = Num(w, "relief_used");
             if (used > 0.0 && used >= Num(w, "relief_cap_units") - 0.01
                 && Num(w, "walk_units") >= 1.0)
                 rows.Add(new AttentionItem { Desk = "the works", Key = "relief_full",
-                    Severity = 2, Label = "relief valve full open — still short" });
+                    Severity = 2, Label = "relief valve full open — still short", Control = "relief" });
             if (state.Hardware != null && state.Hardware.Equipment != null)
             {
                 for (int i = 0; i < state.Hardware.Equipment.Count; i++)

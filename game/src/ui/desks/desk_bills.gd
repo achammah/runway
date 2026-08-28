@@ -13,6 +13,13 @@ extends RefCounted
 ##
 ## Counterparty names come from state.topics when the world wrote them
 ## (topics.names.landlord / topics.names.bank), else plain words.
+##
+## DAG3 (13-binder-ux): every row press jumps to its SOURCE with a back pill
+## (rent/roofs -> the works, interest -> that note's card at the bank, serving
+## -> the works' ticket, payroll -> team); the eats-N.N× memo wears the S5 pen
+## when the ratio moved since the binder last opened; the hero carries its
+## delta arrow. No DO lane and no ask strip BY DESIGN: bills are obligations,
+## the desk never goes red and offers no primary action — the sources do.
 
 const QUESTION := "what must be paid every Monday?"
 
@@ -23,6 +30,19 @@ const Y_FOOT := 806.0
 const Y_RULES := 840.0
 ## Expanded tool lines cap here; the rest fold into "+N more".
 const TOOLS_MAX := 5
+
+## S8 — bills never sleep: the roof and the ramen bill from week 1, which IS
+## the lesson. The tab never dims.
+static func is_dormant(_state) -> bool:
+	return false
+
+## S10 — the rail's four-character read: the Monday floor.
+static func micro_status(state) -> String:
+	var s: GameState = state
+	var total := _sum(_flat_rows(s, false)) + _sum(_scaling_rows(s))
+	if total >= 1000:
+		return "$%.1fk" % (float(total) / 1000.0)
+	return "$%d" % total
 
 static func hero_summary(state) -> Dictionary:
 	var s: GameState = state
@@ -37,14 +57,28 @@ static func draw(b) -> void:
 	var scaling_sum := _sum(scaling)
 	var total := flat_sum + scaling_sum
 
+	var pnl: Dictionary = state.get_meta("pnl", {})
+
 	# ── the hero: the Monday floor, which the double-ruled TOTAL equals
 	var big: String = "$" + b.fmt(total)
 	b.label(big, Vector2(SHEET_X, 6.0), DeskKit.HERO, DeskKit.INK, 460.0)
 	var bw: float = b.font().get_string_size(big, HORIZONTAL_ALIGNMENT_LEFT, -1, DeskKit.HERO).x
-	b.label("every Monday, before you choose anything", Vector2(SHEET_X + bw + 16.0, 22.0),
+	# S5 — which way the floor moved since the binder was last open (read the
+	# stored value BEFORE recording this open's — the seen contract)
+	var prev_total: String = b.seen_prev("bills", "total")
+	b.seen("bills", "total", str(total))
+	var cap_x := SHEET_X + bw + 16.0
+	if prev_total != "" and int(prev_total) != total:
+		DeskKit.delta_arrow(b, SHEET_X + bw + 12.0, 26.0, float(total), float(prev_total))
+		cap_x += 26.0
+	b.label("every Monday, before you choose anything", Vector2(cap_x, 22.0),
 		DeskKit.ROW, Color(DeskKit.INK, 0.7), 560.0)
-	b.label("the flat moves when you move; the scaling moves when the business does.",
-		Vector2(SHEET_X, 62.0), DeskKit.DETAIL, Color(DeskKit.INK, 0.6), 760.0)
+	# S1 — before the first Monday has struck, the sheet is a promise and says
+	# so in the honest subjunctive; alive, it teaches the flat/scaling split
+	var subline := "the flat moves when you move; the scaling moves when the business does."
+	if pnl.is_empty():
+		subline = "no Monday has struck yet — this is what one would take, before a single sale."
+	b.label(subline, Vector2(SHEET_X, 62.0), DeskKit.DETAIL, Color(DeskKit.INK, 0.6), 760.0)
 	var meta: Label = b.label("week %d · %s era" % [state.week, state.era],
 		Vector2(SHEET_X, 10.0), DeskKit.LAW, Color(DeskKit.INK, 0.42), SHEET_W)
 	meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -65,7 +99,6 @@ static func draw(b) -> void:
 		_row(b, sheet, r2)
 	DeskKit.ledger_subtotal(b, sheet, "subtotal — the scaling", "$" + b.fmt(scaling_sum))
 	DeskKit.ledger_total(b, sheet, "total bills", "$" + b.fmt(total))
-	var pnl: Dictionary = state.get_meta("pnl", {})
 	var revenue := int(pnl.get("revenue", 0))
 	if revenue > 0:
 		var ratio := float(total) / float(revenue)
@@ -74,10 +107,17 @@ static func draw(b) -> void:
 			memo_note = "the Monday floor eats %.1f× revenue" % ratio
 		else:
 			memo_note = "revenue covers the floor ×%.1f — the machine feeds itself" % (1.0 / maxf(ratio, 0.01))
+		var memo_y := float(sheet.get("cursor", 0.0))
 		DeskKit.ledger_memo(b, sheet, "revenue last week", "$" + b.fmt(revenue), memo_note)
+		# S5 — the memo wears the pen when the ratio moved since the last open:
+		# the circle marks the news, the small arrow says which way it went
+		var prev_ratio: String = b.seen_prev("bills", "eats_ratio")
+		if b.seen("bills", "eats_ratio", "%.2f" % ratio) and prev_ratio != "":
+			DeskKit.pen_circle(b, Rect2(SHEET_X + 48.0, memo_y + 4.0, 560.0, 32.0))
+			DeskKit.delta_arrow(b, SHEET_X + 16.0, memo_y + 12.0, ratio, float(prev_ratio))
 	else:
 		DeskKit.ledger_memo(b, sheet, "revenue last week", "$0",
-			"no revenue yet — the floor waits for nobody")
+			"the floor waits for nobody")
 	DeskKit.ledger_end(b, sheet)
 
 	# ── the teaching foot
@@ -86,16 +126,20 @@ static func draw(b) -> void:
 	b.label("single rule = subtotal · double rule = total — the book always balances to the hero · severance and notice periods survive removal",
 		Vector2(SHEET_X, Y_RULES), DeskKit.LAW, Color(DeskKit.INK, 0.5), 1100.0)
 
-## One bill row + its optional press-through and coral trend.
+## One bill row + its optional press-through and coral trend. A row that names
+## a SOURCE desk jumps there with a back pill (S7) and, when it names the
+## switch too, lands with the spotlight on it (S2b) — bills are consequences;
+## the press walks you to where each one is edited.
 static func _row(b, sheet: Dictionary, r: Dictionary) -> void:
 	var cfg := {}
 	if r.has("press"):
 		var target := String(r.get("press", ""))
+		var control := String(r.get("control", ""))
 		var go := func() -> void:
 			if target == "tools":
 				b.desk["tools_open"] = not bool(b.desk.get("tools_open", false))
 			else:
-				b.focus_desk(target)
+				b.focus_desk(target, control, "bills")
 		cfg["on_press"] = go
 	if bool(r.get("dim", false)):
 		cfg["dim"] = true
@@ -118,12 +162,13 @@ static func _flat_rows(state: GameState, tools_open: bool) -> Array:
 	var era_rent := int(GameState.ERA_RENT.get(state.era, 150))
 	rows.append({"who": _name_of(state, "landlord", "the landlord"),
 		"what": "the %s-era roof" % state.era, "kind": "flat", "amt": era_rent,
-		"note": _rent_trend(state)})
+		"note": _rent_trend(state), "press": "the works", "control": "capacity"})
 	for s in state.sites:
 		var sd: Dictionary = s
 		rows.append({"who": String(sd.get("name", "a second roof")),
 			"what": "a roof of its own", "kind": "flat", "amt": int(sd.get("rent_wk", 0)),
-			"note": "opened wk %d" % int(sd.get("opened_wk", 0))})
+			"note": "opened wk %d" % int(sd.get("opened_wk", 0)),
+			"press": "the works", "control": "site_" + String(sd.get("id", ""))})
 	var payroll := SimLabor.payroll_wk(state)
 	var heads := state.employees.size() + state.pipeline.size()
 	rows.append({"who": "the payroll", "what": "%d people -> team" % heads, "kind": "flat",
@@ -167,19 +212,28 @@ static func _scaling_rows(state: GameState) -> Array:
 	rows.append({"who": "serving customers", "what": "≈$%.0f × %d, every week" % [cogs_pc, state.traction],
 		"kind": "scales", "amt": serving,
 		"note": "margin-safe at your prices" if margin_safe else "each one serves at a loss",
-		"note_col": Color("5D7A50") if margin_safe else Binder.PEN})
+		"note_col": Color("5D7A50") if margin_safe else Binder.PEN,
+		"press": "the works", "control": "ticket"})
 	var interest := 0
 	var amortizing := false
 	var only_fee := false
+	# the dearest live note is the card the interest row lands on ("note_<i>",
+	# the bank's own control ids; the legacy shark files as note_-1)
+	var worst_idx := -1
+	var worst_rate := 0.0
 	if state.loan_principal > 0:
 		interest += int(ceil(float(state.loan_principal) * SimBank.SHARK_RATE))
 		only_fee = true
-	for l in state.loans:
-		var ld: Dictionary = l
+		worst_rate = SimBank.SHARK_RATE
+	for i in state.loans.size():
+		var ld: Dictionary = state.loans[i]
 		var bal := int(ld.get("balance", 0))
 		if bal <= 0:
 			continue
 		interest += int(ceil(float(bal) * float(ld.get("rate_wk", 0.0))))
+		if float(ld.get("rate_wk", 0.0)) >= worst_rate:
+			worst_rate = float(ld.get("rate_wk", 0.0))
+			worst_idx = i
 		if String(ld.get("kind", "")) == "bank":
 			amortizing = true
 		else:
@@ -193,7 +247,7 @@ static func _scaling_rows(state: GameState) -> Array:
 		rows.append({"who": _name_of(state, "bank", "the bank"),
 			"what": "interest on $%s -> the bank" % _fmt(SimBank.debt_total(state)),
 			"kind": "scales", "amt": interest, "note": note, "note_col": ncol,
-			"press": "the bank"})
+			"press": "the bank", "control": "note_%d" % worst_idx})
 	var pnl: Dictionary = state.get_meta("pnl", {})
 	var tax := int(pnl.get("tax", 0))
 	var tax_note := ""

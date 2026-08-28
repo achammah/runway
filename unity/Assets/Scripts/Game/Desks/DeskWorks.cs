@@ -16,10 +16,34 @@ namespace Runway.Game
     /// LINEUP, hero rows, face B; press a row -> its rung-2 works). States:
     /// mode "arrange" -> DeskArrange · page "capacity" -> the assets-and-relief
     /// DETAIL · row &lt;site&gt; · ticket &lt;i&gt; · slice.
+    ///
+    /// DAG3 (13-binder-ux): the empty desk is the S1 zero state proper; the
+    /// ask strip names the red; the walked number opens the S4 receipt of
+    /// overflowing demand-mix rows; relief rows quote marginal price on-row;
+    /// the site drill declares the S7 crumb; DO lane by rung; the hero wears
+    /// its S5 delta; landing pads "capacity" · "relief" · "ticket" ·
+    /// "site_&lt;id&gt;".
     /// </summary>
     public static class DeskWorks
     {
         public const string Question = "can we serve what they want, and what does one cost?";
+
+        /// S8 — the works sleeps pre-launch: nothing on the shelf, nothing
+        /// to serve. The tab stays on the map at 60%.
+        public static bool IsDormant(GameState s)
+        {
+            return s.Offers.Count == 0;
+        }
+
+        /// S10 — the rail's four-character read: how full the machine runs.
+        public static string MicroStatus(GameState s)
+        {
+            if (s.Offers.Count == 0) return "";
+            Dictionary<string, object> w = SimWorks.WeekView(s);
+            double cap = SimWorks.Num(w, "capacity_units");
+            if (cap <= 0.0) return "";
+            return Gd.RoundToInt(SimWorks.Num(w, "served_units") / cap * 100.0) + "%";
+        }
 
         public static string[] HeroSummary(GameState s)
         {
@@ -81,21 +105,24 @@ namespace Runway.Game
             HouseOrBoutique(b, s, opened);
         }
 
+        /// S1 — the zero state proper: the promise in display type, one
+        /// unit's cost in the honest subjunctive, the ONE action (to the
+        /// offers desk, with the way back), and when the desk wakes.
         static void DrawEmpty(BinderScreen b, GameState s)
         {
-            float y = DeskKit.HeroBand(b, "the works",
-                "every business has works — the cost of delivering what you sell");
-            y = DeskKit.Empty(b, DeskKit.XId, y,
-                "nothing is on the shelf yet, so there is nothing to serve.",
-                "define an offer on the OFFERS desk — its cost lines become the unit ticket here",
-                true);
-            if (s.BizWhat == "Service")
-                b.L(string.Format(
-                    "meanwhile the hands are real: capacity {0} slots/wk (the founder + the crew)",
-                    Gd.RoundToInt(SimWorks.ServiceCapacity(s))), DeskKit.XId, y + 8f,
-                    DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 1080f);
-            DeskKit.Footer(b, "the works reads your team for hands and your offers for the ticket",
-                "one desk, every running cost of delivering", "", 806f, 840f);
+            DeskKit.Title(b, "the works");
+            string would = s.BizWhat == "Service"
+                ? string.Format("the hands are real already — capacity {0} slots/wk (the founder + the crew). an offer's cost lines would become the unit ticket here.",
+                    Gd.RoundToInt(SimWorks.ServiceCapacity(s)))
+                : "your first offer's cost lines would become the unit ticket here — what one costs, what walks away, and the valves that answer.";
+            DeskKit.ZeroState(b, new DeskKit.ZeroStateCfg
+            {
+                WillShow = "every business has works — the cost of delivering what you sell",
+                WouldLine = would,
+                ActionLabel = "define an offer -> offers",
+                ActionCb = () => b.FocusDesk("offers", "", "the works"),
+                WakesHint = "wakes when the first offer is on the shelf — the works reads your offers for its ticket and your team for hands",
+            });
             DeskKit.HeroQuestion(b, Question);
         }
 
@@ -107,7 +134,13 @@ namespace Runway.Game
             Dictionary<string, string> vw = SimWorks.Vocab(s);
             string unit = vw["unit_word"];
             bool scoped = openedSite.Length > 0;
-            if (scoped) DeskKit.Back(b, "back to the lineup", () => b.Desk.Remove("row"));
+            if (scoped)
+            {
+                // S7 — the drill declares its trail every draw ("Lyon ‹ the
+                // works"); the crumb owns the top-left, the way back moves right
+                b.PushCrumb(SiteName(s, openedSite));
+                DeskKit.Back(b, "back to the lineup", () => b.Desk.Remove("row"), 620f, 6f);
+            }
             double demand = SimWorks.Num(w, "demand_units");
             double cap = SimWorks.Num(w, "capacity_units");
             double served = SimWorks.Num(w, "served_units");
@@ -142,29 +175,67 @@ namespace Runway.Game
                 line = "each one leaves at its price and costs real hands, rooms and parts";
             }
             // the hero big never runs under the corner block (measured, not hoped)
-            float y = DeskKit.HeroBand(b, Fit(big, 660f, DeskKit.HeroBig), line,
+            string fitted = Fit(big, 660f, DeskKit.HeroBig);
+            float y = DeskKit.HeroBand(b, fitted, line,
                 DrawnUI.Ink, scoped ? 44f : 6f);
+            // S5 — which way the serve count moved since the last open (root
+            // face only: the drill's numbers are the roof's own)
+            if (!scoped)
+            {
+                string prevServed = b.SeenPrev("the works", "served");
+                b.Seen("the works", "served", Gd.RoundToInt(served).ToString());
+                int prevI;
+                if (prevServed != "" && int.TryParse(prevServed, out prevI)
+                    && prevI != Gd.RoundToInt(served))
+                {
+                    float hw = DrawnUI.MeasureWidth(fitted, DeskKit.HeroBig);
+                    DeskKit.DeltaArrow(b, DeskKit.XId + hw + 10f, 24f, (float)served, prevI);
+                }
+            }
             // the corner block ends clear of the arrange -> word at XId+980
             TextMeshProUGUI mv = b.L("blended margin  " + Money(mrow), 700f, scoped ? 48f : 10f,
                 DeskKit.Status, DrawnUI.Ink, 240f);
             mv.alignment = TextAlignmentOptions.TopRight;
             if (walk >= 1.0)
             {
-                TextMeshProUGUI wv = b.L(Gd.RoundToInt(walk) + " turned away", 700f,
-                    scoped ? 82f : 44f, DeskKit.Detail, DrawnUI.Coral, 240f);
+                // S4 — the walked number opens the receipt naming who walked
+                // (root faces only: the drill's number is the roof's own, and
+                // the mix book prices the company, not one roof)
+                string wtxt = Gd.RoundToInt(walk) + " turned away";
+                float wy = scoped ? 82f : 44f;
+                TextMeshProUGUI wv = b.L(wtxt, 700f, wy, DeskKit.Detail, DrawnUI.Coral, 240f);
                 wv.alignment = TextAlignmentOptions.TopRight;
+                if (!scoped)
+                {
+                    float tw = DrawnUI.MeasureWidth(wtxt, DeskKit.Detail);
+                    DeskKit.PressReceipt(b, new Rect(940f - tw, 42f, tw + 8f, 30f),
+                        "who walked, and what it was worth", WalkedLines(s));
+                }
             }
+            // S2a — red speaks on the page: the strip spends its own line
+            // under the hero's rule; the zones give way, the foot slides
+            bool redSaid = DeskKit.AskStrip(b, "the works", DeskKit.XId, y, 1000f,
+                "open the valves or add hands");
+            if (redSaid) y += 30f;
             bool house = SimDivisions.Rung(s) >= 2 && !scoped;
             y = house ? ZoneDemandMix(b, s, y, unit) : ZoneCapbars(b, s, y, w, unit, openedSite);
             y = ZoneTicket(b, s, y, house);
             y = CapacityBand(b, s, y, openedSite);
+            // S3 — the rung's one primary action, in the one slot
+            DeskKit.DoLane(b, new List<DeskKit.DoAction>
+            {
+                new DeskKit.DoAction { Label = "set relief — the valves",
+                    Cb = () => { b.Desk["page"] = "capacity"; }, Tier = "" },
+            });
             double unbilled = SimWorks.Num(w, "unbilled");
             // the foot rides BELOW the last zone when the stack runs deep —
             // the blue line never prints across zone 4 (the scrolling QA law)
             float fy = Math.Max(806f, y + 4f);
+            // ≤2 coral stories: when the ask strip already told the walk-away
+            // story at the top, the foot does not tell it again
             DeskKit.Footer(b,
                 "the works reads your team for hands, your offers for the ticket — one desk, every cost of delivering",
-                "", unbilled >= 1.0
+                "", unbilled >= 1.0 && !redSaid
                     ? string.Format("${0}/wk walks away — relief valves or hires close it",
                         M(unbilled)) : "", fy, fy + 34f);
             DeskKit.HeroQuestion(b, Question);
@@ -303,6 +374,8 @@ namespace Runway.Game
                         SimWorks.Vocab(s)["unit_word"]));
                 double lc = SimWorks.Num(t, "lc", 1.0);
                 double margin = SimWorks.Num(t, "margin");
+                // S2b — bills' serving row lands here ("ticket")
+                b.MarkControl("ticket", new Rect(z.ContentX + 560f, z.ContentY - 6f, 470f, th));
                 DeskKit.Ticket(b, z.ContentX + 560f, z.ContentY - 6f, 470f,
                     "ONE " + ((string)s.Offers[FlagshipI(s)].Name).ToUpper(), lines,
                     "margin, each", Money(margin),
@@ -383,6 +456,9 @@ namespace Runway.Game
             tl.Add(new DeskKit.TicketLine { Label = "sells for", Value = "$" + M(SimWorks.Num(t2, "sells")) });
             double margin2 = SimWorks.Num(t2, "margin");
             double lc2 = SimWorks.Num(t2, "lc");
+            // S2b — bills' serving row lands on the opened ticket ("ticket")
+            b.MarkControl("ticket", new Rect(z2.ContentX + 660f, z2.ContentY - 6f, 400f,
+                46f + tl.Count * 32f + 44f));
             DeskKit.Ticket(b, z2.ContentX + 660f, z2.ContentY - 6f, 400f,
                 ((string)s.Offers[ti].Name).ToUpper() + " — OPENED", tl, "margin, each",
                 Money(margin2),
@@ -428,6 +504,10 @@ namespace Runway.Game
             }
             PenRow(b, y, 3, "WHAT MAKES THE CAPACITY", facts, () => { b.Desk["page"] = "capacity"; });
             PenRow(b, y + 52f, 4, "THE RELIEF VALVES", ReliefLine(s), () => { b.Desk["page"] = "capacity"; });
+            // S2b — the bands are landing pads: bills' rent row arrives on
+            // "capacity", the works' own red rows arrive on "relief"
+            b.MarkControl("capacity", new Rect(DeskKit.XId, y - 6f, 1120f, 46f));
+            b.MarkControl("relief", new Rect(DeskKit.XId, y + 46f, 1120f, 46f));
             return y + 108f;
         }
 
@@ -557,28 +637,14 @@ namespace Runway.Game
 
         static float ZoneRelief(BinderScreen b, GameState s, float y)
         {
+            MarginalQuote mq = GetMarginalQuote(s);
             var cats = new List<string[]>();
             switch (s.BizWhat)
             {
-                case "Service":
-                    cats.Add(new[] { "freelance", "freelancers, up to", "/wk",
-                        string.Format("${0} each vs ${1} in-house",
-                            Gd.RoundToInt(SimDivisions.Pb(s, "freelance_rate")),
-                            M(SimWorks.BaseUnitCost(s))) });
-                    break;
-                case "Software":
-                    cats.Add(new[] { "burst", "cloud burst, plus", " seats",
-                        "queue persists — burst closes at most 60%" });
-                    break;
-                case "Marketplace":
-                    cats.Add(new[] { "recruit_supply", "recruitment push", "$/wk",
-                        "≈1 seller per $35, each feeds ≈2.5 orders/wk" });
-                    break;
-                case "Hardware":
-                    cats.Add(new[] { "subcontract", "the subcontract shop", "",
-                        string.Format("×{0:F2} unit cost — their margin, none of your learning",
-                            SimFactory.SubMult(s.Era)) });
-                    break;
+                case "Service": cats.Add(new[] { "freelance", "freelancers, up to", "/wk" }); break;
+                case "Software": cats.Add(new[] { "burst", "cloud burst, plus", " seats" }); break;
+                case "Marketplace": cats.Add(new[] { "recruit_supply", "recruitment push", "$/wk" }); break;
+                case "Hardware": cats.Add(new[] { "subcontract", "the subcontract shop", "" }); break;
             }
             float h = 88f + cats.Count * 52f + 8f;
             DeskKit.CardBox z = DeskKit.Zone(b, DeskKit.XId, y, 1120f, h, 4, "THE RELIEF VALVES",
@@ -595,7 +661,12 @@ namespace Runway.Game
                 TextMeshProUGUI vv = b.L(cat == "subcontract" ? (v > 0 ? "ON" : "OFF") : v + c[2],
                     z.ContentX + 350f, ry, DeskKit.Status, DrawnUI.Coral, 170f);
                 vv.alignment = TextAlignmentOptions.TopRight;
-                b.L(c[3], z.ContentX + 560f, ry + 6f, DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 420f);
+                // the lever quotes its MARGINAL price on the row (S4 inline):
+                // the next ten, bought vs in-house — press for the terms
+                float mx = z.ContentX + 560f;
+                DeskKit.FitLine(b, mq.Line, mx, ry + 6f, DeskKit.Detail,
+                    DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 420f);
+                DeskKit.PressReceipt(b, new Rect(mx, ry + 2f, 420f, 30f), mq.Title, mq.Lines);
                 if (cat == "subcontract")
                     DeskKit.AdjustPair(b, z.ContentX + 990f, ry + 4f,
                         () => SimWorks.ReliefSet(s, cat, 0),
@@ -632,9 +703,23 @@ namespace Runway.Game
                 dispTotal += Gd.RoundToInt(SimWorks.Num(dv, "vol"));
             int reliefT = Gd.RoundToInt(SimWorks.Num(w, "relief_used"));
             dispTotal += reliefT;
-            float y = DeskKit.HeroBand(b, string.Format("{0} {1} · {2} {3}s a week", divs.Count,
-                    AxisWord(slice, divs.Count), dispTotal, unit),
+            string empireBig = string.Format("{0} {1} · {2} {3}s a week", divs.Count,
+                AxisWord(slice, divs.Count), dispTotal, unit);
+            float y = DeskKit.HeroBand(b, empireBig,
                 "every line keeps its own books — press one and its whole works opens");
+            // S5 — the lineup's serve count wears its arrow too
+            string prevServed = b.SeenPrev("the works", "served");
+            b.Seen("the works", "served", dispTotal.ToString());
+            int prevI;
+            if (prevServed != "" && int.TryParse(prevServed, out prevI) && prevI != dispTotal)
+            {
+                float hw = DrawnUI.MeasureWidth(empireBig, DeskKit.HeroBig);
+                DeskKit.DeltaArrow(b, DeskKit.XId + hw + 10f, 24f, dispTotal, prevI);
+            }
+            // S2a — a bleeding roof says so on the page, not just on the rail
+            if (DeskKit.AskStrip(b, "the works", DeskKit.XId, y, 1000f,
+                    "open its works — fix or close"))
+                y += 30f;
             if (axes.Count > 1)
             {
                 string nextAxis = axes[(axes.IndexOf(slice) + 1) % axes.Count];
@@ -659,6 +744,7 @@ namespace Runway.Game
                 string note = (string)rd["note"];
                 if (note.Length > 0 && facts.Length + note.Length <= 48) facts += " · " + note;
                 string id = (string)rd["id"];
+                float rowY = y;
                 y = DeskKit.HeroRow(b, y, new DeskKit.HeroRowCfg
                 {
                     Name = (string)rd["name"], Facts = facts, Value = Money(margin),
@@ -666,6 +752,10 @@ namespace Runway.Game
                     Sev = Convert.ToInt32(rd["sev"], CultureInfo.InvariantCulture),
                     OnPress = slice == "site" ? () => { b.Desk["row"] = id; } : (Action)null,
                 });
+                // S2b — the row is a landing pad ("site_<id>"): a bleeding
+                // roof's attention row and bills' rents arrive here spotlit
+                if (slice == "site")
+                    b.MarkControl("site_" + id, new Rect(DeskKit.XId, rowY, 1120f, y - rowY));
             }
             if (divs.Count > shown)
             {
@@ -700,6 +790,20 @@ namespace Runway.Game
                     CultureInfo.InvariantCulture)) + "/wk", DeskKit.XId + 880f, y - 4f,
                 DeskKit.Status, DrawnUI.Ink, 230f);
             sv.alignment = TextAlignmentOptions.TopRight;
+            // S3 — the empire rung's primary actions: the write view + the door
+            var acts = new List<DeskKit.DoAction>
+            {
+                new DeskKit.DoAction { Label = "arrange — the works",
+                    Cb = () => { b.Desk["mode"] = "arrange"; }, Tier = "" },
+            };
+            if (slice == "site")
+                acts.Add(new DeskKit.DoAction
+                {
+                    Label = "open a roof — ≈$" + Commas(SimDivisions.OpenPackCost(s)),
+                    Cb = () => { b.Desk["mode"] = "arrange"; b.Desk["open_roof"] = true; },
+                    Tier = "",
+                });
+            DeskKit.DoLane(b, acts);
             DeskKit.Footer(b,
                 "unit economics differ by roof — rent, local wages and each roof's own learning; that is the whole lesson of scale",
                 "press any line and its whole rung-2 works opens for that roof", "", 806f, 840f);
@@ -735,6 +839,141 @@ namespace Runway.Game
         }
 
         // ─────────────────────────── the helpers ───────────────────────────
+
+        sealed class MarginalQuote
+        {
+            public string Line = "";
+            public string Title = "";
+            public List<DeskKit.TicketLine> Lines = new List<DeskKit.TicketLine>();
+        }
+
+        /// The valve's MARGINAL arithmetic, one shape per business: what the
+        /// next ten cost bought vs in-house. Rates come from the engine's own
+        /// terms — the price book's freelance_rate, the factory's sub multiple,
+        /// the burst billing line (0.4 × unit cost × learning — SimWorks' own
+        /// serving fraction), the seller arithmetic ($35, ≈2.5 orders each).
+        static MarginalQuote GetMarginalQuote(GameState s)
+        {
+            Dictionary<string, object> t = SimWorks.UnitTicket(s, FlagshipI(s));
+            double inEach = Math.Max(SimWorks.Num(t, "sells") - SimWorks.Num(t, "margin"), 0.0);
+            switch (s.BizWhat)
+            {
+                case "Service":
+                {
+                    double fee = SimDivisions.Pb(s, "freelance_rate");
+                    return new MarginalQuote
+                    {
+                        Line = string.Format("next 10 ≈ ${0} bought vs ${1} in-house",
+                            M(fee * 10.0), M(inEach * 10.0)),
+                        Title = "the freelancers' price",
+                        Lines = new List<DeskKit.TicketLine>
+                        {
+                            new DeskKit.TicketLine { Label = "a freelancer, each", Value = "$" + M(fee) },
+                            new DeskKit.TicketLine { Label = "in-house, each (after learning)", Value = "$" + M(inEach) },
+                            new DeskKit.TicketLine { Label = "next 10 bought", Value = "$" + M(fee * 10.0) },
+                            new DeskKit.TicketLine { Label = "next 10 in-house", Value = "$" + M(inEach * 10.0) },
+                            new DeskKit.TicketLine { Label = "they answer", Value = "70–100% of the ask" },
+                        },
+                    };
+                }
+                case "Software":
+                {
+                    double rate = Math.Max(0.4 * SimWorks.BaseUnitCost(s) * SimEngine.LearningCurve(s), 0.3);
+                    double care = SimWorks.SW_SEAT_COST;
+                    return new MarginalQuote
+                    {
+                        Line = string.Format("next 10 seats ≈ ${0} burst vs ${1} of funded care",
+                            M(rate * 10.0), M(care * 10.0)),
+                        Title = "the burst's price",
+                        Lines = new List<DeskKit.TicketLine>
+                        {
+                            new DeskKit.TicketLine { Label = "a burst seat, covered", Value = "$" + M(rate) },
+                            new DeskKit.TicketLine { Label = "a care-funded seat", Value = "$" + M(care) },
+                            new DeskKit.TicketLine { Label = "next 10 burst", Value = "$" + M(rate * 10.0) },
+                            new DeskKit.TicketLine { Label = "the queue's human half", Value = "closes at most 60%" },
+                        },
+                    };
+                }
+                case "Marketplace":
+                {
+                    double perOrder = SimWorks.MK_SELLER_COST / SimWorks.MK_SELLER_FEED;
+                    return new MarginalQuote
+                    {
+                        Line = string.Format("next 10 orders ≈ ${0} pushed — organic is free but lags",
+                            M(perOrder * 10.0)),
+                        Title = "the push's price",
+                        Lines = new List<DeskKit.TicketLine>
+                        {
+                            new DeskKit.TicketLine { Label = "an order, recruited", Value = "$" + M(perOrder) },
+                            new DeskKit.TicketLine { Label = "a seller ($35)", Value = "feeds ≈2.5/wk" },
+                            new DeskKit.TicketLine { Label = "next 10 pushed", Value = "$" + M(perOrder * 10.0) },
+                            new DeskKit.TicketLine { Label = "organic supply", Value = "free, lags growth" },
+                        },
+                    };
+                }
+            }
+            double subEach = inEach * SimFactory.SubMult(s.Era);
+            return new MarginalQuote
+            {
+                Line = string.Format("next 10 ≈ ${0} outside vs ${1} at the bench",
+                    M(subEach * 10.0), M(inEach * 10.0)),
+                Title = "the subcontract shop's price",
+                Lines = new List<DeskKit.TicketLine>
+                {
+                    new DeskKit.TicketLine { Label = string.Format("outside, each (×{0:F2})",
+                        SimFactory.SubMult(s.Era)), Value = "$" + M(subEach) },
+                    new DeskKit.TicketLine { Label = "at the bench, each", Value = "$" + M(inEach) },
+                    new DeskKit.TicketLine { Label = "next 10 outside", Value = "$" + M(subEach * 10.0) },
+                    new DeskKit.TicketLine { Label = "their margin, none of your learning", Value = "" },
+                },
+            };
+        }
+
+        /// The walked number's receipt lines: the demand-mix rows that
+        /// overflowed, worst first, priced at the week's revenue per unit.
+        static List<DeskKit.TicketLine> WalkedLines(GameState s)
+        {
+            Dictionary<string, object> w = SimWorks.WeekView(s);
+            var lines = new List<DeskKit.TicketLine>();
+            var rows = new List<Dictionary<string, object>>();
+            foreach (Dictionary<string, object> r in SimDivisions.WorksBook(s, "offer"))
+                if ((string)r["kind"] == "offer") rows.Add(r);
+            rows.Sort((a, bb) =>
+            {
+                double ga = SimWorks.Num(a, "wanted") - SimWorks.Num(a, "served");
+                double gb = SimWorks.Num(bb, "wanted") - SimWorks.Num(bb, "served");
+                return gb.CompareTo(ga);
+            });
+            foreach (Dictionary<string, object> rd in rows)
+            {
+                // rounded EACH SIDE, exactly as the demand-mix sheet rounds
+                // its cells, so receipt and sheet always tell the same total
+                int gap = Gd.RoundToInt(SimWorks.Num(rd, "wanted"))
+                    - Gd.RoundToInt(SimWorks.Num(rd, "served"));
+                if (gap < 1 || lines.Count >= 4) continue;
+                lines.Add(new DeskKit.TicketLine { Label = (string)rd["name"], Value = "−" + gap });
+            }
+            if (lines.Count == 0)
+                lines.Add(new DeskKit.TicketLine { Label = "capacity short",
+                    Value = "−" + Gd.RoundToInt(SimWorks.Num(w, "walk_units")) });
+            lines.Add(new DeskKit.TicketLine { Label = "worth, together",
+                Value = "$" + M(SimWorks.Num(w, "unbilled")) + "/wk", Col = DrawnUI.Coral });
+            return lines;
+        }
+
+        /// The probe's seam: open the walked receipt as the press would.
+        public static void OpenWalkedReceipt(BinderScreen b, GameState s)
+        {
+            b.Popover("who walked, and what it was worth", WalkedLines(s), new Vector2(560f, 80f));
+        }
+
+        /// A site's display name, for the drill crumb.
+        static string SiteName(GameState s, string siteId)
+        {
+            foreach (Site site in s.Sites)
+                if ((site.Id ?? "") == siteId) return string.IsNullOrEmpty(site.Name) ? "a roof" : site.Name;
+            return "a roof";
+        }
 
         static int FlagshipI(GameState s)
         {

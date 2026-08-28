@@ -16,6 +16,13 @@ namespace Runway.Game
     /// the memo compares the Monday floor to revenue; the TOTAL double-rules
     /// and equals the hero. Standing commitments render too — obligations
     /// survive removal.
+    ///
+    /// DAG3 (13-binder-ux): every row press jumps to its SOURCE with a back
+    /// pill (rent/roofs -> the works, interest -> that note's card at the
+    /// bank, serving -> the works' ticket, payroll -> team); the eats-N.N×
+    /// memo wears the S5 pen when the ratio moved since the binder last
+    /// opened; the hero carries its delta. No DO lane and no ask strip BY
+    /// DESIGN: bills are obligations — the sources hold the switches.
     /// </summary>
     public static class DeskBills
     {
@@ -37,8 +44,21 @@ namespace Runway.Game
             public string Note = "";
             public Color? NoteCol;
             public string Press = "";
+            public string Ctl = "";
             public bool Dim;
             public bool SkipSum;
+        }
+
+        /// S8 — bills never sleep: the roof and the ramen bill from week 1,
+        /// which IS the lesson. The tab never dims.
+        public static bool IsDormant(GameState s) { return false; }
+
+        /// S10 — the rail's four-character read: the Monday floor.
+        public static string MicroStatus(GameState s)
+        {
+            int total = Sum(FlatRows(s, false)) + Sum(ScalingRows(s));
+            if (total >= 1000) return "$" + (total / 1000.0).ToString("0.0") + "k";
+            return "$" + total;
         }
 
         public static string[] HeroSummary(GameState s)
@@ -56,15 +76,31 @@ namespace Runway.Game
             int flatSum = Sum(flat);
             int scalingSum = Sum(scaling);
             int total = flatSum + scalingSum;
+            Pnl pnl = state.LastPnl;
 
             // ── the hero: the Monday floor, which the double-ruled TOTAL equals
             string big = "$" + GameUi.Money(total);
             b.L(big, SheetX, 6f, DeskKit.HeroSize, DrawnUI.Ink, 460f);
             float bw = DrawnUI.MeasureWidth(big, DeskKit.HeroSize);
-            b.L("every Monday, before you choose anything", SheetX + bw + 16f, 22f,
+            // S5 — which way the floor moved since the binder was last open
+            // (the stored value read BEFORE recording this open's — the law)
+            string prevTotal = b.SeenPrev("bills", "total");
+            b.Seen("bills", "total", total.ToString());
+            float capX = SheetX + bw + 16f;
+            int prevTotalI;
+            if (prevTotal != "" && int.TryParse(prevTotal, out prevTotalI) && prevTotalI != total)
+            {
+                DeskKit.DeltaArrow(b, SheetX + bw + 12f, 26f, total, prevTotalI);
+                capX += 26f;
+            }
+            b.L("every Monday, before you choose anything", capX, 22f,
                 DeskKit.Row, Ink(0.7f), 560f);
-            b.L("the flat moves when you move; the scaling moves when the business does.",
-                SheetX, 62f, DeskKit.Detail, Ink(0.6f), 760f);
+            // S1 — before the first Monday has struck, the sheet is a promise
+            // and says so in the honest subjunctive
+            string subline = pnl == null
+                ? "no Monday has struck yet — this is what one would take, before a single sale."
+                : "the flat moves when you move; the scaling moves when the business does.";
+            b.L(subline, SheetX, 62f, DeskKit.Detail, Ink(0.6f), 760f);
             var meta = b.L("week " + state.Week + " · " + state.Era + " era", SheetX, 10f,
                 DeskKit.Law, Ink(0.42f), SheetW);
             meta.alignment = TMPro.TextAlignmentOptions.TopRight;
@@ -85,7 +121,7 @@ namespace Runway.Game
             foreach (BillRow r in scaling) Row(b, sheet, r);
             DeskKit.LedgerSubtotal(b, sheet, "subtotal — the scaling", "$" + GameUi.Money(scalingSum));
             DeskKit.LedgerTotal(b, sheet, "total bills", "$" + GameUi.Money(total));
-            int revenue = state.LastPnl != null ? state.LastPnl.Revenue : 0;
+            int revenue = pnl != null ? pnl.Revenue : 0;
             if (revenue > 0)
             {
                 double ratio = (double)total / revenue;
@@ -93,11 +129,25 @@ namespace Runway.Game
                     ? "the Monday floor eats " + ratio.ToString("0.0") + "× revenue"
                     : "revenue covers the floor ×" + (1.0 / Math.Max(ratio, 0.01)).ToString("0.0")
                       + " — the machine feeds itself";
+                float memoY = sheet.Cursor;
                 DeskKit.LedgerMemo(b, sheet, "revenue last week", "$" + GameUi.Money(revenue), memoNote);
+                // S5 — the memo wears the pen when the ratio moved since the
+                // last open: the circle marks the news, the arrow the way
+                string prevRatio = b.SeenPrev("bills", "eats_ratio");
+                bool moved = b.Seen("bills", "eats_ratio",
+                    ratio.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture));
+                double prevR;
+                if (moved && double.TryParse(prevRatio,
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out prevR))
+                {
+                    DeskKit.PenCircle(b, new Rect(SheetX + 48f, memoY + 4f, 560f, 32f));
+                    DeskKit.DeltaArrow(b, SheetX + 16f, memoY + 12f, (float)ratio, (float)prevR);
+                }
             }
             else
                 DeskKit.LedgerMemo(b, sheet, "revenue last week", "$0",
-                    "no revenue yet — the floor waits for nobody");
+                    "the floor waits for nobody");
             DeskKit.LedgerEnd(b, sheet);
 
             DeskKit.Footer(b,
@@ -106,16 +156,19 @@ namespace Runway.Game
                 "", YFoot, YRules);
         }
 
+        /// A row that names a SOURCE desk jumps there with a back pill (S7)
+        /// and, when it names the switch too, lands spotlit (S2b).
         static void Row(BinderScreen b, DeskKit.LedgerBox sheet, BillRow r)
         {
             var cfg = new DeskKit.LedgerRowCfg { Dim = r.Dim };
             if (r.Press != "")
             {
                 string target = r.Press;
+                string control = r.Ctl;
                 cfg.OnPress = () =>
                 {
                     if (target == "tools") b.Desk["tools_open"] = !DBool(b, "tools_open");
-                    else b.FocusDesk(target);
+                    else b.FocusDesk(target, control, "bills");
                 };
             }
             float rowY = sheet.Cursor;
@@ -138,12 +191,13 @@ namespace Runway.Game
             int eraRent = GameState.ERA_RENT.ContainsKey(state.Era) ? GameState.ERA_RENT[state.Era] : 150;
             rows.Add(new BillRow { Who = NameOf(state, "landlord", "the landlord"),
                 What = "the " + state.Era + "-era roof", Kind = "flat", Amt = eraRent,
-                Note = RentTrend(state) });
+                Note = RentTrend(state), Press = "the works", Ctl = "capacity" });
             if (state.Sites != null)
                 foreach (Site s in state.Sites)
                     rows.Add(new BillRow { Who = string.IsNullOrEmpty(s.Name) ? "a second roof" : s.Name,
                         What = "a roof of its own", Kind = "flat", Amt = s.RentWk,
-                        Note = "opened wk " + s.OpenedWk });
+                        Note = "opened wk " + s.OpenedWk,
+                        Press = "the works", Ctl = "site_" + (s.Id ?? "") });
             int payroll = SimLabor.PayrollWk(state);
             int heads = state.Employees.Count + state.Pipeline.Count;
             rows.Add(new BillRow { Who = "the payroll", What = heads + " people -> team",
@@ -199,19 +253,27 @@ namespace Runway.Game
                 What = "≈$" + cogsPc.ToString("0") + " × " + state.Traction + ", every week",
                 Kind = "scales", Amt = serving,
                 Note = marginSafe ? "margin-safe at your prices" : "each one serves at a loss",
-                NoteCol = marginSafe ? DrawnUI.Hex("5D7A50") : DrawnUI.Coral });
+                NoteCol = marginSafe ? DrawnUI.Hex("5D7A50") : DrawnUI.Coral,
+                Press = "the works", Ctl = "ticket" });
             int interest = 0;
             bool amortizing = false;
             bool onlyFee = false;
+            // the dearest live note is the card the interest row lands on
+            // ("note_<i>", the bank's control ids; the legacy shark = note_-1)
+            int worstIdx = -1;
+            double worstRate = 0.0;
             if (state.LoanPrincipal > 0)
             {
                 interest += (int)Math.Ceiling(state.LoanPrincipal * SimBank.SharkRate);
                 onlyFee = true;
+                worstRate = SimBank.SharkRate;
             }
-            foreach (Loan l in state.Loans)
+            for (int i = 0; i < state.Loans.Count; i++)
             {
+                Loan l = state.Loans[i];
                 if (l.Balance <= 0) continue;
                 interest += (int)Math.Ceiling(l.Balance * l.RateWk);
+                if (l.RateWk >= worstRate) { worstRate = l.RateWk; worstIdx = i; }
                 if (l.Kind == "bank") amortizing = true;
                 else onlyFee = true;
             }
@@ -226,7 +288,8 @@ namespace Runway.Game
                 }
                 rows.Add(new BillRow { Who = NameOf(state, "bank", "the bank"),
                     What = "interest on $" + GameUi.Money(SimBank.DebtTotal(state)) + " -> the bank",
-                    Kind = "scales", Amt = interest, Note = note, NoteCol = ncol, Press = "the bank" });
+                    Kind = "scales", Amt = interest, Note = note, NoteCol = ncol,
+                    Press = "the bank", Ctl = "note_" + worstIdx });
             }
             int tax = state.LastPnl != null ? state.LastPnl.Tax : 0;
             string taxNote;

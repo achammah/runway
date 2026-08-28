@@ -18,8 +18,33 @@ extends RefCounted
 ##
 ## Money lives in columns; the hero answers the question alone; every gap is
 ## priced in the works' own receipts (the engine's — this desk only reads).
+##
+## DAG3 (13-binder-ux): the empty desk is the S1 zero state proper; the ask
+## strip names the red under the hero; the walked number opens the S4 receipt
+## listing the overflowing demand-mix rows; relief rows quote their marginal
+## price on-row ("next 10 ≈ $X vs $Y in-house"); the site drill declares the
+## S7 crumb; DO lane by rung ([set relief] — [arrange] [open a roof]); the
+## hero wears its S5 delta; landing pads: "capacity" · "relief" · "ticket" ·
+## "site_<id>" — bills' rows and the works' own attention land spotlit.
 
 const QUESTION := "can we serve what they want, and what does one cost?"
+
+## S8 — the works sleeps pre-launch: nothing on the shelf, nothing to serve.
+## The tab stays on the map at 60% (the map is the curriculum).
+static func is_dormant(state) -> bool:
+	var s: GameState = state
+	return s.offers.is_empty()
+
+## S10 — the rail's four-character read: how full the machine runs.
+static func micro_status(state) -> String:
+	var s: GameState = state
+	if s.offers.is_empty():
+		return ""
+	var w := SimWorks.week_view(s)
+	var cap := float(w.get("capacity_units", 0.0))
+	if cap <= 0.0:
+		return ""
+	return "%d%%" % int(round(float(w.get("served_units", 0.0)) / cap * 100.0))
 
 static func hero_summary(state) -> Dictionary:
 	var s: GameState = state
@@ -65,18 +90,22 @@ static func draw(b) -> void:
 		return
 	_house_or_boutique(b, s, opened)
 
-## A desk with nothing still teaches — the works never sleeps, it explains.
+## S1 — the zero state proper: the promise in display type, one unit's cost
+## in the honest subjunctive, the ONE action (to the offers desk, with the
+## way back), and when the desk wakes. The works never sleeps, it explains.
 static func _empty(b, s: GameState) -> void:
-	var y := DeskKit.hero_band(b, "the works", "every business has works — the cost of delivering what you sell", DeskKit.INK, 6.0, false)
-	y = DeskKit.empty(b, Vector2(DeskKit.X_ID, y),
-		"nothing is on the shelf yet, so there is nothing to serve.",
-		"define an offer on the OFFERS desk — its cost lines become the unit ticket here", true)
+	DeskKit.title(b, "the works")
+	var would := "your first offer's cost lines would become the unit ticket here — what one costs, what walks away, and the valves that answer."
 	if s.biz_what == "Service":
-		y += 8.0
-		b.label("meanwhile the hands are real: capacity %d slots/wk (the founder + the crew)" % int(round(SimWorks.service_capacity(s))),
-			Vector2(DeskKit.X_ID, y), DeskKit.DETAIL, Color(DeskKit.INK, 0.6), 1080.0)
-	DeskKit.footer(b, {"y": 806.0, "computed": "the works reads your team for hands and your offers for the ticket",
-		"rules": "one desk, every running cost of delivering", "rules_y": 840.0})
+		would = "the hands are real already — capacity %d slots/wk (the founder + the crew). an offer's cost lines would become the unit ticket here." \
+			% int(round(SimWorks.service_capacity(s)))
+	DeskKit.zero_state(b, {
+		"will_show": "every business has works — the cost of delivering what you sell",
+		"would_line": would,
+		"action_label": "define an offer -> offers",
+		"action_cb": func() -> void: b.focus_desk("offers", "", "the works"),
+		"wakes_hint": "wakes when the first offer is on the shelf — the works reads your offers for its ticket and your team for hands",
+	})
 	DeskKit.hero_question(b, QUESTION)
 
 # ─────────────────────────── rungs 1-2 (one roof) ────────────────────────────
@@ -87,8 +116,11 @@ static func _house_or_boutique(b, s: GameState, opened_site: String) -> void:
 	var unit := String(vw.get("unit_word", "unit"))
 	var scoped := opened_site != ""
 	if scoped:
+		# S7 — the drill declares its trail every draw ("Lyon ‹ the works");
+		# the crumb owns the top-left, so the way back moves to the right
+		b.push_crumb(_site_name(s, opened_site))
 		DeskKit.back(b, "back to the lineup", func() -> void:
-			b.desk.erase("row"))
+			b.desk.erase("row"), Vector2(620.0, 6.0))
 	# ── THE HERO: the tab's question answered in one second
 	var demand := float(w.get("demand_units", 0.0))
 	var cap := float(w.get("capacity_units", 0.0))
@@ -115,15 +147,41 @@ static func _house_or_boutique(b, s: GameState, opened_site: String) -> void:
 		big = "%d %ss wanted · %s for %d" % [int(round(demand)), unit, String(vw.get("capacity_word", "capacity")), int(round(cap))]
 		line = "each one leaves at its price and costs real hands, rooms and parts"
 	# the hero big never runs under the corner block (measured, not hoped)
-	var y := DeskKit.hero_band(b, _fit(b, big, 660.0, DeskKit.HERO_BIG), line,
+	var fitted := _fit(b, big, 660.0, DeskKit.HERO_BIG)
+	var y := DeskKit.hero_band(b, fitted, line,
 		DeskKit.INK, 6.0 if not scoped else 44.0, false)
+	# S5 — which way the serve count moved since the last open (root face only:
+	# the drill's numbers are the roof's own and keep their page calm)
+	if not scoped:
+		var prev_served: String = b.seen_prev("the works", "served")
+		b.seen("the works", "served", str(int(round(served))))
+		if prev_served != "" and int(prev_served) != int(round(served)):
+			var hw: float = b.font().get_string_size(fitted, HORIZONTAL_ALIGNMENT_LEFT,
+				-1, DeskKit.HERO_BIG).x
+			DeskKit.delta_arrow(b, DeskKit.X_ID + hw + 10.0, 24.0,
+				served, float(prev_served))
 	# the hero's right corner: margin each + the gap, money in a column —
 	# ending clear of the arrange -> word at X_ID+980
 	var mv: Label = b.label("blended margin  " + _money(mrow), Vector2(700.0, 10.0 if not scoped else 48.0), DeskKit.STATUS, DeskKit.INK, 240.0)
 	mv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	if walk >= 1.0:
-		var wv: Label = b.label("%d turned away" % int(round(walk)), Vector2(700.0, 44.0 if not scoped else 82.0), DeskKit.DETAIL, DeskKit.PEN, 240.0)
+		# S4 — the walked number opens the receipt naming who walked (root
+		# faces only: the drill's number is the roof's own, and the mix book
+		# prices the company, not one roof)
+		var wtxt := "%d turned away" % int(round(walk))
+		var wv: Label = b.label(wtxt, Vector2(700.0, 44.0 if not scoped else 82.0), DeskKit.DETAIL, DeskKit.PEN, 240.0)
 		wv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		if not scoped:
+			var tw: float = b.font().get_string_size(wtxt, HORIZONTAL_ALIGNMENT_LEFT,
+				-1, DeskKit.DETAIL).x
+			DeskKit.press_receipt(b, Rect2(940.0 - tw, 42.0, tw + 8.0, 30.0),
+				"who walked, and what it was worth", _walked_lines(b, s))
+	# S2a — red speaks on the page: the strip spends its own line under the
+	# hero's rule; the zones give way and the foot slides with them
+	var red_said := DeskKit.ask_strip(b, "the works", DeskKit.X_ID, y, 1000.0,
+		"open the valves or add hands")
+	if red_said:
+		y += 30.0
 	# ── ZONE 1 · CAN WE SERVE?
 	var house := SimDivisions.rung(s) >= 2 and not scoped
 	if house:
@@ -134,13 +192,19 @@ static func _house_or_boutique(b, s: GameState, opened_site: String) -> void:
 	y = _zone_ticket(b, s, y, house)
 	# ── ZONES 3+4, folded to one honest band each (press opens the DETAIL)
 	y = _capacity_band(b, s, y, opened_site)
+	# S3 — the rung's one primary action, in the one slot every desk keeps
+	DeskKit.do_lane(b, [{"label": "set relief — the valves",
+		"cb": func() -> void: b.desk["page"] = "capacity", "tier": ""}])
 	# the foot rides BELOW the last zone when the stack runs deep — the blue
 	# line never prints across zone 4 (the scrolling QA law)
 	var fy := maxf(806.0, y + 4.0)
+	# ≤2 coral stories: when the ask strip already told the walk-away story
+	# at the top, the foot does not tell it again
 	DeskKit.footer(b, {"y": fy,
 		"computed": "the works reads your team for hands, your offers for the ticket — one desk, every cost of delivering",
 		"rules": "" if walk < 1.0 else "", "rules_y": fy + 34.0,
-		"warning": ("$%s/wk walks away — relief valves or hires close it" % _m(float(w.get("unbilled", 0.0)))) if float(w.get("unbilled", 0.0)) >= 1.0 else ""})
+		"warning": ("$%s/wk walks away — relief valves or hires close it" % _m(float(w.get("unbilled", 0.0)))) \
+			if float(w.get("unbilled", 0.0)) >= 1.0 and not red_said else ""})
 	DeskKit.hero_question(b, QUESTION)
 
 ## Zone 1, boutique face: the three drawn bars — they want / we hold / relief.
@@ -250,6 +314,9 @@ static func _zone_ticket(b, s: GameState, y: float, house: bool) -> float:
 		var z := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, h, 2, "WHAT ONE COSTS",
 			"practice makes every %s cheaper — the learning curve is real money" % String(SimWorks.vocab(s).get("unit_word", "unit")))
 		var lc := float(t.get("lc", 1.0))
+		# S2b — bills' serving row lands here ("ticket")
+		b.mark_control("ticket", Rect2(float(z.get("content_x", 0.0)) + 560.0,
+			float(z.get("content_y", 0.0)) - 6.0, 470.0, th))
 		DeskKit.ticket(b, float(z.get("content_x", 0.0)) + 560.0, float(z.get("content_y", 0.0)) - 6.0, 470.0, {
 			"title": "ONE %s" % String(s.offers[_flagship_i(s)].get("name", "unit")).to_upper(),
 			"lines": lines, "total_label": "margin, each",
@@ -314,6 +381,10 @@ static func _zone_ticket(b, s: GameState, y: float, house: bool) -> float:
 		tl.append({"label": "everything else", "value": "$%s" % _m(rest2)})
 	tl.append({"label": "sells for", "value": "$%s" % _m(float(t2.get("sells", 0.0)))})
 	var lc2 := float(t2.get("lc", 1.0))
+	# S2b — bills' serving row lands on the opened ticket ("ticket")
+	b.mark_control("ticket", Rect2(float(z2.get("content_x", 0.0)) + 660.0,
+		float(z2.get("content_y", 0.0)) - 6.0, 400.0,
+		46.0 + float(tl.size()) * 32.0 + 44.0))
 	DeskKit.ticket(b, float(z2.get("content_x", 0.0)) + 660.0, float(z2.get("content_y", 0.0)) - 6.0, 400.0, {
 		"title": "%s — OPENED" % String(s.offers[ti].get("name", "?")).to_upper(),
 		"lines": tl, "total_label": "margin, each",
@@ -349,6 +420,10 @@ static func _capacity_band(b, s: GameState, y: float, site: String) -> float:
 		b.desk["page"] = "capacity")
 	pen_row(b, y + 52.0, 4, "THE RELIEF VALVES", relief_txt, func() -> void:
 		b.desk["page"] = "capacity")
+	# S2b — the bands are landing pads: bills' rent row arrives on "capacity",
+	# the works' own red rows arrive on "relief"
+	b.mark_control("capacity", Rect2(DeskKit.X_ID, y - 6.0, 1120.0, 46.0))
+	b.mark_control("relief", Rect2(DeskKit.X_ID, y + 46.0, 1120.0, 46.0))
 	return y + 108.0
 
 ## One line on the valve's standing setting, for the folded band.
@@ -454,17 +529,17 @@ static func _capacity_sheet(b, s: GameState, site: String) -> void:
 	DeskKit.hero_question(b, QUESTION)
 
 static func _zone_relief(b, s: GameState, y: float) -> float:
+	var mq := _marginal_quote(s)
 	var cats: Array = []
 	match s.biz_what:
 		"Service":
-			cats = [["freelance", "freelancers, up to", "/wk", "$%d each vs $%s in-house" % [
-				int(round(SimDivisions.pb(s, "freelance_rate"))), _m(SimWorks.base_unit_cost(s))]]]
+			cats = [["freelance", "freelancers, up to", "/wk"]]
 		"Software":
-			cats = [["burst", "cloud burst, plus", " seats", "queue persists — burst closes at most 60%"]]
+			cats = [["burst", "cloud burst, plus", " seats"]]
 		"Marketplace":
-			cats = [["recruit_supply", "recruitment push", "$/wk", "≈1 seller per $35, each feeds ≈2.5 orders/wk"]]
+			cats = [["recruit_supply", "recruitment push", "$/wk"]]
 		"Hardware":
-			cats = [["subcontract", "the subcontract shop", "", "×%.2f unit cost — their margin, none of your learning" % SimFactory.sub_mult(s.era)]]
+			cats = [["subcontract", "the subcontract shop", ""]]
 	var h := 88.0 + float(cats.size()) * 52.0 + 8.0
 	var z := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, h, 4, "THE RELIEF VALVES",
 		"the valve is a standing lever — it answers this week and every week until you close it")
@@ -477,8 +552,13 @@ static func _zone_relief(b, s: GameState, y: float) -> float:
 		var vv: Label = b.label(("ON" if v > 0 else "OFF") if cat == "subcontract" else "%d%s" % [v, String(c[2])],
 			Vector2(float(z.get("content_x", 0.0)) + 350.0, ry), DeskKit.STATUS, DeskKit.PEN, 170.0)
 		vv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		b.label(String(c[3]), Vector2(float(z.get("content_x", 0.0)) + 560.0, ry + 6.0), DeskKit.DETAIL,
+		# the lever quotes its MARGINAL price on the row (S4 inline): the next
+		# ten, bought vs in-house — press it and the receipt says the terms
+		var mx := float(z.get("content_x", 0.0)) + 560.0
+		DeskKit.fit_line(b, String(mq.get("line", "")), Vector2(mx, ry + 6.0), DeskKit.DETAIL,
 			Color(DeskKit.INK, 0.6), 420.0)
+		DeskKit.press_receipt(b, Rect2(mx, ry + 2.0, 420.0, 30.0),
+			String(mq.get("title", "the valve's price")), mq.get("lines", []))
 		if cat == "subcontract":
 			DeskKit.adjust_pair(b, float(z.get("content_x", 0.0)) + 990.0, ry + 4.0,
 				func() -> void: SimWorks.relief_set(s, cat, 0),
@@ -514,9 +594,22 @@ static func _empire(b, s: GameState) -> void:
 		disp_total += int(round(float((dv as Dictionary).get("vol", 0.0))))
 	var relief_t := int(round(float(w.get("relief_used", 0.0))))
 	disp_total += relief_t
-	var y := DeskKit.hero_band(b, "%d %s · %d %ss a week" % [divs.size(),
-		_axis_word(s, slice, divs.size()), disp_total, unit],
+	var empire_big := "%d %s · %d %ss a week" % [divs.size(),
+		_axis_word(s, slice, divs.size()), disp_total, unit]
+	var y := DeskKit.hero_band(b, empire_big,
 		"every line keeps its own books — press one and its whole works opens", DeskKit.INK, 6.0, false)
+	# S5 — the lineup's serve count wears its arrow too
+	var prev_served: String = b.seen_prev("the works", "served")
+	b.seen("the works", "served", str(disp_total))
+	if prev_served != "" and int(prev_served) != disp_total:
+		var hw: float = b.font().get_string_size(empire_big, HORIZONTAL_ALIGNMENT_LEFT,
+			-1, DeskKit.HERO_BIG).x
+		DeskKit.delta_arrow(b, DeskKit.X_ID + hw + 10.0, 24.0,
+			float(disp_total), float(prev_served))
+	# S2a — a bleeding roof says so on the page, not just on the rail
+	if DeskKit.ask_strip(b, "the works", DeskKit.X_ID, y, 1000.0,
+			"open its works — fix or close"):
+		y += 30.0
 	# the slice control: only axes with ≥2 divisions exist to be pressed
 	if axes.size() > 1:
 		var next_axis := String(axes[(axes.find(slice) + 1) % axes.size()])
@@ -539,10 +632,15 @@ static func _empire(b, s: GameState) -> void:
 		if note != "" and facts.length() + note.length() <= 48:
 			facts += " · " + note
 		var id := String(rd.get("id", ""))
+		var row_y := y
 		y = DeskKit.hero_row(b, y, {"name": String(rd.get("name", "?")), "facts": facts,
 			"value": _money(margin), "col": DeskKit.SAGE if margin >= 0.0 else DeskKit.PEN,
 			"sev": int(rd.get("sev", 0)),
 			"on_press": (func() -> void: b.desk["row"] = id) if slice == "site" else Callable()})
+		# S2b — the row is a landing pad ("site_<id>"): a bleeding roof's
+		# attention row and bills' second-roof rents arrive here spotlit
+		if slice == "site":
+			b.mark_control("site_" + id, Rect2(DeskKit.X_ID, row_y, 1120.0, y - row_y))
 	if divs.size() > shown:
 		var fn := divs.size() - shown
 		y = DeskKit.fold_row(b, DeskKit.X_ID, y, fn,
@@ -569,6 +667,16 @@ static func _empire(b, s: GameState) -> void:
 	var sv: Label = b.label("−$%s/wk" % _m(-float(shared.get("net_wk", 0))), Vector2(DeskKit.X_ID + 880.0, y - 4.0),
 		DeskKit.STATUS, DeskKit.INK, 230.0)
 	sv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	# S3 — the empire rung's primary actions: the write view, and the door
+	var acts: Array = [{"label": "arrange — the works",
+		"cb": func() -> void: b.desk["mode"] = "arrange", "tier": ""}]
+	if slice == "site":
+		acts.append({"label": "open a roof — ≈$%s" % _m(float(SimDivisions.open_pack_cost(s))),
+			"cb": func() -> void:
+				b.desk["mode"] = "arrange"
+				b.desk["open_roof"] = true,
+			"tier": ""})
+	DeskKit.do_lane(b, acts)
 	DeskKit.footer(b, {"y": 806.0,
 		"computed": "unit economics differ by roof — rent, local wages and each roof's own learning; that is the whole lesson of scale",
 		"rules": "press any line and its whole rung-2 works opens for that roof", "rules_y": 840.0})
@@ -602,6 +710,87 @@ static func _scale_lesson(b, s: GameState, divs: Array, y: float, unit: String) 
 	return y + 156.0
 
 # ─────────────────────────────── the helpers ─────────────────────────────────
+
+## The valve's MARGINAL arithmetic, one shape per business: what the next ten
+## cost bought vs in-house. Rates come from the engine's own terms — the price
+## book's freelance_rate, the factory's sub multiple, the burst billing line
+## (0.4 × unit cost × learning — SimWorks' own serving fraction), the seller
+## arithmetic ($35 a seller, ≈2.5 orders each).
+static func _marginal_quote(s: GameState) -> Dictionary:
+	var t := SimWorks.unit_ticket(s, _flagship_i(s))
+	var in_each := maxf(float(t.get("sells", 0.0)) - float(t.get("margin", 0.0)), 0.0)
+	match s.biz_what:
+		"Service":
+			var fee := SimDivisions.pb(s, "freelance_rate")
+			return {"line": "next 10 ≈ $%s bought vs $%s in-house" % [_m(fee * 10.0), _m(in_each * 10.0)],
+				"title": "the freelancers' price",
+				"lines": [{"label": "a freelancer, each", "value": "$" + _m(fee)},
+					{"label": "in-house, each (after learning)", "value": "$" + _m(in_each)},
+					{"label": "next 10 bought", "value": "$" + _m(fee * 10.0)},
+					{"label": "next 10 in-house", "value": "$" + _m(in_each * 10.0)},
+					{"label": "they answer", "value": "70–100% of the ask"}]}
+		"Software":
+			var rate := maxf(0.4 * SimWorks.base_unit_cost(s) * SimEngine.learning_curve(s), 0.3)
+			var care := SimWorks.SW_SEAT_COST
+			return {"line": "next 10 seats ≈ $%s burst vs $%s of funded care" % [_m(rate * 10.0), _m(care * 10.0)],
+				"title": "the burst's price",
+				"lines": [{"label": "a burst seat, covered", "value": "$" + _m(rate)},
+					{"label": "a care-funded seat", "value": "$" + _m(care)},
+					{"label": "next 10 burst", "value": "$" + _m(rate * 10.0)},
+					{"label": "the queue's human half", "value": "closes at most 60%"}]}
+		"Marketplace":
+			var per_order := SimWorks.MK_SELLER_COST / SimWorks.MK_SELLER_FEED
+			return {"line": "next 10 orders ≈ $%s pushed — organic is free but lags" % _m(per_order * 10.0),
+				"title": "the push's price",
+				"lines": [{"label": "an order, recruited", "value": "$" + _m(per_order)},
+					{"label": "a seller ($35)", "value": "feeds ≈2.5/wk"},
+					{"label": "next 10 pushed", "value": "$" + _m(per_order * 10.0)},
+					{"label": "organic supply", "value": "free, lags growth"}]}
+	var sub_each := in_each * SimFactory.sub_mult(s.era)
+	return {"line": "next 10 ≈ $%s outside vs $%s at the bench" % [_m(sub_each * 10.0), _m(in_each * 10.0)],
+		"title": "the subcontract shop's price",
+		"lines": [{"label": "outside, each (×%.2f)" % SimFactory.sub_mult(s.era), "value": "$" + _m(sub_each)},
+			{"label": "at the bench, each", "value": "$" + _m(in_each)},
+			{"label": "next 10 outside", "value": "$" + _m(sub_each * 10.0)},
+			{"label": "their margin, none of your learning", "value": ""}]}
+
+## The walked number's receipt lines: the demand-mix rows that overflowed,
+## worst first, each priced at the week's revenue per unit.
+static func _walked_lines(_b, s: GameState) -> Array:
+	var w := SimWorks.week_view(s)
+	var rpu := float(w.get("rev_per_unit", 0.0))
+	var lines: Array = []
+	var rows := SimDivisions.works_book(s, "offer")
+	rows = rows.filter(func(r): return String((r as Dictionary).get("kind", "")) == "offer")
+	rows.sort_custom(func(a, bb) -> bool:
+		var ga: float = float((a as Dictionary).get("wanted", 0.0)) - float((a as Dictionary).get("served", 0.0))
+		var gb: float = float((bb as Dictionary).get("wanted", 0.0)) - float((bb as Dictionary).get("served", 0.0))
+		return ga > gb)
+	for r in rows:
+		var rd: Dictionary = r
+		# rounded EACH SIDE, exactly as the demand-mix sheet rounds its cells,
+		# so the receipt and the sheet always tell the same total
+		var gap := int(round(float(rd.get("wanted", 0.0)))) \
+			- int(round(float(rd.get("served", 0.0))))
+		if gap < 1 or lines.size() >= 4:
+			continue
+		lines.append({"label": String(rd.get("name", "?")), "value": "−%d" % gap})
+	if lines.is_empty():
+		lines.append({"label": "capacity short", "value": "−%d" % int(round(float(w.get("walk_units", 0.0))))})
+	lines.append({"label": "worth, together", "value": "$%s/wk" % _m(float(w.get("unbilled", 0.0))),
+		"col": DeskKit.PEN})
+	return lines
+
+## The probe's seam: open the walked receipt exactly as the press would.
+static func open_walked_receipt(b, s: GameState) -> void:
+	b.popover("who walked, and what it was worth", _walked_lines(b, s), Vector2(560.0, 80.0))
+
+## A site's display name, for the drill crumb.
+static func _site_name(s: GameState, site_id: String) -> String:
+	for site in s.sites:
+		if String((site as Dictionary).get("id", "")) == site_id:
+			return String((site as Dictionary).get("name", "a roof"))
+	return "a roof"
 
 static func _flagship_i(s: GameState) -> int:
 	if SimFactory.active(s):

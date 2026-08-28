@@ -934,23 +934,28 @@ namespace Runway.Core
             var rows = new List<AttentionItem>();
             int service = DebtServiceWk(state);
             string label = "";
+            // the switch the red lands on (S2b): the distressed note's card,
+            // else the borrow stepper (the cash-cliff case)
+            string ctl = "borrow";
             if (service > 0 && state.Cash < 2 * service)
                 label = "a note payment you cannot cover";
-            foreach (Loan l in state.Loans)
+            for (int i = 0; i < state.Loans.Count; i++)
             {
+                Loan l = state.Loans[i];
                 if (l.Balance <= 0) continue;
-                if (l.Missed >= 1) label = "missed a note — the balance grows";
+                if (l.Missed >= 1) { label = "missed a note — the balance grows"; ctl = "note_" + i; }
                 if (l.Kind == "venture")
                 {
                     int toBalloon = l.TakenWeek + l.TermWk - state.Week;
                     if (toBalloon <= 2 && state.Cash < l.Balance)
-                        label = "balloon due soon — no cash for it";
+                    { label = "balloon due soon — no cash for it"; ctl = "note_" + i; }
                 }
             }
             if (label.Length > 0)
                 rows.Add(new AttentionItem
                 {
                     Desk = "the bank", Key = "debt_distress", Severity = 3, Label = label,
+                    Control = ctl,
                 });
             if (state.HasFlag("tax_noticed") && !state.HasFlag("tax_seen"))
                 rows.Add(new AttentionItem

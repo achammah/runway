@@ -485,15 +485,15 @@ static func attention(state: GameState) -> Array:
 	var unbilled := float(w.get("unbilled", 0.0))
 	if unbilled >= 1.0:
 		rows.append({"desk": "the works", "key": "works_gap", "severity": 2,
-			"label": "$%d/wk walks — capacity short" % int(round(unbilled))})
+			"label": "$%d/wk walks — capacity short" % int(round(unbilled)), "control": "relief"})
 	if int(w.get("degrade_walked", 0)) > 0:
 		rows.append({"desk": "the works", "key": "works_degrade", "severity": 2,
-			"label": "past the ceiling — churn is the queue"})
+			"label": "past the ceiling — churn is the queue", "control": "relief"})
 	var used := float(w.get("relief_used", 0.0))
 	if used > 0.0 and used >= float(w.get("relief_cap_units", 0.0)) - 0.01 \
 			and float(w.get("walk_units", 0.0)) >= 1.0:
 		rows.append({"desk": "the works", "key": "relief_full", "severity": 2,
-			"label": "relief valve full open — still short"})
+			"label": "relief valve full open — still short", "control": "relief"})
 	for mrec in (state.hardware.get("equipment", []) as Array):
 		var md: Dictionary = mrec
 		if String(md.get("site", "")) != "" \

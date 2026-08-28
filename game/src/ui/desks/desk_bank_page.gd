@@ -25,6 +25,15 @@ extends RefCounted
 ##
 ## BOOKS mode = the full grouped statement restyled onto THE LEDGER SHEET.
 ## Two page modes behind one pen word; Esc pops "books" first.
+##
+## DAG3 (13-binder-ux): THE RECEIPT re-inks on every stepper press (a brief
+## alpha dip — the pen going over the numbers again); the locked standing
+## renders its unlock as a CHECKLIST read from the real lock state (the
+## distressed note's own Mondays); DO lane [borrow] [repay — worst note]
+## [refinance] as available; every note card registers "note_<i>" and the
+## borrow stepper "borrow" so bills' interest row and the pre-roll land
+## spotlit; the ask strip names the red under the hero; the hero wears its
+## S5 delta. The DO lane rides the meeting only — the books are a read view.
 
 const QUESTION := "what do we owe and can we borrow?"
 
@@ -39,6 +48,22 @@ const REFI_WIRED := true
 const CARD_GAP := 18.0
 const STAIR_COLS := [Color("F6F0DE"), Color("F2D6B8"), Color("D93425")]
 const POS := Color("5D7A50")
+
+## S8 — the bank sleeps through a debtless garage: no bank answers, nothing
+## owed, nothing to read. The shark waking (any debt) wakes the tab.
+static func is_dormant(state) -> bool:
+	var s: GameState = state
+	return s.era_index() < 1 and SimBank.debt_total(s) <= 0
+
+## S10 — the rail's four-character read: what is owed.
+static func micro_status(state) -> String:
+	var s: GameState = state
+	var debt := SimBank.debt_total(s)
+	if debt <= 0:
+		return ""
+	if debt >= 1000:
+		return "$%.1fk" % (float(debt) / 1000.0)
+	return "$%d" % debt
 
 static func hero_summary(state) -> Dictionary:
 	var s: GameState = state
@@ -68,7 +93,14 @@ static func _draw_meeting(b, state: GameState) -> void:
 	var big: String = "we owe $" + b.fmt(debt)
 	b.label(big, Vector2(SHEET_X, 6.0), DeskKit.HERO, DeskKit.INK, 560.0)
 	var bw: float = b.font().get_string_size(big, HORIZONTAL_ALIGNMENT_LEFT, -1, DeskKit.HERO).x
-	b.label("· $%s leaves every Monday" % b.fmt(service), Vector2(SHEET_X + bw + 14.0, 22.0),
+	# S5 — which way the debt moved since the last open (prev read first)
+	var prev_debt: String = b.seen_prev("the bank", "debt")
+	b.seen("the bank", "debt", str(debt))
+	var cap_x := SHEET_X + bw + 14.0
+	if prev_debt != "" and int(prev_debt) != debt:
+		DeskKit.delta_arrow(b, SHEET_X + bw + 10.0, 26.0, float(debt), float(prev_debt))
+		cap_x += 26.0
+	b.label("· $%s leaves every Monday" % b.fmt(service), Vector2(cap_x, 22.0),
 		DeskKit.ROW, Color(DeskKit.INK, 0.7), 420.0)
 	b.label(_hero_sentence(state), Vector2(SHEET_X, 62.0), DeskKit.DETAIL,
 		Color(DeskKit.INK, 0.6), 700.0)
@@ -83,7 +115,12 @@ static func _draw_meeting(b, state: GameState) -> void:
 	if clock_txt != "":
 		DeskKit.clock_chip(b, 910.0, 68.0, clock_txt)
 
+	# S2a — red speaks on the page: the strip gets its own y under the hero
+	# sentence and pushes the zones down only when it drew
 	var y := 96.0
+	if DeskKit.ask_strip(b, "the bank", SHEET_X, 88.0, 1000.0,
+			"find the Monday or repay the note"):
+		y = 118.0
 	y = _zone_standing(b, state, y, rate)
 	y = _zone_owed(b, state, y)
 	# zones 3 and 4 share the lower page: one open, the other a bar
@@ -94,7 +131,54 @@ static func _draw_meeting(b, state: GameState) -> void:
 		y = _zone_new_money(b, state, y, rate)
 		y = _zone4_bar(b, state, y)
 	_forecast_strip(b, state, y)
+	_do_lane(b, state)
 	_foot(b, state)
+
+## S3 — the meeting's primary actions, one slot, as available: borrow opens
+## zone 3, repay pays the dearest filed note down (the existing two-tap op),
+## refinance fires the swap the tail line quotes (the existing sign op).
+static func _do_lane(b, state: GameState) -> void:
+	var actions: Array = []
+	var garage := state.era_index() < 1
+	var locked := SimBank.credit_locked(state)
+	var headroom := SimBank.borrow_headroom(state)
+	if not garage and not locked and headroom >= SimBank.MIN_DRAW:
+		actions.append({"label": "borrow — up to $%s" % b.fmt(headroom),
+			"cb": func() -> void: b.desk["zone4"] = false, "tier": ""})
+	var worst := _worst_note(state)
+	if worst >= 0:
+		var quote: int = mini(state.cash - GameState.RAMEN_PER_WEEK,
+			int((state.loans[worst] as Dictionary).get("balance", 0)))
+		if quote > 0:
+			var widx := worst
+			actions.append({"label": "repay — the %.1f%% note" %
+				(float((state.loans[worst] as Dictionary).get("rate_wk", 0.0)) * 100.0),
+				"cb": func() -> void: SimBank.repay_note(state, widx), "tier": "two-tap"})
+	var ridx := _refi_note(state)
+	if REFI_WIRED and ridx >= 0 and not locked:
+		var note: Dictionary = state.loans[ridx]
+		if SimBank.bank_rate_wk(state) < float(note.get("rate_wk", 0.0)):
+			var rterm := maxi(int(note.get("term_wk", 12)) \
+				- (state.week - int(note.get("taken_week", state.week))), 4)
+			actions.append({"label": "refinance — today's %.1f%%" %
+				(SimBank.bank_rate_wk(state) * 100.0),
+				"cb": func() -> void:
+					SimWorks.op_refinance_note(state, {"old_id": ridx, "weeks": rterm}),
+				"tier": "sign"})
+	DeskKit.do_lane(b, actions)
+
+## The dearest live FILED note — the one repay answers first. -1 = none.
+static func _worst_note(state: GameState) -> int:
+	var best := -1
+	var best_rate := -1.0
+	for i in state.loans.size():
+		var note: Dictionary = state.loans[i]
+		if int(note.get("balance", 0)) <= 0:
+			continue
+		if float(note.get("rate_wk", 0.0)) > best_rate:
+			best_rate = float(note.get("rate_wk", 0.0))
+			best = i
+	return best
 
 ## Zone 1 — the rate is an opinion, derived from the engine's own inputs
 ## (only the terms that actually move it print; the zone is exactly as tall
@@ -103,7 +187,7 @@ static func _zone_standing(b, state: GameState, y: float, rate: float) -> float:
 	var garage := state.era_index() < 1
 	var locked := SimBank.credit_locked(state)
 	if garage or locked:
-		var hh := 132.0
+		var hh := 172.0 if locked else 132.0
 		var zz := DeskKit.zone(b, SHEET_X, y, ZONE_W, hh, 1, "your standing",
 			"— the rate is not a constant; it is what the bank thinks of your books")
 		var zx := float(zz.get("content_x", 0.0))
@@ -116,10 +200,47 @@ static func _zone_standing(b, state: GameState, y: float, rate: float) -> float:
 		else:
 			b.label("the bank stopped answering — a note is in default and the collectors are calling.",
 				Vector2(zx, zy - 4.0), DeskKit.DETAIL, Binder.PEN, 1060.0)
+			_unlock_checklist(b, state, zx, zy + 26.0)
 			b.label("repay the distressed note and the lock lifts — it is derived, never a grudge.",
-				Vector2(zx, zy + 22.0), DeskKit.LAW, Color(DeskKit.INK, 0.6), 1060.0)
+				Vector2(zx, zy + 62.0), DeskKit.LAW, Color(DeskKit.INK, 0.6), 1060.0)
 		return y + hh + 4.0
 	# the derivation rows, the engine's own terms (SimBank.bank_rate_wk)
+	return _zone_standing_rows(b, state, y, rate)
+
+## The unlock as a CHECKLIST, read from the REAL lock state: the distressed
+## note frees itself one covered Monday at a time (note_weeks_left at its own
+## payment), so the boxes are its Mondays — done filled, the rest waiting. A
+## note with no schedule (sharked, or a payment under water) has one box:
+## repay it whole.
+static func _unlock_checklist(b, state: GameState, x: float, y: float) -> void:
+	var idx := -1
+	for i in state.loans.size():
+		var note: Dictionary = state.loans[i]
+		if int(note.get("missed", 0)) >= 2 and int(note.get("balance", 0)) > 0:
+			idx = i
+			break
+	if idx < 0:
+		return
+	var nd: Dictionary = state.loans[idx]
+	var bal := int(nd.get("balance", 0))
+	var left := SimBank.note_weeks_left(bal, float(nd.get("rate_wk", 0.0)),
+		int(nd.get("pay_wk", 0)))
+	if int(nd.get("pay_wk", 0)) <= 0 or left < 0:
+		DeskKit.pips(b, Vector2(x, y + 6.0), 0, 1)
+		DeskKit.fit_line(b, "the unlock: repay the collectors in full — $%s, the only door"
+			% b.fmt(bal), Vector2(x + 40.0, y + 2.0), DeskKit.DETAIL, DeskKit.INK, 900.0)
+		return
+	var done := maxi(int(nd.get("term_wk", 0)) - left, 0)
+	var total := done + left
+	var boxes: int = mini(total, 12)
+	DeskKit.pips(b, Vector2(x, y + 6.0),
+		int(round(float(done) / float(maxi(total, 1)) * float(boxes))) if total > 12 else done,
+		boxes)
+	DeskKit.fit_line(b, "the unlock: %d clean Monday%s of %d — $%s each, none missed"
+		% [done, "" if done == 1 else "s", total, b.fmt(int(nd.get("pay_wk", 0)))],
+		Vector2(x + float(boxes) * 21.0 + 18.0, y + 2.0), DeskKit.DETAIL, DeskKit.INK, 700.0)
+
+static func _zone_standing_rows(b, state: GameState, y: float, rate: float) -> float:
 	var rw := SimEngine.runway_weeks(state)
 	var health := clampf((12.0 - float(rw)) / 12.0, 0.0, 1.0)
 	var slump := clampf(-state.last_growth / 0.25, 0.0, 1.0)
@@ -206,6 +327,9 @@ static func _note_card(b, state: GameState, n: Dictionary, x: float, y: float,
 			title = "the shark — interest only"
 			chip = "feeds first"
 	var frame := DeskKit.card_frame(b, x, y, w, h, title)
+	# S2b — the card is a landing pad: bills' interest row and the pre-roll
+	# arrive here spotlit ("note_<i>"; the legacy shark files as note_-1)
+	b.mark_control("note_%d" % idx, Rect2(x, y, w, h))
 	var cx := float(frame.get("content_x", x))
 	var cy := float(frame.get("content_y", y))
 	b.label(chip, Vector2(x + w - 176.0, y + 14.0), 15,
@@ -311,18 +435,26 @@ static func _zone_new_money(b, state: GameState, y: float, rate: float) -> float
 	var term := int(b.desk.get("term", int(terms[mini(1, terms.size() - 1)])))
 	if not terms.has(term):
 		term = int(terms[0])
+	# every stepper press re-inks THE RECEIPT (S4): the flag rides the desk
+	# dict through the refresh the squares fire, and the redraw dips its ink
 	var borrow_down := func() -> void:
 		b.desk["borrow"] = clampi(int(DeskKit.ladder(SimBank.BORROW_STEPS, float(borrow), -1)),
 			SimBank.MIN_DRAW, floor_amt)
+		b.desk["flick"] = true
 	var borrow_up := func() -> void:
 		b.desk["borrow"] = clampi(int(DeskKit.ladder(SimBank.BORROW_STEPS, float(borrow), 1)),
 			SimBank.MIN_DRAW, floor_amt)
+		b.desk["flick"] = true
 	var term_down := func() -> void:
 		b.desk["term"] = int(DeskKit.ladder(terms, float(term), -1))
+		b.desk["flick"] = true
 	var term_up := func() -> void:
 		b.desk["term"] = int(DeskKit.ladder(terms, float(term), 1))
+		b.desk["flick"] = true
 	_money_line(b, cx, cy, "borrow", "$" + b.fmt(borrow), borrow_down, borrow_up,
 		borrow <= SimBank.MIN_DRAW, borrow >= headroom)
+	# S2b — the borrow stepper is a landing pad ("borrow")
+	b.mark_control("borrow", Rect2(cx - 8.0, cy - 6.0, 560.0, 46.0))
 	_money_line(b, cx, cy + 40.0, "pay it back over", "%d weeks" % term, term_down, term_up,
 		term <= int(terms[0]), term >= int(terms[terms.size() - 1]))
 	b.label("at your rate  %.1f%%/wk — set by your standing" % (rate * 100.0),
@@ -341,14 +473,26 @@ static func _zone_new_money(b, state: GameState, y: float, rate: float) -> float
 	var all_in := pay * term
 	var rx := cx + 620.0
 	var rcpt_w := 420.0
-	b.label("THE RECEIPT — shorter term: smaller price, heavier Mondays",
-		Vector2(rx, cy - 6.0), 15, Color(DeskKit.INK, 0.5), rcpt_w)
-	_rcpt_row(b, rx, cy + 16.0, rcpt_w, "every Monday", "$" + b.fmt(pay), DeskKit.INK)
-	_rcpt_row(b, rx, cy + 40.0, rcpt_w, "you will hand back, in all", "$" + b.fmt(all_in), DeskKit.INK)
+	var inked: Array = []
+	inked.append(b.label("THE RECEIPT — shorter term: smaller price, heavier Mondays",
+		Vector2(rx, cy - 6.0), 15, Color(DeskKit.INK, 0.5), rcpt_w))
+	inked.append_array(_rcpt_row(b, rx, cy + 16.0, rcpt_w, "every Monday",
+		"$" + b.fmt(pay), DeskKit.INK))
+	inked.append_array(_rcpt_row(b, rx, cy + 40.0, rcpt_w, "you will hand back, in all",
+		"$" + b.fmt(all_in), DeskKit.INK))
 	DeskKit.pen_rule(b, cy + 64.0, rx, rcpt_w, Color(DeskKit.INK, 0.8))
 	DeskKit.pen_rule(b, cy + 68.0, rx, rcpt_w, Color(DeskKit.INK, 0.8))
-	_rcpt_row(b, rx, cy + 74.0, rcpt_w, "THE PRICE OF THE MONEY",
-		"$" + b.fmt(maxi(all_in - borrow, 0)), Binder.PEN)
+	inked.append_array(_rcpt_row(b, rx, cy + 74.0, rcpt_w, "THE PRICE OF THE MONEY",
+		"$" + b.fmt(maxi(all_in - borrow, 0)), Binder.PEN))
+	# THE PEN FLICK (S4): a stepper press just rewrote the numbers — the ink
+	# dips and settles, so the re-print is FELT, not inferred
+	if bool(b.desk.get("flick", false)):
+		b.desk.erase("flick")
+		var tw: Tween = b.create_tween()
+		tw.set_parallel(true)
+		for l in inked:
+			(l as Label).modulate.a = 0.25
+			tw.tween_property(l, "modulate:a", 1.0, 0.18)
 	var sign := DeskKit.word(b, "[ SIGN FOR IT ]", Vector2(rx + 100.0, cy + 104.0),
 		Callable(), DeskKit.DETAIL, DeskKit.INK, 220.0)
 	var fire_sign := func() -> void:
@@ -359,11 +503,13 @@ static func _zone_new_money(b, state: GameState, y: float, rate: float) -> float
 		DeskKit.sign_stroke(b, sign, fire_sign))
 	return y + h + 4.0
 
+## One receipt row; returns its labels so the pen flick can re-ink them.
 static func _rcpt_row(b, x: float, y: float, w: float, label_text: String, val: String,
-		col: Color) -> void:
-	b.label(label_text, Vector2(x, y), 17, Color(DeskKit.INK, 0.85), w - 120.0)
+		col: Color) -> Array:
+	var l: Label = b.label(label_text, Vector2(x, y), 17, Color(DeskKit.INK, 0.85), w - 120.0)
 	var v: Label = b.label(val, Vector2(x, y), 18, col, w)
 	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	return [l, v]
 
 static func _dead_reason(garage: bool, locked: bool) -> String:
 	if locked:
@@ -397,10 +543,15 @@ static func _zone3_bar(b, state: GameState, y: float, rate: float) -> float:
 			b.fmt(borrow), term, b.fmt(SimBank.loan_payment_wk(borrow, rate, term))]
 	return _bar(b, y, text, func() -> void: b.desk["zone4"] = false)
 
+## Compact on purpose: this bar shares the lower page with the DO lane (S3,
+## right-aligned at 762) — a short door never runs under the lane's buttons;
+## the ladder's full story waits inside the opened zone.
 static func _zone4_bar(b, _state: GameState, y: float) -> float:
-	return _bar(b, y,
-		"4 · IF A MONDAY IS MISSED — the balance grows -> repriced + the bank stops answering -> sold to the collectors ▸",
-		func() -> void: b.desk["zone4"] = true)
+	DeskKit.pen_rule(b, y + 2.0, SHEET_X, ZONE_W, Color(DeskKit.INK, 0.2))
+	DeskKit.word(b, "4 · IF A MONDAY IS MISSED — the three stairs ▸",
+		Vector2(SHEET_X + 8.0, y + 8.0), func() -> void: b.desk["zone4"] = true,
+		19, Color(DeskKit.INK, 0.7), 330.0)
+	return y + 42.0
 
 static func _bar(b, y: float, text: String, on_press: Callable) -> float:
 	DeskKit.pen_rule(b, y + 2.0, SHEET_X, ZONE_W, Color(DeskKit.INK, 0.2))
@@ -449,7 +600,9 @@ static func _stair(b, x: float, base: float, w: float, h: float, head: String,
 ## The cash-ahead strip: the forecast's own cells, before surprises.
 static func _forecast_strip(b, state: GameState, y: float) -> void:
 	var rows: Array = SimBank.forecast_cash(state, SimBank.FORECAST_WEEKS)
-	if rows.is_empty() or y + 50.0 > Y_RULES - 6.0:
+	# the strip yields to the DO lane's slot (S3) — in deep stacks it simply
+	# waits for a shallower week rather than printing under the buttons
+	if rows.is_empty() or y + 50.0 > minf(Y_RULES - 6.0, DeskKit.DO_LANE_Y - 8.0):
 		return
 	b.label("cash ahead, if nothing changes:", Vector2(SHEET_X, y + 12.0), DeskKit.LAW,
 		Color(DeskKit.INK, 0.6), 240.0)

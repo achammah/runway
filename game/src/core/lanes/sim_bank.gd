@@ -738,20 +738,26 @@ static func attention(state: GameState) -> Array:
 	var rows: Array = []
 	var service := debt_service_wk(state)
 	var label := ""
+	# the switch the red lands on (S2b): the distressed note's own card when
+	# one note raised the alarm, else the borrow stepper (the cash-cliff case)
+	var ctl := "borrow"
 	if service > 0 and state.cash < 2 * service:
 		label = "a note payment you cannot cover"
-	for l in state.loans:
-		var ld: Dictionary = l
+	for i in state.loans.size():
+		var ld: Dictionary = state.loans[i]
 		if int(ld.get("balance", 0)) <= 0:
 			continue
 		if int(ld.get("missed", 0)) >= 1:
 			label = "missed a note — the balance grows"
+			ctl = "note_%d" % i
 		if String(ld.get("kind", "")) == "venture":
 			var to_balloon := int(ld.get("taken_week", 0)) + int(ld.get("term_wk", 0)) - state.week
 			if to_balloon <= 2 and state.cash < int(ld.get("balance", 0)):
 				label = "balloon due soon — no cash for it"
+				ctl = "note_%d" % i
 	if label != "":
-		rows.append({"desk": "the bank", "key": "debt_distress", "severity": 3, "label": label})
+		rows.append({"desk": "the bank", "key": "debt_distress", "severity": 3, "label": label,
+			"control": ctl})
 	if state.has_flag("tax_noticed") and not state.has_flag("tax_seen"):
 		rows.append({"desk": "the bank", "key": "first_tax", "severity": 2,
 			"label": "the taxman found you — profit is taxed"})

@@ -19,6 +19,14 @@ namespace Runway.Game
     /// ZONES: 1–2 always open; 3 and 4 share the lower page — one open, the
     /// other a numbered bar (press to swap). BOOKS mode = the full statement
     /// restyled onto THE LEDGER SHEET.
+    ///
+    /// DAG3 (13-binder-ux): THE RECEIPT re-inks on every stepper press (a
+    /// brief alpha dip); the locked standing renders its unlock as a
+    /// CHECKLIST read from the real lock state; DO lane [borrow] [repay —
+    /// worst note] [refinance] as available; note cards register "note_&lt;i&gt;"
+    /// and the borrow stepper "borrow" for spotlit landings; the ask strip
+    /// names the red; the hero wears its S5 delta. The DO lane rides the
+    /// meeting only — the books are a read view.
     /// </summary>
     public static class DeskBankPage
     {
@@ -41,6 +49,22 @@ namespace Runway.Game
         {
             public int Idx = -1;
             public Loan Note;
+        }
+
+        /// S8 — the bank sleeps through a debtless garage: no bank answers,
+        /// nothing owed, nothing to read. Any debt wakes the tab.
+        public static bool IsDormant(GameState s)
+        {
+            return s.EraIndex() < 1 && SimBank.DebtTotal(s) <= 0;
+        }
+
+        /// S10 — the rail's four-character read: what is owed.
+        public static string MicroStatus(GameState s)
+        {
+            int debt = SimBank.DebtTotal(s);
+            if (debt <= 0) return "";
+            if (debt >= 1000) return "$" + (debt / 1000.0).ToString("0.0") + "k";
+            return "$" + debt;
         }
 
         public static string[] HeroSummary(GameState s)
@@ -70,7 +94,17 @@ namespace Runway.Game
             string big = "we owe $" + GameUi.Money(debt);
             b.L(big, SheetX, 6f, DeskKit.HeroSize, DrawnUI.Ink, 560f);
             float bw = DrawnUI.MeasureWidth(big, DeskKit.HeroSize);
-            b.L("· $" + GameUi.Money(service) + " leaves every Monday", SheetX + bw + 14f, 22f,
+            // S5 — which way the debt moved since the last open (prev first)
+            string prevDebt = b.SeenPrev("the bank", "debt");
+            b.Seen("the bank", "debt", debt.ToString());
+            float capX = SheetX + bw + 14f;
+            int prevDebtI;
+            if (prevDebt != "" && int.TryParse(prevDebt, out prevDebtI) && prevDebtI != debt)
+            {
+                DeskKit.DeltaArrow(b, SheetX + bw + 10f, 26f, debt, prevDebtI);
+                capX += 26f;
+            }
+            b.L("· $" + GameUi.Money(service) + " leaves every Monday", capX, 22f,
                 DeskKit.Row, Ink(0.7f), 420f);
             b.L(HeroSentence(state), SheetX, 62f, DeskKit.Detail, Ink(0.6f), 700f);
             var opinion = b.L("the bank's opinion of you: " + (rate * 100.0).ToString("0.0")
@@ -81,7 +115,12 @@ namespace Runway.Game
             string clockTxt = DeadlineText(state);
             if (clockTxt != "") DeskKit.ClockChip(b, 910f, 68f, clockTxt);
 
+            // S2a — red speaks on the page: the strip gets its own y under
+            // the hero sentence and pushes the zones down only when it drew
             float y = 96f;
+            if (DeskKit.AskStrip(b, "the bank", SheetX, 88f, 1000f,
+                    "find the Monday or repay the note"))
+                y = 118f;
             y = ZoneStanding(b, state, y, rate);
             y = ZoneOwed(b, state, y);
             // zones 3 and 4 share the lower page: one open, the other a bar
@@ -96,7 +135,73 @@ namespace Runway.Game
                 y = Zone4Bar(b, y);
             }
             ForecastStrip(b, state, y);
+            DoLaneRow(b, state);
             Foot(b, state);
+        }
+
+        /// S3 — the meeting's primary actions, one slot, as available:
+        /// borrow opens zone 3, repay pays the dearest filed note down (the
+        /// existing two-tap op), refinance fires the tail line's swap (sign).
+        static void DoLaneRow(BinderScreen b, GameState state)
+        {
+            var actions = new List<DeskKit.DoAction>();
+            bool garage = state.EraIndex() < 1;
+            bool locked = SimBank.CreditLocked(state);
+            int headroom = SimBank.BorrowHeadroom(state);
+            if (!garage && !locked && headroom >= SimBank.MinDraw)
+                actions.Add(new DeskKit.DoAction { Label = "borrow — up to $" + GameUi.Money(headroom),
+                    Cb = () => { b.Desk["zone4"] = false; }, Tier = "" });
+            int worst = WorstNote(state);
+            if (worst >= 0)
+            {
+                int quote = Math.Min(state.Cash - GameState.RAMEN_PER_WEEK,
+                    state.Loans[worst].Balance);
+                if (quote > 0)
+                {
+                    int widx = worst;
+                    actions.Add(new DeskKit.DoAction
+                    {
+                        Label = "repay — the " + (state.Loans[worst].RateWk * 100.0).ToString("0.0")
+                            + "% note",
+                        Cb = () => SimBank.RepayNote(state, widx), Tier = "two-tap",
+                    });
+                }
+            }
+            int ridx = RefiNote(state);
+            if (RefiWired && ridx >= 0 && !locked)
+            {
+                Loan note = state.Loans[ridx];
+                if (SimBank.BankRateWk(state) < note.RateWk)
+                {
+                    int rterm = Math.Max(note.TermWk - (state.Week - note.TakenWeek), 4);
+                    actions.Add(new DeskKit.DoAction
+                    {
+                        Label = "refinance — today's "
+                            + (SimBank.BankRateWk(state) * 100.0).ToString("0.0") + "%",
+                        Cb = () => SimWorks.OpRefinanceNote(state,
+                            new Dictionary<string, object> { { "old_id", ridx }, { "weeks", rterm } }),
+                        Tier = "sign",
+                    });
+                }
+            }
+            DeskKit.DoLane(b, actions);
+        }
+
+        /// The dearest live FILED note — the one repay answers first.
+        static int WorstNote(GameState state)
+        {
+            int best = -1;
+            double bestRate = -1.0;
+            for (int i = 0; i < state.Loans.Count; i++)
+            {
+                if (state.Loans[i].Balance <= 0) continue;
+                if (state.Loans[i].RateWk > bestRate)
+                {
+                    bestRate = state.Loans[i].RateWk;
+                    best = i;
+                }
+            }
+            return best;
         }
 
         /// Zone 1 — the rate derived from the engine's own inputs; only the
@@ -107,8 +212,8 @@ namespace Runway.Game
             bool locked = SimBank.CreditLocked(state);
             if (garage || locked)
             {
-                const float Hh = 132f;
-                var zz = DeskKit.Zone(b, SheetX, y, ZoneW, Hh, 1, "your standing",
+                float hh = locked ? 172f : 132f;
+                var zz = DeskKit.Zone(b, SheetX, y, ZoneW, hh, 1, "your standing",
                     "— the rate is not a constant; it is what the bank thinks of your books");
                 if (garage)
                 {
@@ -121,10 +226,11 @@ namespace Runway.Game
                 {
                     b.L("the bank stopped answering — a note is in default and the collectors are calling.",
                         zz.ContentX, zz.ContentY - 4f, DeskKit.Detail, DrawnUI.Coral, 1060f);
+                    UnlockChecklist(b, state, zz.ContentX, zz.ContentY + 26f);
                     b.L("repay the distressed note and the lock lifts — it is derived, never a grudge.",
-                        zz.ContentX, zz.ContentY + 22f, DeskKit.Law, Ink(0.6f), 1060f);
+                        zz.ContentX, zz.ContentY + 62f, DeskKit.Law, Ink(0.6f), 1060f);
                 }
-                return y + Hh + 4f;
+                return y + hh + 4f;
             }
             int rw = SimEngine.RunwayWeeks(state);
             double health = Gd.Clampf((12.0 - rw) / 12.0, 0.0, 1.0);
@@ -179,6 +285,39 @@ namespace Runway.Game
             return y + h + 4f;
         }
 
+        /// The unlock as a CHECKLIST, read from the REAL lock state: the
+        /// distressed note frees itself one covered Monday at a time
+        /// (NoteWeeksLeft at its own payment), so the boxes are its Mondays —
+        /// done filled, the rest waiting. A note with no schedule (sharked,
+        /// or a payment under water) has one box: repay it whole.
+        static void UnlockChecklist(BinderScreen b, GameState state, float x, float y)
+        {
+            int idx = -1;
+            for (int i = 0; i < state.Loans.Count; i++)
+                if (state.Loans[i].Missed >= 2 && state.Loans[i].Balance > 0) { idx = i; break; }
+            if (idx < 0) return;
+            Loan nd = state.Loans[idx];
+            int bal = nd.Balance;
+            int left = SimBank.NoteWeeksLeft(bal, nd.RateWk, nd.PayWk);
+            if (nd.PayWk <= 0 || left < 0)
+            {
+                DeskKit.Pips(b, x, y + 6f, 0, 1);
+                DeskKit.FitLine(b, "the unlock: repay the collectors in full — $"
+                    + GameUi.Money(bal) + ", the only door", x + 40f, y + 2f,
+                    DeskKit.Detail, DrawnUI.Ink, 900f);
+                return;
+            }
+            int done = Math.Max(nd.TermWk - left, 0);
+            int total = done + left;
+            int boxes = Math.Min(total, 12);
+            DeskKit.Pips(b, x, y + 6f,
+                total > 12 ? Mathf.RoundToInt((float)done / Math.Max(total, 1) * boxes) : done,
+                boxes);
+            DeskKit.FitLine(b, "the unlock: " + done + " clean Monday" + (done == 1 ? "" : "s")
+                + " of " + total + " — $" + GameUi.Money(nd.PayWk) + " each, none missed",
+                x + boxes * 21f + 18f, y + 2f, DeskKit.Detail, DrawnUI.Ink, 700f);
+        }
+
         /// Zone 2 — every note cut open + the refinance tail line.
         static float ZoneOwed(BinderScreen b, GameState state, float y)
         {
@@ -221,6 +360,9 @@ namespace Runway.Game
                 default: title = "the shark — interest only"; chip = "feeds first"; break;
             }
             var frame = DeskKit.CardFrame(b, x, y, w, h, title);
+            // S2b — the card is a landing pad: bills' interest row and the
+            // pre-roll arrive here spotlit ("note_<i>"; legacy shark = -1)
+            b.MarkControl("note_" + idx, new Rect(x, y, w, h));
             float cx = frame.ContentX;
             float cy = frame.ContentY;
             b.L(chip, x + w - 176f, y + 14f, 15f, kind == "bank" ? Pos : DrawnUI.Coral, 162f);
@@ -332,15 +474,21 @@ namespace Runway.Game
             foreach (int s in SimBank.BorrowSteps) borrowSteps.Add(s);
             var termSteps = new List<double>();
             foreach (int t in terms) termSteps.Add(t);
+            // every stepper press re-inks THE RECEIPT (S4): the flag rides
+            // the desk dict through the refresh, and the redraw dips its ink
             MoneyLine(b, cx, cy, "borrow", "$" + GameUi.Money(borrow),
                 () => { b.Desk["borrow"] = Gd.Clampi((int)DeskKit.Ladder(borrowSteps, borrow, -1),
-                    SimBank.MinDraw, floorAmt); },
+                    SimBank.MinDraw, floorAmt); b.Desk["flick"] = true; },
                 () => { b.Desk["borrow"] = Gd.Clampi((int)DeskKit.Ladder(borrowSteps, borrow, 1),
-                    SimBank.MinDraw, floorAmt); },
+                    SimBank.MinDraw, floorAmt); b.Desk["flick"] = true; },
                 borrow <= SimBank.MinDraw, borrow >= headroom);
+            // S2b — the borrow stepper is a landing pad ("borrow")
+            b.MarkControl("borrow", new Rect(cx - 8f, cy - 6f, 560f, 46f));
             MoneyLine(b, cx, cy + 40f, "pay it back over", term + " weeks",
-                () => { b.Desk["term"] = (int)DeskKit.Ladder(termSteps, term, -1); },
-                () => { b.Desk["term"] = (int)DeskKit.Ladder(termSteps, term, 1); },
+                () => { b.Desk["term"] = (int)DeskKit.Ladder(termSteps, term, -1);
+                    b.Desk["flick"] = true; },
+                () => { b.Desk["term"] = (int)DeskKit.Ladder(termSteps, term, 1);
+                    b.Desk["flick"] = true; },
                 term <= terms[0], term >= terms[terms.Length - 1]);
             b.L("at your rate  " + (rate * 100.0).ToString("0.0") + "%/wk — set by your standing",
                 cx, cy + 82f, DeskKit.Law, Ink(0.6f), 520f);
@@ -360,15 +508,25 @@ namespace Runway.Game
             int allIn = pay2 * term;
             float rx = cx + 620f;
             const float RcptW = 420f;
-            b.L("THE RECEIPT — shorter term: smaller price, heavier Mondays",
-                rx, cy - 6f, 15f, Ink(0.5f), RcptW);
-            RcptRow(b, rx, cy + 16f, RcptW, "every Monday", "$" + GameUi.Money(pay2), DrawnUI.Ink);
-            RcptRow(b, rx, cy + 40f, RcptW, "you will hand back, in all",
-                "$" + GameUi.Money(allIn), DrawnUI.Ink);
+            var inked = new List<TextMeshProUGUI>();
+            inked.Add(b.L("THE RECEIPT — shorter term: smaller price, heavier Mondays",
+                rx, cy - 6f, 15f, Ink(0.5f), RcptW));
+            inked.AddRange(RcptRow(b, rx, cy + 16f, RcptW, "every Monday",
+                "$" + GameUi.Money(pay2), DrawnUI.Ink));
+            inked.AddRange(RcptRow(b, rx, cy + 40f, RcptW, "you will hand back, in all",
+                "$" + GameUi.Money(allIn), DrawnUI.Ink));
             DeskKit.PenRule(b, cy + 64f, rx, RcptW, Ink(0.8f));
             DeskKit.PenRule(b, cy + 68f, rx, RcptW, Ink(0.8f));
-            RcptRow(b, rx, cy + 74f, RcptW, "THE PRICE OF THE MONEY",
-                "$" + GameUi.Money(Math.Max(allIn - borrow, 0)), DrawnUI.Coral);
+            inked.AddRange(RcptRow(b, rx, cy + 74f, RcptW, "THE PRICE OF THE MONEY",
+                "$" + GameUi.Money(Math.Max(allIn - borrow, 0)), DrawnUI.Coral));
+            // THE PEN FLICK (S4): a stepper press just rewrote the numbers —
+            // the ink dips and settles, so the re-print is FELT, not inferred
+            object flick;
+            if (b.Desk.TryGetValue("flick", out flick) && flick is bool && (bool)flick)
+            {
+                b.Desk.Remove("flick");
+                b.StartCoroutine(ReInk(inked));
+            }
             Button sign = DeskKit.Word(b, "[ SIGN FOR IT ]", rx + 100f, cy + 104f, null,
                 DeskKit.Detail, DrawnUI.Ink, 220f);
             sign.onClick.AddListener(() => DeskKit.SignStroke(b, sign, "[ SIGN FOR IT ]",
@@ -381,12 +539,32 @@ namespace Runway.Game
             return y + h + 4f;
         }
 
-        static void RcptRow(BinderScreen b, float x, float y, float w, string label,
-                            string val, Color col)
+        /// One receipt row; returns its labels so the pen flick can re-ink.
+        static List<TextMeshProUGUI> RcptRow(BinderScreen b, float x, float y, float w,
+                                             string label, string val, Color col)
         {
-            b.L(label, x, y, 17f, Ink(0.85f), w - 120f);
+            var l = b.L(label, x, y, 17f, Ink(0.85f), w - 120f);
             var v = b.L(val, x, y, 18f, col, w);
             v.alignment = TMPro.TextAlignmentOptions.TopRight;
+            return new List<TextMeshProUGUI> { l, v };
+        }
+
+        /// The pen dips (alpha 0.25) and settles to full over ~0.18s.
+        static System.Collections.IEnumerator ReInk(List<TextMeshProUGUI> labels)
+        {
+            foreach (TextMeshProUGUI l in labels)
+                if (l != null) l.alpha = 0.25f;
+            float t = 0f;
+            while (t < 0.18f)
+            {
+                t += Time.unscaledDeltaTime;
+                float a = Mathf.Lerp(0.25f, 1f, Mathf.Clamp01(t / 0.18f));
+                foreach (TextMeshProUGUI l in labels)
+                    if (l != null) l.alpha = a;
+                yield return null;
+            }
+            foreach (TextMeshProUGUI l in labels)
+                if (l != null) l.alpha = 1f;
         }
 
         static string DeadReason(bool garage, bool locked)
@@ -427,11 +605,15 @@ namespace Runway.Game
             return Bar(b, y, text, () => { b.Desk["zone4"] = false; });
         }
 
+        /// Compact on purpose: this bar shares the lower page with the DO
+        /// lane (S3, right-aligned at 762) — a short door never runs under
+        /// the lane's buttons; the ladder's story waits inside the zone.
         static float Zone4Bar(BinderScreen b, float y)
         {
-            return Bar(b, y,
-                "4 · IF A MONDAY IS MISSED — the balance grows -> repriced + the bank stops answering -> sold to the collectors ▸",
-                () => { b.Desk["zone4"] = true; });
+            DeskKit.PenRule(b, y + 2f, SheetX, ZoneW, Ink(0.2f));
+            DeskKit.Word(b, "4 · IF A MONDAY IS MISSED — the three stairs ▸",
+                SheetX + 8f, y + 8f, () => { b.Desk["zone4"] = true; }, 19f, Ink(0.7f), 330f);
+            return y + 42f;
         }
 
         static float Bar(BinderScreen b, float y, string text, Action onPress)
@@ -478,7 +660,9 @@ namespace Runway.Game
         static void ForecastStrip(BinderScreen b, GameState state, float y)
         {
             List<SimBank.ForecastWeek> rows = SimBank.ForecastCash(state, SimBank.ForecastWeeks);
-            if (rows.Count == 0 || y + 50f > YRules - 6f) return;
+            // the strip yields to the DO lane's slot (S3) — in deep stacks it
+            // waits for a shallower week rather than printing under buttons
+            if (rows.Count == 0 || y + 50f > Mathf.Min(YRules - 6f, DeskKit.DoLaneY - 8f)) return;
             b.L("cash ahead, if nothing changes:", SheetX, y + 12f, DeskKit.Law, Ink(0.6f), 240f);
             float x = SheetX + 250f;
             foreach (SimBank.ForecastWeek r in rows)

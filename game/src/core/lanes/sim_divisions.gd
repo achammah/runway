@@ -794,10 +794,12 @@ static func attention(state: GameState) -> Array:
 		var row := _site_row(state, String(sd.get("id", "")))
 		if int(row.get("sev", 0)) >= 3:
 			rows.append({"desk": "the works", "key": "site_bleeds_" + String(sd.get("id", "")),
-				"severity": 3, "label": "%s bleeds — fix or close" % String(sd.get("name", "a roof")).left(20)})
+				"severity": 3, "label": "%s bleeds — fix or close" % String(sd.get("name", "a roof")).left(20),
+				"control": "site_" + String(sd.get("id", ""))})
 		elif int(row.get("sev", 0)) == 2:
 			rows.append({"desk": "the works", "key": "site_neg_" + String(sd.get("id", "")),
-				"severity": 2, "label": "%s runs at a loss" % String(sd.get("name", "a roof")).left(24)})
+				"severity": 2, "label": "%s runs at a loss" % String(sd.get("name", "a roof")).left(24),
+				"control": "site_" + String(sd.get("id", ""))})
 	return rows
 
 # ── the durable markers (flags-encoded; typed twins bar new record keys) ─────
