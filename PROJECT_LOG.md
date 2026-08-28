@@ -537,3 +537,29 @@ green. Smoke 24/6 in the roguelike band. Backlog recorded in the W3
 ledger: Hardware's capacity crawl, the attention registry's legacy
 vocabulary, bench demo polish, rename-by-keyboard, MERGE/SPLIT
 receipts, Unity garden twin, notarization, key rotation before public.
+
+## 2026-08-28 — DAG 3: the binder's UX, then its quiet
+
+THE PLAN (13-binder-ux, owner-approved whole): nine cross-cutting
+systems — zero states that teach, red that speaks and walks you to the
+switch, the DO lane, press-any-number receipts, the delta layer, the
+measure law, keyboard + back pills, era dimming, one arm family — then
+every single tab. EXECUTION: Wave A built the nine systems in the kit
+once (578/578 lockstep, the attention-ages field, the suggestion
+interface), six Wave B lanes applied them to all 19 desks in parallel
+through another storm of dropped streams (every lane resumed mid-edit,
+nothing lost): the fair band and the saturation curves draw on press,
+IN MOTION drafts the written move into the journal, the cap table grew
+the valuation slider (the waterfall recomputes pure on every step),
+creaky cards arm their own rebuild, the bank's receipt re-inks and its
+lock explains itself as a checklist, bills press through to their
+sources, THE WEEK'S CHIPS collect every desk's suggestion where the
+week is decided, and cooling deals re-desked to the page that can push
+them. Then the owner's verdict — "not award winning, way too busy" —
+became 14-quiet.md: the annotation ARBITER (top three render, the rest
+drop), the gutter dot replacing the pen circle, the slot grid, the red
+singleton, the air floor, and a GRADE GATE that fails any pane over
+budget. All 19 desks passed at 19/19 with seven juror flinches fixed.
+
+Suites 578/578 in lockstep both engines throughout. The term-sheets
+red moved to THE RAISE where its ask lives.
