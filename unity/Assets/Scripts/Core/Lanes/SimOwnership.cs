@@ -1397,7 +1397,7 @@ namespace Runway.Core
             var rows = new List<AttentionItem>();
             foreach (Instrument idd in MaturedNotes(state))
                 rows.Add(new AttentionItem { Desk = "the raise", Key = "note_matured",
-                    Severity = 3,
+                    Severity = 3, Control = "instruments",
                     Label = Gd.Left("note matured — $"
                         + MoneyShort(AmountDue(idd, state.Week)).TrimStart('$') + " due or convert", 40) });
             if (state.BuyoutOffer.Count > 0)
@@ -1412,7 +1412,7 @@ namespace Runway.Core
             {
                 var t = st.ContainsKey("terms") ? (Dictionary<string, object>)st["terms"] : null;
                 rows.Add(new AttentionItem { Desk = "the raise", Key = "terms_open",
-                    Severity = 2,
+                    Severity = 2, Control = "sign_terms",
                     Label = Gd.Left("terms on the table — expire wk "
                         + (t != null ? Di(t, "expires_wk", 0) : 0).ToString(CultureInfo.InvariantCulture), 40) });
                 break;
@@ -1433,7 +1433,8 @@ namespace Runway.Core
                 if (PoolFree(state) <= 0.0001 && state.Esop != null
                     && state.Recruitment.Roles.Count > 0)
                     rows.Add(new AttentionItem { Desk = "cap table", Key = "pool_empty",
-                        Severity = 2, Label = "pool empty — no equity offers" });
+                        Severity = 2, Control = "expand_pool",
+                        Label = "pool empty — no equity offers" });
             }
             if (state.Esop != null)
                 foreach (EsopGrant g in state.Esop.Granted)
@@ -1443,7 +1444,7 @@ namespace Runway.Core
                     if (cliffIn > 0 && cliffIn <= 4)
                     {
                         rows.Add(new AttentionItem { Desk = "cap table", Key = "cliff_near",
-                            Severity = 1,
+                            Severity = 1, Control = "esop_row",
                             Label = Gd.Left((g.EmpId ?? "").Replace("_", " ") + "'s cliff lands in "
                                 + cliffIn.ToString(CultureInfo.InvariantCulture) + " wk", 40) });
                         break;

@@ -1320,6 +1320,7 @@ static func attention(state: GameState) -> Array:
 	var rows: Array = []
 	for idd in matured_notes(state):
 		rows.append({"desk": "the raise", "key": "note_matured", "severity": 3,
+			"control": "instruments",
 			"label": ("note matured — $%s due or convert"
 				% money_short(amount_due(idd as Dictionary, state.week)).lstrip("$")).left(40)})
 	if not state.buyout_offer.is_empty():
@@ -1330,6 +1331,7 @@ static func attention(state: GameState) -> Array:
 	for st in _stages_in(state, "terms"):
 		var t: Dictionary = (st as Dictionary).get("terms", {})
 		rows.append({"desk": "the raise", "key": "terms_open", "severity": 2,
+			"control": "sign_terms",
 			"label": ("terms on the table — expire wk %d" % int(t.get("expires_wk", 0))).left(40)})
 		break
 	if not state.recruitment.is_empty():
@@ -1343,7 +1345,7 @@ static func attention(state: GameState) -> Array:
 		if pool_free(state) <= 0.0001 and not state.esop.is_empty() \
 				and not (state.recruitment.get("roles", []) as Array).is_empty():
 			rows.append({"desk": "cap table", "key": "pool_empty", "severity": 2,
-				"label": "pool empty — no equity offers"})
+				"control": "expand_pool", "label": "pool empty — no equity offers"})
 	for g in state.esop.get("granted", []):
 		var gd: Dictionary = g
 		if String(gd.get("emp_id", "")).begins_with("left:"):
@@ -1351,6 +1353,7 @@ static func attention(state: GameState) -> Array:
 		var cliff_in := int(gd.get("vest_start_wk", 0)) + CLIFF_WEEKS - state.week
 		if cliff_in > 0 and cliff_in <= 4:
 			rows.append({"desk": "cap table", "key": "cliff_near", "severity": 1,
+				"control": "esop_row",
 				"label": ("%s's cliff lands in %d wk" % [
 					String(gd.get("emp_id", "")).replace("_", " "), cliff_in]).left(40)})
 			break

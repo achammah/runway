@@ -13,6 +13,15 @@ extends RefCounted
 ##
 ## Numbers all come from SimOwnership/SimEngine — this file draws, never
 ## computes cap math of its own (a desk that recomputes a rule drifts).
+##
+## DAG3 (13-binder-ux): every data-room doubt presses into the weak desk it
+## names (S2 focus); the DO lane says [pitch — name] [sign — best terms]
+## [walk away] — "no" as pressable as "yes", S9 two-tap, the walk taking the
+## stage machine's own "passed" exit (the expiry's path, founder-initiated);
+## the founder-time banner quotes the velocity cost in numbers straight from
+## the raise_distraction catalog entry; zone 3's glossary re-lays as the
+## standard foot so the DO lane keeps its one anchor; zero state (S1), ask
+## strip (S2a), the offers count wearing the delta arrow (S5).
 
 const QUESTION := "who would fund us next, and at what true price?"
 
@@ -61,6 +70,12 @@ static func _stages(s: GameState, stage: String) -> Array:
 
 static func draw(b) -> void:
 	var state: GameState = b.state
+	# S1 — an untouched pipeline opens on the designed first week
+	if _in_motion_count(state) == 0 and state.instruments.is_empty() \
+			and not bool(state.raise_state.get("active", false)) \
+			and _stages(state, "wired").is_empty() and _stages(state, "passed").is_empty():
+		_zero(b, state)
+		return
 	var terms := _stages(state, "terms")
 	var has_vig := _pitch_vignette(b)
 	# the hero keeps to its own lane: when the vignette rides the header
@@ -76,6 +91,14 @@ static func draw(b) -> void:
 			560.0, DeskKit.HERO_BIG)
 		sentence = _fit(b, sentence, 560.0, DeskKit.ROW)
 	var y := DeskKit.hero_band(b, big, sentence)
+	# S5 — the offers count wears the arrow when it moved since the last open
+	var prev_offers: String = b.seen_prev("the raise", "offers")
+	b.seen("the raise", "offers", str(terms.size()))
+	if prev_offers != "":
+		var big_w: float = b.font().get_string_size(big, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			DeskKit.HERO_BIG).x
+		DeskKit.delta_arrow(b, 10.0 + minf(big_w, 560.0) + 14.0, 30.0,
+			float(terms.size()), prev_offers.to_float())
 	# the founder-time banner — fundraising is never free
 	if bool(state.raise_state.get("active", false)):
 		var t1: Label = b.label("the raise eats ≈%.0f%% of your week"
@@ -85,11 +108,31 @@ static func draw(b) -> void:
 		var t2: Label = b.label("the shop slows while you pitch — that is real",
 			Vector2(740.0, 40.0), 18, Color(DeskKit.INK, 0.5), 380.0)
 		t2.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		# THE VELOCITY COST IN NUMBERS — straight from the status catalog, the
+		# one place the magnitude lives (the desk quotes, never recomputes)
+		var vmult := float((SimEngine.STATUS.get("raise_distraction", {}) as Dictionary)
+			.get("velocity_mult", 1.0))
+		if vmult < 1.0:
+			var t2b: Label = b.label("build speed ≈ −%d%% this week (velocity ×%.2f)"
+				% [int(round((1.0 - vmult) * 100.0)), vmult],
+				Vector2(740.0, 64.0), 18, DeskKit.PEN, 380.0)
+			t2b.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	else:
 		var t3: Label = b.label("investor interest %.0f/100"
 			% float(state.raise_state.get("interest_score", 0.0)),
 			Vector2(740.0, 10.0), DeskKit.DETAIL, Color(DeskKit.INK, 0.7), 380.0)
 		t3.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		# S4 — the score presses into what feeds it (inputs, not arithmetic)
+		DeskKit.press_receipt(b, Rect2(740.0, 8.0, 380.0, 30.0), "what interest reads", [
+			{"label": "the era", "value": state.era},
+			{"label": "traction", "value": str(state.traction)},
+			{"label": "hype", "value": str(state.hype)},
+			{"label": "growth last week", "value": "%+.1f%%" % (state.last_growth * 100.0)},
+			{"label": "the season", "value": state.macro_season},
+			{"label": "reads", "value": "%.0f/100"
+				% float(state.raise_state.get("interest_score", 0.0)), "col": DeskKit.SAGE}])
+	# S2 — red speaks on the page: the pipeline's asks in one red line
+	DeskKit.ask_strip(b, "the raise", 10.0, 100.0, 720.0, "sign or walk — below")
 
 	# ── zone 1 · WHO'S IN MOTION — four pipeline columns
 	var z1 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 262.0, 1, "who's in motion",
@@ -121,9 +164,14 @@ static func draw(b) -> void:
 	if not convs.is_empty():
 		var sd2: Dictionary = convs[0]
 		var doubt := String(sd2.get("doubt", ""))
-		DeskKit.wall_card(b, c2, {"title": String(sd2.get("name", "?")),
+		var conv_cfg := {"title": String(sd2.get("name", "?")),
 			"facts": ["asked for real numbers"] if doubt == "" else ["noticed: %s" % doubt],
-			"sev": 0 if doubt == "" else 2})
+			"sev": 0 if doubt == "" else 2}
+		if doubt != "":
+			# S2 — the doubt names its weak desk; the card walks you there
+			conv_cfg["on_press"] = func() -> void:
+				b.focus_desk(_doubt_desk(doubt), "", "the raise")
+		DeskKit.wall_card(b, c2, conv_cfg)
 		_fold_note(b, c2, convs.size() - 1, col_w)
 	var c3 := DeskKit.wall_column(b, cx + (col_w + 16.0) * 2.0, z1.cursor, col_w, col_h,
 		"terms on the table", "")
@@ -146,6 +194,12 @@ static func draw(b) -> void:
 		# the authored empty line sits BELOW the four boxes, never across them
 		DeskKit.empty(b, Vector2(z1.content_x + 8.0, z1.cursor + col_h + 8.0),
 			"", "nobody is knocking yet — traction is the doorbell", true)
+	# S2b — the engine rows' named switches: the columns they mean
+	b.mark_control("pitch", Rect2(cx, float(z1.cursor), col_w, col_h))
+	b.mark_control("sign_terms", Rect2(cx + (col_w + 16.0) * 2.0, float(z1.cursor),
+		col_w, col_h))
+	b.mark_control("instruments", Rect2(cx + (col_w + 16.0) * 3.0, float(z1.cursor),
+		col_w, col_h))
 	y += 262.0 + 10.0
 
 	# ── zone 2 · THE COMPARISON — two sheets never say their true price
@@ -155,6 +209,25 @@ static func draw(b) -> void:
 		DeskKit.empty(b, Vector2(z2.content_x, z2.cursor + 8.0),
 			"no terms on the table.",
 			"conversations become sheets when the data room holds — growth, margin, runway", true)
+		# S2 — THE DATA ROOM'S DOUBTS, each pressable into the weak desk it
+		# names (the doubts already speak in page names)
+		var doubts: Array = SimOwnership.data_room(state).get("doubts", [])
+		if not doubts.is_empty():
+			b.label("the data room's doubts — each names its weak page:",
+				Vector2(z2.content_x, float(z2.cursor) + 100.0), 18,
+				Color(DeskKit.INK, 0.6), 1070.0)
+			var dx := float(z2.content_x)
+			var dn := 0
+			for d in doubts:
+				if dn >= 3:
+					break
+				var ds := String(d)
+				DeskKit.word(b, _fit(b, "! %s ->" % ds, 330.0, 19),
+					Vector2(dx, float(z2.cursor) + 132.0), func() -> void:
+						b.focus_desk(_doubt_desk(ds), "", "the raise"),
+					19, DeskKit.PEN, 340.0)
+				dx += 356.0
+				dn += 1
 	else:
 		_comparison_ticket(b, state, z2.content_x, z2.cursor, terms[0])
 		if terms.size() >= 2:
@@ -169,14 +242,118 @@ static func draw(b) -> void:
 				Vector2(z2.content_x + 762.0, z2.cursor + 6.0), 19, DeskKit.PEN, 340.0)
 		b.label("participating preferred would be flagged here in red — predatory.",
 			Vector2(z2.content_x + 762.0, z2.cursor + 130.0), 17, Color(DeskKit.INK, 0.45), 340.0)
+		# S2 — doubts that still stand while sheets sit: pressable, right rail
+		var doubts2: Array = SimOwnership.data_room(state).get("doubts", [])
+		var dy := float(z2.cursor) + 164.0
+		var dn2 := 0
+		for d2 in doubts2:
+			if dn2 >= 2:
+				break
+			var ds2 := String(d2)
+			DeskKit.word(b, _fit(b, "! %s ->" % ds2, 330.0, 17),
+				Vector2(z2.content_x + 762.0, dy), func() -> void:
+					b.focus_desk(_doubt_desk(ds2), "", "the raise"),
+				17, DeskKit.PEN, 340.0)
+			dy += 42.0
+			dn2 += 1
 	y += 348.0 + 10.0
 
-	# ── zone 3 · EVERY WAY MONEY COMES IN — six instruments, six characters
-	var z3 := DeskKit.zone(b, DeskKit.X_ID, y, 1120.0, 108.0, 3, "every way money comes in", "")
-	b.label("angel check · SAFE · convertible note · priced round · bridge · venture debt (-> the bank) · secondary — six characters, from a friend's check to selling your own slice",
-		Vector2(z3.content_x, z3.cursor), 18, Color(DeskKit.INK, 0.7), 1070.0)
-	b.label(_costline(state), Vector2(float(z3.content_x), float(z3.cursor) + 28.0),
-		DeskKit.LAW, DeskKit.BLUE, 1070.0)
+	# ── the foot · EVERY WAY MONEY COMES IN + the desk law. Zone 3's glossary
+	# re-laid as the standard money-desk foot so the DO lane keeps its one
+	# anchor (762) clear — same words, no zone box.
+	DeskKit.fit_line(b, "angel check · SAFE · convertible note · priced round · bridge · venture debt (-> the bank) · secondary — six characters, from a friend's check to selling your own slice",
+		Vector2(DeskKit.X_ID, 812.0), DeskKit.LAW, Color(DeskKit.INK, 0.7), 1100.0)
+	DeskKit.fit_line(b, _costline(state), Vector2(DeskKit.X_ID, 846.0),
+		DeskKit.LAW, DeskKit.BLUE, 1100.0)
+	# S3 — the DO lane: pitch, sign, or walk — "no" as pressable as "yes"
+	_do_lane(b, state)
+
+## S1 — the designed first week: the pipeline as a promise, the odds said
+## honestly (the engine's own constants, never re-derived), the one action.
+static func _zero(b, state: GameState) -> void:
+	var score := float(state.raise_state.get("interest_score", 0.0))
+	var act := ""
+	var target := ""
+	var outbound := SimOwnership.outbound_targets(state)
+	if not outbound.is_empty():
+		target = String(outbound[0])
+		act = "pitch %s — costs a week's focus" % target.substr(0, 18)
+	DeskKit.zero_state(b, {
+		"will_show": "THE PIPELINE — radar -> conversations -> terms -> wired",
+		"would_line": "at interest %.0f/100 an inbound knock WOULD land ≈%.0f%% of weeks — inbound comes to traction, not to wishes" % [
+			score, score * SimOwnership.KNOCK_P_MAX],
+		"action_label": act,
+		"action_cb": func() -> void:
+			SimOwnership.op_pitch_investor(state, target),
+		"wakes_hint": "wakes at coworking, or the week the growth gets noticed — raising is optional, and never free",
+	})
+
+## S3 — the DO lane: [pitch — name] [sign — best terms] [walk away].
+static func _do_lane(b, state: GameState) -> void:
+	var actions: Array = []
+	var pitch_name := ""
+	var radar := _stages(state, "radar")
+	if not radar.is_empty():
+		pitch_name = String((radar[0] as Dictionary).get("name", ""))
+	else:
+		var outbound := SimOwnership.outbound_targets(state)
+		if not outbound.is_empty():
+			pitch_name = String(outbound[0])
+	if pitch_name != "":
+		var pn := pitch_name
+		actions.append({"label": "pitch — %s" % pn.substr(0, 16), "tier": "",
+			"cb": func() -> void:
+				SimOwnership.op_pitch_investor(b.state, pn)})
+	var terms := _stages(state, "terms")
+	if not terms.is_empty() and SimOwnership.no_shop_until(state) <= state.week:
+		var best := _best_terms(terms)
+		var bn := String(best.get("name", ""))
+		actions.append({"label": "sign — %s" % bn.substr(0, 14), "tier": "two-tap",
+			"cb": func() -> void:
+				SimOwnership.op_sign_instrument(b.state, bn)})
+		actions.append({"label": "walk away", "tier": "two-tap",
+			"cb": func() -> void:
+				_walk_away(b.state)})
+	if not actions.is_empty():
+		DeskKit.do_lane(b, actions)
+
+## "Best" is the biggest check on the table — the plainest tie-break.
+static func _best_terms(terms: Array) -> Dictionary:
+	var best: Dictionary = terms[0]
+	for t in terms:
+		var td: Dictionary = t
+		if int((td.get("terms", {}) as Dictionary).get("amount", 0)) \
+				> int((best.get("terms", {}) as Dictionary).get("amount", 0)):
+			best = td
+	return best
+
+## WALK AWAY — declining is a real move, not neglect: every open sheet takes
+## the stage machine's own "passed" exit (the expiry path's transition,
+## founder-initiated). No invented penalties — hesitation is already priced.
+static func _walk_away(state: GameState) -> void:
+	var n := 0
+	for st in state.raise_state.get("stages", []):
+		var sd: Dictionary = st
+		if String(sd.get("stage", "")) == "terms":
+			sd["stage"] = "passed"
+			n += 1
+	if n > 0:
+		state.log_action("the raise: walked away from %d term sheet%s — the best deal is sometimes none"
+			% [n, "" if n == 1 else "s"])
+
+## The weak desk a data-room doubt names (the doubts speak in page words).
+static func _doubt_desk(doubt: String) -> String:
+	if doubt.contains("growth"):
+		return "growth"
+	if doubt.contains("runway"):
+		return "the bank"
+	if doubt.contains("margin"):
+		return "spend"
+	if doubt.contains("product"):
+		return "what we make"
+	if doubt.contains("customer"):
+		return "customers"
+	return "this week"
 
 ## One term sheet, priced honestly, with its SIGN arm under it.
 static func _comparison_ticket(b, state: GameState, x: float, y: float, entry: Dictionary) -> void:

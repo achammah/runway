@@ -213,16 +213,19 @@ static func attention(state: GameState) -> Array:
 	if breaking > 0:
 		# ≤40 chars: 24 of template + a 16-char name
 		rows.append({"desk": "what we make", "key": "feature_breaking", "severity": 3,
+			"control": "rebuild",
 			"label": "'%s' is breaking — rebuild" % worst_creak_name(state).substr(0, 16)})
 	var creaks := creak_count(state)
 	if creaks > 0 and breaking == 0:
 		var tax := creak_tax_pct(state)
 		if tax > 0:
 			rows.append({"desk": "what we make", "key": "creak_tax", "severity": 2,
+				"control": "rebuild",
 				"label": "%d creak%s — build speed −%d%%" % [creaks,
 					"" if creaks == 1 else "s", tax]})
 		else:
 			rows.append({"desk": "what we make", "key": "creak_tax", "severity": 2,
+				"control": "rebuild",
 				"label": "%d creak%s on the wall — rebuild" % [creaks,
 					"" if creaks == 1 else "s"]})
 	var keep := keep_total(state)
@@ -230,6 +233,7 @@ static func attention(state: GameState) -> Array:
 	var revenue := int(pnl.get("revenue", 0))
 	if keep >= 50 and revenue > 0 and keep * 4 >= revenue:
 		rows.append({"desk": "what we make", "key": "keep_spike", "severity": 2,
+			"control": "keep_total",
 			"label": "keep $%d/wk eats %d%% of revenue" % [keep,
 				int(float(keep) * 100.0 / float(revenue))]})
 	return rows

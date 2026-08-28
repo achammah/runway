@@ -293,7 +293,7 @@ static func _person_row(b, sheet: Dictionary, state: GameState, i: int) -> void:
 		# S7 — the bar presses through to the ownership state; the back
 		# pill home is free (focus_desk carries the source)
 		var vest_jump := func() -> void:
-			b.focus_desk("cap table", "", "team")
+			b.focus_desk("cap table", "pool", "team")
 		var hit: Button = DeskKit.word(b, "", Vector2(note_x, row_y + 2.0), vest_jump,
 			18, DeskKit.INK, note_w)
 		hit.size = Vector2(note_w, DeskKit.LG_ROW_H - 4.0)

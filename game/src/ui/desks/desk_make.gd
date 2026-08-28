@@ -25,6 +25,13 @@ extends RefCounted
 ## (no dot), creaky = sev 2, breaking = sev 3 — red means act.
 ## The engine half lives in game/src/core/lanes/sim_features.gd; this file
 ## only reads it and routes presses through the roadmap's own doors.
+##
+## DAG3 (13-binder-ux): the creak card presses into ONE arm — the shelf's own
+## rebuild candidate arms its commit (the second tap books it, the wall's own
+## door); shelf cards cite YOUR measured history (S4); the DO lane says [SHIP]
+## when READY else [commit — best fit] (S3); the ask strip replaces the hero's
+## creak whisper (S2); the live count wears the delta arrow (S5); a truly
+## blank wall opens on the designed first week (S1).
 
 const QUESTION := "what are we making, and how solid is it?"
 
@@ -55,6 +62,61 @@ static func hero_summary(state) -> Dictionary:
 static func _building_bets(state: GameState) -> Array:
 	return SimRoadmap.committed_bets(state).filter(func(bt) -> bool:
 		return not bool((bt as Dictionary).get("ready", false)))
+
+## S8 — the wall never sleeps: making things IS the game from week 1.
+static func is_dormant(_state) -> bool:
+	return false
+
+## S10 — the rail's four-character read: a creak is the wall in one glance;
+## healthy, the live count.
+static func micro_status(state) -> String:
+	var s: GameState = state
+	var creaks := SimFeatures.creak_count(s)
+	if creaks > 0:
+		return "%d creak%s" % [creaks, "" if creaks == 1 else "s"]
+	if s.features.is_empty():
+		return ""
+	return "%d live" % s.features.size()
+
+## S15 — the wall speaks up: a creak suggests its own rebuild. ADOPT-only —
+## the chip jumps HERE (the commit arm still asks); nothing self-applies.
+static func suggestions(state) -> Array:
+	var s: GameState = state
+	if SimFeatures.creak_count(s) == 0 or not _rebuild_in_flight(s).is_empty():
+		return []
+	return [{"label": "queue the rebuild — %s" % SimFeatures.worst_creak_name(s).substr(0, 18),
+		"kind": "jump", "payload": {"desk": "what we make", "control": "rebuild"}}]
+
+## The rebuild already paid for, if any — committed, queued or ready, not yet
+## shipped. While one is in flight the creak press has nothing to arm.
+static func _rebuild_in_flight(state: GameState) -> Dictionary:
+	for bt in state.bets:
+		var bd: Dictionary = bt
+		if String(bd.get("kind", "")) == "debt" and not bool(bd.get("shipped", false)) \
+				and (bool(bd.get("committed", false)) or bool(bd.get("ready", false)) \
+				or int(bd.get("committed_week", 0)) < 0):
+			return bd
+	return {}
+
+## The shelf's rebuild candidate ("kills a creak") — the lane always deals one
+## while the wall creaks (SimFeatures.shelf_candidates leads with it).
+static func _rebuild_row(state: GameState) -> Dictionary:
+	for row in _shelf_rows(state):
+		if String((row as Dictionary).get("job_words", "")) == "kills a creak":
+			return row
+	return {}
+
+## THE CREAK CARD'S ONE PRESS (the plan's queue-the-rebuild): arm the matching
+## rebuild candidate's commit — the armed caption quotes the price and the
+## SECOND tap books it through the existing door. Receipts before mutations.
+static func _arm_rebuild(b, state: GameState) -> void:
+	if not _rebuild_in_flight(state).is_empty():
+		return   # already paid for — BUILDING/NEXT says so
+	var row := _rebuild_row(state)
+	if row.is_empty():
+		return   # no creak = no candidate; the shelf re-deals weekly
+	b.desk.clear()
+	b.desk["armed"] = "take:" + String(row.get("id", ""))
 
 ## LONG-TEXT LAW: a plate title or caption is measured and trimmed to its
 ## lane, never wrapped under a neighbour.
@@ -89,11 +151,81 @@ static func draw(b) -> void:
 			return
 	if not SimFeatures.product_ids(state).is_empty():
 		_lineup(b, state)
+		DeskKit.ask_strip(b, "what we make", 10.0, 84.0, 900.0, "rebuild or ship — below")
+		_do_lane(b, state)
+		return
+	# S1 — a truly blank wall opens on the designed first week, never on bare
+	# columns. Board candidates are PAPER (ensure_board deals them even at
+	# week 1) — zero means no inventory and no work taken on.
+	if state.features.is_empty() and SimRoadmap.committed_bets(state).is_empty() \
+			and SimRoadmap.ready_bets(state).is_empty() \
+			and SimFeatures.queued_bets(state).is_empty():
+		_zero(b, state)
 		return
 	_hero(b, state)
 	_wall(b, state)
 	_live_band(b, state)
 	_cost_foot(b, state)
+	_do_lane(b, state)
+
+## S1 — the designed first week: what the wall WILL show, what one idea WOULD
+## cost (the world's own pricing — the receipt precedes the commit), the one
+## action, and when the desk comes alive.
+static func _zero(b, state: GameState) -> void:
+	var shelf := SimFeatures.shelf_candidates(state)
+	var would := "every feature you ship hangs here with its keep-cost on the tag — nothing is ever free"
+	var act := ""
+	var first_id := ""
+	if not shelf.is_empty():
+		var c0: Dictionary = shelf[0]
+		first_id = String(c0.get("id", ""))
+		would = "'%s' WOULD cost $%s over %d wk at %d%% odds — the world prices every idea" % [
+			String(c0.get("name", "")), b.fmt(int(c0.get("cost_usd", 0))),
+			int(c0.get("weeks", 1)), int(c0.get("odds_pct", 50))]
+		act = "take on '%s' ->" % String(c0.get("name", "")).substr(0, 20)
+	DeskKit.zero_state(b, {
+		"will_show": "THE WALL — every feature you make, its job, its keep-cost, its solidity",
+		"would_line": would,
+		"action_label": act,
+		"action_cb": func() -> void:
+			SimFeatures.commit_shelf(state, first_id),
+		"wakes_hint": "fills with the first committed bet — landings sign their keep-line as they arrive",
+	})
+
+## S3 — the DO lane: [SHIP — name] when a bet is READY (the same pre-roll →
+## dice ritual as the wall's own button), else [commit — best fit] (the
+## rebuild when the wall creaks, the shelf's lead idea otherwise).
+static func _do_lane(b, state: GameState) -> void:
+	var ready := SimRoadmap.ready_bets(state)
+	if not ready.is_empty():
+		var rd: Dictionary = ready[0]
+		var id := String(rd.get("id", ""))
+		DeskKit.do_lane(b, [{"label": "SHIP — %s" % String(rd.get("name", "")).substr(0, 18),
+			"tier": "sign", "cb": func() -> void:
+				if not _preroll_rows(state).is_empty():
+					b.desk["mode"] = "preroll"
+					b.desk["bet"] = id
+					return
+				_fire(b, id)}])
+		return
+	var best := _rebuild_row(state)
+	if best.is_empty():
+		var shelf := _shelf_rows(state)
+		if not shelf.is_empty():
+			best = shelf[0]
+	if best.is_empty():
+		return
+	var sid := String(best.get("id", ""))
+	var is_board := bool(best.get("board", false))
+	DeskKit.do_lane(b, [{"label": "commit — %s" % String(best.get("name", "")).substr(0, 18),
+		"tier": "two-tap", "cb": func() -> void:
+			if is_board:
+				if SimRoadmap.committed_bets(state).size() < SimRoadmap.wip_cap(state):
+					SimRoadmap.commit_bet(state, sid)
+				else:
+					SimFeatures.enqueue_bet(state, sid)
+			else:
+				SimFeatures.commit_shelf(state, sid)}])
 
 # ═══════════════════════════════ THE HERO ════════════════════════════════════
 
@@ -126,13 +258,15 @@ static func _hero(b, state: GameState) -> void:
 		state.features.size(), _building_bets(state).size(),
 		SimRoadmap.ready_bets(state).size(), _shelf_rows(state).size()]
 	b.label(counts, Vector2(536.0, 52.0), 21, Color(Binder.INK, 0.6), 574.0)
-	var creaks := SimFeatures.creak_count(state)
-	if creaks > 0:
-		var tax := SimFeatures.creak_tax_pct(state)
-		var cl := "creaks at '%s'" % SimFeatures.worst_creak_name(state)
-		if tax > 0:
-			cl += " — build speed −%d%%" % tax
-		b.label(cl, Vector2(536.0, 78.0), 21, Binder.PEN, 420.0)
+	# S5 — what changed since the last open: the live count wears the arrow
+	# (prev read BEFORE the record, per the seen-store contract)
+	var prev_live: String = b.seen_prev("what we make", "live")
+	b.seen("what we make", "live", str(state.features.size()))
+	if prev_live != "":
+		DeskKit.delta_arrow(b, 512.0, 56.0, float(state.features.size()), prev_live.to_float())
+	# S2 — red speaks on the page: the desk's attention rows in one red line
+	# (the hero's old creak whisper now rides the strip, verb included)
+	DeskKit.ask_strip(b, "what we make", 536.0, 78.0, 410.0, "rebuild or ship — below")
 	var ready := SimRoadmap.ready_bets(state)
 	if not ready.is_empty():
 		var rb: Dictionary = ready[0]
@@ -160,19 +294,28 @@ static func _wall(b, state: GameState) -> void:
 		if shown >= shelf_cap:
 			break
 		var rd: Dictionary = row
+		var y0 := float(c1.get("cursor", 0.0))
 		DeskKit.wall_card(b, c1, {"title": String(rd.get("name", "")),
 			"facts": ["$%s · %d wk · %d%% · %s" % [b.fmt(int(rd.get("cost_usd", 0))),
 				int(rd.get("weeks", 1)), int(rd.get("odds_pct", 50)),
 				String(rd.get("job_words", ""))]]})
 		_shelf_arm(b, c1, state, rd)
+		# S2b — the rebuild candidate is the creak rows' named switch
+		if String(rd.get("job_words", "")) == "kills a creak":
+			b.mark_control("rebuild", Rect2(10.0, y0,
+				COL_W, float(c1.get("cursor", 0.0)) - y0))
+		_history_cite(b, c1, state, rd)
 		shown += 1
 	if shelf.size() > shown:
 		DeskKit.more(b, Vector2(float(c1.get("content_x", 18.0)), float(c1.get("cursor", 0.0))),
 			shelf.size() - shown, "ideas wait")
 		c1["cursor"] = float(c1.get("cursor", 0.0)) + 30.0
-	b.label("write your own in THIS WEEK — the world prices it",
-		Vector2(float(c1.get("content_x", 18.0)), float(c1.get("cursor", 0.0)) + 2.0),
-		15, Color(Binder.INK, 0.45), COL_W - 20.0)
+	# the cites can walk the cursor deep — the coda (two wrapped lines) never
+	# leaves the box
+	if float(c1.get("cursor", 0.0)) <= COL_Y + COL_H - 56.0:
+		b.label("write your own in THIS WEEK — the world prices it",
+			Vector2(float(c1.get("content_x", 18.0)), float(c1.get("cursor", 0.0)) + 2.0),
+			15, Color(Binder.INK, 0.45), COL_W - 20.0)
 	# ── NEXT: the committed queue, reorder freely
 	var c2 := DeskKit.wall_column(b, 292.0, COL_Y, COL_W, COL_H,
 		"NEXT", "the queue — reorder freely")
@@ -234,10 +377,15 @@ static func _wall(b, state: GameState) -> void:
 			break
 		var rdd: Dictionary = rbet
 		var left := SimRoadmap.stall_left(state, rdd)
+		var ry0 := float(c4.get("cursor", 0.0))
 		DeskKit.wall_card(b, c4, {"title": String(rdd.get("name", "")), "ready": true,
 			"facts": ["promises · %s" % _bet_job_words(rdd),
 				("slips out in %d wk" % left) if left > 0 else "slips out this week"]})
 		_ship_button(b, c4, state, rdd)
+		# S2b — "a bet is built" lands here spotlit
+		if rn == 0:
+			b.mark_control("ship", Rect2(856.0, ry0,
+				COL_W, float(c4.get("cursor", 0.0)) - ry0))
 		rn += 1
 	if ready.is_empty():
 		b.label("nothing built yet — a finished bet waits here for the dice",
@@ -255,17 +403,29 @@ static func _shelf_rows(state: GameState) -> Array:
 				or float(bd.get("progress", 0.0)) > 0.0:
 			continue
 		var dc := SimRoadmap.bet_dc(bd)
+		var kind := String(bd.get("kind", ""))
 		out.append({"id": String(bd.get("id", "")), "board": true,
 			"name": String(bd.get("name", "")),
 			"cost_usd": int(float(bd.get("cost_rnd_weeks", 3.0)) * SimRoadmap.RND_PER_WEEK),
 			"weeks": int(ceil(float(bd.get("cost_rnd_weeks", 3.0)))),
 			"odds_pct": SimRoadmap.ship_odds_pct(state, bd),
-			"job_words": _bet_job_words(bd), "dc": dc})
+			"job_words": _bet_job_words(bd), "dc": dc, "kind": kind,
+			"job": "plumbing" if kind == "debt"
+				else String(SimFeatures.KIND_TO_JOB.get(kind, "plumbing"))})
 	for cand in SimFeatures.shelf_candidates(state):
 		var cd: Dictionary = cand
 		cd["board"] = false
 		out.append(cd)
-	return out
+	# the rebuild leads the shelf: the card the creak's one-press arms must be
+	# face-up, never folded behind board paper
+	var lead: Array = []
+	var rest: Array = []
+	for r2 in out:
+		if String((r2 as Dictionary).get("job_words", "")) == "kills a creak":
+			lead.append(r2)
+		else:
+			rest.append(r2)
+	return lead + rest
 
 static func _bet_job_words(bet: Dictionary) -> String:
 	var kind := String(bet.get("kind", ""))
@@ -273,6 +433,56 @@ static func _bet_job_words(bet: Dictionary) -> String:
 		return "kills a creak"
 	var job := String(SimFeatures.KIND_TO_JOB.get(kind, "plumbing"))
 	return String(SimFeatures.JOB_WORDS.get(job, "plumbing"))
+
+## The short job noun the cite line speaks ("your last keeps-bet…").
+const CITE_JOB := {"pull": "pull", "keep": "keeps", "charge": "charge",
+	"plumbing": "plumbing"}
+
+## Landings of this job with a settled measured verdict, newest first.
+static func _measured_for_job(state: GameState, job: String) -> Array:
+	var out: Array = []
+	for f in state.features:
+		var fd: Dictionary = f
+		if String(fd.get("job", "")) != job or float(fd.get("measured", 0.0)) == 0.0:
+			continue
+		out.append(fd)
+	out.sort_custom(func(a, b2) -> bool:
+		return int((a as Dictionary).get("born_wk", 0)) > int((b2 as Dictionary).get("born_wk", 0)))
+	return out
+
+## S4 — the shelf cites YOUR history: the last measured landing doing this
+## card's job, one line under the arm, pressable into the full record.
+static func _history_cite(b, col: Dictionary, state: GameState, row: Dictionary) -> void:
+	var job := String(row.get("job", ""))
+	if job == "" or String(row.get("job_words", "")) == "kills a creak":
+		return
+	var recs := _measured_for_job(state, job)
+	if recs.is_empty():
+		return
+	# the arm capsule under the card runs to cursor+~10 — the cite clears it
+	var y := float(col.get("cursor", 0.0)) + 14.0
+	if y > COL_Y + COL_H - 26.0:
+		return   # the column never overflows its box
+	var x := float(col.get("content_x", 0.0))
+	var last: Dictionary = recs[0]
+	DeskKit.fit_line(b, "your last %s-bet measured %+.1f" % [
+		String(CITE_JOB.get(job, job)), float(last.get("measured", 0.0))],
+		Vector2(x, y), 15, Color(Binder.INK, 0.55), COL_W - 24.0)
+	var lines: Array = []
+	var n := 0
+	for rec in recs:
+		if n >= 4:
+			break
+		var fd: Dictionary = rec
+		var promised := SimFeatures.promised_units(state, fd)
+		lines.append({"label": String(fd.get("name", "")).substr(0, 22),
+			"value": ("promised +%d · measured %+.1f" % [promised,
+				float(fd.get("measured", 0.0))]) if promised > 0
+				else "measured %+.1f" % float(fd.get("measured", 0.0))})
+		n += 1
+	DeskKit.press_receipt(b, Rect2(x, y, COL_W - 24.0, 20.0),
+		"your %s history" % String(SimFeatures.JOB_WORDS.get(job, job)), lines)
+	col["cursor"] = y + 24.0
 
 ## The commit arm under a shelf card — the mutation law's two-tap: the first
 ## press quotes the price, the second books it (team, or the NEXT queue).
@@ -428,6 +638,11 @@ static func _feature_card(b, state: GameState, x: float, y: float, fd: Dictionar
 	if note != "":
 		b.label(note, Vector2(cx, y + 32.0), 14, Binder.PEN if sev > 0
 			else Color(Binder.INK, 0.5), 270.0)
+	# THE CREAK CARD PRESSES (the plan's one-press): arm the shelf's rebuild
+	if sev > 0:
+		var hit := DeskKit.word(b, "", Vector2(x, y), func() -> void:
+			_arm_rebuild(b, state), 14, Binder.INK, 306.0)
+		hit.size = Vector2(306.0, 56.0)
 
 ## The family card: worst-member mark, ×N, summed keep; opens to members.
 static func _family_card(b, state: GameState, x: float, y: float, sd: Dictionary) -> void:
@@ -549,6 +764,8 @@ static func _cost_foot(b, state: GameState) -> void:
 	DeskKit.footer(b, {"computed": computed, "y": FOOT_Y, "rules_y": RULES_Y,
 		"rules": "features are never free — every landing signs a keep line; the creaky card IS the debt, pointable",
 		"warning": warning})
+	# S2b — the keep-spike row's named switch: the foot's own computed line
+	b.mark_control("keep_total", Rect2(10.0, FOOT_Y - 4.0, 1100.0, 30.0))
 
 # ═══════════════════════ RUNG 3 — THE LINEUP ═════════════════════════════════
 

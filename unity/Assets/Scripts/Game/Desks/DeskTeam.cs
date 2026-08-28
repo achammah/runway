@@ -327,7 +327,7 @@ namespace Runway.Game
                 // S7 — the bar presses through to the ownership state; the
                 // back pill home is free (FocusDesk carries the source)
                 var hit = DeskKit.Word(b, "", noteX, rowY + 2f,
-                    () => b.FocusDesk("cap table", "", "team"), 18f, DrawnUI.Ink, noteW);
+                    () => b.FocusDesk("cap table", "pool", "team"), 18f, DrawnUI.Ink, noteW);
                 hit.GetComponent<RectTransform>().sizeDelta =
                     new Vector2(noteW, DeskKit.LgRowH - 4f);
                 return;

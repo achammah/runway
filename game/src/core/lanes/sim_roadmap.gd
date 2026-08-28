@@ -197,9 +197,10 @@ static func attention(state: GameState) -> Array:
 	var rows: Array = []
 	if any_bet_ready(state):
 		rows.append({"desk": "product", "key": "bet_ready", "severity": 2,
-			"label": "a bet is built — ship it"})
+			"control": "ship", "label": "a bet is built — ship it"})
 	if state.tech_debt >= 70.0:
 		rows.append({"desk": "product", "key": "debt_critical", "severity": 2,
+			"control": "rebuild",
 			"label": "tech debt %d — everything builds slow" % int(state.tech_debt)})
 	return rows
 

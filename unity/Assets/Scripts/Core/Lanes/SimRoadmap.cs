@@ -263,7 +263,7 @@ namespace Runway.Core
                 rows.Add(new AttentionItem
                 {
                     Desk = "product", Key = "bet_ready", Severity = 2,
-                    Label = "a bet is built — ship it",
+                    Control = "ship", Label = "a bet is built — ship it",
                 });
             }
             if (state.TechDebt >= 70.0)
@@ -271,6 +271,7 @@ namespace Runway.Core
                 rows.Add(new AttentionItem
                 {
                     Desk = "product", Key = "debt_critical", Severity = 2,
+                    Control = "rebuild",
                     Label = string.Format(CultureInfo.InvariantCulture,
                         "tech debt {0} — everything builds slow", Gd.ToInt(state.TechDebt)),
                 });

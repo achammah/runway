@@ -247,6 +247,7 @@ namespace Runway.Core
                 rows.Add(new AttentionItem
                 {
                     Desk = "what we make", Key = "feature_breaking", Severity = 3,
+                    Control = "rebuild",
                     Label = string.Format(CultureInfo.InvariantCulture,
                         "'{0}' is breaking — rebuild", nm),
                 });
@@ -259,6 +260,7 @@ namespace Runway.Core
                     rows.Add(new AttentionItem
                     {
                         Desk = "what we make", Key = "creak_tax", Severity = 2,
+                        Control = "rebuild",
                         Label = string.Format(CultureInfo.InvariantCulture,
                             "{0} creak{1} — build speed −{2}%", creaks,
                             creaks == 1 ? "" : "s", tax),
@@ -267,6 +269,7 @@ namespace Runway.Core
                     rows.Add(new AttentionItem
                     {
                         Desk = "what we make", Key = "creak_tax", Severity = 2,
+                        Control = "rebuild",
                         Label = string.Format(CultureInfo.InvariantCulture,
                             "{0} creak{1} on the wall — rebuild", creaks,
                             creaks == 1 ? "" : "s"),
@@ -278,6 +281,7 @@ namespace Runway.Core
                 rows.Add(new AttentionItem
                 {
                     Desk = "what we make", Key = "keep_spike", Severity = 2,
+                    Control = "keep_total",
                     Label = string.Format(CultureInfo.InvariantCulture,
                         "keep ${0}/wk eats {1}% of revenue", keep,
                         (int)(keep * 100.0 / revenue)),

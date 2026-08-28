@@ -20,10 +20,80 @@ namespace Runway.Game
     /// attention-first folds, rung 3's LINEUP + SHARED PLUMBING, and the cost
     /// footer matching SimFeatures' own numbers. Solidity wears the kit's
     /// marks: solid calm, creaky sev 2, breaking sev 3 — red means act.
+    ///
+    /// DAG3 (13-binder-ux): the creak card presses into ONE arm — the shelf's
+    /// own rebuild candidate arms its commit (the second tap books it); shelf
+    /// cards cite YOUR measured history (S4); the DO lane says [SHIP] when
+    /// READY else [commit — best fit] (S3); the ask strip replaces the hero's
+    /// creak whisper (S2); the live count wears the delta arrow (S5); a truly
+    /// blank wall opens on the designed first week (S1).
     /// </summary>
     public static class DeskMake
     {
         public const string Question = "what are we making, and how solid is it?";
+
+        /// S8 — the wall never sleeps: making things IS the game from week 1.
+        public static bool IsDormant(GameState s) { return false; }
+
+        /// S10 — the rail's four-character read: a creak is the wall in one
+        /// glance; healthy, the live count.
+        public static string MicroStatus(GameState s)
+        {
+            int creaks = SimFeatures.CreakCount(s);
+            if (creaks > 0) return creaks + " creak" + (creaks == 1 ? "" : "s");
+            if (s.Features.Count == 0) return "";
+            return s.Features.Count + " live";
+        }
+
+        /// S15 — the wall speaks up: a creak suggests its own rebuild.
+        /// ADOPT-only — the chip jumps HERE; the commit arm still asks.
+        public static List<Dictionary<string, object>> Suggestions(GameState s)
+        {
+            var outp = new List<Dictionary<string, object>>();
+            if (SimFeatures.CreakCount(s) == 0 || RebuildInFlight(s) != null) return outp;
+            string nm = SimFeatures.WorstCreakName(s);
+            if (nm.Length > 18) nm = nm.Substring(0, 18);
+            outp.Add(new Dictionary<string, object>
+            {
+                { "label", "queue the rebuild — " + nm },
+                { "kind", "jump" },
+                { "payload", new Dictionary<string, object>
+                    { { "desk", "what we make" }, { "control", "rebuild" } } },
+            });
+            return outp;
+        }
+
+        /// The rebuild already paid for, if any — committed, queued or ready,
+        /// not yet shipped. In flight, the creak press has nothing to arm.
+        static Bet RebuildInFlight(GameState s)
+        {
+            foreach (Bet bd in s.Bets)
+                if (bd.Kind == "debt" && !bd.Shipped
+                    && (bd.Committed || bd.Ready || bd.CommittedWeek < 0))
+                    return bd;
+            return null;
+        }
+
+        /// The shelf's rebuild candidate ("kills a creak") — the lane always
+        /// deals one while the wall creaks.
+        static ShelfRow RebuildRowOf(GameState s)
+        {
+            foreach (ShelfRow row in ShelfRows(s))
+                if (row.JobWords == "kills a creak") return row;
+            return null;
+        }
+
+        /// THE CREAK CARD'S ONE PRESS: arm the matching rebuild candidate's
+        /// commit — the armed caption quotes the price and the SECOND tap
+        /// books it through the existing door. Receipts before mutations.
+        static void ArmRebuild(BinderScreen b, GameState s)
+        {
+            if (RebuildInFlight(s) != null) return;   // BUILDING/NEXT says so
+            ShelfRow row = RebuildRowOf(s);
+            if (row == null) return;                  // the shelf re-deals weekly
+            b.Desk.Clear();
+            b.Desk["armed"] = "take:" + row.Id;
+        }
 
         const float ColW = 272f;
         const float ColH = 404f;
@@ -84,12 +154,115 @@ namespace Runway.Game
             if (SimFeatures.ProductIds(st).Count > 0)
             {
                 Lineup(b, st);
+                DeskKit.AskStrip(b, "what we make", 10f, 84f, 900f, "rebuild or ship — below");
+                DoLaneDraw(b, st);
+                return;
+            }
+            // S1 — a truly blank wall opens on the designed first week, never
+            // on bare columns. Board candidates are PAPER (EnsureBoard deals
+            // them even at week 1) — zero means no inventory, no work taken.
+            if (st.Features.Count == 0 && SimRoadmap.CommittedBets(st).Count == 0
+                && SimRoadmap.ReadyBets(st).Count == 0
+                && SimFeatures.QueuedBets(st).Count == 0)
+            {
+                Zero(b, st);
                 return;
             }
             Hero(b, st);
             Wall(b, st);
             LiveBand(b, st);
             CostFoot(b, st);
+            DoLaneDraw(b, st);
+        }
+
+        /// S1 — the designed first week: what the wall WILL show, what one
+        /// idea WOULD cost (the world's own pricing — the receipt precedes
+        /// the commit), the one action, and when the desk comes alive.
+        static void Zero(BinderScreen b, GameState st)
+        {
+            List<SimFeatures.ShelfCandidate> shelf = SimFeatures.ShelfCandidates(st);
+            string would = "every feature you ship hangs here with its keep-cost on the tag — nothing is ever free";
+            string act = "";
+            string firstId = "";
+            if (shelf.Count > 0)
+            {
+                SimFeatures.ShelfCandidate c0 = shelf[0];
+                firstId = c0.Id;
+                would = string.Format(CultureInfo.InvariantCulture,
+                    "'{0}' WOULD cost ${1} over {2} wk at {3}% odds — the world prices every idea",
+                    c0.Name, GameUi.Money(c0.CostUsd), c0.Weeks, c0.OddsPct);
+                act = "take on '" + Clip(c0.Name, 20) + "' ->";
+            }
+            DeskKit.ZeroState(b, new DeskKit.ZeroStateCfg
+            {
+                WillShow = "THE WALL — every feature you make, its job, its keep-cost, its solidity",
+                WouldLine = would,
+                ActionLabel = act,
+                ActionCb = () => SimFeatures.CommitShelf(st, firstId),
+                WakesHint = "fills with the first committed bet — landings sign their keep-line as they arrive",
+            });
+        }
+
+        /// S3 — the DO lane: [SHIP — name] when a bet is READY (the same
+        /// pre-roll → dice ritual as the wall's own button), else
+        /// [commit — best fit] (the rebuild when the wall creaks).
+        static void DoLaneDraw(BinderScreen b, GameState st)
+        {
+            List<Bet> ready = SimRoadmap.ReadyBets(st);
+            if (ready.Count > 0)
+            {
+                string id = ready[0].Id;
+                DeskKit.DoLane(b, new List<DeskKit.DoAction>
+                {
+                    new DeskKit.DoAction
+                    {
+                        Label = "SHIP — " + Clip(ready[0].Name ?? "", 18),
+                        Tier = "sign",
+                        Cb = () =>
+                        {
+                            if (PrerollRows(st).Count > 0)
+                            {
+                                b.Desk["mode"] = "preroll";
+                                b.Desk["bet"] = id;
+                                return;
+                            }
+                            Fire(b, id);
+                        },
+                    },
+                });
+                return;
+            }
+            ShelfRow best = RebuildRowOf(st);
+            if (best == null)
+            {
+                List<ShelfRow> shelf = ShelfRows(st);
+                if (shelf.Count > 0) best = shelf[0];
+            }
+            if (best == null) return;
+            string sid = best.Id;
+            bool isBoard = best.Board;
+            DeskKit.DoLane(b, new List<DeskKit.DoAction>
+            {
+                new DeskKit.DoAction
+                {
+                    Label = "commit — " + Clip(best.Name ?? "", 18),
+                    Tier = "two-tap",
+                    Cb = () =>
+                    {
+                        if (isBoard)
+                        {
+                            if (SimRoadmap.CommittedBets(st).Count < SimRoadmap.WipCap(st))
+                                SimRoadmap.CommitBet(st, sid);
+                            else
+                                SimFeatures.EnqueueBet(st, sid);
+                        }
+                        else
+                        {
+                            SimFeatures.CommitShelf(st, sid);
+                        }
+                    },
+                },
+            });
         }
 
         // ═══════════════════════════ THE HERO ═══════════════════════════════
@@ -139,17 +312,19 @@ namespace Runway.Game
                 st.Features.Count, BuildingBets(st).Count,
                 SimRoadmap.ReadyBets(st).Count, ShelfRows(st).Count);
             b.L(counts, 536f, 52f, 21f, Ink(0.6f), 574f);
-            int creaks = SimFeatures.CreakCount(st);
-            if (creaks > 0)
+            // S5 — what changed since the last open: the live count wears the
+            // arrow (prev read BEFORE the record, per the seen-store contract)
+            string prevLive = b.SeenPrev("what we make", "live");
+            b.Seen("what we make", "live", st.Features.Count.ToString(CultureInfo.InvariantCulture));
+            if (prevLive != "")
             {
-                int tax = SimFeatures.CreakTaxPct(st);
-                string cl = string.Format(CultureInfo.InvariantCulture,
-                    "creaks at '{0}'", SimFeatures.WorstCreakName(st));
-                if (tax > 0)
-                    cl += string.Format(CultureInfo.InvariantCulture,
-                        " — build speed −{0}%", tax);
-                b.L(cl, 536f, 78f, 21f, DrawnUI.Coral, 420f);
+                float pl;
+                float.TryParse(prevLive, NumberStyles.Float, CultureInfo.InvariantCulture, out pl);
+                DeskKit.DeltaArrow(b, 512f, 56f, st.Features.Count, pl);
             }
+            // S2 — red speaks on the page: the desk's attention rows in one
+            // red line (the hero's old creak whisper now rides the strip)
+            DeskKit.AskStrip(b, "what we make", 536f, 78f, 410f, "rebuild or ship — below");
             List<Bet> ready = SimRoadmap.ReadyBets(st);
             if (ready.Count > 0)
             {
@@ -174,6 +349,8 @@ namespace Runway.Game
             public int Weeks;
             public int OddsPct;
             public string JobWords = "";
+            public string Kind = "";
+            public string Job = "";
         }
 
         static void Wall(BinderScreen b, GameState st)
@@ -191,6 +368,7 @@ namespace Runway.Game
             foreach (ShelfRow row in shelf)
             {
                 if (shown >= shelfCap) break;
+                float y0 = c1.Cursor;
                 DeskKit.WallCard(b, c1, new DeskKit.WallCardCfg
                 {
                     Title = row.Name,
@@ -202,6 +380,10 @@ namespace Runway.Game
                     },
                 });
                 ShelfArm(b, c1, st, row);
+                // S2b — the rebuild candidate is the creak rows' named switch
+                if (row.JobWords == "kills a creak")
+                    b.MarkControl("rebuild", new Rect(10f, y0, ColW, c1.Cursor - y0));
+                HistoryCite(b, c1, st, row);
                 shown++;
             }
             if (shelf.Count > shown)
@@ -209,8 +391,11 @@ namespace Runway.Game
                 DeskKit.More(b, c1.ContentX, c1.Cursor, shelf.Count - shown, "ideas wait");
                 c1.Cursor += 30f;
             }
-            b.L("write your own in THIS WEEK — the world prices it",
-                c1.ContentX, c1.Cursor + 2f, 15f, Ink(0.45f), ColW - 20f);
+            // the cites can walk the cursor deep — the coda (two wrapped
+            // lines) never leaves the box
+            if (c1.Cursor <= ColY + ColH - 56f)
+                b.L("write your own in THIS WEEK — the world prices it",
+                    c1.ContentX, c1.Cursor + 2f, 15f, Ink(0.45f), ColW - 20f);
             // ── NEXT: the committed queue, reorder freely
             DeskKit.WallCol c2 = DeskKit.WallColumn(b, 292f, ColY, ColW, ColH,
                 "NEXT", "the queue — reorder freely");
@@ -279,6 +464,7 @@ namespace Runway.Game
             {
                 if (rn >= 2) break;
                 int left = SimRoadmap.StallLeft(st, rbet);
+                float ry0 = c4.Cursor;
                 DeskKit.WallCard(b, c4, new DeskKit.WallCardCfg
                 {
                     Title = rbet.Name,
@@ -291,6 +477,9 @@ namespace Runway.Game
                     },
                 });
                 ShipButton(b, c4, st, rbet);
+                // S2b — "a bet is built" lands here spotlit
+                if (rn == 0)
+                    b.MarkControl("ship", new Rect(856f, ry0, ColW, c4.Cursor - ry0));
                 rn++;
             }
             if (ready.Count == 0)
@@ -306,6 +495,10 @@ namespace Runway.Game
             {
                 if (bd.Committed || bd.Ready || bd.CommittedWeek < 0 || bd.Progress > 0.0)
                     continue;
+                string job;
+                if (bd.Kind == "debt") job = "plumbing";
+                else if (!SimFeatures.KIND_TO_JOB.TryGetValue(bd.Kind ?? "", out job))
+                    job = "plumbing";
                 outp.Add(new ShelfRow
                 {
                     Id = bd.Id, Board = true, Name = bd.Name,
@@ -313,6 +506,7 @@ namespace Runway.Game
                     Weeks = (int)Math.Ceiling(bd.CostRndWeeks),
                     OddsPct = SimRoadmap.ShipOddsPct(st, bd),
                     JobWords = BetJobWords(bd),
+                    Kind = bd.Kind ?? "", Job = job,
                 });
             }
             foreach (SimFeatures.ShelfCandidate cand in SimFeatures.ShelfCandidates(st))
@@ -321,8 +515,76 @@ namespace Runway.Game
                     Id = cand.Id, Board = false, Name = cand.Name,
                     CostUsd = cand.CostUsd, Weeks = cand.Weeks,
                     OddsPct = cand.OddsPct, JobWords = cand.JobWords,
+                    Kind = cand.Kind ?? "", Job = cand.Job ?? "",
                 });
+            // the rebuild leads the shelf: the card the creak's one-press arms
+            // must be face-up, never folded behind board paper
+            var lead = new List<ShelfRow>();
+            var rest = new List<ShelfRow>();
+            foreach (ShelfRow r2 in outp)
+            {
+                if (r2.JobWords == "kills a creak") lead.Add(r2);
+                else rest.Add(r2);
+            }
+            lead.AddRange(rest);
+            return lead;
+        }
+
+        /// The short job noun the cite line speaks ("your last keeps-bet…").
+        static readonly Dictionary<string, string> CiteJob = new Dictionary<string, string>
+        {
+            { "pull", "pull" }, { "keep", "keeps" }, { "charge", "charge" },
+            { "plumbing", "plumbing" },
+        };
+
+        /// Landings of this job with a settled measured verdict, newest first.
+        static List<Feature> MeasuredForJob(GameState st, string job)
+        {
+            var outp = new List<Feature>();
+            foreach (Feature f in st.Features)
+                if (f.Job == job && f.Measured != 0.0)
+                    outp.Add(f);
+            outp.Sort((a, b2) => b2.BornWk.CompareTo(a.BornWk));
             return outp;
+        }
+
+        /// S4 — the shelf cites YOUR history: the last measured landing doing
+        /// this card's job, one line under the arm, pressable into the record.
+        static void HistoryCite(BinderScreen b, DeskKit.WallCol col, GameState st,
+                                ShelfRow row)
+        {
+            string job = row.Job ?? "";
+            if (job == "" || row.JobWords == "kills a creak") return;
+            List<Feature> recs = MeasuredForJob(st, job);
+            if (recs.Count == 0) return;
+            // the arm capsule under the card runs to cursor+~10 — clear it
+            float y = col.Cursor + 14f;
+            if (y > ColY + ColH - 26f) return;   // the column never overflows
+            float x = col.ContentX;
+            string noun;
+            if (!CiteJob.TryGetValue(job, out noun)) noun = job;
+            DeskKit.FitLine(b, string.Format(CultureInfo.InvariantCulture,
+                "your last {0}-bet measured {1:+0.0;-0.0}", noun, recs[0].Measured),
+                x, y, 15f, Ink(0.55f), ColW - 24f);
+            var lines = new List<DeskKit.TicketLine>();
+            for (int i = 0; i < recs.Count && i < 4; i++)
+            {
+                int promised = SimFeatures.PromisedUnits(st, recs[i]);
+                lines.Add(new DeskKit.TicketLine
+                {
+                    Label = Clip(recs[i].Name ?? "", 22),
+                    Value = promised > 0
+                        ? string.Format(CultureInfo.InvariantCulture,
+                            "promised +{0} · measured {1:+0.0;-0.0}", promised, recs[i].Measured)
+                        : string.Format(CultureInfo.InvariantCulture,
+                            "measured {0:+0.0;-0.0}", recs[i].Measured),
+                });
+            }
+            string words;
+            if (!SimFeatures.JOB_WORDS.TryGetValue(job, out words)) words = job;
+            DeskKit.PressReceipt(b, new Rect(x, y, ColW - 24f, 20f),
+                "your " + words + " history", lines);
+            col.Cursor = y + 24f;
         }
 
         static string BetJobWords(Bet bet)
@@ -517,6 +779,13 @@ namespace Runway.Game
             string note = FeatureNote(st, fd);
             if (note != "")
                 b.L(note, cx, y + 32f, 14f, sev > 0 ? DrawnUI.Coral : Ink(0.5f), 270f);
+            // THE CREAK CARD PRESSES (the plan's one-press): arm the rebuild
+            if (sev > 0)
+            {
+                Button hit = DeskKit.Word(b, "", x, y, () => ArmRebuild(b, st),
+                    14f, DrawnUI.Ink, 306f);
+                hit.GetComponent<RectTransform>().sizeDelta = new Vector2(306f, 56f);
+            }
         }
 
         /// The family card: worst-member mark, ×N, summed keep; opens members.
@@ -644,6 +913,8 @@ namespace Runway.Game
                 computed,
                 "features are never free — every landing signs a keep line; the creaky card IS the debt, pointable",
                 warning, FootY, RulesY);
+            // S2b — the keep-spike row's named switch: the foot's own line
+            b.MarkControl("keep_total", new Rect(10f, FootY - 4f, 1100f, 30f));
         }
 
         // ═══════════════════ RUNG 3 — THE LINEUP ═════════════════════════════
