@@ -17,6 +17,11 @@ extends RefCounted
 ## needs an ≥ 1, the cohort read an ≥ 2, and the era gate says its own name.
 ## The Enterprise STAGE BOARD lives on "in motion" now — this page keeps the
 ## score for every audience.
+##
+## DAG3 (13-binder-ux · customers): the fog line sells its own unlock — one
+## press lands on the spend book (a desk-level jump until the spend lane names
+## the analytics line's control id); kept% is pressable into the cohort
+## receipt; won/lost wear the S5 arrows; week one is the S1 teaching state.
 
 const QUESTION := "who is coming and staying?"
 
@@ -37,6 +42,17 @@ static func hero_summary(state) -> Dictionary:
 
 static func draw(b) -> void:
 	var s: GameState = b.state
+	if s.traction <= 0 and s.metric_history.is_empty():
+		# S1 — the desk before anyone has arrived is a TEACHING state
+		DeskKit.zero_state(b, {
+			"will_show": "who is coming and staying — the score",
+			"would_line": "the count big, each week's +won and −lost beside it, and how many "
+				+ "of a class of 100 are still here twelve weeks on",
+			"action_label": "fund the first channel",
+			"action_cb": func() -> void: b.focus_desk("growth", "", "customers"),
+			"wakes_hint": "wakes with the first locked week — analytics decides how much of it you can see",
+		})
+		return
 	var an := SimFunnel.analytics(s)
 	var sc := _score(s)
 	_hero(b, s, an, sc)
@@ -75,6 +91,31 @@ static func _score(s: GameState) -> Dictionary:
 		parts.append("kept ? — analytics sees who stays")
 	return {"won": won, "lost": lost, "kept": kept, "line": " · ".join(parts)}
 
+## S4 — the cohort receipt's lines: the same math _kept_pct runs, said in its
+## terms. The probe photographs exactly this content.
+static func _cohort_lines(s: GameState) -> Array:
+	var th := s.theta
+	var lift := 0.4 + float(s.product) / 100.0 * 1.2
+	var residence := maxf(float(th.get("lifetime_wk", 40.0)) * lift, 2.0)
+	var keep := maxf(1.0 - 1.0 / residence, 0.0)
+	return [
+		{"label": "one stays about", "value": "%d wks" % int(round(residence))},
+		{"label": "of 100 who join, week 4", "value": "%d left" % int(round(pow(keep, 4.0) * 100.0))},
+		{"label": "week 8", "value": "%d left" % int(round(pow(keep, 8.0) * 100.0))},
+		{"label": "week 12", "value": "%d left" % int(round(pow(keep, 12.0) * 100.0)),
+			"col": DeskKit.SAGE},
+		{"label": "product v0.%d lifts residence" % s.product, "value": "×%.1f" % lift},
+	]
+
+## S8 — the scoreboard never sleeps; the S1 state teaches week one.
+static func is_dormant(_state) -> bool:
+	return false
+
+## S8 — the rail's four-character read: the count, plainly.
+static func micro_status(state) -> String:
+	var s: GameState = state
+	return str(s.traction) if s.traction > 0 else ""
+
 ## Survival of a class of 100 at week 12 — engine terms, no invention. −1 when
 ## the fog (an < 2) keeps it a "?".
 static func _kept_pct(s: GameState) -> int:
@@ -101,22 +142,53 @@ static func _hero(b, s: GameState, an: int, sc: Dictionary) -> void:
 		b.label("+%d won" % won, Vector2(bx + 150.0, 10.0), 27, Color("5D7A50"), 200.0)
 		b.label("−%s lost" % (str(lost) if lost >= 0 else "?"), Vector2(bx + 150.0, 44.0),
 			27, DeskKit.PEN, 200.0)
+		# S5 — the arrows: won and lost against the binder's last open
+		var wprev: String = b.seen_prev("customers", "won")
+		if b.seen("customers", "won", str(won)) and wprev.is_valid_int():
+			var ww: float = b.font().get_string_size("+%d won" % won,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 27).x
+			DeskKit.delta_arrow(b, bx + 150.0 + ww + 8.0, 14.0, float(won), float(wprev.to_int()))
+		if lost >= 0:
+			var lprev: String = b.seen_prev("customers", "lost")
+			if b.seen("customers", "lost", str(lost)) and lprev.is_valid_int():
+				var lw: float = b.font().get_string_size("−%d lost" % lost,
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 27).x
+				DeskKit.delta_arrow(b, bx + 150.0 + lw + 8.0, 48.0, float(lost),
+					float(lprev.to_int()))
 	var kept := int(sc.get("kept", -1))
-	var kl: Label = b.label("kept ≈%d%%" % kept if kept >= 0 else "kept ?",
-		Vector2(830.0, 10.0), 34, DeskKit.SAGE if kept >= 0 else Color(DeskKit.INK, 0.4), 290.0)
-	kl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	if kept >= 0:
+		# S4 — kept% IS its own receipt: the cohort's terms one press down
+		var ktext := "kept ≈%d%%" % kept
+		var ktw: float = b.font().get_string_size(ktext, HORIZONTAL_ALIGNMENT_LEFT, -1, 34).x
+		DeskKit.receipt_number(b, 830.0 + 290.0 - ktw, 10.0, ktext, 34, DeskKit.SAGE,
+			"kept — a class of 100", _cohort_lines(s))
+	else:
+		var kl: Label = b.label("kept ?", Vector2(830.0, 10.0), 34,
+			Color(DeskKit.INK, 0.4), 290.0)
+		kl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	var ks: Label = b.label("still here after 12 weeks" if kept >= 0
 		else "invest in analytics to see who stays", Vector2(700.0, 52.0), 17,
 		Color(DeskKit.INK, 0.5), 420.0)
 	ks.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	# S2 — red speaks ON the page: this desk's asks in one measured line
+	var shift := 0.0
+	if DeskKit.ask_strip(b, "customers", DeskKit.X_ID, 84.0, 1100.0,
+			"the doors are on IN MOTION and GROWTH"):
+		shift = 28.0
 	if an <= 0:
 		b.label("Traffic seems… decent? Someone signed up on Tuesday. The numbers live in a notebook you lost.",
-			Vector2(DeskKit.X_ID, 84.0), DeskKit.DETAIL, Color(DeskKit.INK, 0.6), 1100.0)
-		DeskKit.pen_rule(b, 150.0)
+			Vector2(DeskKit.X_ID, 84.0 + shift), DeskKit.DETAIL, Color(DeskKit.INK, 0.6), 1100.0)
+		# S2 — the fog sells its own unlock: one press lands on the spend book
+		# (desk-level until the spend lane names the analytics line's control)
+		DeskKit.word(b, "!  the notebook is for sale — fund analytics on the spend book ->",
+			Vector2(DeskKit.X_ID, 112.0 + shift), func() -> void:
+				b.focus_desk("spend", "", "customers"),
+			DeskKit.DETAIL, DeskKit.ALERT, 900.0)
+		DeskKit.pen_rule(b, 150.0 + shift)
 		b.label("the whole run — the chart returns with a notebook that survives (analytics)",
-			Vector2(DeskKit.X_ID, 200.0), DeskKit.LAW, Color(DeskKit.INK, 0.4), 1100.0)
+			Vector2(DeskKit.X_ID, 200.0 + shift), DeskKit.LAW, Color(DeskKit.INK, 0.4), 1100.0)
 		return
-	b.label("the whole run", Vector2(DeskKit.X_ID, 84.0), DeskKit.LAW,
+	b.label("the whole run", Vector2(DeskKit.X_ID, 84.0 + shift), DeskKit.LAW,
 		Color(DeskKit.INK, 0.45), 400.0)
 	DeskKit.pen_rule(b, 150.0)
 	b.spark(b.series("customers"), Vector2(10.0, 166.0), Vector2(1120.0, 148.0), DeskKit.SAGE)

@@ -23,6 +23,12 @@ namespace Runway.Game
     /// ANALYTICS FOG RULES PRESERVED: what the founder cannot see renders as
     /// "?" shapes, never as absence. The Enterprise STAGE BOARD lives on
     /// "in motion" now — this page keeps the score for every audience.
+    ///
+    /// DAG3 (13-binder-ux · customers): the fog line sells its own unlock —
+    /// one press lands on the spend book (desk-level until the spend lane
+    /// names the analytics line's control id); kept% is pressable into the
+    /// cohort receipt; won/lost wear the S5 arrows; week one is the S1
+    /// teaching state.
     /// </summary>
     public static class DeskCustomersPage
     {
@@ -49,6 +55,21 @@ namespace Runway.Game
         public static void Draw(BinderScreen b)
         {
             GameState s = b.State;
+            if (s.Traction <= 0 && s.MetricHistory.Count == 0)
+            {
+                // S1 — the desk before anyone has arrived is a TEACHING state
+                DeskKit.ZeroState(b, new DeskKit.ZeroStateCfg
+                {
+                    WillShow = "who is coming and staying — the score",
+                    WouldLine = "the count big, each week's +won and −lost beside it, and how "
+                        + "many of a class of 100 are still here twelve weeks on",
+                    ActionLabel = "fund the first channel",
+                    ActionCb = () => b.FocusDesk("growth", "", "customers"),
+                    WakesHint = "wakes with the first locked week — analytics decides how much "
+                        + "of it you can see",
+                });
+                return;
+            }
             int an = SimFunnel.Analytics(s);
             int won, lost, kept;
             string line = Score(s, out won, out lost, out kept);
@@ -117,27 +138,102 @@ namespace Runway.Game
                 b.L("+" + won + " won", bx + 150f, 10f, 27f, Pos, 200f);
                 b.L("−" + (lost >= 0 ? lost.ToString(CultureInfo.InvariantCulture) : "?") + " lost",
                     bx + 150f, 44f, 27f, DrawnUI.Coral, 200f);
+                // S5 — the arrows: won and lost against the binder's last open
+                string wprev = b.SeenPrev("customers", "won");
+                int wp;
+                if (b.Seen("customers", "won", won.ToString(CultureInfo.InvariantCulture))
+                    && int.TryParse(wprev, out wp))
+                {
+                    float ww = DrawnUI.MeasureWidth("+" + won + " won", 27f);
+                    DeskKit.DeltaArrow(b, bx + 150f + ww + 8f, 14f, won, wp);
+                }
+                if (lost >= 0)
+                {
+                    string lprev = b.SeenPrev("customers", "lost");
+                    int lp;
+                    if (b.Seen("customers", "lost", lost.ToString(CultureInfo.InvariantCulture))
+                        && int.TryParse(lprev, out lp))
+                    {
+                        float lw = DrawnUI.MeasureWidth("−" + lost + " lost", 27f);
+                        DeskKit.DeltaArrow(b, bx + 150f + lw + 8f, 48f, lost, lp);
+                    }
+                }
             }
-            TextMeshProUGUI kl = b.L(kept >= 0 ? "kept ≈" + kept + "%" : "kept ?",
-                830f, 10f, 34f, kept >= 0 ? DrawnUI.Sage : DrawnUI.WithAlpha(DrawnUI.Ink, 0.4f), 290f);
-            kl.alignment = TextAlignmentOptions.TopRight;
+            if (kept >= 0)
+            {
+                // S4 — kept% IS its own receipt: the cohort's terms one press down
+                string ktext = "kept ≈" + kept + "%";
+                float ktw = DrawnUI.MeasureWidth(ktext, 34f);
+                DeskKit.ReceiptNumber(b, 830f + 290f - ktw, 10f, ktext, 34f, DrawnUI.Sage,
+                    "kept — a class of 100", CohortLines(s));
+            }
+            else
+            {
+                TextMeshProUGUI kl = b.L("kept ?", 830f, 10f, 34f,
+                    DrawnUI.WithAlpha(DrawnUI.Ink, 0.4f), 290f);
+                kl.alignment = TextAlignmentOptions.TopRight;
+            }
             TextMeshProUGUI ks = b.L(kept >= 0 ? "still here after 12 weeks"
                 : "invest in analytics to see who stays", 700f, 52f, 17f,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 420f);
             ks.alignment = TextAlignmentOptions.TopRight;
+            // S2 — red speaks ON the page: this desk's asks in one measured line
+            float shift = DeskKit.AskStrip(b, "customers", DeskKit.XId, 84f, 1100f,
+                "the doors are on IN MOTION and GROWTH") ? 28f : 0f;
             if (an <= 0)
             {
                 b.L("Traffic seems… decent? Someone signed up on Tuesday. The numbers live in a notebook you lost.",
-                    DeskKit.XId, 84f, DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 1100f);
-                DeskKit.PenRule(b, 150f);
+                    DeskKit.XId, 84f + shift, DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 1100f);
+                // S2 — the fog sells its own unlock: one press lands on the spend
+                // book (desk-level until the spend lane names the line's control)
+                DeskKit.Word(b, "!  the notebook is for sale — fund analytics on the spend book ->",
+                    DeskKit.XId, 112f + shift, () => b.FocusDesk("spend", "", "customers"),
+                    DeskKit.Detail, DeskKit.Alert, 900f);
+                DeskKit.PenRule(b, 150f + shift);
                 b.L("the whole run — the chart returns with a notebook that survives (analytics)",
-                    DeskKit.XId, 200f, DeskKit.Law, DrawnUI.WithAlpha(DrawnUI.Ink, 0.4f), 1100f);
+                    DeskKit.XId, 200f + shift, DeskKit.Law, DrawnUI.WithAlpha(DrawnUI.Ink, 0.4f), 1100f);
                 return;
             }
-            b.L("the whole run", DeskKit.XId, 84f, DeskKit.Law,
+            b.L("the whole run", DeskKit.XId, 84f + shift, DeskKit.Law,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f), 400f);
             DeskKit.PenRule(b, 150f);
             b.Spark("customers", 10f, 166f, 1120f, 148f, DrawnUI.Sage);
+        }
+
+        /// S4 — the cohort receipt's lines: the same math KeptPct runs, said
+        /// in its terms. The probe photographs exactly this content.
+        static List<DeskKit.TicketLine> CohortLines(GameState s)
+        {
+            Theta th = s.Theta ?? new Theta();
+            double lift = 0.4 + s.Product / 100.0 * 1.2;
+            double residence = Gd.Maxf(th.LifetimeWk * lift, 2.0);
+            double keep = Gd.Maxf(1.0 - 1.0 / residence, 0.0);
+            return new List<DeskKit.TicketLine>
+            {
+                new DeskKit.TicketLine { Label = "one stays about",
+                    Value = Gd.RoundToInt(residence) + " wks" },
+                new DeskKit.TicketLine { Label = "of 100 who join, week 4",
+                    Value = Gd.RoundToInt(Math.Pow(keep, 4.0) * 100.0) + " left" },
+                new DeskKit.TicketLine { Label = "week 8",
+                    Value = Gd.RoundToInt(Math.Pow(keep, 8.0) * 100.0) + " left" },
+                new DeskKit.TicketLine { Label = "week 12",
+                    Value = Gd.RoundToInt(Math.Pow(keep, 12.0) * 100.0) + " left",
+                    Col = DrawnUI.Sage },
+                new DeskKit.TicketLine { Label = "product v0." + s.Product + " lifts residence",
+                    Value = string.Format(CultureInfo.InvariantCulture, "×{0:0.0}", lift) },
+            };
+        }
+
+        /// S8 — the scoreboard never sleeps; the S1 state teaches week one.
+        public static bool IsDormant(GameState s)
+        {
+            return false;
+        }
+
+        /// S8 — the rail's four-character read: the count, plainly.
+        public static string MicroStatus(GameState s)
+        {
+            return s.Traction > 0 ? s.Traction.ToString(CultureInfo.InvariantCulture) : "";
         }
 
         // ── the funnel, small ──────────────────────────────────────────────

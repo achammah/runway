@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using Runway.App;
 using Runway.Core;
 
@@ -28,6 +29,13 @@ namespace Runway.Game
     /// Enterprise adds the named-account per-seat line under the table, read
     /// from the pipeline. Fair-price backstop and the "!" unpriced warning
     /// are preserved.
+    ///
+    /// DAG3 (13-binder-ux · offers): the verdict word is a DOOR — press it
+    /// and the street's read opens as a paper card with THE FAIR BAND drawn
+    /// (demand's own thresholds on the price axis, your price dotted); the
+    /// DO lane carries [set price — …] [add an offer]; the pen circles
+    /// verdicts that moved since the last open; the empty shelf is the S1
+    /// teaching state.
     /// </summary>
     public static class DeskOffers
     {
@@ -67,6 +75,16 @@ namespace Runway.Game
         public static void Draw(BinderScreen b)
         {
             string mode = Mode(b);
+            if (mode.StartsWith("verdict:", StringComparison.Ordinal))
+            {
+                // S4 — the verdict opened: the rate card stays under the paper
+                // card; Esc or any press closes the read first (desk-mode pop)
+                RateCard(b);
+                int row;
+                VerdictCard(b, b.State,
+                    int.TryParse(mode.Substring(8), out row) ? row : -1);
+                return;
+            }
             switch (mode)
             {
                 case "detail":
@@ -151,19 +169,41 @@ namespace Runway.Game
         static void RateCard(BinderScreen b)
         {
             GameState s = b.State;
+            if (s.Offers.Count == 0)
+            {
+                // S1 — the empty shelf is a TEACHING page, never bare furniture
+                DeskKit.ZeroState(b, new DeskKit.ZeroStateCfg
+                {
+                    WillShow = "what you sell, and what each sale earns",
+                    WouldLine = "a row per offer — your price, the street's rate, the cost to "
+                        + "serve, the margin, and one word saying how demand reads it",
+                    ActionLabel = "+ define a new offer",
+                    ActionCb = () => b.Desk["mode"] = "write",
+                    WakesHint = "the shelf fills with the bible — an unpriced offer bills at "
+                        + "the street's rate until you set your own",
+                });
+                return;
+            }
             string big, line;
             double arpu, cogs;
             Hero(s, out big, out line, out arpu, out cogs);
             float y = DeskKit.HeroBand(b, big, line);
-            if (s.Offers.Count == 0)
+            // S5 — the hero's arrow: what one customer nets, vs the last open
+            if (arpu >= 0.0)
             {
-                y = DeskKit.Empty(b, DeskKit.XId, y,
-                    "the world hasn't defined your offers yet — they arrive with the bible.",
-                    "a company with nothing on the shelf earns nothing: write down what you sell.");
-                DefineDoor(b, y + 12f);
-                Foot(b, s);
-                return;
+                int net = Gd.RoundToInt(arpu - cogs);
+                string prev = b.SeenPrev("offers", "hero");
+                int prevN;
+                if (b.Seen("offers", "hero", net.ToString(CultureInfo.InvariantCulture))
+                    && int.TryParse(prev, out prevN))
+                {
+                    float bw = DrawnUI.MeasureWidth(big, DeskKit.HeroBig);
+                    DeskKit.DeltaArrow(b, DeskKit.XId + bw + 14f, 26f, net, prevN);
+                }
             }
+            // S2 — red speaks ON the page: the pricing asks in one measured line
+            if (DeskKit.AskStrip(b, "offers", DeskKit.XId, y, 1100f, "set the price below"))
+                y += 28f;
             // the per-customer two-bar: pays against serve
             if (arpu >= 0.0)
             {
@@ -199,6 +239,8 @@ namespace Runway.Game
             if (s.BizWho == "Enterprise")
                 y = NamedAccountsLine(b, s, y);
             DefineDoor(b, y + 6f);
+            DoLaneDraw(b, s);
+            FireSpot(b);
             Foot(b, s);
         }
 
@@ -278,8 +320,17 @@ namespace Runway.Game
               ColServeX, y + 3f, 21f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), ColServeW);
             R(b, "$" + GameUi.Money(Gd.RoundToInt(margin)), ColMarginX, y + 1f, 23f,
               margin > 0.0 ? Pos : DrawnUI.Coral, ColMarginW);
-            b.L(vWord, ColVerdictX, y + 2f, 22f, vCol, ColVerdictW);
+            // S4 — the verdict word is a door: press → the street's read
             int idx = i;
+            Button vbtn = DeskKit.Word(b, vWord, ColVerdictX, y - 4f,
+                () => b.Desk["mode"] = "verdict:" + idx, 22f, vCol, ColVerdictW);
+            vbtn.GetComponent<RectTransform>().sizeDelta = new Vector2(ColVerdictW, 44f);
+            // S5 — the pen circles a verdict that moved since the last open
+            if (b.Seen("offers", "vd_" + (o.Name ?? i.ToString(CultureInfo.InvariantCulture)), vWord))
+            {
+                float vtw = Mathf.Min(DrawnUI.MeasureWidth(vWord, 22f), ColVerdictW);
+                DeskKit.PenCircle(b, new Rect(ColVerdictX, y + 2f, vtw, 24f));
+            }
             DeskKit.Expand(b, ColExpandX, y - 4f, () =>
             {
                 b.Desk["mode"] = "detail";
@@ -291,6 +342,13 @@ namespace Runway.Game
                 () => DeskCatalog.PriceStep(oc, -1),
                 () => DeskCatalog.PriceStep(oc, 1),
                 DeskKit.AtMin(steps, price), DeskKit.AtMax(steps, price));
+            // S2b — the row's switch has a name: focus lands on ADJUST
+            var adjRect = new Rect(ColAdjustX - 4f, y, 96f, 44f);
+            b.MarkControl("adjust_" + i, adjRect);
+            if (price <= 0.0 && !o.PriceSet && !b.HasControl("set_price"))
+                b.MarkControl("set_price", adjRect);
+            if (SimCatalog.NeverPays(o, lc) && !b.HasControl("losing_price"))
+                b.MarkControl("losing_price", adjRect);
             DeskKit.PenRule(b, y + RowH - 8f, ColNameX, 1120f - 36f,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.12f), 11 + i);
             return y + RowH;
@@ -389,7 +447,223 @@ namespace Runway.Game
             cy = HeadRow(b, cy);
             for (int i = 0; i < n; i++)
                 cy = Row(b, cy, i, s, lc, fm);
+            DoLaneDraw(b, s);
+            FireSpot(b);
             Foot(b, s);
+        }
+
+        // ── S3 · the DO lane + the focus walk ──────────────────────────────
+
+        /// The desk's primary acts in the ONE slot: price the row that needs
+        /// it (first unpriced, else the flagship), or add to the shelf. The
+        /// price press walks the hand to that row's own ADJUST squares.
+        static void DoLaneDraw(BinderScreen b, GameState s)
+        {
+            int t = PriceTarget(s);
+            var actions = new List<DeskKit.DoAction>();
+            if (t >= 0)
+            {
+                string tn = string.IsNullOrEmpty(s.Offers[t].Name) ? "the offer" : s.Offers[t].Name;
+                int tNow = t;
+                actions.Add(new DeskKit.DoAction
+                {
+                    Label = "set price — " + tn,
+                    Tier = "",
+                    Cb = () =>
+                    {
+                        if (!b.HasControl("adjust_" + tNow)) b.Desk["mode"] = "all";
+                        b.Desk["spot"] = "adjust_" + tNow;
+                    },
+                });
+            }
+            if (string.IsNullOrEmpty(SimCatalog.ShelfFullLine(s)))
+                actions.Add(new DeskKit.DoAction
+                {
+                    Label = "add an offer",
+                    Tier = "",
+                    Cb = () => b.Desk["mode"] = "write",
+                });
+            DeskKit.DoLane(b, actions);
+        }
+
+        /// The DO lane's object: the first unpriced offer, else the flagship
+        /// (the heaviest weight — where most of the money walks through).
+        static int PriceTarget(GameState s)
+        {
+            if (s.Offers.Count == 0) return -1;
+            for (int i = 0; i < s.Offers.Count; i++)
+                if (s.Offers[i].Price <= 0.0 && !s.Offers[i].PriceSet) return i;
+            int best = 0;
+            for (int i = 1; i < s.Offers.Count; i++)
+                if (s.Offers[i].Weight > s.Offers[best].Weight) best = i;
+            return best;
+        }
+
+        /// A DO press asked for a spotlight; the registry filled during THIS
+        /// draw, so the walk fires after every row has marked its switch.
+        static void FireSpot(BinderScreen b)
+        {
+            object sv;
+            string sid = b.Desk.TryGetValue("spot", out sv) ? (sv as string ?? "") : "";
+            if (sid.Length == 0) return;
+            b.Desk.Remove("spot");
+            if (b.HasControl(sid)) b.Spotlight(b.ControlRect(sid));
+        }
+
+        // ── S4 · the street's read (the fair band) ─────────────────────────
+
+        /// THE VERDICT, OPENED: a paper card saying the street math in
+        /// receipt lines with THE FAIR BAND DRAWN — the price axis, the
+        /// stretch demand calls fair, the street's rate ticked, your price
+        /// dotted onto it. Any press or Esc closes the read first.
+        static void VerdictCard(BinderScreen b, GameState s, int i)
+        {
+            if (i < 0 || i >= s.Offers.Count)
+            {
+                b.Desk["mode"] = "";
+                return;
+            }
+            Offer o = s.Offers[i];
+            double lc = SimEngine.LearningCurve(s);
+            double fm = SimEngine.StreetFairMult(s);
+            double fair = Gd.Maxf(o.FairPrice * fm, 0.01);
+            double e = Gd.Maxf(o.Elasticity, 0.05);
+            double price = o.Price;
+            bool unpriced = price <= 0.0 && !o.PriceSet;
+            double billed = unpriced ? fair : price;
+            string vWord;
+            Color vCol;
+            VerdictWord(o, price, fm, lc, out vWord, out vCol);
+            Button catcher = DeskKit.Word(b, "", 0f, 0f, () => b.Desk["mode"] = "",
+                DeskKit.Detail, DrawnUI.Ink, 1140f);
+            catcher.GetComponent<RectTransform>().sizeDelta = new Vector2(1140f, 880f);
+            List<DeskKit.TicketLine> lines = StreetLines(b, s, o, price, fair, lc, fm, unpriced);
+            float cardH = 56f + 132f + lines.Count * 30f + 18f;
+            DeskKit.CardBox frame = DeskKit.CardFrame(b, 290f, 200f, 560f, cardH,
+                "the street's read — one word, priced");
+            float cx = frame.ContentX;
+            float cy = frame.ContentY;
+            double lo = fair * Math.Pow(1.15, -1.0 / e);
+            double hiP = fair * Math.Pow(0.85, -1.0 / e);
+            double absurd = fair * Math.Pow(0.25, -1.0 / e);
+            double pmax = Gd.Maxf(Gd.Maxf(absurd * 1.15, billed * 1.2), fair * 1.6);
+            FairBand(b, cx, cy, 560f - DeskKit.CardPad * 2f, 116f,
+                fair, lo, hiP, absurd, billed, pmax, vCol);
+            float moneyX = frame.MoneyX;
+            float ly = cy + 132f;
+            for (int n = 0; n < lines.Count; n++)
+            {
+                DeskKit.FitLine(b, lines[n].Label, cx, ly, 19f,
+                    DrawnUI.WithAlpha(DrawnUI.Ink, 0.85f), 300f);
+                TextMeshProUGUI v = DeskKit.FitLine(b, lines[n].Value, cx + 310f, ly, 19f,
+                    lines[n].Col ?? DrawnUI.Ink, moneyX - cx - 310f);
+                v.alignment = TextAlignmentOptions.TopRight;
+                ly += 30f;
+            }
+        }
+
+        /// THE FAIR BAND, in fills: the sage stretch demand calls fair,
+        /// yellow to where it turns absurd, coral past that, the street's
+        /// rate ticked in ink, your price dotted down onto its bead. (The
+        /// Godot twin draws the same geometry freehand.)
+        static void FairBand(BinderScreen b, float x, float y, float w, float h,
+                             double fair, double lo, double hi, double absurd,
+                             double price, double pmax, Color vcol)
+        {
+            float ax = y + h - 34f;
+            float sc = w / (float)Gd.Maxf(pmax, 0.01);
+            DrawnUI.Fill(b.Content, "fb_fair", DrawnUI.WithAlpha(DrawnUI.Sage, 0.45f),
+                x + (float)lo * sc, ax - 26f, (float)(hi - lo) * sc, 26f).raycastTarget = false;
+            DrawnUI.Fill(b.Content, "fb_pricey", DrawnUI.WithAlpha(DrawnUI.Yellow, 0.30f),
+                x + (float)hi * sc, ax - 26f,
+                (float)(Math.Min(absurd, pmax) - hi) * sc, 26f).raycastTarget = false;
+            if (absurd < pmax)
+                DrawnUI.Fill(b.Content, "fb_absurd", DrawnUI.WithAlpha(DrawnUI.Coral, 0.25f),
+                    x + (float)absurd * sc, ax - 26f,
+                    (float)(pmax - absurd) * sc, 26f).raycastTarget = false;
+            DrawnUI.Fill(b.Content, "fb_axis", DrawnUI.Ink, x, ax, w, 2.4f).raycastTarget = false;
+            DrawnUI.Fill(b.Content, "fb_tick", DrawnUI.Ink, x + (float)fair * sc - 1f,
+                ax - 30f, 2.2f, 36f).raycastTarget = false;
+            b.L("street $" + Gd.RoundToInt(fair), x + (float)fair * sc - 34f, ax + 8f, 15f,
+                DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 140f);
+            b.L("fair", x + (float)lo * sc + 6f, ax - 48f, 15f,
+                DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), 60f);
+            float px = Mathf.Clamp(x + (float)price * sc, x, x + w);
+            for (float yy = y + 14f; yy < ax - 6f; yy += 11f)
+                DrawnUI.Fill(b.Content, "fb_dot", DrawnUI.Coral, px - 1.2f, yy, 2.4f,
+                    Mathf.Min(6f, ax - 6f - yy)).raycastTarget = false;
+            var bead = DrawnUI.Fill(b.Content, "fb_bead", vcol, px - 6f, ax - 19f, 12f, 12f);
+            bead.raycastTarget = false;
+            DrawnUI.AddInkEdge(bead.rectTransform, new Vector2(12f, 12f),
+                new DrawnUI.PaperStyle
+                {
+                    ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
+                    StepsPerEdge = 5, Jitter = 0.7f, Thickness = 2f, Seed = 31,
+                });
+            b.L("you: $" + Gd.RoundToInt(price), Mathf.Clamp(px - 30f, x, x + w - 84f),
+                y - 2f, 15f, DrawnUI.Coral, 120f);
+        }
+
+        /// The receipt lines: the exact terms the verdict is made of — demand
+        /// is (price/fair)^−elasticity, clamped at ×2. Engine numbers only.
+        static List<DeskKit.TicketLine> StreetLines(BinderScreen b, GameState s, Offer o,
+                double price, double fair, double lc, double fm, bool unpriced)
+        {
+            string vWord;
+            Color vCol;
+            VerdictWord(o, price, fm, lc, out vWord, out vCol);
+            double e = Gd.Maxf(o.Elasticity, 0.05);
+            double dem = SimEngine.OfferDemand(o, unpriced ? fair : price, fm);
+            var lines = new List<DeskKit.TicketLine>
+            {
+                new DeskKit.TicketLine { Label = string.IsNullOrEmpty(o.Name) ? "the offer" : o.Name,
+                    Value = vWord, Col = vCol },
+                new DeskKit.TicketLine { Label = "your price",
+                    Value = unpriced
+                        ? "unpriced — bills $" + GameUi.Money(Gd.RoundToInt(fair))
+                        : "$" + GameUi.Money(Gd.RoundToInt(price)) },
+                new DeskKit.TicketLine { Label = "the street pays",
+                    Value = "$" + GameUi.Money(Gd.RoundToInt(fair)) },
+                new DeskKit.TicketLine { Label = "demand at this price",
+                    Value = string.Format(CultureInfo.InvariantCulture, "×{0:0.00}", dem) },
+                new DeskKit.TicketLine { Label = "the fair band",
+                    Value = "$" + GameUi.Money(Gd.RoundToInt(fair * Math.Pow(1.15, -1.0 / e)))
+                        + " – $" + GameUi.Money(Gd.RoundToInt(fair * Math.Pow(0.85, -1.0 / e))) },
+            };
+            if (SimCatalog.NeverPays(o, lc))
+                lines.Add(new DeskKit.TicketLine { Label = "every sale loses",
+                    Value = "$" + GameUi.Money(Gd.RoundToInt(-SimCatalog.Contribution(o, lc, fm))),
+                    Col = DrawnUI.Coral });
+            else
+                lines.Add(new DeskKit.TicketLine { Label = "serve costs / margin",
+                    Value = "$" + GameUi.Money(Gd.RoundToInt(SimCatalog.ServedUnitCost(o, lc)))
+                        + " / $" + GameUi.Money(Gd.RoundToInt(SimCatalog.Contribution(o, lc, fm))) });
+            return lines;
+        }
+
+        // ── S8 · the rail's own two reads ──────────────────────────────────
+
+        /// Pricing never sleeps: the first real decision lives here from
+        /// week one.
+        public static bool IsDormant(GameState s)
+        {
+            return false;
+        }
+
+        /// The rail's four-character read — the shelf's average asking price.
+        public static string MicroStatus(GameState s)
+        {
+            double sum = 0.0;
+            int n = 0;
+            for (int i = 0; i < s.Offers.Count; i++)
+            {
+                if (s.Offers[i].Price > 0.0)
+                {
+                    sum += s.Offers[i].Price;
+                    n++;
+                }
+            }
+            return n == 0 ? "" : "$" + Gd.RoundToInt(sum / n) + " avg";
         }
     }
 }

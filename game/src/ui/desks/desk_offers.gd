@@ -19,6 +19,12 @@ extends RefCounted
 ## named-account per-seat line under the table, read from the pipeline.
 ## Fair-price backstop and the "!" unpriced warning are preserved: an unpriced
 ## offer bills at the street's rate and says so in the pen.
+##
+## DAG3 (13-binder-ux · offers): the verdict word is a DOOR — press it and the
+## street's read opens as a paper card with THE FAIR BAND drawn (the demand
+## curve's own thresholds on the price axis, your price dotted); the DO lane
+## carries [set price — …] [add an offer]; the pen circles verdicts that moved
+## since the last open; the empty shelf is the S1 teaching state.
 
 const QUESTION := "what do we sell and what does each sale earn?"
 
@@ -53,6 +59,12 @@ static func hero_summary(state) -> Dictionary:
 
 static func draw(b) -> void:
 	var mode := String(b.desk.get("mode", ""))
+	if mode.begins_with("verdict:"):
+		# S4 — the verdict opened: the rate card stays under the paper card,
+		# Esc or any press closes the read before anything else (desk-mode pop)
+		_rate_card(b)
+		_verdict_card(b, b.state, int(mode.substr(8)))
+		return
 	match mode:
 		"detail", "write", "wait", "review":
 			# the shipped five-state machine, whole — one writer, one road
@@ -110,15 +122,33 @@ static func _right(b, text: String, pos: Vector2, sz: int, col: Color, w: float)
 
 static func _rate_card(b) -> void:
 	var s: GameState = b.state
+	if s.offers.is_empty():
+		# S1 — the empty shelf is a TEACHING page, never bare furniture: the
+		# promise, the honest subjunctive, the one door, and when it wakes.
+		DeskKit.zero_state(b, {
+			"will_show": "what you sell, and what each sale earns",
+			"would_line": "a row per offer — your price, the street's rate, the cost to serve, "
+				+ "the margin, and one word saying how demand reads it",
+			"action_label": "+ define a new offer",
+			"action_cb": func() -> void: b.desk["mode"] = "write",
+			"wakes_hint": "the shelf fills with the bible — an unpriced offer bills at the "
+				+ "street's rate until you set your own",
+		})
+		return
 	var h := _hero(s)
 	var y := DeskKit.hero_band(b, String(h.get("big", "")), String(h.get("line", "")))
-	if s.offers.is_empty():
-		y = DeskKit.empty(b, Vector2(DeskKit.X_ID, y),
-			"the world hasn't defined your offers yet — they arrive with the bible.",
-			"a company with nothing on the shelf earns nothing: write down what you sell.")
-		_define_door(b, y + 12.0)
-		_foot(b, s)
-		return
+	# S5 — the hero's arrow: what one customer nets, against the last open
+	var arpu0 := float(h.get("arpu", -1.0))
+	if arpu0 >= 0.0:
+		var net := int(round(arpu0 - float(h.get("cogs", 0.0))))
+		var prev: String = b.seen_prev("offers", "hero")
+		if b.seen("offers", "hero", str(net)) and prev.is_valid_float():
+			var bw: float = b.font().get_string_size(String(h.get("big", "")),
+				HORIZONTAL_ALIGNMENT_LEFT, -1, DeskKit.HERO_BIG).x
+			DeskKit.delta_arrow(b, DeskKit.X_ID + bw + 14.0, 26.0, float(net), float(prev))
+	# S2 — red speaks ON the page: the pricing asks in one measured line
+	if DeskKit.ask_strip(b, "offers", DeskKit.X_ID, y, 1100.0, "set the price below"):
+		y += 28.0
 	# the per-customer two-bar: pays against serve — the shape before the digits
 	var arpu := float(h.get("arpu", -1.0))
 	if arpu >= 0.0:
@@ -151,6 +181,8 @@ static func _rate_card(b) -> void:
 	if String(s.biz_who) == "Enterprise":
 		y = _named_accounts_line(b, s, y)
 	_define_door(b, y + 6.0)
+	_do_lane(b, s)
+	_fire_spot(b)
 	_foot(b, s)
 
 ## THE COLLAPSE LADDER: six rows face-up, and the ones closest to money are
@@ -219,8 +251,16 @@ static func _row(b, y: float, i: int, s: GameState, lc: float, fm: float) -> flo
 		Vector2(COL_SERVE_X, y + 3.0), 21, Color(DeskKit.INK, 0.6), COL_SERVE_W)
 	_right(b, "$%s" % b.fmt(int(round(margin))), Vector2(COL_MARGIN_X, y + 1.0), 23,
 		Color("5D7A50") if margin > 0.0 else DeskKit.PEN, COL_MARGIN_W)
-	b.label(String(vd.get("word", "")), Vector2(COL_VERDICT_X, y + 2.0), 22,
-		vd.get("col", DeskKit.INK), COL_VERDICT_W)
+	# S4 — the verdict word is a door: press → the street's read, band drawn
+	var vword := String(vd.get("word", ""))
+	var vbtn := DeskKit.word(b, vword, Vector2(COL_VERDICT_X, y - 4.0), func() -> void:
+		b.desk["mode"] = "verdict:%d" % i, 22, vd.get("col", DeskKit.INK), COL_VERDICT_W)
+	vbtn.size = Vector2(COL_VERDICT_W, 44.0)
+	# S5 — the pen circles a verdict that moved since the binder last opened
+	if b.seen("offers", "vd_" + String(o.get("name", str(i))), vword):
+		var vtw: float = minf(b.font().get_string_size(vword,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x, COL_VERDICT_W)
+		DeskKit.pen_circle(b, Rect2(COL_VERDICT_X, y + 2.0, vtw, 24.0))
 	DeskKit.expand(b, Vector2(COL_EXPAND_X, y - 4.0), func() -> void:
 		b.desk["mode"] = "detail"
 		b.desk["row"] = i)
@@ -229,6 +269,14 @@ static func _row(b, y: float, i: int, s: GameState, lc: float, fm: float) -> flo
 		func() -> void: DeskCatalog.price_step(b, i, -1),
 		func() -> void: DeskCatalog.price_step(b, i, 1),
 		DeskKit.at_min(steps, price), DeskKit.at_max(steps, price))
+	# S2b — the row's switch has a name: focus lands on the ADJUST squares
+	var adj_rect := Rect2(COL_ADJUST_X - 4.0, y, 96.0, 44.0)
+	b.mark_control("adjust_%d" % i, adj_rect)
+	if price <= 0.0 and not bool(o.get("price_set", false)) \
+			and not b.has_control("set_price"):
+		b.mark_control("set_price", adj_rect)
+	if SimCatalog.never_pays(o, lc) and not b.has_control("losing_price"):
+		b.mark_control("losing_price", adj_rect)
 	DeskKit.pen_rule(b, y + ROW_H - 8.0, COL_NAME_X, 1120.0 - 36.0, Color(DeskKit.INK, 0.12), 11 + i)
 	return y + ROW_H
 
@@ -316,4 +364,199 @@ static func _all_offers(b) -> void:
 	cy = _head_row(b, cy)
 	for i in n:
 		cy = _row(b, cy, i, s, lc, fm)
+	_do_lane(b, s)
+	_fire_spot(b)
 	_foot(b, s)
+
+# ──────────────────── S3 · the DO lane + the focus walk ──────────────────────
+
+## The desk's primary acts in the ONE slot: price the row that needs it (the
+## first unpriced, else the flagship), or add to the shelf. The price press
+## walks the hand to that row's own ADJUST squares.
+static func _do_lane(b, s: GameState) -> void:
+	var t := _price_target(s)
+	var actions: Array = []
+	if t >= 0:
+		var tn := String((s.offers[t] as Dictionary).get("name", "the offer"))
+		actions.append({"label": "set price — %s" % tn, "tier": "", "cb": func() -> void:
+			if not b.has_control("adjust_%d" % t):
+				b.desk["mode"] = "all"
+			b.desk["spot"] = "adjust_%d" % t})
+	if SimCatalog.shelf_full_line(s) == "":
+		actions.append({"label": "add an offer", "tier": "", "cb": func() -> void:
+			b.desk["mode"] = "write"})
+	DeskKit.do_lane(b, actions)
+
+## The DO lane's object: the first unpriced offer, else the flagship (the
+## heaviest weight on the shelf — the row most of the money walks through).
+static func _price_target(s: GameState) -> int:
+	if s.offers.is_empty():
+		return -1
+	for i in s.offers.size():
+		var o: Dictionary = s.offers[i]
+		if float(o.get("price", 0.0)) <= 0.0 and not bool(o.get("price_set", false)):
+			return i
+	var best := 0
+	for i2 in s.offers.size():
+		if float((s.offers[i2] as Dictionary).get("weight", 1.0)) \
+				> float((s.offers[best] as Dictionary).get("weight", 1.0)):
+			best = i2
+	return best
+
+## A DO press asked for a spotlight; the registry filled during THIS draw, so
+## the walk fires only after every row has marked its switch.
+static func _fire_spot(b) -> void:
+	var sid := String(b.desk.get("spot", ""))
+	if sid == "":
+		return
+	b.desk.erase("spot")
+	if b.has_control(sid):
+		b.spotlight(b.control_rect(sid))
+
+# ─────────────────── S4 · the street's read (the fair band) ──────────────────
+
+## THE VERDICT, OPENED: a paper card saying the street math in receipt lines
+## with THE FAIR BAND DRAWN — the price axis, the stretch demand calls fair,
+## the street's rate ticked, your price dotted onto it. Any press or Esc
+## closes the read before anything else (the desk-mode chain).
+static func _verdict_card(b, s: GameState, i: int) -> void:
+	if i < 0 or i >= s.offers.size():
+		b.desk["mode"] = ""
+		return
+	var o: Dictionary = s.offers[i]
+	var lc := SimEngine.learning_curve(s)
+	var fm := SimEngine.street_fair_mult(s)
+	var fair := maxf(float(o.get("fair_price", 1.0)) * fm, 0.01)
+	var e := maxf(float(o.get("elasticity", 2.0)), 0.05)
+	var price := float(o.get("price", 0.0))
+	var unpriced := price <= 0.0 and not bool(o.get("price_set", false))
+	var billed := fair if unpriced else price
+	var vd := _verdict_word(s, o, price, fm, lc)
+	var catcher := DeskKit.word(b, "", Vector2(0.0, 0.0), func() -> void:
+		b.desk["mode"] = "", DeskKit.DETAIL, DeskKit.INK, 1140.0)
+	catcher.size = Vector2(1140.0, 880.0)
+	var lines := _street_lines(b, s, o, price, fair, lc, fm, unpriced)
+	var ch := 56.0 + 132.0 + float(lines.size()) * 30.0 + 18.0
+	var frame := DeskKit.card_frame(b, 290.0, 200.0, 560.0, ch,
+		"the street's read — one word, priced")
+	var cx := float(frame.get("content_x", 308.0))
+	var cy := float(frame.get("content_y", 256.0))
+	var band := _FairBand.new()
+	band.font = b.font()
+	band.fair = fair
+	band.lo = fair * pow(1.15, -1.0 / e)
+	band.hi = fair * pow(0.85, -1.0 / e)
+	band.absurd = fair * pow(0.25, -1.0 / e)
+	band.price = billed
+	band.pmax = maxf(maxf(band.absurd * 1.15, billed * 1.2), fair * 1.6)
+	band.vcol = vd.get("col", DeskKit.INK)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	band.position = Vector2(cx, cy)
+	band.set_deferred("size", Vector2(560.0 - DeskKit.CARD_PAD * 2.0, 116.0))
+	b.pane().add_child(band)
+	var money_x := float(frame.get("money_x", 832.0))
+	var ly := cy + 132.0
+	for ln in lines:
+		var ld: Dictionary = ln
+		DeskKit.fit_line(b, String(ld.get("label", "")), Vector2(cx, ly), 19,
+			Color(DeskKit.INK, 0.85), 300.0)
+		var v: Label = DeskKit.fit_line(b, String(ld.get("value", "")),
+			Vector2(cx + 310.0, ly), 19, ld.get("col", DeskKit.INK), money_x - cx - 310.0)
+		v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		ly += 30.0
+
+## The receipt lines: the exact terms the verdict is made of, engine numbers
+## only — demand is (price/fair)^−elasticity, clamped at ×2.
+static func _street_lines(b, s: GameState, o: Dictionary, price: float, fair: float,
+		lc: float, fm: float, unpriced: bool) -> Array:
+	var vd := _verdict_word(s, o, price, fm, lc)
+	var e := maxf(float(o.get("elasticity", 2.0)), 0.05)
+	var dem := SimEngine.offer_demand(o, fair if unpriced else price, fm)
+	var lines: Array = [
+		{"label": String(o.get("name", "the offer")), "value": String(vd.get("word", "")),
+			"col": vd.get("col", DeskKit.INK)},
+		{"label": "your price", "value": ("unpriced — bills $%s" % b.fmt(int(round(fair))))
+			if unpriced else "$%s" % b.fmt(int(round(price)))},
+		{"label": "the street pays", "value": "$%s" % b.fmt(int(round(fair)))},
+		{"label": "demand at this price", "value": "×%.2f" % dem},
+		{"label": "the fair band", "value": "$%s – $%s" % [
+			b.fmt(int(round(fair * pow(1.15, -1.0 / e)))),
+			b.fmt(int(round(fair * pow(0.85, -1.0 / e))))]},
+	]
+	if SimCatalog.never_pays(o, lc):
+		lines.append({"label": "every sale loses", "value": "$%s" % b.fmt(int(round(
+			-SimCatalog.contribution(o, lc, fm)))), "col": DeskKit.PEN})
+	else:
+		lines.append({"label": "serve costs / margin", "value": "$%s / $%s" % [
+			b.fmt(int(round(SimCatalog.served_unit_cost(o, lc)))),
+			b.fmt(int(round(SimCatalog.contribution(o, lc, fm))))]})
+	return lines
+
+# ─────────────────────── S8 · the rail's own two reads ───────────────────────
+
+## Pricing never sleeps: the first real decision lives here from week one.
+static func is_dormant(_state) -> bool:
+	return false
+
+## The rail's four-character read — the shelf's average asking price.
+static func micro_status(state) -> String:
+	var s: GameState = state
+	var sum := 0.0
+	var n := 0
+	for o in s.offers:
+		var p := float((o as Dictionary).get("price", 0.0))
+		if p > 0.0:
+			sum += p
+			n += 1
+	if n == 0:
+		return ""
+	return "$%d avg" % int(round(sum / float(n)))
+
+# ─────────────────────────── the drawn instrument ────────────────────────────
+
+## THE FAIR BAND — the price axis in the desk's own hand: the sage stretch
+## demand calls fair, yellow to where it turns absurd, coral past that, the
+## street's rate ticked in ink, your price dotted down onto its bead.
+class _FairBand:
+	extends Control
+	var font: Font
+	var fair := 1.0
+	var lo := 0.8
+	var hi := 1.2
+	var absurd := 2.0
+	var price := 1.0
+	var pmax := 2.0
+	var vcol := Color.BLACK
+	func _draw() -> void:
+		var w := size.x
+		var ax := size.y - 34.0
+		var sc := w / maxf(pmax, 0.01)
+		draw_rect(Rect2(lo * sc, ax - 26.0, (hi - lo) * sc, 26.0), Color(DeskKit.SAGE, 0.45))
+		draw_rect(Rect2(hi * sc, ax - 26.0, (minf(absurd, pmax) - hi) * sc, 26.0),
+			Color(DeskKit.YELL, 0.30))
+		if absurd < pmax:
+			draw_rect(Rect2(absurd * sc, ax - 26.0, (pmax - absurd) * sc, 26.0),
+				Color(DeskKit.PEN, 0.25))
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 31
+		var pts := PackedVector2Array()
+		for k in 25:
+			pts.append(Vector2(w * float(k) / 24.0, ax + rng.randf_range(-1.2, 1.2)))
+		draw_polyline(pts, DeskKit.INK, 2.4, true)
+		draw_line(Vector2(fair * sc, ax - 30.0), Vector2(fair * sc, ax + 6.0), DeskKit.INK, 2.2)
+		if font != null:
+			draw_string(font, Vector2(fair * sc - 34.0, ax + 24.0),
+				"street $%d" % int(round(fair)), HORIZONTAL_ALIGNMENT_LEFT, -1, 15,
+				Color(DeskKit.INK, 0.6))
+			draw_string(font, Vector2(lo * sc + 6.0, ax - 32.0), "fair",
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(DeskKit.INK, 0.55))
+		var px := clampf(price * sc, 0.0, w)
+		var yy := 14.0
+		while yy < ax - 6.0:
+			draw_line(Vector2(px, yy), Vector2(px, minf(yy + 6.0, ax - 6.0)), DeskKit.PEN, 2.4)
+			yy += 11.0
+		draw_circle(Vector2(px, ax - 13.0), 6.0, vcol)
+		draw_arc(Vector2(px, ax - 13.0), 6.0, 0.0, TAU, 12, DeskKit.INK, 2.0)
+		if font != null:
+			draw_string(font, Vector2(clampf(px - 30.0, 0.0, w - 84.0), 10.0),
+				"you: $%d" % int(round(price)), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, DeskKit.PEN)

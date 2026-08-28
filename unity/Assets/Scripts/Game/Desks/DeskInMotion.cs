@@ -24,6 +24,14 @@ namespace Runway.Game
     /// (adds/adds_org/adds_wom/adds_chan). Until the engine writes them (the
     /// lane's coordinator package) old rows draw as ghost bars — the fog is
     /// drawn, never faked; the freshest week always speaks from the funnel.
+    ///
+    /// DAG3 (13-binder-ux · in motion): THE PREFILL — a push press composes
+    /// the written move ("push &lt;name&gt;: &lt;the deal's hint line&gt;") straight into
+    /// the journal draft (DeskThisWeek.Draft) and a calm chip says where it
+    /// went; rank-1 wears the push in the DO lane, Enterprise cards/rows push
+    /// per deal, Suggestions() hands rank-1 to THIS WEEK's chips. A Consumer
+    /// source bar press opens growth focused on that plot (back pill free).
+    /// Week one is the S1 teaching state, one per audience.
     /// </summary>
     public static class DeskInMotion
     {
@@ -58,6 +66,7 @@ namespace Runway.Game
         public static void Draw(BinderScreen b)
         {
             GameState s = b.State;
+            if (ZeroStateGate(b, s)) return;
             string mode = Mode(b);
             switch (s.BizWho)
             {
@@ -87,6 +96,171 @@ namespace Runway.Game
             return b.Desk.TryGetValue("mode", out mv) ? (mv as string ?? "") : "";
         }
 
+        // ═══ S1 · the zero states + THE PREFILL's shared hand ══════════════
+
+        /// S1 — the desk before anything moves is a TEACHING state, one per
+        /// audience. True = it drew (the caller returns).
+        static bool ZeroStateGate(BinderScreen b, GameState s)
+        {
+            if (SimFunnel.Funnel(s).Count > 0) return false;
+            Action tend = () => b.FocusDesk("growth", "", "in motion");
+            switch (s.BizWho)
+            {
+                case "Enterprise":
+                    if (s.Leads.Count > 0 || s.Logos.Count > 0) return false;
+                    DeskKit.ZeroState(b, new DeskKit.ZeroStateCfg
+                    {
+                        WillShow = "the stage board — every buyer has a name",
+                        WouldLine = "deals march meeting → pilot → contract; your written "
+                            + "pushes keep them warm, the dice move them",
+                        ActionLabel = "tend the garden",
+                        ActionCb = tend,
+                        WakesHint = "marketing books the first meeting — fund reach and the board fills",
+                    });
+                    return true;
+                case "SMB":
+                    if (s.Leads.Count > 0) return false;
+                    DeskKit.ZeroState(b, new DeskKit.ZeroStateCfg
+                    {
+                        WillShow = "the hot list — the five worth a dinner",
+                        WouldLine = "named shops ranked by revenue-if-landed × closeness, "
+                            + "the crowd counted honestly below",
+                        ActionLabel = "tend the garden",
+                        ActionCb = tend,
+                        WakesHint = "names arrive when a shop grows big enough to chase",
+                    });
+                    return true;
+                default:
+                    if (s.MetricHistory.Count > 0) return false;
+                    DeskKit.ZeroState(b, new DeskKit.ZeroStateCfg
+                    {
+                        WillShow = "the river — who joins each week, and where from",
+                        WouldLine = "each locked week lands one bar: bought · friends · "
+                            + "walked in — and the word-of-mouth factor, measured",
+                        ActionLabel = "tend the garden",
+                        ActionCb = tend,
+                        WakesHint = "the first bar arrives at your first LOCK IN",
+                    });
+                    return true;
+            }
+        }
+
+        /// The one deal the week's move belongs to: SMB = the hot list's
+        /// rank 1, Enterprise = the hottest deal on the board.
+        static Lead Rank1(GameState s)
+        {
+            if (s.Leads.Count == 0) return null;
+            if (s.BizWho == "Enterprise")
+            {
+                List<int> order = SimPipeline.LeadsByHeat(s);
+                return order.Count > 0 ? s.Leads[order[0]] : null;
+            }
+            List<int> ranked = Ranked(s);
+            return ranked.Count > 0 ? s.Leads[ranked[0]] : null;
+        }
+
+        /// The written move, composed in plain words: the deal's own hint
+        /// line when the world wrote one, else the honest facts.
+        static string MoveText(Lead lead)
+        {
+            string lname = string.IsNullOrEmpty(lead.Name) ? "a prospect" : lead.Name;
+            string flavor = (lead.Flavor ?? "").Trim();
+            if (flavor.Length > 0) return "push " + lname + ": " + flavor;
+            return "push " + lname + ": " + lead.Seats + " seats sitting at "
+                + (string.IsNullOrEmpty(lead.Stage) ? "meeting" : lead.Stage);
+        }
+
+        /// THE PREFILL — the binder DRAFTS the decision: the journal's
+        /// composer receives the written move (the player edits freely).
+        static void Prefill(BinderScreen b, Lead lead)
+        {
+            DeskThisWeek.Draft = MoveText(lead);
+            b.Desk["drafted"] = lead.Name ?? "";
+        }
+
+        /// The calm confirmation: a chip saying where the words went —
+        /// pressing it walks there with a back pill; it dies when the draft
+        /// stops being ours.
+        static void DraftedChip(BinderScreen b)
+        {
+            object dv;
+            string dname = b.Desk.TryGetValue("drafted", out dv) ? (dv as string ?? "") : "";
+            if (dname.Length == 0 || !DeskThisWeek.Draft.StartsWith("push " + dname,
+                    StringComparison.Ordinal))
+                return;
+            const string Text = "drafted — see THIS WEEK";
+            float tw = Text.Length * 10f + 8f;   // the ChipToken measure stand-in
+            DeskKit.ChipToken(b, 1130f - tw - 26f, 70f, new DeskKit.ChipCfg
+            {
+                Text = Text, Kind = "person", Selected = true,
+                OnPress = () => b.FocusDesk("this week", "", "in motion"),
+            });
+        }
+
+        /// S3 — THE PREFILL in the one slot: rank-1's push writes the move
+        /// into the journal draft; the chip says where it went.
+        static void DoPushLane(BinderScreen b, GameState s)
+        {
+            Lead lead = Rank1(s);
+            if (lead == null) return;
+            DeskKit.DoLane(b, new List<DeskKit.DoAction>
+            {
+                new DeskKit.DoAction
+                {
+                    Label = "push — " + (string.IsNullOrEmpty(lead.Name) ? "a prospect" : lead.Name),
+                    Tier = "",
+                    Cb = () => Prefill(b, lead),
+                },
+            });
+        }
+
+        /// S5 — the hero against the binder's last open.
+        static void HeroArrow(BinderScreen b, int val, float x, float y)
+        {
+            string hp = b.SeenPrev("in motion", "hero");
+            int prev;
+            if (b.Seen("in motion", "hero", val.ToString(CultureInfo.InvariantCulture))
+                && int.TryParse(hp, out prev))
+                DeskKit.DeltaArrow(b, x, y, val, prev);
+        }
+
+        /// S15 — the desk speaks up: rank-1's push for THE WEEK'S CHIPS.
+        public static List<Dictionary<string, object>> Suggestions(GameState s)
+        {
+            var outp = new List<Dictionary<string, object>>();
+            Lead lead = Rank1(s);
+            if (lead == null) return outp;
+            outp.Add(new Dictionary<string, object>
+            {
+                { "label", "push — " + (string.IsNullOrEmpty(lead.Name) ? "a prospect" : lead.Name) },
+                { "kind", "prefill" },
+                { "payload", MoveText(lead) },
+            });
+            return outp;
+        }
+
+        /// S8 — dormant before launch with nothing named.
+        public static bool IsDormant(GameState s)
+        {
+            return !s.HasFlag("launched") && s.Leads.Count == 0 && s.Logos.Count == 0;
+        }
+
+        /// S8 — the rail's read, by audience: deals, names, or joiners.
+        public static string MicroStatus(GameState s)
+        {
+            switch (s.BizWho)
+            {
+                case "Enterprise":
+                    return s.Leads.Count > 0 ? s.Leads.Count + " deals" : "";
+                case "SMB":
+                    return s.Leads.Count > 0 ? s.Leads.Count + " named" : "";
+                default:
+                    Dictionary<string, double> f = SimFunnel.Funnel(s);
+                    return f.Count > 0
+                        ? "≈" + Gd.RoundToInt(SimFunnel.Num(f, "adds")) + "/wk" : "";
+            }
+        }
+
         // ═══ CONSUMER ══════════════════════════════════════════════════════
 
         static void Consumer(BinderScreen b, GameState s)
@@ -111,8 +285,10 @@ namespace Runway.Game
             TextMeshProUGUI ws = b.L("word of mouth, measured", 760f, 46f, 17f,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 370f);
             ws.alignment = TextAlignmentOptions.TopRight;
-            b.L("consumer — nobody has a name until they pay: the page is rates, sources and word of mouth",
-                DeskKit.XId, 74f, DeskKit.Law, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 1100f);
+            // S2 — red replaces the law line when this desk carries asks
+            if (!DeskKit.AskStrip(b, "in motion", DeskKit.XId, 74f, 1100f, "push what's cooling"))
+                b.L("consumer — nobody has a name until they pay: the page is rates, sources and word of mouth",
+                    DeskKit.XId, 74f, DeskKit.Law, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 1100f);
             float y = DeskKit.PenRule(b, 112f) + 8f;
             y = RiverCard(b, s, y);
             SourcesCard(b, s, y);
@@ -261,6 +437,13 @@ namespace Runway.Game
             List<Source> src = Sources(f);
             double hi = 1.0;
             for (int i = 0; i < src.Count && i < 4; i++) hi = Gd.Maxf(hi, src[i].V);
+            // S2b/S7 — a source bar is a door: growth opens focused on that
+            // plot, the back pill comes free from the jump's source
+            var plotKeys = new Dictionary<string, string>
+            {
+                { "the ads", "ads" }, { "the library", "content" },
+                { "referrals", "referrals" }, { "cold outreach", "outbound" },
+            };
             float by = cy;
             for (int i = 0; i < src.Count && i < 4; i++)
             {
@@ -269,6 +452,15 @@ namespace Runway.Game
                 float w = 24f + 300f * (float)(r.V / hi);
                 DeskKit.Meter(b, cx + 180f, by, w, 1f, r.Col,
                     Gd.RoundToInt(r.V).ToString(CultureInfo.InvariantCulture));
+                string pk;
+                if (plotKeys.TryGetValue(r.Name, out pk))
+                {
+                    string pkNow = pk;
+                    Button hit = DeskKit.Word(b, "", cx, by - 4f,
+                        () => b.FocusDesk("growth", "plot_" + pkNow, "in motion"),
+                        18f, DrawnUI.Ink, 540f);
+                    hit.GetComponent<RectTransform>().sizeDelta = new Vector2(540f, 36f);
+                }
                 by += 36f;
             }
             if (src.Count > 4)
@@ -374,10 +566,15 @@ namespace Runway.Game
                 ? "close rate " + Gd.RoundToInt(SimFunnel.Num(f, "close_rate") * 100.0) + "%"
                 : "close rate ?", 800f, 14f, 27f, DrawnUI.Ink, 330f);
             cr.alignment = TextAlignmentOptions.TopRight;
-            b.L("SMB — dozens of small shops, a handful worth chasing by name",
-                DeskKit.XId, 74f, DeskKit.Law, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 1100f);
+            HeroArrow(b, SmbInMotion(s, f), bx + 266f, 26f);
+            // S2 — red replaces the law line when this desk carries asks
+            if (!DeskKit.AskStrip(b, "in motion", DeskKit.XId, 74f, 1100f, "push what's cooling"))
+                b.L("SMB — dozens of small shops, a handful worth chasing by name",
+                    DeskKit.XId, 74f, DeskKit.Law, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 1100f);
             float y = DeskKit.PenRule(b, 112f) + 8f;
             HotList(b, s, f, y, HotShow);
+            DoPushLane(b, s);
+            DraftedChip(b);
             DeskKit.Footer(b, "",
                 "SMB is a hybrid: name the five that deserve a dinner, count the forty that don't · rank 1 is this week's journal move",
                 "", 806f, 840f);
@@ -465,6 +662,8 @@ namespace Runway.Game
             DeskKit.Back(b, "back to the hot list", () => b.Desk["mode"] = "");
             Dictionary<string, double> f = SimFunnel.Funnel(s);
             HotList(b, s, f, 64f, s.Leads.Count);
+            DoPushLane(b, s);
+            DraftedChip(b);
             DeskKit.Footer(b, "",
                 "every named account, ranked by revenue-if-landed × closeness",
                 "", 806f, 840f);
@@ -478,6 +677,8 @@ namespace Runway.Game
             float y = DeskKit.PenRule(b, 112f) + 8f;
             if (s.Leads.Count >= SlimAt) EntSlim(b, s, y);
             else EntBoard(b, s, y);
+            DoPushLane(b, s);
+            DraftedChip(b);
             EntFoot(b, s);
         }
 
@@ -503,8 +704,11 @@ namespace Runway.Game
             TextMeshProUGUI ll = b.L(s.Logos.Count + " logos · " + seats + " seats live",
                 770f, 48f, 17f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 360f);
             ll.alignment = TextAlignmentOptions.TopRight;
-            b.L("enterprise — every buyer has a name and a dinner budget",
-                DeskKit.XId, 74f, DeskKit.Law, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 1100f);
+            HeroArrow(b, s.Leads.Count, bx + 328f, 26f);
+            // S2 — red replaces the law line when this desk carries asks
+            if (!DeskKit.AskStrip(b, "in motion", DeskKit.XId, 74f, 1100f, "push what's cooling"))
+                b.L("enterprise — every buyer has a name and a dinner budget",
+                    DeskKit.XId, 74f, DeskKit.Law, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 1100f);
         }
 
         static string[] EntStages(GameState s)
@@ -555,12 +759,20 @@ namespace Runway.Game
                     };
                     if (dies <= 2)
                         facts.Add("dies in " + dies + " wk" + (dies == 1 ? "" : "s"));
+                    // THE PREFILL, per deal: the card press drafts the push
+                    Lead leadNow = lead;
+                    float cardY = col.Cursor;
                     DeskKit.WallCard(b, col, new DeskKit.WallCardCfg
                     {
                         Title = lead.Name ?? "a prospect",
                         Facts = facts,
                         Ready = dies <= 2,
+                        OnPress = () => Prefill(b, leadNow),
                     });
+                    // S2b — the first cooling deal's card is the ask's switch
+                    if (heat <= 16 && !b.HasControl("push_cold"))
+                        b.MarkControl("push_cold",
+                            new Rect(col.ContentX, cardY, w - 16f, col.Cursor - cardY - 10f));
                 }
                 if (here.Count > BoardCards)
                     b.L("+" + (here.Count - BoardCards), x + 10f, col.Cursor + 2f, 21f,
@@ -591,6 +803,8 @@ namespace Runway.Game
                 int heat = lead.Heat;
                 int dies = SimPipeline.WeeksToCold(heat, decay);
                 bool dying = dies <= 2;
+                Lead leadNow = lead;
+                float rowY = y;
                 y = DeskKit.HeroRow(b, y, new DeskKit.HeroRowCfg
                 {
                     Name = lead.Name ?? "a prospect",
@@ -600,7 +814,10 @@ namespace Runway.Game
                     Value = "≈$" + GameUi.Money(Gd.RoundToInt(lead.Seats * unit)) + "/wk",
                     Col = dying ? DrawnUI.Coral : DrawnUI.Ink,
                     Sev = dying ? 3 : 0,
+                    OnPress = () => Prefill(b, leadNow),
                 });
+                if (heat <= 16 && !b.HasControl("push_cold"))
+                    b.MarkControl("push_cold", new Rect(DeskKit.XId, rowY, 1120f, 44f));
                 shown++;
             }
             DeskKit.More(b, DeskKit.XId, y, s.Leads.Count - shown, "sit colder below these");
@@ -624,6 +841,7 @@ namespace Runway.Game
                 int heat = lead.Heat;
                 int dies = SimPipeline.WeeksToCold(heat, decay);
                 bool dying = dies <= 2;
+                Lead leadNow = lead;
                 y = DeskKit.HeroRow(b, y, new DeskKit.HeroRowCfg
                 {
                     Name = lead.Name ?? "a prospect",
@@ -634,10 +852,12 @@ namespace Runway.Game
                     Value = "≈$" + GameUi.Money(Gd.RoundToInt(lead.Seats * unit)) + "/wk",
                     Col = dying ? DrawnUI.Coral : DrawnUI.Ink,
                     Sev = dying ? 3 : 0,
+                    OnPress = () => Prefill(b, leadNow),
                 });
             }
             if (!any)
                 DeskKit.Empty(b, DeskKit.XId, y, "nothing sits at this gate this week.", "");
+            DraftedChip(b);
             EntFoot(b, s);
         }
 

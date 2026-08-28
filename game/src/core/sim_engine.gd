@@ -1315,7 +1315,7 @@ static func attention_items(state: GameState) -> Array:
 	# ── the spine's own rows: the three conditions that predate the registry
 	if offers_any_unpriced(state):
 		rows.append({"desk": "pricing", "key": "unpriced", "severity": 2,
-			"label": "unpriced offer — billing at going rate"})
+			"label": "unpriced offer — billing at going rate", "control": "set_price"})
 	var pnl: Dictionary = state.get_meta("pnl", {})
 	if not pnl.is_empty() and int(pnl.get("net", 0)) < 0:
 		rows.append({"desk": "the ledger", "key": "losing_week", "severity": 2,

@@ -331,6 +331,6 @@ static func attention(state: GameState) -> Array:
 	for o in state.offers:
 		if never_pays(o as Dictionary, lc):
 			rows.append({"desk": "pricing", "key": "losing_price", "severity": 2,
-				"label": "a price below its variable cost"})
+				"label": "a price below its variable cost", "control": "losing_price"})
 			break
 	return rows

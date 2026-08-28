@@ -448,6 +448,7 @@ namespace Runway.Core
                     Key = "losing_price",
                     Severity = 2,
                     Label = "a price below its variable cost",
+                    Control = "losing_price",
                 });
                 break;
             }

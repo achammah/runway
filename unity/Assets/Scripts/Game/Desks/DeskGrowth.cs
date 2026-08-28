@@ -25,6 +25,14 @@ namespace Runway.Game
     /// meter under the hero shows it; word of mouth is the honest unbuyable
     /// line. Verdicts are WORDS COMPUTED FROM THE FUNNEL — the audience flips
     /// fall out of the data, never a hardcode.
+    ///
+    /// DAG3 (13-binder-ux · growth): a verdict chip is a DOOR — press it and
+    /// the channel's own curve opens drawn (the saturating character, the
+    /// knee ticked, your spend dotted), street math in receipt lines under
+    /// it; a stepper press the CAP refuses pulses the meter coral (the
+    /// ceiling made felt); [balance the mix — suggest] lays the SAME total
+    /// even-marginal across the plots as ADOPT rows (spend-book pattern —
+    /// nothing ever applies itself); the empty garden is the S1 state.
     /// </summary>
     public static class DeskGrowth
     {
@@ -65,10 +73,60 @@ namespace Runway.Game
         public static void Draw(BinderScreen b)
         {
             GameState s = b.State;
+            Dictionary<string, double> f0 = SimFunnel.Funnel(s);
+            if (f0.Count == 0 && SimFunnel.SpendTotal(s) <= 0.0)
+            {
+                // S1 — the untouched garden is a TEACHING state: the four
+                // characters said once, the first $250 one press away
+                DeskKit.ZeroState(b, new DeskKit.ZeroStateCfg
+                {
+                    WillShow = "where next week's demand comes from",
+                    WouldLine = "four plots, four characters — ads pour while fed, content "
+                        + "compounds, referrals multiply a liked product, outbound knocks on doors",
+                    ActionLabel = "put the first $250 into ads",
+                    ActionCb = () => b.SetBudget("ads", 250),
+                    WakesHint = "verdicts and CAC arrive with the first locked week — "
+                        + "the era caps what the whole mix may spend",
+                });
+                return;
+            }
+            string mode = ModeOf(b);
+            Garden(b, s, f0, mode == "suggest");
+            if (mode.StartsWith("curve:", StringComparison.Ordinal))
+                CurveCard(b, s, mode.Substring(6));
+        }
+
+        static string ModeOf(BinderScreen b)
+        {
+            object mv;
+            return b.Desk.TryGetValue("mode", out mv) ? (mv as string ?? "") : "";
+        }
+
+        /// The whole garden sheet — hero, cap meter, four plots, wom, foot.
+        /// In suggest mode the yield lines give way to the ADOPT rows.
+        static void Garden(BinderScreen b, GameState s, Dictionary<string, double> f0,
+                           bool suggesting)
+        {
             string big, line;
             HeroText(s, out big, out line);
             b.L(big, DeskKit.XId, 6f, DeskKit.HeroBig, DrawnUI.Ink, 760f);
             b.L(line, DeskKit.XId, 74f, DeskKit.Row, DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f), 740f);
+            // S5 — the hero against the last open: what the mix bought
+            if (f0.Count > 0)
+            {
+                int bought = Gd.RoundToInt(SimFunnel.Num(f0, "signed_ads")
+                    + SimFunnel.Num(f0, "signed_content")
+                    + SimFunnel.Num(f0, "signed_referrals")
+                    + SimFunnel.Num(f0, "signed_outbound"));
+                string gp = b.SeenPrev("growth", "hero");
+                int gpN;
+                if (b.Seen("growth", "hero", bought.ToString(CultureInfo.InvariantCulture))
+                    && int.TryParse(gp, out gpN))
+                {
+                    float hbw = DrawnUI.MeasureWidth(big, DeskKit.HeroBig);
+                    DeskKit.DeltaArrow(b, DeskKit.XId + hbw + 10f, 26f, bought, gpN);
+                }
+            }
             int cap = SimEngine.EraSpendCap(s.Era);
             TextMeshProUGUI cl = b.L("the " + s.Era + " era allows $" + GameUi.Money(cap) + "/wk",
                 790f, 12f, 24f, DrawnUI.Ink, 340f);
@@ -86,20 +144,63 @@ namespace Runway.Game
             DeskKit.Meter(b, DeskKit.XId, 152f, 560f, (float)(total / Gd.Maxf(cap, 1.0)),
                 DrawnUI.Sage, "$" + GameUi.Money(Gd.ToInt(total)) + " of the $"
                 + GameUi.Money(cap) + " the era allows");
+            // the refused press made FELT: a coral pulse breathes once
+            object pv;
+            if (b.Desk.TryGetValue("cap_pulse", out pv) && pv is bool && (bool)pv)
+            {
+                b.Desk.Remove("cap_pulse");
+                CapPulse(b, DeskKit.XId - 4f, 146f, 568f, 30f);
+            }
+            Dictionary<string, int> split = suggesting ? EvenSplit(s) : new Dictionary<string, int>();
+            if (suggesting && SplitDiffers(s, b, split))
+            {
+                // the whole-mix adopt (spend-book pattern): one arm, all four
+                int t = 0;
+                for (int i = 0; i < SimFunnel.Mix.Length; i++)
+                    t += split.ContainsKey(SimFunnel.Mix[i]) ? split[SimFunnel.Mix[i]] : 0;
+                Dictionary<string, int> splitNow = split;
+                DeskKit.Arm(b, "adopt_mix_all", "adopt the whole split — $" + GameUi.Money(t) + "/wk",
+                    "set all four plots — sure?", 620f, 180f, () =>
+                    {
+                        for (int i = 0; i < SimFunnel.Mix.Length; i++)
+                        {
+                            string k = SimFunnel.Mix[i];
+                            b.SetBudget(k, splitNow.ContainsKey(k) ? splitNow[k] : 0);
+                        }
+                    }, 330f, 17f);
+            }
             for (int i = 0; i < SimFunnel.Mix.Length; i++)
             {
                 float px = 10f + (i % 2) * (PlotW + 14f);
                 float py = PlotY + (i / 2) * (PlotH + 14f);
-                Plot(b, s, SimFunnel.Mix[i], px, py);
+                Plot(b, s, SimFunnel.Mix[i], px, py, split);
             }
             // WORD OF MOUTH — the honest unbuyable row
-            Dictionary<string, double> f = SimFunnel.Funnel(s);
-            string womtxt = f.Count > 0
-                ? "word of mouth: ≈" + Gd.RoundToInt(SimFunnel.Num(f, "wom"))
+            string womtxt = f0.Count > 0
+                ? "word of mouth: ≈" + Gd.RoundToInt(SimFunnel.Num(f0, "wom"))
                   + " joined free this week — not for sale, earned"
                 : "word of mouth: not for sale — it arrives when joiners bring friends";
             b.L(womtxt, DeskKit.XId, PlotY + 2f * PlotH + 34f, DeskKit.Detail,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 1100f);
+            // S3 — the one primary act: the even-marginal walk (ADOPT-only)
+            if (suggesting)
+            {
+                TextMeshProUGUI hint = b.L("nothing applies itself — adopt per plot, Esc keeps your mix",
+                    560f, DeskKit.DoLaneY + 10f, 17f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), 570f);
+                hint.alignment = TextAlignmentOptions.TopRight;
+            }
+            else if (SplitDiffers(s, b, EvenSplit(s)))
+            {
+                DeskKit.DoLane(b, new List<DeskKit.DoAction>
+                {
+                    new DeskKit.DoAction
+                    {
+                        Label = "balance the mix — suggest",
+                        Tier = "",
+                        Cb = () => b.Desk["mode"] = "suggest",
+                    },
+                });
+            }
             Foot(b, s);
         }
 
@@ -132,18 +233,24 @@ namespace Runway.Game
 
         // ── one plot ───────────────────────────────────────────────────────
 
-        static void Plot(BinderScreen b, GameState s, string key, float x, float y)
+        static void Plot(BinderScreen b, GameState s, string key, float x, float y,
+                         Dictionary<string, int> split)
         {
             Topic topic = TopicOf(s, key);
             DeskKit.CardBox frame = DeskKit.CardFrame(b, x, y, PlotW, PlotH,
                 key + " — " + topic.Name);
             float cx = frame.ContentX;
             float cy = frame.ContentY;
+            // S2b — the plot is a named landing: jumps spotlight it whole
+            b.MarkControl("plot_" + key, new Rect(x, y, PlotW, PlotH));
+            // S4 — the verdict is a DOOR: press → the channel's curve, drawn
             string vWord;
             Color vCol;
             Verdict(s, key, out vWord, out vCol);
-            TextMeshProUGUI vl = b.L(vWord, x + PlotW - 250f, y + 14f, 20f, vCol, 232f);
-            vl.alignment = TextAlignmentOptions.TopRight;
+            string keyNow = key;
+            Button vbtn = DeskKit.Word(b, vWord, x + PlotW - 250f, y + 10f,
+                () => b.Desk["mode"] = "curve:" + keyNow, 20f, vCol, 232f);
+            vbtn.GetComponent<RectTransform>().sizeDelta = new Vector2(232f, 40f);
             PlotArt(b, key, cx, cy);
             float tx = cx + 140f;
             float tw = PlotW - DeskKit.CardPad * 2f - 140f;
@@ -154,12 +261,37 @@ namespace Runway.Game
             int down = StepTo(b, s, key, cur, -1);
             int up = StepTo(b, s, key, cur, 1);
             string cat = key;
+            // the CAP's refusal stays a live press — it answers by pulsing
+            // the meter (the ceiling made FELT); only the ladder top goes dead
+            bool ladderTop = cur >= BinderScreen.LeverSteps[BinderScreen.LeverSteps.Length - 1];
+            bool capped = up == cur && !ladderTop;
             DeskKit.AdjustPair(b, tx + 196f, cy + 46f,
                 () => b.SetBudget(cat, down),
-                () => b.SetBudget(cat, up),
-                down == cur, up == cur);
-            b.L(YieldLine(s, key, up == cur && cur > 0), tx, cy + 78f, 16f,
-                DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f), tw);
+                capped ? (Action)(() => b.Desk["cap_pulse"] = true)
+                       : () => b.SetBudget(cat, up),
+                down == cur, up == cur && !capped);
+            b.MarkControl("mix_" + key, new Rect(tx + 192f, cy + 42f, 100f, 44f));
+            // the yield line — or, in suggest mode, the ADOPT row
+            if (split.Count == 0)
+            {
+                b.L(YieldLine(s, key, up == cur && cur > 0), tx, cy + 78f, 16f,
+                    DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f), tw);
+            }
+            else
+            {
+                int sug = split.ContainsKey(key) ? split[key] : cur;
+                if (sug == cur)
+                    b.L("this plot already sits even", tx, cy + 78f, 16f,
+                        DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), tw);
+                else
+                {
+                    int sugNow = sug;
+                    DeskKit.Arm(b, "adopt_mix_" + key,
+                        "suggested $" + GameUi.Money(sug) + " — adopt",
+                        "set $" + GameUi.Money(sug) + "/wk — sure?", tx, cy + 74f,
+                        () => b.SetBudget(cat, sugNow), 300f, 17f);
+                }
+            }
         }
 
         /// The topic for one plot: the world's own words, or the garden set.
@@ -302,6 +434,322 @@ namespace Runway.Game
                 }
             }
             return best;
+        }
+
+        // ── the even-marginal split (S3/S15, ADOPT-only) ───────────────────
+
+        /// THE EVEN-MARGINAL SPLIT — the classic lesson on the engine's own
+        /// curves: re-lay the SAME total so the next dollar buys about the
+        /// same everywhere. Greedy over the ladder; gates zero a closed
+        /// channel; the cap bounds the total. Empty = nothing to lay out.
+        static Dictionary<string, int> EvenSplit(GameState s)
+        {
+            var alloc = new Dictionary<string, int>
+            {
+                { "ads", 0 }, { "content", 0 }, { "referrals", 0 }, { "outbound", 0 },
+            };
+            Dictionary<string, double> f = SimFunnel.Funnel(s);
+            if (f.Count == 0) return new Dictionary<string, int>();
+            int cap = SimEngine.EraSpendCap(s.Era);
+            int budget = Math.Min(Gd.ToInt(SimFunnel.SpendTotal(s)), cap);
+            if (budget < BinderScreen.LeverSteps[1]) return new Dictionary<string, int>();
+            SimFunnel.Channel ch = SimFunnel.Of(s);
+            double tm = SimFunnel.TeamMult(s);
+            double ee = SimFunnel.EraEff(s);
+            double adds = Gd.Maxf(SimFunnel.Num(f, "adds"), 0.5);
+            double reachPerAdd = Gd.Maxf(SimFunnel.Num(f, "reach_total") / adds, 1.0);
+            double happy = SimFunnel.Happy(s);
+            double womBase = SimFunnel.Num(f, "wom") / Gd.Maxf(1.0 + SimFunnel.RefGain(s), 1.0);
+            var ceils = new Dictionary<string, double>
+            {
+                { "ads", ch.AdsA * ee * tm },
+                { "content", ch.ConA * ee * tm },
+                { "referrals", happy >= SimFunnel.HappyFloor
+                    ? ch.RefA * happy * tm * womBase * reachPerAdd : 0.0 },
+                { "outbound", 0.0 },
+            };
+            var sats = new Dictionary<string, double>
+            {
+                { "ads", SimFunnel.AdsSat(s) },
+                { "content", Gd.Maxf(ch.ConSat, 1.0) },
+                { "referrals", Gd.Maxf(ch.RefSat, 1.0) },
+                { "outbound", 1.0 },
+            };
+            double obMarginal = ch.ObAud >= 0.5 ? SimFunnel.ObReachPerK / 1000.0 * ch.ObAud : 0.0;
+            int[] steps = BinderScreen.LeverSteps;
+            int spent = 0;
+            while (true)
+            {
+                string best = "";
+                double bestM = 0.0;
+                for (int i = 0; i < SimFunnel.Mix.Length; i++)
+                {
+                    string key = SimFunnel.Mix[i];
+                    int cur = alloc[key];
+                    int ni = LadderIdx(cur) + 1;
+                    if (ni >= steps.Length) continue;
+                    int nxt = Math.Min(steps[ni], cap);
+                    if (nxt <= cur || spent - cur + nxt > budget) continue;
+                    double gain = key == "outbound"
+                        ? obMarginal * (nxt - cur)
+                        : ceils[key] * (Math.Exp(-cur / sats[key]) - Math.Exp(-nxt / sats[key]));
+                    double m = gain / (nxt - cur);
+                    if (m > bestM + 0.000001)
+                    {
+                        bestM = m;
+                        best = key;
+                    }
+                }
+                if (best.Length == 0 || bestM <= 0.0) break;
+                int bn = Math.Min(steps[LadderIdx(alloc[best]) + 1], cap);
+                spent += bn - alloc[best];
+                alloc[best] = bn;
+            }
+            return spent <= 0 ? new Dictionary<string, int>() : alloc;
+        }
+
+        /// The rung at or under a value (off-ladder values land below).
+        static int LadderIdx(int cur)
+        {
+            int idx = 0;
+            for (int i = 0; i < BinderScreen.LeverSteps.Length; i++)
+                if (BinderScreen.LeverSteps[i] <= cur) idx = i;
+            return idx;
+        }
+
+        /// Whether the suggestion would move anything — empty never does.
+        static bool SplitDiffers(GameState s, BinderScreen b, Dictionary<string, int> split)
+        {
+            if (split.Count == 0) return false;
+            for (int i = 0; i < SimFunnel.Mix.Length; i++)
+            {
+                string k = SimFunnel.Mix[i];
+                if ((split.ContainsKey(k) ? split[k] : 0) != b.Budget(k)) return true;
+            }
+            return false;
+        }
+
+        // ── S4 · the curve, drawn (press a verdict) ────────────────────────
+
+        /// THE VERDICT, OPENED: the channel's own curve — the saturating
+        /// character (or outbound's straight line), the knee ticked, your
+        /// spend dotted onto it — street math in receipt lines below. Any
+        /// press or Esc closes the read first (the desk-mode chain).
+        static void CurveCard(BinderScreen b, GameState s, string key)
+        {
+            if (Array.IndexOf(SimFunnel.Mix, key) < 0)
+            {
+                b.Desk["mode"] = "";
+                return;
+            }
+            Button catcher = DeskKit.Word(b, "", 0f, 0f, () => b.Desk["mode"] = "",
+                DeskKit.Detail, DrawnUI.Ink, 1140f);
+            catcher.GetComponent<RectTransform>().sizeDelta = new Vector2(1140f, 880f);
+            double spend = SimFunnel.SpendOf(s, key);
+            List<DeskKit.TicketLine> lines = CurveLines(b, s, key, spend);
+            float cardH = 56f + 206f + lines.Count * 30f + 18f;
+            string title = key != "outbound" ? key + " — the curve"
+                : "outbound — the straight line";
+            DeskKit.CardBox frame = DeskKit.CardFrame(b, 250f, 150f, 640f, cardH, title);
+            float cx = frame.ContentX;
+            float cy = frame.ContentY;
+            bool linear = key == "outbound";
+            double sat = 1.0;
+            switch (key)
+            {
+                case "ads": sat = SimFunnel.AdsSat(s); break;
+                case "content": sat = Gd.Maxf(SimFunnel.Of(s).ConSat, 1.0); break;
+                case "referrals": sat = Gd.Maxf(SimFunnel.Of(s).RefSat, 1.0); break;
+            }
+            double xmax = linear ? Gd.Maxf(spend * 2.0, 2000.0)
+                : Gd.Maxf(2.4 * sat, spend * 1.15 + 250.0);
+            bool dim = key == "referrals" && SimFunnel.Happy(s) < SimFunnel.HappyFloor;
+            CurveArt(b, cx, cy, 640f - DeskKit.CardPad * 2f, 190f, linear, dim, sat, xmax, spend);
+            float moneyX = frame.MoneyX;
+            float ly = cy + 206f;
+            for (int n = 0; n < lines.Count; n++)
+            {
+                DeskKit.FitLine(b, lines[n].Label, cx, ly, 19f,
+                    DrawnUI.WithAlpha(DrawnUI.Ink, 0.85f), 340f);
+                TextMeshProUGUI v = DeskKit.FitLine(b, lines[n].Value, cx + 350f, ly, 19f,
+                    lines[n].Col ?? DrawnUI.Ink, moneyX - cx - 350f);
+                v.alignment = TextAlignmentOptions.TopRight;
+                ly += 30f;
+            }
+        }
+
+        /// THE CURVE, in dotted fills (the Godot twin draws it freehand —
+        /// same geometry, same anchors): axis, the sampled sweep, the knee
+        /// ticked, your spend dotted down onto its bead.
+        static void CurveArt(BinderScreen b, float x, float y, float w, float h,
+                             bool linear, bool dim, double sat, double xmax, double spend)
+        {
+            float ax = y + h - 30f;
+            float top = y + 10f;
+            float span = ax - top;
+            double F(double v) => linear ? v / Gd.Maxf(xmax, 1.0)
+                : 1.0 - Math.Exp(-v / Gd.Maxf(sat, 1.0));
+            double ymaxV = Gd.Maxf(F(xmax), 0.001);
+            Color inkC = DrawnUI.WithAlpha(DrawnUI.Ink, dim ? 0.35f : 1f);
+            DrawnUI.Fill(b.Content, "cv_ax", DrawnUI.Ink, x, ax, w, 2.2f).raycastTarget = false;
+            DrawnUI.Fill(b.Content, "cv_ay", DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f),
+                x, top - 4f, 1.6f, span + 4f).raycastTarget = false;
+            for (int k = 0; k < 33; k++)
+            {
+                double fx = xmax * k / 32.0;
+                float px0 = x + w * (float)(fx / xmax);
+                float py0 = ax - span * (float)(F(fx) / ymaxV);
+                DrawnUI.Fill(b.Content, "cv_pt", inkC, px0 - 2f, py0 - 2f, 4f, 4f)
+                    .raycastTarget = false;
+            }
+            if (!linear && sat < xmax)
+            {
+                float kx = x + w * (float)(sat / xmax);
+                for (float yy = top; yy < ax; yy += 10f)
+                    DrawnUI.Fill(b.Content, "cv_knee", DrawnUI.WithAlpha(DrawnUI.Ink, 0.35f),
+                        kx - 0.8f, yy, 1.6f, Mathf.Min(5f, ax - yy)).raycastTarget = false;
+                b.L("the knee", kx - 26f, ax + 6f, 14f,
+                    DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), 90f);
+            }
+            float px = Mathf.Clamp(x + w * (float)(spend / Gd.Maxf(xmax, 1.0)), x, x + w);
+            float py = ax - span * (float)(F(spend) / ymaxV);
+            for (float y2 = top; y2 < ax - 4f; y2 += 11f)
+                DrawnUI.Fill(b.Content, "cv_dot", DrawnUI.Coral, px - 1.1f, y2, 2.2f,
+                    Mathf.Min(6f, ax - 4f - y2)).raycastTarget = false;
+            var bead = DrawnUI.Fill(b.Content, "cv_bead", DrawnUI.Coral, px - 6f, py - 6f, 12f, 12f);
+            bead.raycastTarget = false;
+            DrawnUI.AddInkEdge(bead.rectTransform, new Vector2(12f, 12f),
+                new DrawnUI.PaperStyle
+                {
+                    ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
+                    StepsPerEdge = 5, Jitter = 0.7f, Thickness = 2f, Seed = 37,
+                });
+            b.L("you: $" + Gd.RoundToInt(spend), Mathf.Clamp(px - 40f, x, x + w - 110f),
+                top - 2f, 14f, DrawnUI.Coral, 110f);
+            if (dim)
+                b.L("the gate is closed", x + w * 0.32f, ax - span * 0.5f, 16f,
+                    DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 200f);
+        }
+
+        /// The receipt lines under the drawing — the funnel's numbers only.
+        static List<DeskKit.TicketLine> CurveLines(BinderScreen b, GameState s, string key,
+                                                   double spend)
+        {
+            Dictionary<string, double> f = SimFunnel.Funnel(s);
+            string vWord;
+            Color vCol;
+            Verdict(s, key, out vWord, out vCol);
+            var lines = new List<DeskKit.TicketLine>
+            {
+                new DeskKit.TicketLine { Label = "the verdict", Value = vWord, Col = vCol },
+                new DeskKit.TicketLine { Label = "spend now",
+                    Value = "$" + GameUi.Money(Gd.ToInt(spend)) + "/wk" },
+            };
+            if (f.Count > 0)
+            {
+                lines.Add(new DeskKit.TicketLine { Label = "bought last week",
+                    Value = string.Format(CultureInfo.InvariantCulture, "≈{0:0.0} customers",
+                        SimFunnel.Num(f, "signed_" + key)) });
+                double cac = SimFunnel.Num(f, "cac_" + key);
+                lines.Add(new DeskKit.TicketLine { Label = "CAC last week",
+                    Value = cac > 0.0 ? "$" + GameUi.Money(Gd.RoundToInt(cac))
+                        : "not yet knowable" });
+            }
+            switch (key)
+            {
+                case "ads":
+                    lines.Add(new DeskKit.TicketLine { Label = "the knee sits at",
+                        Value = "$" + GameUi.Money(Gd.RoundToInt(SimFunnel.AdsSat(s))) + "/wk" });
+                    break;
+                case "content":
+                    lines.Add(new DeskKit.TicketLine { Label = "this spend funds level",
+                        Value = Gd.RoundToInt(SimFunnel.ContentTarget(s) * 100.0) + "%" });
+                    lines.Add(new DeskKit.TicketLine { Label = "equity today",
+                        Value = Gd.RoundToInt(s.ContentEquity * 100.0) + "%" });
+                    break;
+                case "referrals":
+                    if (SimFunnel.Happy(s) < SimFunnel.HappyFloor)
+                        lines.Add(new DeskKit.TicketLine { Label = "the gate",
+                            Value = "closed (v0." + s.Product + ")", Col = DrawnUI.Coral });
+                    else
+                        lines.Add(new DeskKit.TicketLine { Label = "word of mouth ×",
+                            Value = string.Format(CultureInfo.InvariantCulture, "{0:0.00}",
+                                1.0 + SimFunnel.RefGain(s)) });
+                    break;
+                case "outbound":
+                    lines.Add(new DeskKit.TicketLine { Label = "reach per $1k",
+                        Value = "≈" + Gd.RoundToInt(SimFunnel.ObReachPerK * SimFunnel.Of(s).ObAud) });
+                    lines.Add(new DeskKit.TicketLine { Label = "closing bought",
+                        Value = string.Format(CultureInfo.InvariantCulture, "+{0:0.0}",
+                            SimFunnel.ObClosers(s)) });
+                    break;
+            }
+            return lines;
+        }
+
+        // ── S8/S15 · the desk's own voice ──────────────────────────────────
+
+        /// The garden is live from the garage; the S1 state covers week one.
+        public static bool IsDormant(GameState s)
+        {
+            return false;
+        }
+
+        /// The rail's four-character read: what the week's mix costs.
+        public static string MicroStatus(GameState s)
+        {
+            int total = Gd.ToInt(SimFunnel.SpendTotal(s));
+            if (total <= 0) return "";
+            if (total < 1000) return "$" + total + "/wk";
+            return string.Format(CultureInfo.InvariantCulture, "${0:0.0}k/wk", total / 1000.0);
+        }
+
+        /// S15 — the desk speaks up: the even-marginal walk, as a jump chip.
+        /// (The reflection collector has no BinderScreen, so the compare
+        /// reads the state's own budget fields the way SpendOf does.)
+        public static List<Dictionary<string, object>> Suggestions(GameState s)
+        {
+            var outp = new List<Dictionary<string, object>>();
+            Dictionary<string, int> split = EvenSplit(s);
+            if (split.Count == 0) return outp;
+            bool differs = false;
+            for (int i = 0; i < SimFunnel.Mix.Length; i++)
+            {
+                string k = SimFunnel.Mix[i];
+                int cur = Gd.ToInt(SimFunnel.SpendOf(s, k))
+                    - (k == "ads" ? s.MarketingBudget + s.Budgets.Marketing : 0);
+                if ((split.ContainsKey(k) ? split[k] : 0) != cur)
+                {
+                    differs = true;
+                    break;
+                }
+            }
+            if (!differs) return outp;
+            outp.Add(new Dictionary<string, object>
+            {
+                { "label", "balance the mix — growth" },
+                { "kind", "jump" },
+                { "payload", new Dictionary<string, object> { { "control", "do_0" } } },
+            });
+            return outp;
+        }
+
+        /// The refusal made FELT: a coral wash breathes once over the cap
+        /// meter and fades (~0.45s; the next refresh clears the object).
+        static void CapPulse(BinderScreen b, float x, float y, float w, float h)
+        {
+            var rt = DrawnUI.Rect(b.Content, "cappulse", x, y, w, h);
+            var wash = DrawnUI.Fill(rt, "cp_wash", DrawnUI.WithAlpha(DrawnUI.Coral, 0.45f),
+                0f, 0f, w, h);
+            wash.raycastTarget = false;
+            DrawnUI.AddInkEdge(rt, new Vector2(w, h), new DrawnUI.PaperStyle
+            {
+                ShadowOffset = Vector2.zero, ShadowAlpha = 0f, Inset = 1f,
+                StepsPerEdge = 8, Jitter = 0.9f, Thickness = 3f, Seed = 41,
+            });
+            CanvasGroup g = DrawnUI.Group(rt);
+            g.alpha = 0.9f;
+            b.StartCoroutine(DrawnUI.FadeTo(g, 0f, 0.45f));
         }
 
         // ── the foot ───────────────────────────────────────────────────────

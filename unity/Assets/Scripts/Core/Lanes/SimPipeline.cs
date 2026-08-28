@@ -971,14 +971,16 @@ namespace Runway.Core
             foreach (Lead ld in state.Leads) { if (ld.Heat <= 16) { cold += 1; } }
             if (cold == 1)
             {
-                rows.Add(new AttentionItem { Desk = "customers", Key = "lead_cold",
-                    Severity = 2, Label = "a deal is going cold — push it" });
+                rows.Add(new AttentionItem { Desk = "pipeline", Key = "lead_cold",
+                    Severity = 2, Label = "a deal is going cold — push it",
+                    Control = "push_cold" });
             }
             else if (cold > 1)
             {
-                rows.Add(new AttentionItem { Desk = "customers", Key = "lead_cold", Severity = 2,
+                rows.Add(new AttentionItem { Desk = "pipeline", Key = "lead_cold", Severity = 2,
                     Label = string.Format(CultureInfo.InvariantCulture,
-                        "{0} deals going cold — push them", cold) });
+                        "{0} deals going cold — push them", cold),
+                    Control = "push_cold" });
             }
             if (Gd.ToInt(state.GetMetaF("pipe_signed_wk", 0.0)) == state.Week && state.Week > 0)
             {

@@ -776,11 +776,11 @@ static func attention(state: GameState) -> Array:
 		if int((ld as Dictionary).get("heat", 0)) <= 16:
 			cold += 1
 	if cold == 1:
-		rows.append({"desk": "customers", "key": "lead_cold", "severity": 2,
-			"label": "a deal is going cold — push it"})
+		rows.append({"desk": "pipeline", "key": "lead_cold", "severity": 2,
+			"label": "a deal is going cold — push it", "control": "push_cold"})
 	elif cold > 1:
-		rows.append({"desk": "customers", "key": "lead_cold", "severity": 2,
-			"label": "%d deals going cold — push them" % cold})
+		rows.append({"desk": "pipeline", "key": "lead_cold", "severity": 2,
+			"label": "%d deals going cold — push them" % cold, "control": "push_cold"})
 	if int(state.get_meta("pipe_signed_wk", 0)) == state.week and state.week > 0:
 		rows.append({"desk": "customers", "key": "signed", "severity": 1,
 			"label": "a contract signed — seats booked"})

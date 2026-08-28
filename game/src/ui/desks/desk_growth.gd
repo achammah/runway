@@ -21,6 +21,14 @@ extends RefCounted
 ## honest unbuyable line. Verdicts are WORDS COMPUTED FROM THE FUNNEL — the
 ## audience flips (enterprise ads "a drop in the ocean", consumer outbound
 ## "nobody answers a cold call") fall out of the data, never a hardcode.
+##
+## DAG3 (13-binder-ux · growth): a verdict chip is a DOOR — press it and the
+## channel's own curve opens drawn (the saturating character, the knee ticked,
+## your spend dotted), street math in receipt lines under it; a stepper press
+## the CAP refuses pulses the meter coral (the ceiling made felt); [balance
+## the mix — suggest] lays the SAME total even-marginal across the plots as
+## ADOPT rows (spend-book pattern — nothing ever applies itself); the empty
+## garden is the S1 teaching state.
 
 const QUESTION := "where does next week's demand come from?"
 
@@ -50,10 +58,42 @@ static func hero_summary(state) -> Dictionary:
 
 static func draw(b) -> void:
 	var s: GameState = b.state
+	var f0 := SimFunnel.funnel(s)
+	if f0.is_empty() and SimFunnel.spend_total(s) <= 0.0:
+		# S1 — the untouched garden is a TEACHING state: the four characters
+		# said once, and the first $250 one press away (a stepper is free)
+		DeskKit.zero_state(b, {
+			"will_show": "where next week's demand comes from",
+			"would_line": "four plots, four characters — ads pour while fed, content "
+				+ "compounds, referrals multiply a liked product, outbound knocks on doors",
+			"action_label": "put the first $250 into ads",
+			"action_cb": func() -> void: s.budgets["ads"] = 250,
+			"wakes_hint": "verdicts and CAC arrive with the first locked week — "
+				+ "the era caps what the whole mix may spend",
+		})
+		return
+	var mode := String(b.desk.get("mode", ""))
+	_garden(b, s, f0, mode == "suggest")
+	if mode.begins_with("curve:"):
+		# S4 — the verdict opened: the garden stays under the paper card
+		_curve_card(b, s, mode.substr(6))
+
+## The whole garden sheet — hero, cap meter, four plots, wom, foot. In suggest
+## mode the yield lines give way to the even-marginal ADOPT rows.
+static func _garden(b, s: GameState, f0: Dictionary, suggesting: bool) -> void:
 	var h := _hero_text(s)
 	b.label(String(h.get("big", "")), Vector2(DeskKit.X_ID, 6.0), DeskKit.HERO_BIG, DeskKit.INK, 760.0)
 	b.label(String(h.get("line", "")), Vector2(DeskKit.X_ID, 74.0), DeskKit.ROW,
 		Color(DeskKit.INK, 0.7), 740.0)
+	# S5 — the hero against the last open: what the mix bought
+	if not f0.is_empty():
+		var bought := int(round(SimFunnel.num(f0, "signed_ads") + SimFunnel.num(f0, "signed_content")
+			+ SimFunnel.num(f0, "signed_referrals") + SimFunnel.num(f0, "signed_outbound")))
+		var gp: String = b.seen_prev("growth", "hero")
+		if b.seen("growth", "hero", str(bought)) and gp.is_valid_int():
+			var hbw: float = b.font().get_string_size(String(h.get("big", "")),
+				HORIZONTAL_ALIGNMENT_LEFT, -1, DeskKit.HERO_BIG).x
+			DeskKit.delta_arrow(b, DeskKit.X_ID + hbw + 10.0, 26.0, float(bought), float(gp.to_int()))
 	# the era's allowance, said at the top right where the mix is set
 	var cap := SimEngine.era_spend_cap(s.era)
 	var cl: Label = b.label("the %s era allows $%s/wk" % [s.era, b.fmt(cap)],
@@ -71,19 +111,41 @@ static func draw(b) -> void:
 	var total := SimFunnel.spend_total(s)
 	DeskKit.meter(b, DeskKit.X_ID, 152.0, 560.0, total / maxf(float(cap), 1.0), DeskKit.SAGE,
 		"$%s of the $%s the era allows" % [b.fmt(int(total)), b.fmt(cap)])
+	# the refused press made FELT: a coral pulse breathes once over the meter
+	if bool(b.desk.get("cap_pulse", false)):
+		b.desk.erase("cap_pulse")
+		_cap_pulse(b, Rect2(DeskKit.X_ID - 4.0, 146.0, 568.0, 30.0))
+	var split := _even_split(s) if suggesting else {}
+	if suggesting and _split_differs(s, split):
+		# the whole-mix adopt (spend-book pattern): one arm prices all four
+		var t := 0
+		for k0 in SimFunnel.MIX:
+			t += int(split.get(String(k0), 0))
+		var fire_all := func() -> void:
+			for k2 in SimFunnel.MIX:
+				s.budgets[String(k2)] = int(split.get(String(k2), 0))
+		DeskKit.arm(b, "adopt_mix_all", "adopt the whole split — $%s/wk" % b.fmt(t),
+			"set all four plots — sure?", Vector2(620.0, 180.0), fire_all, 330.0, 17)
 	var y := PLOT_Y
 	var keys := SimFunnel.MIX
 	for i in keys.size():
 		var px := 10.0 + float(i % 2) * (PLOT_W + 14.0)
 		var py := y + float(i / 2) * (PLOT_H + 14.0)
-		_plot(b, s, String(keys[i]), px, py)
+		_plot(b, s, String(keys[i]), px, py, split)
 	# WORD OF MOUTH — the honest unbuyable row
-	var f := SimFunnel.funnel(s)
 	var womtxt := "word of mouth: ≈%d joined free this week — not for sale, earned" \
-		% int(round(SimFunnel.num(f, "wom"))) if not f.is_empty() \
+		% int(round(SimFunnel.num(f0, "wom"))) if not f0.is_empty() \
 		else "word of mouth: not for sale — it arrives when joiners bring friends"
 	b.label(womtxt, Vector2(DeskKit.X_ID, y + 2.0 * PLOT_H + 34.0), DeskKit.DETAIL,
 		Color(DeskKit.INK, 0.6), 1100.0)
+	# S3 — the one primary act: the even-marginal walk (ADOPT-only, S15)
+	if suggesting:
+		var hint: Label = b.label("nothing applies itself — adopt per plot, Esc keeps your mix",
+			Vector2(560.0, DeskKit.DO_LANE_Y + 10.0), 17, Color(DeskKit.INK, 0.55), 570.0)
+		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	elif _split_differs(s, _even_split(s)):
+		DeskKit.do_lane(b, [{"label": "balance the mix — suggest", "tier": "",
+			"cb": func() -> void: b.desk["mode"] = "suggest"}])
 	_foot(b, s)
 
 static func handle(_b, _id: String) -> void:
@@ -116,17 +178,21 @@ static func _hero_text(s: GameState) -> Dictionary:
 
 # ─────────────────────────────── one plot ────────────────────────────────────
 
-static func _plot(b, s: GameState, key: String, x: float, y: float) -> void:
+static func _plot(b, s: GameState, key: String, x: float, y: float,
+		split: Dictionary = {}) -> void:
 	var topic := _topic(s, key)
 	var frame := DeskKit.card_frame(b, x, y, PLOT_W, PLOT_H,
 		"%s — %s" % [key, String(topic.get("name", ""))])
 	var cx := float(frame.get("content_x", x))
 	var cy := float(frame.get("content_y", y))
-	# the verdict — one computed word, colored, on the title row
+	# S2b — the plot is a named landing: cross-desk jumps spotlight it whole
+	b.mark_control("plot_" + key, Rect2(x, y, PLOT_W, PLOT_H))
+	# S4 — the verdict is a DOOR: press → the channel's curve, drawn
 	var vd := _verdict(s, key)
-	var vl: Label = b.label(String(vd.get("word", "")), Vector2(x + PLOT_W - 250.0, y + 14.0),
-		20, vd.get("col", DeskKit.INK), 232.0)
-	vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	var vbtn := DeskKit.word(b, String(vd.get("word", "")), Vector2(x + PLOT_W - 250.0, y + 10.0),
+		func() -> void: b.desk["mode"] = "curve:" + key, 20, vd.get("col", DeskKit.INK), 232.0)
+	vbtn.size = Vector2(232.0, 40.0)
+	vbtn.alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	# the illustration slot: the cache when the painter has been, the drawn
 	# instrument always underneath (numbers never wait on an image)
 	_plot_art(b, key, cx, cy)
@@ -141,13 +207,30 @@ static func _plot(b, s: GameState, key: String, x: float, y: float) -> void:
 	b.label("$%s/wk" % b.fmt(shown_cur), Vector2(tx, cy + 40.0), 27, DeskKit.PEN, 180.0)
 	var down := _step_to(s, key, cur, -1)
 	var up := _step_to(s, key, cur, 1)
+	# the CAP's refusal stays a live press — it answers by pulsing the meter
+	# (the era ceiling made FELT); only the ladder's own top goes dead
+	var ladder_top := cur >= int(LEVER_STEPS[LEVER_STEPS.size() - 1])
+	var capped := up == cur and not ladder_top
 	DeskKit.adjust_pair(b, tx + 196.0, cy + 46.0,
 		func() -> void: s.budgets[key] = down,
-		func() -> void: s.budgets[key] = up,
-		down == cur, up == cur)
-	# the yield line — the engine's live formula at the point of decision
-	b.label(_yield_line(s, key, up == cur and cur > 0), Vector2(tx, cy + 78.0), 16,
-		Color(DeskKit.INK, 0.7), tw)
+		(func() -> void: b.desk["cap_pulse"] = true) if capped
+			else func() -> void: s.budgets[key] = up,
+		down == cur, up == cur and not capped)
+	b.mark_control("mix_" + key, Rect2(tx + 192.0, cy + 42.0, 100.0, 44.0))
+	# the yield line — or, in suggest mode, the even-marginal ADOPT row
+	if split.is_empty():
+		b.label(_yield_line(s, key, up == cur and cur > 0), Vector2(tx, cy + 78.0), 16,
+			Color(DeskKit.INK, 0.7), tw)
+	else:
+		var sug := int(split.get(key, cur))
+		if sug == cur:
+			b.label("this plot already sits even", Vector2(tx, cy + 78.0), 16,
+				Color(DeskKit.INK, 0.55), tw)
+		else:
+			var fire_adopt := func() -> void: s.budgets[key] = sug
+			DeskKit.arm(b, "adopt_mix_" + key, "suggested $%s — adopt" % b.fmt(sug),
+				"set $%s/wk — sure?" % b.fmt(sug), Vector2(tx, cy + 74.0),
+				fire_adopt, 300.0, 17)
 
 ## The topic for one plot: the world's own words, or the garden set.
 static func _topic(s: GameState, key: String) -> Dictionary:
@@ -258,6 +341,230 @@ static func _cheapest(f: Dictionary) -> String:
 			best_cac = c
 	return best
 
+# ─────────────── the even-marginal split (S3/S15, ADOPT-only) ────────────────
+
+## THE EVEN-MARGINAL SPLIT — the classic lesson on the engine's own curves:
+## re-lay the SAME total across the plots so the next dollar buys about the
+## same everywhere. Greedy over the ladder: each rung goes to the channel
+## whose next step buys the most reach-equivalent, so the walk stops exactly
+## where marginals even out on the grid. Gates zero a closed channel (the
+## happy floor, the cold-call audience); the era cap bounds the total; the
+## characters are their curves — ads/content/referrals saturate at their own
+## knee, outbound is the straight line. {} = nothing to lay out yet.
+static func _even_split(s: GameState) -> Dictionary:
+	var f := SimFunnel.funnel(s)
+	if f.is_empty():
+		return {}
+	var cap := SimEngine.era_spend_cap(s.era)
+	var budget := mini(int(SimFunnel.spend_total(s)), cap)
+	if budget < int(LEVER_STEPS[1]):
+		return {}
+	var ch := SimFunnel.channel(s)
+	var tm := SimFunnel.team_mult(s)
+	var ee := SimFunnel.era_eff(s)
+	# reach-equivalent ceilings, in the funnel's own terms: referrals' extra
+	# joiners convert through the measured reach-per-add so the units compare
+	var adds := maxf(SimFunnel.num(f, "adds"), 0.5)
+	var reach_per_add := maxf(SimFunnel.num(f, "reach_total") / adds, 1.0)
+	var happy := SimFunnel.happy(s)
+	var wom_base := SimFunnel.num(f, "wom") / maxf(1.0 + SimFunnel.ref_gain(s), 1.0)
+	var ceils := {
+		"ads": float(ch.get("ads_a", 0.0)) * ee * tm,
+		"content": float(ch.get("con_a", 0.0)) * ee * tm,
+		"referrals": (float(ch.get("ref_a", 0.0)) * happy * tm * wom_base * reach_per_add)
+			if happy >= SimFunnel.HAPPY_FLOOR else 0.0,
+		"outbound": 0.0,
+	}
+	var sats := {
+		"ads": SimFunnel.ads_sat(s),
+		"content": maxf(float(ch.get("con_sat", 1600.0)), 1.0),
+		"referrals": maxf(float(ch.get("ref_sat", 1200.0)), 1.0),
+		"outbound": 1.0,
+	}
+	var aud := float(ch.get("ob_aud", 1.0))
+	var ob_marginal := (SimFunnel.OB_REACH_PER_K / 1000.0 * aud) if aud >= 0.5 else 0.0
+	var alloc := {"ads": 0, "content": 0, "referrals": 0, "outbound": 0}
+	var spent := 0
+	while true:
+		var best := ""
+		var best_m := 0.0
+		for k in SimFunnel.MIX:
+			var key := String(k)
+			var cur := int(alloc[key])
+			var ni := _ladder_idx(cur) + 1
+			if ni >= LEVER_STEPS.size():
+				continue
+			var nxt := mini(int(LEVER_STEPS[ni]), cap)
+			if nxt <= cur or spent - cur + nxt > budget:
+				continue
+			var gain := 0.0
+			if key == "outbound":
+				gain = ob_marginal * float(nxt - cur)
+			else:
+				var sat := float(sats[key])
+				gain = float(ceils[key]) * (exp(-float(cur) / sat) - exp(-float(nxt) / sat))
+			var m := gain / float(nxt - cur)
+			if m > best_m + 0.000001:
+				best_m = m
+				best = key
+		if best == "" or best_m <= 0.0:
+			break
+		var bn := mini(int(LEVER_STEPS[_ladder_idx(int(alloc[best])) + 1]), cap)
+		spent += bn - int(alloc[best])
+		alloc[best] = bn
+	if spent <= 0:
+		return {}
+	return alloc
+
+## The rung at or under a value (off-ladder values land on the rung below).
+static func _ladder_idx(cur: int) -> int:
+	var idx := 0
+	for i in LEVER_STEPS.size():
+		if int(LEVER_STEPS[i]) <= cur:
+			idx = i
+	return idx
+
+## Whether the suggestion would move anything — {} never does.
+static func _split_differs(s: GameState, split: Dictionary) -> bool:
+	if split.is_empty():
+		return false
+	for k in SimFunnel.MIX:
+		if int(split.get(String(k), 0)) != int(s.budgets.get(String(k), 0)):
+			return true
+	return false
+
+# ───────────────── S4 · the curve, drawn (press a verdict) ───────────────────
+
+## THE VERDICT, OPENED: the channel's own curve in the desk's hand — the
+## saturating character (or outbound's straight line), the knee ticked, your
+## spend dotted onto it — street math in receipt lines below. Any press or
+## Esc closes the read before anything else (the desk-mode chain).
+static func _curve_card(b, s: GameState, key: String) -> void:
+	if not SimFunnel.MIX.has(key):
+		b.desk["mode"] = ""
+		return
+	var catcher := DeskKit.word(b, "", Vector2(0.0, 0.0), func() -> void:
+		b.desk["mode"] = "", DeskKit.DETAIL, DeskKit.INK, 1140.0)
+	catcher.size = Vector2(1140.0, 880.0)
+	var spend := SimFunnel.spend_of(s, key)
+	var lines := _curve_lines(b, s, key, spend)
+	var card_h := 56.0 + 206.0 + float(lines.size()) * 30.0 + 18.0
+	var title := ("%s — the curve" % key) if key != "outbound" \
+		else "outbound — the straight line"
+	var frame := DeskKit.card_frame(b, 250.0, 150.0, 640.0, card_h, title)
+	var cx := float(frame.get("content_x", 268.0))
+	var cy := float(frame.get("content_y", 206.0))
+	var sat := 1.0
+	var linear := key == "outbound"
+	match key:
+		"ads":
+			sat = SimFunnel.ads_sat(s)
+		"content":
+			sat = maxf(float(SimFunnel.channel(s).get("con_sat", 1600.0)), 1.0)
+		"referrals":
+			sat = maxf(float(SimFunnel.channel(s).get("ref_sat", 1200.0)), 1.0)
+	var art := _CurveArt.new()
+	art.font = b.font()
+	art.linear = linear
+	art.dim = key == "referrals" and SimFunnel.happy(s) < SimFunnel.HAPPY_FLOOR
+	art.sat = sat
+	art.xmax = maxf(2.4 * sat, spend * 1.15 + 250.0) if not linear \
+		else maxf(spend * 2.0, 2000.0)
+	art.spend = spend
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.position = Vector2(cx, cy)
+	art.set_deferred("size", Vector2(640.0 - DeskKit.CARD_PAD * 2.0, 190.0))
+	b.pane().add_child(art)
+	var money_x := float(frame.get("money_x", 872.0))
+	var ly := cy + 206.0
+	for ln in lines:
+		var ld: Dictionary = ln
+		DeskKit.fit_line(b, String(ld.get("label", "")), Vector2(cx, ly), 19,
+			Color(DeskKit.INK, 0.85), 340.0)
+		var v: Label = DeskKit.fit_line(b, String(ld.get("value", "")),
+			Vector2(cx + 350.0, ly), 19, ld.get("col", DeskKit.INK), money_x - cx - 350.0)
+		v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		ly += 30.0
+
+## The receipt lines under the drawing — the funnel lane's own numbers only.
+static func _curve_lines(b, s: GameState, key: String, spend: float) -> Array:
+	var f := SimFunnel.funnel(s)
+	var vd := _verdict(s, key)
+	var lines: Array = [
+		{"label": "the verdict", "value": String(vd.get("word", "")),
+			"col": vd.get("col", DeskKit.INK)},
+		{"label": "spend now", "value": "$%s/wk" % b.fmt(int(spend))},
+	]
+	if not f.is_empty():
+		lines.append({"label": "bought last week", "value": "≈%.1f customers"
+			% SimFunnel.num(f, "signed_" + key)})
+		var cac := SimFunnel.num(f, "cac_" + key)
+		lines.append({"label": "CAC last week", "value": ("$%s" % b.fmt(int(round(cac))))
+			if cac > 0.0 else "not yet knowable"})
+	match key:
+		"ads":
+			lines.append({"label": "the knee sits at", "value": "$%s/wk"
+				% b.fmt(int(round(SimFunnel.ads_sat(s))))})
+		"content":
+			lines.append({"label": "this spend funds level", "value": "%d%%"
+				% int(round(SimFunnel.content_target(s) * 100.0))})
+			lines.append({"label": "equity today", "value": "%d%%"
+				% int(round(s.content_equity * 100.0))})
+		"referrals":
+			if SimFunnel.happy(s) < SimFunnel.HAPPY_FLOOR:
+				lines.append({"label": "the gate", "value": "closed (v0.%d)" % s.product,
+					"col": DeskKit.PEN})
+			else:
+				lines.append({"label": "word of mouth ×", "value": "%.2f"
+					% (1.0 + SimFunnel.ref_gain(s))})
+		"outbound":
+			lines.append({"label": "reach per $1k", "value": "≈%d" % int(round(
+				SimFunnel.OB_REACH_PER_K * float(SimFunnel.channel(s).get("ob_aud", 1.0))))})
+			lines.append({"label": "closing bought", "value": "+%.1f"
+				% SimFunnel.ob_closers(s)})
+	return lines
+
+# ─────────────────────── S8/S15 · the desk's own voice ───────────────────────
+
+## The garden is live from the garage; the S1 state covers week one.
+static func is_dormant(_state) -> bool:
+	return false
+
+## The rail's four-character read: what the week's mix costs.
+static func micro_status(state) -> String:
+	var s: GameState = state
+	var total := int(SimFunnel.spend_total(s))
+	if total <= 0:
+		return ""
+	if total < 1000:
+		return "$%d/wk" % total
+	return "$%.1fk/wk" % (float(total) / 1000.0)
+
+## S15 — the desk speaks up: the even-marginal walk, as a jump chip.
+static func suggestions(state) -> Array:
+	var s: GameState = state
+	if not _split_differs(s, _even_split(s)):
+		return []
+	return [{"label": "balance the mix — growth", "kind": "jump",
+		"payload": {"control": "do_0"}}]
+
+## The refusal made FELT: a coral wash breathes once over the cap meter and
+## dies (~0.45s, self-freeing — spawned on the draw after the refused press).
+static func _cap_pulse(b, rect: Rect2) -> void:
+	var p := _Pulse.new()
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.position = rect.position
+	p.set_deferred("size", rect.size)
+	b.pane().add_child(p)
+	var tw: Tween = b.create_tween()
+	tw.tween_method(func(a: float) -> void:
+		if is_instance_valid(p):
+			p.alpha = a
+			p.queue_redraw(), 0.9, 0.0, 0.45)
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(p):
+			p.queue_free())
+
 # ─────────────────────────────── the foot ────────────────────────────────────
 
 static func _foot(b, s: GameState) -> void:
@@ -355,3 +662,66 @@ class _PlotArt:
 				rp.append(roof[0])
 				draw_polyline(rp, DeskKit.INK, 2.6, true)
 				draw_rect(Rect2(w * 0.44, h * 0.58, w * 0.14, h * 0.28), DeskKit.INK, false, 2.4)
+
+## THE CURVE — the channel's character in the desk's own hand: the saturating
+## sweep (or outbound's straight line), the knee ticked, your spend dotted
+## down onto its bead on the curve.
+class _CurveArt:
+	extends Control
+	var font: Font
+	var linear := false
+	var dim := false
+	var sat := 1000.0
+	var xmax := 2400.0
+	var spend := 0.0
+	func _f(x: float) -> float:
+		if linear:
+			return x / maxf(xmax, 1.0)
+		return 1.0 - exp(-x / maxf(sat, 1.0))
+	func _draw() -> void:
+		var w := size.x
+		var h := size.y
+		var ax := h - 30.0
+		var top := 10.0
+		var span := ax - top
+		var ymax := maxf(_f(xmax), 0.001)
+		var ink_c := Color(DeskKit.INK, 0.35 if dim else 1.0)
+		draw_line(Vector2(0, ax), Vector2(w, ax), DeskKit.INK, 2.2)
+		draw_line(Vector2(0, ax), Vector2(0, top - 4.0), Color(DeskKit.INK, 0.5), 1.6)
+		var pts := PackedVector2Array()
+		for k in 33:
+			var fx := xmax * float(k) / 32.0
+			pts.append(Vector2(w * fx / xmax, ax - span * (_f(fx) / ymax)))
+		draw_polyline(pts, ink_c, 3.0, true)
+		if not linear and sat < xmax:
+			var kx := w * sat / xmax
+			var yy := top
+			while yy < ax:
+				draw_line(Vector2(kx, yy), Vector2(kx, minf(yy + 5.0, ax)),
+					Color(DeskKit.INK, 0.35), 1.6)
+				yy += 10.0
+			if font != null:
+				draw_string(font, Vector2(kx - 26.0, ax + 22.0), "the knee",
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(DeskKit.INK, 0.55))
+		var px := clampf(w * spend / maxf(xmax, 1.0), 0.0, w)
+		var py := ax - span * (_f(spend) / ymax)
+		var y2 := top
+		while y2 < ax - 4.0:
+			draw_line(Vector2(px, y2), Vector2(px, minf(y2 + 6.0, ax - 4.0)), DeskKit.PEN, 2.2)
+			y2 += 11.0
+		draw_circle(Vector2(px, py), 6.0, DeskKit.PEN)
+		draw_arc(Vector2(px, py), 6.0, 0.0, TAU, 12, DeskKit.INK, 2.0)
+		if font != null:
+			draw_string(font, Vector2(clampf(px - 40.0, 0.0, w - 110.0), top + 10.0),
+				"you: $%d" % int(round(spend)), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, DeskKit.PEN)
+			if dim:
+				draw_string(font, Vector2(w * 0.32, ax - span * 0.5), "the gate is closed",
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(DeskKit.INK, 0.5))
+
+## The pulse the era's ceiling answers with — a coral wash that breathes once.
+class _Pulse:
+	extends Control
+	var alpha := 0.9
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(DeskKit.PEN, alpha * 0.45))
+		draw_rect(Rect2(Vector2.ZERO, size), Color(DeskKit.PEN, alpha), false, 3.0)

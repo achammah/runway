@@ -25,6 +25,14 @@ extends RefCounted
 ## (adds/adds_org/adds_wom/adds_chan). Until the engine writes them (see the
 ## lane's coordinator package) old rows draw as ghost bars — the fog is drawn,
 ## never faked.
+##
+## DAG3 (13-binder-ux · in motion): THE PREFILL — a push press composes the
+## written move ("push <name>: <the deal's hint line>") straight into the
+## journal draft (DeskThisWeek.draft) and a calm chip says where it went;
+## rank-1 wears the push in the DO lane, Enterprise cards/rows push per deal,
+## and suggestions() hands rank-1 to THIS WEEK's chips. A Consumer source bar
+## press opens growth focused on that plot (back pill free). Week one is the
+## S1 teaching state, one per audience.
 
 const QUESTION := "who is on the way to becoming money?"
 
@@ -51,6 +59,8 @@ static func hero_summary(state) -> Dictionary:
 
 static func draw(b) -> void:
 	var s: GameState = b.state
+	if _zero_state(b, s):
+		return
 	var mode := String(b.desk.get("mode", ""))
 	match String(s.biz_who):
 		"Enterprise":
@@ -71,6 +81,129 @@ static func draw(b) -> void:
 
 static func handle(_b, _id: String) -> void:
 	pass
+
+# ═══════════════ S1 · the zero states + THE PREFILL's shared hand ════════════
+
+## S1 — the desk before anything moves is a TEACHING state, one per audience.
+static func _zero_state(b, s: GameState) -> bool:
+	if not SimFunnel.funnel(s).is_empty():
+		return false
+	var tend := func() -> void: b.focus_desk("growth", "", "in motion")
+	match String(s.biz_who):
+		"Enterprise":
+			if not (s.leads.is_empty() and s.logos.is_empty()):
+				return false
+			DeskKit.zero_state(b, {
+				"will_show": "the stage board — every buyer has a name",
+				"would_line": "deals march meeting → pilot → contract; your written pushes "
+					+ "keep them warm, the dice move them",
+				"action_label": "tend the garden",
+				"action_cb": tend,
+				"wakes_hint": "marketing books the first meeting — fund reach and the board fills",
+			})
+		"SMB":
+			if not s.leads.is_empty():
+				return false
+			DeskKit.zero_state(b, {
+				"will_show": "the hot list — the five worth a dinner",
+				"would_line": "named shops ranked by revenue-if-landed × closeness, "
+					+ "the crowd counted honestly below",
+				"action_label": "tend the garden",
+				"action_cb": tend,
+				"wakes_hint": "names arrive when a shop grows big enough to chase",
+			})
+		_:
+			if not s.metric_history.is_empty():
+				return false
+			DeskKit.zero_state(b, {
+				"will_show": "the river — who joins each week, and where from",
+				"would_line": "each locked week lands one bar: bought · friends · walked in — "
+					+ "and the word-of-mouth factor, measured",
+				"action_label": "tend the garden",
+				"action_cb": tend,
+				"wakes_hint": "the first bar arrives at your first LOCK IN",
+			})
+	return true
+
+## The one deal the week's move belongs to: SMB = the hot list's rank 1,
+## Enterprise = the hottest deal on the board.
+static func _rank1(s: GameState) -> Dictionary:
+	if s.leads.is_empty():
+		return {}
+	if String(s.biz_who) == "Enterprise":
+		var order := SimPipeline.leads_by_heat(s)
+		return s.leads[order[0]] if not order.is_empty() else {}
+	var ranked := _ranked(s)
+	return s.leads[int(ranked[0])] if not ranked.is_empty() else {}
+
+## The written move, composed in plain words: the deal's own hint line when
+## the world wrote one, else the honest facts.
+static func _move_text(lead: Dictionary) -> String:
+	var lname := String(lead.get("name", "a prospect"))
+	var flavor := String(lead.get("flavor", "")).strip_edges()
+	if flavor != "":
+		return "push %s: %s" % [lname, flavor]
+	return "push %s: %d seats sitting at %s" % [lname,
+		int(lead.get("seats", 0)), String(lead.get("stage", "meeting"))]
+
+## THE PREFILL — the binder DRAFTS the decision: the journal's composer
+## receives the written move (the player edits freely); nothing else moves.
+static func _prefill(b, lead: Dictionary) -> void:
+	DeskThisWeek.draft = _move_text(lead)
+	b.desk["drafted"] = String(lead.get("name", ""))
+
+## The calm confirmation: a chip saying where the words went — pressing it
+## walks there with a back pill; it dies when the draft stops being ours.
+static func _drafted_chip(b) -> void:
+	var dname := String(b.desk.get("drafted", ""))
+	if dname == "" or not DeskThisWeek.draft.begins_with("push " + dname):
+		return
+	var text := "drafted — see THIS WEEK"
+	var tw: float = b.font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 19).x
+	DeskKit.chip(b, 1130.0 - tw - 26.0, 70.0, {"text": text, "kind": "person",
+		"selected": true, "on_press": func() -> void:
+			b.focus_desk("this week", "", "in motion")})
+
+## S3 — THE PREFILL in the one slot: rank-1's push writes the move into the
+## journal draft; the chip says where it went (jumping would yank context).
+static func _do_push_lane(b, s: GameState) -> void:
+	var lead := _rank1(s)
+	if lead.is_empty():
+		return
+	DeskKit.do_lane(b, [{"label": "push — %s" % String(lead.get("name", "a prospect")),
+		"tier": "", "cb": func() -> void: _prefill(b, lead)}])
+
+## S5 — the hero against the binder's last open.
+static func _hero_arrow(b, val: int, x: float, y: float) -> void:
+	var hp: String = b.seen_prev("in motion", "hero")
+	if b.seen("in motion", "hero", str(val)) and hp.is_valid_int():
+		DeskKit.delta_arrow(b, x, y, float(val), float(hp.to_int()))
+
+## S15 — the desk speaks up: rank-1's push, ready to prefill THE WEEK'S CHIPS.
+static func suggestions(state) -> Array:
+	var s: GameState = state
+	var lead := _rank1(s)
+	if lead.is_empty():
+		return []
+	return [{"label": "push — %s" % String(lead.get("name", "a prospect")),
+		"kind": "prefill", "payload": _move_text(lead)}]
+
+## S8 — dormant before launch with nothing named: no river, no board, no list.
+static func is_dormant(state) -> bool:
+	var s: GameState = state
+	return not s.has_flag("launched") and s.leads.is_empty() and s.logos.is_empty()
+
+## S8 — the rail's read, by audience: deals, names, or the week's joiners.
+static func micro_status(state) -> String:
+	var s: GameState = state
+	match String(s.biz_who):
+		"Enterprise":
+			return ("%d deals" % s.leads.size()) if not s.leads.is_empty() else ""
+		"SMB":
+			return ("%d named" % s.leads.size()) if not s.leads.is_empty() else ""
+		_:
+			var f := SimFunnel.funnel(s)
+			return ("≈%d/wk" % int(round(SimFunnel.num(f, "adds")))) if not f.is_empty() else ""
 
 # ═══════════════════════════════ CONSUMER ════════════════════════════════════
 
@@ -95,8 +228,10 @@ static func _consumer(b, s: GameState) -> void:
 	var ws: Label = b.label("word of mouth, measured", Vector2(760.0, 46.0), 17,
 		Color(DeskKit.INK, 0.5), 370.0)
 	ws.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	b.label("consumer — nobody has a name until they pay: the page is rates, sources and word of mouth",
-		Vector2(DeskKit.X_ID, 74.0), DeskKit.LAW, Color(DeskKit.INK, 0.5), 1100.0)
+	# S2 — red replaces the law line when this desk carries asks
+	if not DeskKit.ask_strip(b, "in motion", DeskKit.X_ID, 74.0, 1100.0, "push what's cooling"):
+		b.label("consumer — nobody has a name until they pay: the page is rates, sources and word of mouth",
+			Vector2(DeskKit.X_ID, 74.0), DeskKit.LAW, Color(DeskKit.INK, 0.5), 1100.0)
 	var y := DeskKit.pen_rule(b, 112.0) + 8.0
 	y = _river_card(b, s, y)
 	_sources_card(b, s, y)
@@ -198,11 +333,20 @@ static func _sources_card(b, s: GameState, y: float) -> void:
 	var hi := 1.0
 	for r in rows:
 		hi = maxf(hi, float((r as Dictionary).get("value", 0.0)))
+	# S2b/S7 — a source bar is a door: growth opens focused on that plot,
+	# the back pill comes free from the jump's source
+	var plot_keys := {"the ads": "ads", "the library": "content",
+		"referrals": "referrals", "cold outreach": "outbound"}
 	for r2 in rows:
 		var rd: Dictionary = r2
 		b.label(String(rd.get("label", "")).to_upper(), Vector2(cx, by), 18, DeskKit.INK, 170.0)
 		var w := 24.0 + 300.0 * (float(rd.get("value", 0.0)) / hi)
 		DeskKit.meter(b, cx + 180.0, by, w, 1.0, rd.get("col", DeskKit.BLUE), String(rd.get("text", "")))
+		var pk := String(plot_keys.get(String(rd.get("label", "")), ""))
+		if pk != "":
+			var hit := DeskKit.word(b, "", Vector2(cx, by - 4.0), func() -> void:
+				b.focus_desk("growth", "plot_" + pk, "in motion"), 18, DeskKit.INK, 540.0)
+			hit.size = Vector2(540.0, 36.0)
 		by += 36.0
 	if src.size() > 4:
 		DeskKit.word(b, "+%d more ->" % (src.size() - 4), Vector2(cx, by - 4.0), func() -> void:
@@ -289,10 +433,15 @@ static func _smb(b, s: GameState) -> void:
 	var cr: Label = b.label("close rate %d%%" % int(round(SimFunnel.num(f, "close_rate") * 100.0))
 		if not f.is_empty() else "close rate ?", Vector2(800.0, 14.0), 27, DeskKit.INK, 330.0)
 	cr.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	b.label("SMB — dozens of small shops, a handful worth chasing by name",
-		Vector2(DeskKit.X_ID, 74.0), DeskKit.LAW, Color(DeskKit.INK, 0.5), 1100.0)
+	_hero_arrow(b, _smb_in_motion(s, f), bx + 266.0, 26.0)
+	# S2 — red replaces the law line when this desk carries asks
+	if not DeskKit.ask_strip(b, "in motion", DeskKit.X_ID, 74.0, 1100.0, "push what's cooling"):
+		b.label("SMB — dozens of small shops, a handful worth chasing by name",
+			Vector2(DeskKit.X_ID, 74.0), DeskKit.LAW, Color(DeskKit.INK, 0.5), 1100.0)
 	var y := DeskKit.pen_rule(b, 112.0) + 8.0
 	y = _hot_list(b, s, f, y, HOT_SHOW)
+	_do_push_lane(b, s)
+	_drafted_chip(b)
 	DeskKit.footer(b, {
 		"computed": "",
 		"rules": "SMB is a hybrid: name the five that deserve a dinner, count the forty that don't · rank 1 is this week's journal move",
@@ -370,6 +519,8 @@ static func _smb_all(b, s: GameState) -> void:
 		b.desk["mode"] = "")
 	var f := SimFunnel.funnel(s)
 	_hot_list(b, s, f, 64.0, s.leads.size())
+	_do_push_lane(b, s)
+	_drafted_chip(b)
 	DeskKit.footer(b, {"computed": "",
 		"rules": "every named account, ranked by revenue-if-landed × closeness",
 		"y": 806.0, "rules_y": 840.0})
@@ -383,6 +534,8 @@ static func _enterprise(b, s: GameState) -> void:
 		_ent_slim(b, s, y)
 	else:
 		_ent_board(b, s, y)
+	_do_push_lane(b, s)
+	_drafted_chip(b)
 	_ent_foot(b, s)
 
 static func _ent_hero(b, s: GameState) -> void:
@@ -406,8 +559,11 @@ static func _ent_hero(b, s: GameState) -> void:
 	var ll: Label = b.label("%d logos · %d seats live" % [s.logos.size(), seats],
 		Vector2(770.0, 48.0), 17, Color(DeskKit.INK, 0.5), 360.0)
 	ll.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	b.label("enterprise — every buyer has a name and a dinner budget",
-		Vector2(DeskKit.X_ID, 74.0), DeskKit.LAW, Color(DeskKit.INK, 0.5), 1100.0)
+	_hero_arrow(b, s.leads.size(), bx + 328.0, 26.0)
+	# S2 — red replaces the law line when this desk carries asks
+	if not DeskKit.ask_strip(b, "in motion", DeskKit.X_ID, 74.0, 1100.0, "push what's cooling"):
+		b.label("enterprise — every buyer has a name and a dinner budget",
+			Vector2(DeskKit.X_ID, 74.0), DeskKit.LAW, Color(DeskKit.INK, 0.5), 1100.0)
 
 static func _ent_stages(s: GameState) -> Array:
 	if s.era_index() >= 2:
@@ -449,8 +605,15 @@ static func _ent_board(b, s: GameState, y: float) -> void:
 				SimPipeline.heat_word(heat), int(lead.get("age_weeks", 0))]]
 			if dies <= 2:
 				facts.append("dies in %d wk%s" % [dies, "" if dies == 1 else "s"])
+			# THE PREFILL, per deal: the card press drafts the push (no deal moves)
+			var card_y := float(col.get("cursor", y))
 			DeskKit.wall_card(b, col, {"title": String(lead.get("name", "a prospect")),
-				"facts": facts, "ready": dies <= 2})
+				"facts": facts, "ready": dies <= 2,
+				"on_press": func() -> void: _prefill(b, lead)})
+			# S2b — the first cooling deal's card is the ask's landing switch
+			if heat <= 16 and not b.has_control("push_cold"):
+				b.mark_control("push_cold", Rect2(float(col.get("content_x", x)), card_y,
+					w - 16.0, float(col.get("cursor", y)) - card_y - 10.0))
 		if here.size() > BOARD_CARDS:
 			b.label("+%d" % (here.size() - BOARD_CARDS),
 				Vector2(x + 10.0, float(col.get("cursor", y)) + 2.0), 21,
@@ -476,6 +639,7 @@ static func _ent_slim(b, s: GameState, y: float) -> void:
 		var heat := int(lead.get("heat", 0))
 		var dies := SimPipeline.weeks_to_cold(heat, decay)
 		var dying := dies <= 2
+		var row_y := y
 		y = DeskKit.hero_row(b, y, {
 			"name": String(lead.get("name", "a prospect")),
 			"facts": "%s · %d seats · %s · wk %d%s" % [String(lead.get("stage", "meeting")),
@@ -483,7 +647,10 @@ static func _ent_slim(b, s: GameState, y: float) -> void:
 				int(lead.get("age_weeks", 0)), (" · dies in %d wk" % dies) if dying else ""],
 			"value": "≈$%s/wk" % b.fmt(int(round(float(lead.get("seats", 0)) * unit))),
 			"col": DeskKit.PEN if dying else DeskKit.INK,
-			"sev": 3 if dying else 0})
+			"sev": 3 if dying else 0,
+			"on_press": func() -> void: _prefill(b, lead)})
+		if heat <= 16 and not b.has_control("push_cold"):
+			b.mark_control("push_cold", Rect2(DeskKit.X_ID, row_y, 1120.0, 44.0))
 		shown += 1
 	DeskKit.more(b, Vector2(DeskKit.X_ID, y), s.leads.size() - shown, "sit colder below these")
 
@@ -512,9 +679,11 @@ static func _ent_column_focus(b, s: GameState, stage: String) -> void:
 				(" · " + String(lead.get("flavor", ""))) if String(lead.get("flavor", "")) != "" else ""],
 			"value": "≈$%s/wk" % b.fmt(int(round(float(lead.get("seats", 0)) * unit))),
 			"col": DeskKit.PEN if dying else DeskKit.INK,
-			"sev": 3 if dying else 0})
+			"sev": 3 if dying else 0,
+			"on_press": func() -> void: _prefill(b, lead)})
 	if not any:
 		DeskKit.empty(b, Vector2(DeskKit.X_ID, y), "nothing sits at this gate this week.", "")
+	_drafted_chip(b)
 	_ent_foot(b, s)
 
 static func _ent_foot(b, s: GameState) -> void:

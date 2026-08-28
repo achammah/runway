@@ -1884,7 +1884,7 @@ namespace Runway.Core
             // ── the spine's own rows: the three conditions predating the registry
             if (OffersAnyUnpriced(state))
                 rows.Add(new AttentionItem { Desk = "pricing", Key = "unpriced", Severity = 2,
-                    Label = "unpriced offer — billing at going rate" });
+                    Label = "unpriced offer — billing at going rate", Control = "set_price" });
             if (state.LastPnl != null && state.LastPnl.Net < 0)
                 rows.Add(new AttentionItem { Desk = "the ledger", Key = "losing_week", Severity = 2,
                     Label = "losing week — burn beat revenue" });
