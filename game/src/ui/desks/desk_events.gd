@@ -13,9 +13,16 @@ extends RefCounted
 ##
 ## READ-MARKS are durable but never game-state: they live beside the tour
 ## flag in the user:// settings store, keyed per-run by sim_seed
-## (user://mail_read_<seed>.json — {letter_key: true}). No engine field is
-## touched; a save carries no read-marks, exactly like the tour.
+## (user://mail_read_<seed>.json — {letter_key: true | "answered"}). No engine
+## field is touched; a save carries no read-marks, exactly like the tour.
 ## Read letters FOLD BY WEEK; the fold row reopens them.
+##
+## DAG3 (13-binder § events): action letters carry their DO inline — [answer]
+## lands on the ask's desk via jump_to_ask (spotlit when the row names its
+## control), [read terms] opens the paper's desk. Pressing the DO auto-files
+## the letter with the answered mark (the store's "answered" value) and the
+## filed row wears ✓. The LOG divider badge counts unread ACTION letters only
+## (unread_action_count — the rail reads it).
 
 const QUESTION := "what has the world sent us?"
 
@@ -165,12 +172,54 @@ static func _read_marks(s: GameState) -> Dictionary:
 	return parsed if parsed is Dictionary else {}
 
 static func _mark_read(s: GameState, key: String) -> void:
+	_write_mark(s, key, true)
+
+## The answered mark — the same store, a stronger value. An answered letter
+## is read AND filed with its ✓; re-answering never downgrades it.
+static func _mark_answered(s: GameState, key: String) -> void:
+	_write_mark(s, key, "answered")
+
+static func _write_mark(s: GameState, key: String, value: Variant) -> void:
 	var marks := _read_marks(s)
-	marks[key] = true
+	if String(marks.get(key, "")) == "answered" and not (value is String):
+		return
+	marks[key] = value
 	var f := FileAccess.open(_marks_path(s), FileAccess.WRITE)
 	if f != null:
 		f.store_string(JSON.stringify(marks))
 		f.close()
+
+static func _is_answered(marks: Dictionary, key: String) -> bool:
+	return marks.get(key) is String and String(marks.get(key)) == "answered"
+
+## THE RAIL'S NUMBER (13-binder § events): unread ACTION letters only — mail
+## that needs an answer and has not even been opened. The LOG divider badge
+## renders this; the tab's micro-status says the same count in words.
+static func unread_action_count(state) -> int:
+	var s: GameState = state
+	var marks := _read_marks(s)
+	var n := 0
+	for l in _letters(s):
+		var ld: Dictionary = l
+		if bool(ld.get("action", false)) and not marks.has(String(ld.get("key", ""))):
+			n += 1
+	return n
+
+# ── S8/S10 — the rail speaks for the desk (has-method-guarded, never must) ────
+
+## The tray never sleeps — the world writes in every era.
+static func is_dormant(_state) -> bool:
+	return false
+
+## The tab's four characters: how much mail waits.
+static func micro_status(state) -> String:
+	var s: GameState = state
+	var marks := _read_marks(s)
+	var unread := 0
+	for l in _letters(s):
+		if not marks.has(String((l as Dictionary).get("key", ""))):
+			unread += 1
+	return ("%d unread" % unread) if unread > 0 else ""
 
 # ── the page ──────────────────────────────────────────────────────────────────
 
@@ -192,14 +241,39 @@ static func draw(b) -> void:
 
 	# HERO — the unread count answers the question
 	var hs := hero_summary(s)
-	var y := DeskKit.hero_band(b, String(hs.get("big", "")), String(hs.get("line", "")),
+	var hero_big := String(hs.get("big", ""))
+	var y := DeskKit.hero_band(b, hero_big, String(hs.get("line", "")),
 		DeskKit.ALERT if unread.size() > 0 and bool((unread[0] as Dictionary).get("action", false))
 		else DeskKit.INK)
+	# S5 — the arrow beside the count: more or less mail than last open
+	var prev: String = b.seen_prev("events", "unread")
+	var moved: bool = b.seen("events", "unread", str(unread.size()))
+	if moved and prev.is_valid_int():
+		var bw: float = b.font().get_string_size(hero_big,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, DeskKit.HERO_BIG).x
+		DeskKit.delta_arrow(b, DeskKit.X_ID + bw + 16.0, 34.0,
+			float(unread.size()), float(prev.to_int()))
+	# S4 — the hero count is pressable: the tray, counted out
+	DeskKit.press_receipt(b, Rect2(DeskKit.X_ID, 6.0, 460.0, 64.0), "the tray, counted", [
+		{"label": "letters on file", "value": str(letters.size())},
+		{"label": "need an answer", "value": str(_action_count(letters)),
+			"col": DeskKit.PEN if _action_count(letters) > 0 else DeskKit.INK},
+		{"label": "unread", "value": str(unread.size())}])
 
 	if letters.is_empty():
-		DeskKit.empty(b, Vector2(DeskKit.X_ID, y),
-			"the tray is empty — the world has not written yet.",
-			"deadlines, applications, filed notes and the street's moves all land here.")
+		# S1 — the zero state teaches what the tray WILL hold and points at
+		# the desk that makes the world start writing.
+		var zero_cb := func() -> void:
+			b.focus_desk("the street", "", "events")
+		DeskKit.zero_state(b, {
+			"will_show": "letters and notices — the world writing to you",
+			"would_line": "a letter files with its week stamp, its money in "
+				+ "its own column, and its desk one press away",
+			"action_label": "read the street — the rivals",
+			"action_cb": zero_cb,
+			"wakes_hint": "the tray fills as the world acts — deadlines, "
+				+ "applications, asks, the rivals' moves"})
+		return
 	# THE UNREAD — bold, newest first, the dot on action letters. THE COLLAPSE
 	# LAW: a letter that needs an answer never folds away; the newest quiet
 	# letters fill whatever the face-up cap has left.
@@ -216,7 +290,7 @@ static func draw(b) -> void:
 	face_up.sort_custom(func(a, c) -> bool:
 		return int((a as Dictionary).get("wk", 0)) > int((c as Dictionary).get("wk", 0)))
 	for ld2 in face_up:
-		y = _letter_row(b, s, y, ld2 as Dictionary, false)
+		y = _letter_row(b, s, y, ld2 as Dictionary, false, false)
 	var hidden := unread.size() - face_up.size()
 	if hidden > 0:
 		b.label("+%d more unread below the fold" % hidden,
@@ -238,7 +312,8 @@ static func draw(b) -> void:
 					Color(DeskKit.INK, 0.5), 300.0)
 				y += 26.0
 				for ld3 in pile:
-					y = _letter_row(b, s, y, ld3, true)
+					y = _letter_row(b, s, y, ld3, true,
+						_is_answered(read, String((ld3 as Dictionary).get("key", ""))))
 			else:
 				var wkv := int(wk2)
 				DeskKit.word(b, "wk %d — %d read  ->" % [wkv, pile.size()],
@@ -261,13 +336,23 @@ static func _action_count(letters: Array) -> int:
 			n += 1
 	return n
 
-## One letter row: dot when action · the text (bold when unread) · the money
-## in its own column · the stamp · the desk jump. The press marks it read.
-static func _letter_row(b, s: GameState, y: float, ld: Dictionary, is_read: bool) -> float:
+## One letter row: dot when action (✓ once answered) · the text (bold when
+## unread) · the money in its own column · the stamp · the DO. An action
+## letter's DO is its verb — [answer] via jump_to_ask (spotlit when the ask
+## row names its control), [read terms] on offer/board paper — and pressing
+## it auto-files the letter with the answered mark. Quiet letters keep the
+## plain desk jump; every press marks the letter read.
+static func _letter_row(b, s: GameState, y: float, ld: Dictionary, is_read: bool,
+		answered: bool) -> float:
 	var x := DeskKit.X_ID
-	if bool(ld.get("action", false)):
+	var is_action := bool(ld.get("action", false))
+	if answered:
+		# the filed ✓ — the answered mark, quiet sage, where the dot stood
+		b.label("✓", Vector2(x + 4.0, y - 2.0), DeskKit.DETAIL, DeskKit.SAGE, 30.0)
+	elif is_action:
 		DeskKit.sev_dot(b, x, y + 4.0, 2)
-	b.label(String(ld.get("text", "")), Vector2(x + 36.0, y),
+	# letter texts carry world names (S6): one measured line, never a wrap
+	DeskKit.fit_line(b, String(ld.get("text", "")), Vector2(x + 36.0, y),
 		26 if not is_read else DeskKit.DETAIL,
 		DeskKit.INK if not is_read else Color(DeskKit.INK, 0.55), 600.0)
 	var val := String(ld.get("value", ""))
@@ -279,10 +364,44 @@ static func _letter_row(b, s: GameState, y: float, ld: Dictionary, is_read: bool
 		Color(DeskKit.INK, 0.45), 130.0)
 	var dsk := String(ld.get("desk", ""))
 	var key := String(ld.get("key", ""))
-	DeskKit.word(b, dsk + " ->", Vector2(x + 962.0, y - 4.0), func() -> void:
-		_mark_read(b.state, key)
-		b.focus_desk(dsk), DeskKit.DETAIL, DeskKit.PEN, 190.0)
+	if is_action and not answered:
+		var verb := "read terms" if (key.begins_with("mna:") or key.begins_with("buyout:")
+			or key.begins_with("board:")) else "answer"
+		DeskKit.word(b, verb + " ->", Vector2(x + 962.0, y - 4.0), func() -> void:
+			_mark_answered(b.state, key)
+			_do_jump(b, ld), DeskKit.DETAIL, DeskKit.PEN, 190.0)
+	else:
+		DeskKit.word(b, dsk + " ->", Vector2(x + 962.0, y - 4.0), func() -> void:
+			_mark_read(b.state, key)
+			b.focus_desk(dsk, "", "events"),
+			DeskKit.DETAIL, DeskKit.PEN if not is_read else Color(DeskKit.INK, 0.55), 190.0)
 	return y + 38.0
+
+## THE ANSWER'S LANDING (13-binder § events, best-effort mapping): find the
+## attention row this letter stands behind — same desk once aliased, the name
+## token preferred when the key carries one (ask:NAME:wk) — and jump_to_ask
+## it so a named control lands spotlit. No row, or no control anywhere on the
+## desk: a plain focus_desk. Either way the back pill remembers "events".
+static func _do_jump(b, ld: Dictionary) -> void:
+	var dsk := String(ld.get("desk", ""))
+	var want := String(Binder.LEGACY_TO_DESK.get(dsk, dsk))
+	var key := String(ld.get("key", ""))
+	var name_tok := key.get_slice(":", 1) if key.begins_with("ask:") else ""
+	var fallback: Dictionary = {}
+	for r in SimEngine.attention_items(b.state):
+		var rd: Dictionary = r
+		var rdesk := String(rd.get("desk", ""))
+		if String(Binder.LEGACY_TO_DESK.get(rdesk, rdesk)) != want:
+			continue
+		if name_tok != "" and String(rd.get("label", "")).findn(name_tok) >= 0:
+			b.jump_to_ask(rd, "events")
+			return
+		if fallback.is_empty():
+			fallback = rd
+	if not fallback.is_empty() and String(fallback.get("control", "")) != "":
+		b.jump_to_ask(fallback, "events")
+	else:
+		b.focus_desk(dsk, "", "events")
 
 static func handle(b, id: String) -> void:
 	if id.begins_with("go:"):

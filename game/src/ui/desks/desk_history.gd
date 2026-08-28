@@ -116,9 +116,17 @@ static func draw(b) -> void:
 		"the run's own ledger — a row per week, the receipts behind each",
 		DeskKit.INK)
 	if rows.is_empty():
-		DeskKit.empty(b, Vector2(DeskKit.X_ID, y),
-			"the book is blank — the first LOCK IN writes the first row.",
-			"play the week; the ledger remembers everything after that.")
+		# S1 — the zero state teaches what the book WILL hold and hands over
+		# the one action that starts it: writing the first move.
+		var zero_cb := func() -> void:
+			b.focus_desk("this week", "move_field", "history")
+		DeskKit.zero_state(b, {
+			"will_show": "a row per week — cash, net, customers, the headline",
+			"would_line": "week 1 would file as: wk 1 · your opening cash · "
+				+ "the week's net · what the DM wrote about it",
+			"action_label": "write the move — this week",
+			"action_cb": zero_cb,
+			"wakes_hint": "wakes at the first LOCK IN — the roll writes row one"})
 		return
 
 	# SPARKLINES — the shape of the run before the rows
@@ -193,16 +201,37 @@ static func draw(b) -> void:
 			_headline(s, wk).left(44), "receipts ->"],
 			{"col": DeskKit.SAGE if net >= 0 else DeskKit.PEN,
 				"on_press": _open_receipts(b, wk)})
+	# S4 — the double-ruled TOTAL is pressable: the terms that made the number.
+	var total_y := float(sheet.get("cursor", 0.0))
 	DeskKit.ledger_total(b, sheet, "the run so far", "%s$%s"
 		% ["+" if total_net >= 0 else "−", b.fmt(absi(total_net))],
 		DeskKit.SAGE if total_net >= 0 else DeskKit.PEN)
-	# FILINGS — answered momentary tabs file here as flagged rows
+	DeskKit.press_receipt(b, Rect2(DeskKit.X_ID, total_y, 1120.0, 48.0),
+		"the run so far = Σ weekly net", [
+			{"label": "cash at wk %d" % _wk(rows[0]),
+				"value": "$%s" % b.fmt(int((rows[0] as Dictionary).get("cash", 0)))},
+			{"label": "cash now", "value": "$%s" % b.fmt(s.cash)},
+			{"label": "Σ net across %d weeks" % rows.size(),
+				"value": "%s$%s" % ["+" if total_net >= 0 else "−", b.fmt(absi(total_net))],
+				"col": DeskKit.SAGE if total_net >= 0 else DeskKit.PEN}])
+	# FILINGS — answered momentary tabs file here as flagged rows; the ★ row
+	# presses through to the receipts of the week it was answered (13-binder
+	# § history — wired here, ledger_memo itself carries no press).
 	if s.exit_value > 0:
+		var sold_wk := s.mna_last_week if s.mna_last_week > 0 else _wk(rows[rows.size() - 1])
+		var sold_y := float(sheet.get("cursor", 0.0))
 		DeskKit.ledger_memo(b, sheet, "★ filed: the company was sold",
 			"$%s" % b.fmt(s.exit_value), "the buyout was accepted")
+		var sold_hit := DeskKit.word(b, "", Vector2(DeskKit.X_ID, sold_y),
+			_open_receipts(b, sold_wk), DeskKit.DETAIL, DeskKit.INK, 1120.0)
+		sold_hit.size = Vector2(1120.0, 40.0)
 	elif s.mna.is_empty() and s.mna_last_week > 0:
+		var gone_y := float(sheet.get("cursor", 0.0))
 		DeskKit.ledger_memo(b, sheet, "★ filed: a buyout offer came and went",
 			"", "around wk %d — answered or expired" % s.mna_last_week)
+		var gone_hit := DeskKit.word(b, "", Vector2(DeskKit.X_ID, gone_y),
+			_open_receipts(b, s.mna_last_week), DeskKit.DETAIL, DeskKit.INK, 1120.0)
+		gone_hit.size = Vector2(1120.0, 40.0)
 	y = DeskKit.ledger_end(b, sheet)
 	if older > 0 and not all_open and y <= 800.0:
 		DeskKit.fold_row(b, DeskKit.X_ID, y, older, "weeks", func() -> void:
@@ -220,6 +249,17 @@ static func draw(b) -> void:
 		"rules": "a row per week: what the week earned, what it cost, and the receipts "
 			+ "behind it · the total must square with the bank",
 		"y": 820.0, "rules_y": 852.0})
+
+# ── S8/S10 — the rail speaks for the desk (has-method-guarded, never must) ────
+
+## The book never sleeps — it is only ever short.
+static func is_dormant(_state) -> bool:
+	return false
+
+## The tab's four characters: how long the run already is.
+static func micro_status(state) -> String:
+	var n: int = (state as GameState).metric_history.size()
+	return ("%d wks" % n) if n > 0 else ""
 
 ## The press that opens a week's receipts, bound per-row.
 static func _open_receipts(b, wk: int) -> Callable:

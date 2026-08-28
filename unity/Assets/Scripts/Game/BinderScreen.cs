@@ -30,7 +30,7 @@ namespace Runway.Game
             { "REVENUE", "COSTS", "THE COMPANY", "THE LOG" };
         static readonly Color[] GroupCols =
             { DrawnUI.Sage, DrawnUI.Coral, DrawnUI.Blue, DrawnUI.Yellow };
-        static readonly string[][] GroupDesks =
+        public static readonly string[][] GroupDesks =
         {
             new[] { "offers", "customers", "in motion", "growth" },
             new[] { "spend", "team", "recruitment", "bills", "the bank", "the works" },
@@ -605,7 +605,16 @@ namespace Runway.Game
                                             y + 14f, 15f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f),
                                             58f, TextAlignmentOptions.TopRight);
                 cnt.raycastTarget = false;
-                if (!open && gSev > 0)
+                // THE LOG's corner is a COUNT badge instead (13-binder §
+                // events): unread ACTION letters only — the desk provides
+                // the number.
+                if (gi == 3 && !open)
+                {
+                    int nAct = DeskEvents.UnreadActionCount(_st);
+                    if (nAct > 0)
+                        DeskKit.CountBadge(_rail, RailX + RailBoxW - 26f, y - 6f, nAct);
+                }
+                else if (!open && gSev > 0)
                 {
                     // the red bang chip on the closed divider header
                     var chip = DrawnUI.Fill(_rail, "bang", DeskKit.Alert,

@@ -587,8 +587,21 @@ func _build_rail() -> void:
 		cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		cnt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_rail.add_child(cnt)
-		# a closed divider with attention: the red bang chip climbs onto it
-		if not open and g_sev > 0:
+		# a closed divider with attention: the red bang chip climbs onto it.
+		# THE LOG's corner is a COUNT badge instead (13-binder § events):
+		# unread ACTION letters only — mail needing an answer, not ambient
+		# severity; the desk provides the number.
+		if gi == 3 and not open:
+			var n_act := DeskEvents.unread_action_count(state)
+			if n_act > 0:
+				var cbd := DeskKit._CountBadge.new()
+				cbd.count = n_act
+				cbd.font = _font_d
+				cbd.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				cbd.position = Vector2(RAIL_X + RAIL_BOX_W - 26.0, y - 6.0)
+				cbd.set_deferred("size", Vector2(22.0, 22.0))
+				_rail.add_child(cbd)
+		elif not open and g_sev > 0:
 			var chip := _BangChip.new()
 			chip.pulse = g_sev >= 3
 			chip.font = _font_d

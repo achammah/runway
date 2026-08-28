@@ -22,7 +22,15 @@ namespace Runway.Game
     ///
     /// READ-MARKS live beside the tour flag in the engine's local store,
     /// keyed per-run by sim seed (mail_read_&lt;seed&gt;.txt, one letter key
-    /// per line — device-local UX state, never in a save).
+    /// per line, "\tanswered" appended once answered — device-local UX
+    /// state, never in a save).
+    ///
+    /// DAG3 (13-binder § events): action letters carry their DO inline —
+    /// [answer] lands on the ask's desk via JumpToAsk (spotlit when the row
+    /// names its control), [read terms] opens the paper's desk. Pressing the
+    /// DO auto-files the letter with the answered mark and the filed row
+    /// wears ✓. The LOG divider badge counts unread ACTION letters only
+    /// (UnreadActionCount — the rail reads it).
     /// </summary>
     public static class DeskEvents
     {
@@ -50,12 +58,12 @@ namespace Runway.Game
         public static string[] HeroSummary(GameState s)
         {
             List<Letter> letters = Letters(s);
-            HashSet<string> read = ReadMarks(s);
+            Dictionary<string, string> read = ReadMarks(s);
             int unread = 0;
             string newest = "";
             for (int i = 0; i < letters.Count; i++)
             {
-                if (read.Contains(letters[i].Key)) continue;
+                if (read.ContainsKey(letters[i].Key)) continue;
                 unread += 1;
                 if (newest == "") newest = letters[i].Text;
             }
@@ -65,6 +73,38 @@ namespace Runway.Game
                 return new[] { "all read",
                     string.Format("{0} letters filed by week", letters.Count) };
             return new[] { string.Format("{0} unread", unread), newest };
+        }
+
+        /// <summary>THE RAIL'S NUMBER (13-binder § events): unread ACTION
+        /// letters only — mail that needs an answer and has not even been
+        /// opened. The LOG divider badge renders this.</summary>
+        public static int UnreadActionCount(GameState s)
+        {
+            Dictionary<string, string> marks = ReadMarks(s);
+            int n = 0;
+            List<Letter> letters = Letters(s);
+            for (int i = 0; i < letters.Count; i++)
+                if (letters[i].Action && !marks.ContainsKey(letters[i].Key)) n += 1;
+            return n;
+        }
+
+        // ── S8/S10 — the rail speaks for the desk (probe-guarded, never must) ──
+
+        /// The tray never sleeps — the world writes in every era.
+        public static bool IsDormant(GameState s)
+        {
+            return false;
+        }
+
+        /// The tab's four characters: how much mail waits.
+        public static string MicroStatus(GameState s)
+        {
+            Dictionary<string, string> marks = ReadMarks(s);
+            int unread = 0;
+            List<Letter> letters = Letters(s);
+            for (int i = 0; i < letters.Count; i++)
+                if (!marks.ContainsKey(letters[i].Key)) unread += 1;
+            return unread > 0 ? unread + " unread" : "";
         }
 
         static List<Letter> Letters(GameState s)
@@ -221,14 +261,21 @@ namespace Runway.Game
                 string.Format("mail_read_{0}.txt", s.SimSeed));
         }
 
-        static HashSet<string> ReadMarks(GameState s)
+        /// One key per line; "key\tanswered" once answered. A bare line from
+        /// an older tray reads as plain read — no book loses its marks.
+        static Dictionary<string, string> ReadMarks(GameState s)
         {
-            var outp = new HashSet<string>();
+            var outp = new Dictionary<string, string>();
             try
             {
                 if (File.Exists(MarksPath(s)))
                     foreach (string line in File.ReadAllLines(MarksPath(s)))
-                        if (!string.IsNullOrEmpty(line)) outp.Add(line);
+                    {
+                        if (string.IsNullOrEmpty(line)) continue;
+                        int tab = line.IndexOf('\t');
+                        if (tab < 0) outp[line] = "";
+                        else outp[line.Substring(0, tab)] = line.Substring(tab + 1);
+                    }
             }
             catch (Exception) { }
             return outp;
@@ -236,16 +283,38 @@ namespace Runway.Game
 
         static void MarkRead(GameState s, string key)
         {
+            WriteMark(s, key, "");
+        }
+
+        /// The answered mark — the same store, a stronger value; re-reading
+        /// never downgrades it.
+        static void MarkAnswered(GameState s, string key)
+        {
+            WriteMark(s, key, "answered");
+        }
+
+        static void WriteMark(GameState s, string key, string value)
+        {
             try
             {
-                HashSet<string> marks = ReadMarks(s);
-                if (marks.Add(key))
-                {
-                    var lines = new List<string>(marks);
-                    File.WriteAllLines(MarksPath(s), lines.ToArray());
-                }
+                Dictionary<string, string> marks = ReadMarks(s);
+                string cur;
+                if (marks.TryGetValue(key, out cur) && cur == "answered"
+                    && value != "answered") return;
+                if (marks.TryGetValue(key, out cur) && cur == value) return;
+                marks[key] = value;
+                var lines = new List<string>();
+                foreach (KeyValuePair<string, string> kv in marks)
+                    lines.Add(kv.Value == "" ? kv.Key : kv.Key + "\t" + kv.Value);
+                File.WriteAllLines(MarksPath(s), lines.ToArray());
             }
             catch (Exception) { }
+        }
+
+        static bool IsAnswered(Dictionary<string, string> marks, string key)
+        {
+            string v;
+            return marks.TryGetValue(key, out v) && v == "answered";
         }
 
         // ── the page ───────────────────────────────────────────────────────
@@ -254,13 +323,13 @@ namespace Runway.Game
         {
             GameState s = b.State;
             List<Letter> letters = Letters(s);
-            HashSet<string> read = ReadMarks(s);
+            Dictionary<string, string> read = ReadMarks(s);
             var unread = new List<Letter>();
             var readByWk = new SortedDictionary<int, List<Letter>>();
             for (int i = 0; i < letters.Count; i++)
             {
                 Letter ld = letters[i];
-                if (read.Contains(ld.Key))
+                if (read.ContainsKey(ld.Key))
                 {
                     if (!readByWk.ContainsKey(ld.Wk)) readByWk[ld.Wk] = new List<Letter>();
                     readByWk[ld.Wk].Add(ld);
@@ -272,11 +341,45 @@ namespace Runway.Game
             string[] hs = HeroSummary(s);
             float y = DeskKit.HeroBand(b, hs[0], hs[1],
                 unread.Count > 0 && unread[0].Action ? DeskKit.Alert : DrawnUI.Ink);
+            // S5 — the arrow beside the count: more or less mail than last open
+            string prev = b.SeenPrev("events", "unread");
+            bool movedMail = b.Seen("events", "unread", unread.Count.ToString());
+            int prevN;
+            if (movedMail && int.TryParse(prev, out prevN))
+                DeskKit.DeltaArrow(b,
+                    DeskKit.XId + DrawnUI.MeasureWidth(hs[0], DeskKit.HeroBig) + 16f,
+                    34f, unread.Count, prevN);
+            // S4 — the hero count is pressable: the tray, counted out
+            int actionN = 0;
+            for (int i = 0; i < letters.Count; i++) if (letters[i].Action) actionN += 1;
+            DeskKit.PressReceipt(b, new Rect(DeskKit.XId, 6f, 460f, 64f),
+                "the tray, counted", new List<DeskKit.TicketLine>
+                {
+                    new DeskKit.TicketLine { Label = "letters on file",
+                        Value = letters.Count.ToString() },
+                    new DeskKit.TicketLine { Label = "need an answer",
+                        Value = actionN.ToString(),
+                        Col = actionN > 0 ? DrawnUI.Coral : DrawnUI.Ink },
+                    new DeskKit.TicketLine { Label = "unread",
+                        Value = unread.Count.ToString() },
+                });
 
             if (letters.Count == 0)
-                DeskKit.Empty(b, DeskKit.XId, y,
-                    "the tray is empty — the world has not written yet.",
-                    "deadlines, applications, filed notes and the street's moves all land here.");
+            {
+                // S1 — the zero state teaches what the tray WILL hold and
+                // points at the desk that makes the world start writing.
+                DeskKit.ZeroState(b, new DeskKit.ZeroStateCfg
+                {
+                    WillShow = "letters and notices — the world writing to you",
+                    WouldLine = "a letter files with its week stamp, its money in "
+                        + "its own column, and its desk one press away",
+                    ActionLabel = "read the street — the rivals",
+                    ActionCb = () => { b.FocusDesk("the street", "", "events"); },
+                    WakesHint = "the tray fills as the world acts — deadlines, "
+                        + "applications, asks, the rivals' moves",
+                });
+                return;
+            }
             // THE UNREAD — bold, newest first, the dot on action letters.
             // THE COLLAPSE LAW: a letter that needs an answer never folds away;
             // the newest quiet letters fill whatever the face-up cap has left.
@@ -292,7 +395,7 @@ namespace Runway.Game
                 faceUp.Add(quiet[i]);
             faceUp.Sort((a, c) => c.Wk.CompareTo(a.Wk));
             for (int i = 0; i < faceUp.Count; i++)
-                y = LetterRow(b, s, y, faceUp[i], false);
+                y = LetterRow(b, s, y, faceUp[i], false, false);
             int hidden = unread.Count - faceUp.Count;
             if (hidden > 0)
             {
@@ -320,7 +423,8 @@ namespace Runway.Game
                             DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 300f);
                         y += 26f;
                         for (int k = 0; k < pile.Count; k++)
-                            y = LetterRow(b, s, y, pile[k], true);
+                            y = LetterRow(b, s, y, pile[k], true,
+                                IsAnswered(read, pile[k].Key));
                     }
                     else
                     {
@@ -343,11 +447,21 @@ namespace Runway.Game
                 "", 820f, 852f);
         }
 
-        static float LetterRow(BinderScreen b, GameState s, float y, Letter ld, bool isRead)
+        /// One letter row (twin of _letter_row): dot when action (✓ once
+        /// answered) · the text · the money · the stamp · the DO. An action
+        /// letter's DO is its verb — [answer] via JumpToAsk, [read terms] on
+        /// offer/board paper — and pressing it auto-files the letter with the
+        /// answered mark. Quiet letters keep the plain desk jump.
+        static float LetterRow(BinderScreen b, GameState s, float y, Letter ld,
+                               bool isRead, bool answered)
         {
             float x = DeskKit.XId;
-            if (ld.Action) DeskKit.SevDot(b, x, y + 4f, 2);
-            b.L(ld.Text, x + 36f, y, isRead ? DeskKit.Detail : 26f,
+            if (answered)
+                b.L("✓", x + 4f, y - 2f, DeskKit.Detail, DrawnUI.Sage, 30f);
+            else if (ld.Action)
+                DeskKit.SevDot(b, x, y + 4f, 2);
+            // letter texts carry world names (S6): one measured line, no wrap
+            DeskKit.FitLine(b, ld.Text, x + 36f, y, isRead ? DeskKit.Detail : 26f,
                 isRead ? DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f) : DrawnUI.Ink, 600f);
             if (!string.IsNullOrEmpty(ld.Value))
             {
@@ -358,12 +472,57 @@ namespace Runway.Game
             b.L(ld.Stamp, x + 826f, y + 2f, 17f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f), 130f);
             string dsk = ld.Desk;
             string key = ld.Key;
-            DeskKit.Word(b, dsk + " ->", x + 962f, y - 4f, () =>
+            if (ld.Action && !answered)
             {
-                MarkRead(b.State, key);
-                b.FocusDesk(dsk);
-            }, DeskKit.Detail, DrawnUI.Coral, 190f);
+                string verb = key.StartsWith("mna:") || key.StartsWith("buyout:")
+                    || key.StartsWith("board:") ? "read terms" : "answer";
+                Letter cap = ld;
+                DeskKit.Word(b, verb + " ->", x + 962f, y - 4f, () =>
+                {
+                    MarkAnswered(b.State, key);
+                    DoJump(b, cap);
+                }, DeskKit.Detail, DrawnUI.Coral, 190f);
+            }
+            else
+                DeskKit.Word(b, dsk + " ->", x + 962f, y - 4f, () =>
+                {
+                    MarkRead(b.State, key);
+                    b.FocusDesk(dsk, "", "events");
+                }, DeskKit.Detail,
+                    isRead ? DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f) : DrawnUI.Coral, 190f);
             return y + 38f;
+        }
+
+        /// THE ANSWER'S LANDING (twin of _do_jump, best-effort mapping): the
+        /// attention row this letter stands behind — same desk once aliased,
+        /// the name token preferred when the key carries one (ask:NAME:wk) —
+        /// JumpToAsk'd so a named control lands spotlit; else a plain
+        /// FocusDesk. Either way the back pill remembers "events".
+        static void DoJump(BinderScreen b, Letter ld)
+        {
+            string want = BinderScreen.DeskAlias(ld.Desk);
+            string nameTok = "";
+            if (ld.Key.StartsWith("ask:"))
+            {
+                string[] parts = ld.Key.Split(':');
+                if (parts.Length >= 2) nameTok = parts[1];
+            }
+            AttentionItem fallback = null;
+            foreach (AttentionItem r in SimEngine.AttentionItems(b.State))
+            {
+                if (BinderScreen.DeskAlias(r.Desk) != want) continue;
+                if (nameTok != "" && (r.Label ?? "")
+                    .IndexOf(nameTok, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    b.JumpToAsk(r, "events");
+                    return;
+                }
+                if (fallback == null) fallback = r;
+            }
+            if (fallback != null && !string.IsNullOrEmpty(fallback.Control))
+                b.JumpToAsk(fallback, "events");
+            else
+                b.FocusDesk(ld.Desk, "", "events");
         }
 
         public static void Handle(BinderScreen b, string id)

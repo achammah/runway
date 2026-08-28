@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
+using UnityEngine.UI;
 using Runway.App;
 using Runway.Core;
 
@@ -131,9 +132,17 @@ namespace Runway.Game
                 DrawnUI.Ink);
             if (rows.Count == 0)
             {
-                DeskKit.Empty(b, DeskKit.XId, y,
-                    "the book is blank — the first LOCK IN writes the first row.",
-                    "play the week; the ledger remembers everything after that.");
+                // S1 — the zero state teaches what the book WILL hold and
+                // hands over the one action that starts it.
+                DeskKit.ZeroState(b, new DeskKit.ZeroStateCfg
+                {
+                    WillShow = "a row per week — cash, net, customers, the headline",
+                    WouldLine = "week 1 would file as: wk 1 · your opening cash · "
+                        + "the week's net · what the DM wrote about it",
+                    ActionLabel = "write the move — this week",
+                    ActionCb = () => { b.FocusDesk("this week", "move_field", "history"); },
+                    WakesHint = "wakes at the first LOCK IN — the roll writes row one",
+                });
                 return;
             }
 
@@ -229,16 +238,53 @@ namespace Runway.Game
                     OnPress = () => { b.Desk["mode"] = "receipts"; b.Desk["wk"] = wk; },
                 });
             }
+            // S4 — the double-ruled TOTAL is pressable: the terms behind it.
+            float totalY = sheet.Cursor;
             DeskKit.LedgerTotal(b, sheet, "the run so far",
                 (totalNet >= 0 ? "+$" : "−$") + F(Math.Abs(totalNet)),
                 totalNet >= 0 ? DrawnUI.Sage : DrawnUI.Coral);
-            // FILINGS — answered momentary tabs file here as flagged rows
+            DeskKit.PressReceipt(b, new Rect(DeskKit.XId, totalY, 1120f, 48f),
+                "the run so far = Σ weekly net", new List<DeskKit.TicketLine>
+                {
+                    new DeskKit.TicketLine
+                    {
+                        Label = string.Format("cash at wk {0}", rows[0].Wk),
+                        Value = "$" + F(rows[0].Cash),
+                    },
+                    new DeskKit.TicketLine { Label = "cash now", Value = "$" + F(s.Cash) },
+                    new DeskKit.TicketLine
+                    {
+                        Label = string.Format("Σ net across {0} weeks", rows.Count),
+                        Value = (totalNet >= 0 ? "+$" : "−$") + F(Math.Abs(totalNet)),
+                        Col = totalNet >= 0 ? DrawnUI.Sage : DrawnUI.Coral,
+                    },
+                });
+            // FILINGS — answered momentary tabs file here as flagged rows; the
+            // ★ row presses through to the receipts of the week it was
+            // answered (13-binder § history — wired here, LedgerMemo itself
+            // carries no press).
             if (s.ExitValue > 0)
+            {
+                int soldWk = s.MnaLastWeek > 0 ? s.MnaLastWeek : rows[rows.Count - 1].Wk;
+                float soldY = sheet.Cursor;
                 DeskKit.LedgerMemo(b, sheet, "★ filed: the company was sold",
                     "$" + F(s.ExitValue), "the buyout was accepted");
+                Button soldHit = DeskKit.Word(b, "", DeskKit.XId, soldY,
+                    () => { b.Desk["mode"] = "receipts"; b.Desk["wk"] = soldWk; },
+                    DeskKit.Detail, DrawnUI.Ink, 1120f);
+                soldHit.GetComponent<RectTransform>().sizeDelta = new Vector2(1120f, 40f);
+            }
             else if (s.Mna == null && s.MnaLastWeek > 0)
+            {
+                int goneWk = s.MnaLastWeek;
+                float goneY = sheet.Cursor;
                 DeskKit.LedgerMemo(b, sheet, "★ filed: a buyout offer came and went",
                     "", string.Format("around wk {0} — answered or expired", s.MnaLastWeek));
+                Button goneHit = DeskKit.Word(b, "", DeskKit.XId, goneY,
+                    () => { b.Desk["mode"] = "receipts"; b.Desk["wk"] = goneWk; },
+                    DeskKit.Detail, DrawnUI.Ink, 1120f);
+                goneHit.GetComponent<RectTransform>().sizeDelta = new Vector2(1120f, 40f);
+            }
             y = DeskKit.LedgerEnd(b, sheet);
             if (older > 0 && !allOpen && y <= 800f)
                 DeskKit.FoldRow(b, DeskKit.XId, y, older, "weeks",
@@ -330,6 +376,21 @@ namespace Runway.Game
                 b.Desk.Remove("mode");
                 b.Desk.Remove("wk");
             }
+        }
+
+        // ── S8/S10 — the rail speaks for the desk (probe-guarded, never must) ──
+
+        /// The book never sleeps — it is only ever short.
+        public static bool IsDormant(GameState s)
+        {
+            return false;
+        }
+
+        /// The tab's four characters: how long the run already is.
+        public static string MicroStatus(GameState s)
+        {
+            int n = s.MetricHistory.Count;
+            return n > 0 ? n + " wks" : "";
         }
     }
 }
