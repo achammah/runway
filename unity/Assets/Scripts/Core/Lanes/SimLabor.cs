@@ -1143,7 +1143,7 @@ namespace Runway.Core
             var outv = new List<AttentionItem>();
             if (state.Applicants.Count > 0)
             {
-                outv.Add(new AttentionItem { Desk = "crew", Key = "applicants_waiting", Severity = 1,
+                outv.Add(new AttentionItem { Desk = "crew", Key = "applicants_waiting", Severity = 1, Control = "go_recruit",
                     Label = Trunc(string.Format(CultureInfo.InvariantCulture,
                         "{0} waiting on your advert", state.Applicants.Count), 40) });
             }
@@ -1158,12 +1158,12 @@ namespace Runway.Core
             }
             if (wanter.Length > 0)
             {
-                outv.Add(new AttentionItem { Desk = "crew", Key = "wants_raise", Severity = 2,
+                outv.Add(new AttentionItem { Desk = "crew", Key = "wants_raise", Severity = 2, Control = "raise_first",
                     Label = Trunc(wanter + " wants market pay", 40) });
             }
             if (leaving.Length > 0)
             {
-                outv.Add(new AttentionItem { Desk = "crew", Key = "quit_risk", Severity = 3,
+                outv.Add(new AttentionItem { Desk = "crew", Key = "quit_risk", Severity = 3, Control = "raise_urgent",
                     Label = Trunc(leaving + " resigns next week unpaid", 40) });
             }
             for (int ri = 0; ri < state.OpenRoles.Count; ri++)
@@ -1173,7 +1173,7 @@ namespace Runway.Core
                 int age = state.Week - row.OpenedWeek;
                 if (age >= StaleWeeks && WaitingFor(state, role) == 0)
                 {
-                    outv.Add(new AttentionItem { Desk = "crew", Key = "silent_role", Severity = 2,
+                    outv.Add(new AttentionItem { Desk = "crew", Key = "silent_role", Severity = 2, Control = "open_seat",
                         Label = Trunc(string.Format(CultureInfo.InvariantCulture,
                             "{0} open {1} wks, nobody applied", role, age), 40) });
                     break;
@@ -1181,14 +1181,14 @@ namespace Runway.Core
             }
             if (SpanMult(state) < 1.0)
             {
-                outv.Add(new AttentionItem { Desk = "crew", Key = "span_thin", Severity = 2,
+                outv.Add(new AttentionItem { Desk = "crew", Key = "span_thin", Severity = 2, Control = "go_recruit",
                     Label = Trunc(string.Format(CultureInfo.InvariantCulture,
                         "the floor runs at {0}% — too few managers",
                         Gd.RoundToInt(SpanMult(state) * 100.0)), 40) });
             }
             if (Gd.ToInt(state.GetMetaF("poach_wk", -99.0)) == state.Week)
             {
-                outv.Add(new AttentionItem { Desk = "crew", Key = "poach_attempt", Severity = 3,
+                outv.Add(new AttentionItem { Desk = "crew", Key = "poach_attempt", Severity = 3, Control = "poached",
                     Label = Trunc("a rival is courting "
                         + MetaStr(state, "poach_name", "your best"), 40) });
             }

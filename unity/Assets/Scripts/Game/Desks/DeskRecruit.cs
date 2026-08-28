@@ -13,8 +13,17 @@ namespace Runway.Game
     /// the live ≈applicants/wk read), the candidate wall (applied ->
     /// interviewed -> offer out -> joined; interviewing costs the founder's
     /// week), THE OFFER COMPOSER (cash + options steppers, live acceptance
-    /// odds, the pool-after line, SEND armed). All odds come from
+    /// odds, the pool-after line). All odds come from
     /// SimOwnership.AcceptanceOdds — the desk recomputes nothing.
+    ///
+    /// DAG3 Wave B: S1 zero state ("no seats open — a seat is a weekly wage
+    /// + a promise"), S3 DO lane ([send the offer] rides the lane's own
+    /// two-tap — it replaced the in-zone SEND arm), S4 the hero pipeline
+    /// receipt, the odds ticket that ANIMATES on stepper press (the number
+    /// ticks over ~0.25s, the marginal foot re-inks). The page compacted for
+    /// the lane's 762 anchor: money-desk hero, zones 156/244/222, the zone
+    /// lessons relocated to the column subs and the new teaching foot, the
+    /// ticket one fact line tall.
     /// </summary>
     public static class DeskRecruit
     {
@@ -22,6 +31,10 @@ namespace Runway.Game
 
         public const int CashStep = 10;
         public const double OptStep = 0.1;
+
+        const float SheetX = 10f;
+        const float YFoot = 806f;
+        const float YRules = 840f;
 
         public static string[] HeroSummary(GameState s)
         {
@@ -33,6 +46,22 @@ namespace Runway.Game
             return new[] { seats + " seat" + (seats == 1 ? "" : "s") + " open",
                 motion + " candidate" + (motion == 1 ? "" : "s") + " in motion · "
                 + offers + " offer" + (offers == 1 ? "" : "s") + " out" };
+        }
+
+        /// S8 — the rail's micro-status: how many seats stand open.
+        public static string MicroStatus(GameState s)
+        {
+            int seats = Roles(s).Count;
+            return seats > 0 ? seats + " open" : "";
+        }
+
+        /// S8 — structurally dormant while the market is shut and nothing is
+        /// in motion: the tab dims to 60%, the page still teaches.
+        public static bool IsDormant(GameState s)
+        {
+            return !SimLabor.MarketOpen(s.Era) && Roles(s).Count == 0
+                && CandidatesIn(s, new[] { "applied", "interviewed", "offer", "joined" }).Count == 0
+                && Offers(s).Count == 0;
         }
 
         static List<Dictionary<string, object>> Roles(GameState s)
@@ -92,33 +121,80 @@ namespace Runway.Game
             if (DState(b, "mode", "") == "seats") { DrawSeatsPage(b, state); return; }
             List<Dictionary<string, object>> roles = Roles(state);
             List<Dictionary<string, object>> offers = Offers(state);
-            int motion = CandidatesIn(state, new[] { "applied", "interviewed", "offer" }).Count;
-            float y = DeskKit.HeroBand(b,
-                roles.Count + " seat" + (roles.Count == 1 ? "" : "s") + " open · " + motion + " in motion",
-                "hiring is a pipeline too — and the offer is a design: cash, equity, title.");
+            List<Dictionary<string, object>> motion =
+                CandidatesIn(state, new[] { "applied", "interviewed", "offer" });
+
+            // ── S1 · the zero state: a seat is a weekly wage + a promise
+            if (roles.Count == 0 && motion.Count == 0 && offers.Count == 0
+                && CandidatesIn(state, new[] { "joined" }).Count == 0)
+            {
+                DeskKit.ZeroState(b, new DeskKit.ZeroStateCfg
+                {
+                    WillShow = "no seats open",
+                    WouldLine = "a seat is a weekly wage + a promise — the band is the market's, not yours",
+                    ActionLabel = "open a seat",
+                    ActionCb = () => { b.Desk["mode"] = "seats"; },
+                    WakesHint = SimLabor.MarketOpen(state.Era)
+                        ? "first candidates arrive when a seat opens"
+                        : "the labor market opens at coworking — until then, hire the people you know",
+                });
+                return;
+            }
+
+            // ── the hero (the money desks' idiom — the band gave its height
+            // to the zones so the DO lane keeps the kit's one anchor)
+            string big = roles.Count + " seat" + (roles.Count == 1 ? "" : "s") + " open · "
+                + motion.Count + " in motion";
+            b.L(big, SheetX, 6f, DeskKit.HeroSize, DrawnUI.Ink, 700f);
+            float bw = DrawnUI.MeasureWidth(big, DeskKit.HeroSize);
+            b.L("· " + offers.Count + " offer" + (offers.Count == 1 ? "" : "s") + " out",
+                SheetX + bw + 14f, 22f, DeskKit.Row, DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f), 300f);
+            b.L("hiring is a pipeline too — the offer is a design: cash, equity, title.",
+                SheetX, 62f, DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 720f);
             if (offers.Count > 0)
             {
                 Dictionary<string, object> off = offers[0];
                 Dictionary<string, object> cand = SimOwnership.CandById(state, Ds(off, "candidate_id", ""));
                 string first = Ds(cand, "name", "someone").Split(' ')[0];
-                DeskKit.ClockChip(b, 800f, 12f, first + "'s offer expires in "
+                DeskKit.ClockChip(b, 800f, 10f, first + "'s offer expires in "
                     + Gd.Maxi(Di(off, "expires_wk", 0) - state.Week, 0) + " wk");
             }
-            TextMeshProUGUI t2 = b.L("interviews cost founder time", 740f, 44f, 18f,
-                DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 380f);
-            t2.alignment = TextAlignmentOptions.TopRight;
+            // S4 — the hero presses into the pipeline's receipt
+            int advTotal = 0;
+            double rateTotal = 0.0;
+            foreach (var r0 in roles)
+            {
+                advTotal += Di(r0, "advert_wk", 0);
+                rateTotal += SimOwnership.ArrivalRateR(state, r0);
+            }
+            b.MarkControl("pipeline_hero", new Rect(SheetX - 4f, 4f, 640f, 78f));
+            DeskKit.PressReceipt(b, "pipeline_hero", "the pipeline, priced",
+                new List<DeskKit.TicketLine>
+                {
+                    new DeskKit.TicketLine { Label = "seats open", Value = roles.Count.ToString() },
+                    new DeskKit.TicketLine { Label = "adverts",
+                        Value = "$" + SimOwnership.Money(advTotal) + "/wk" },
+                    new DeskKit.TicketLine { Label = "applicants they pull",
+                        Value = "≈" + Gd.F(rateTotal, 1) + "/wk" },
+                    new DeskKit.TicketLine { Label = "seats left this era",
+                        Value = SimLabor.SeatsLeft(state).ToString() },
+                });
+            // S2a — red speaks on the page; the zones drop 8px clear
+            float y = 108f;
+            if (DeskKit.AskStrip(b, "recruitment", SheetX, 86f, 1000f,
+                    "a lapsed offer is heard on the street"))
+                y += 8f;
 
             // ── zone 1 · THE OPEN SEATS
-            DeskKit.CardBox z1 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 184f, 1, "the open seats",
-                "every seat carries the market's band before you advertise");
+            DeskKit.CardBox z1 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 156f, 1,
+                "the open seats", "");
             if (roles.Count == 0)
-                DeskKit.Empty(b, z1.ContentX, z1.Cursor + 4f, "no seats open.",
+                DeskKit.Empty(b, z1.ContentX, z1.Cursor + 2f, "no seats open.",
                     "open one — the advert is the magnet, the band is the market", true);
             for (int i = 0; i < Gd.Mini(roles.Count, 2); i++)
             {
                 Dictionary<string, object> rd = roles[i];
                 float fx = z1.ContentX + i * 552f;
-                // 88 tall: the fold line below keeps its own lane under the cards
                 DeskKit.CardBox fr = DeskKit.CardFrame(b, fx, z1.Cursor - 4f, 532f, 88f,
                     Ds(rd, "seat", "?").ToUpperInvariant() + " · band $"
                     + SimOwnership.Money(Di(rd, "band_lo", 0)) + "–"
@@ -134,29 +210,33 @@ namespace Runway.Game
             }
             if (roles.Count > 2)
             {
+                // the fold note rides the header lane — the cards keep their room
                 int extra = roles.Count - 2;
                 b.L(extra == 1 ? "the other 1 seat waits below"
                     : "the other " + extra + " seats wait below",
-                    z1.ContentX + 8f, z1.Bottom - 24f,
-                    17f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 400f);
+                    z1.ContentX + 520f, z1.Y + 14f,
+                    17f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 380f);
             }
             DeskKit.Word(b, "open a seat", z1.ContentX + 940f, z1.Y + 8f,
                 () => { b.Desk["mode"] = "seats"; }, DeskKit.Detail,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f), 170f);
-            y += 184f + 10f;
+            y += 156f + 10f;
 
             // ── zone 2 · THE CANDIDATES
-            DeskKit.CardBox z2 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 272f, 2, "the candidates",
-                "interviewing costs your week; ghosting costs your name");
+            DeskKit.CardBox z2 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 244f, 2,
+                "the candidates", "");
             const float colW = 268f;
-            const float colH = 162f;
+            const float colH = 154f;
             float cx = z2.ContentX - 6f;
-            string[][] heads = { new[] { "applied", "applied" }, new[] { "interviewed", "interviewed" },
-                new[] { "offer out", "offer" }, new[] { "joined", "joined" } };
+            // the old zone lesson lives on the columns now, split where it lands
+            string[][] heads = {
+                new[] { "applied", "applied", "interviewing costs your week" },
+                new[] { "interviewed", "interviewed", "ghosting costs your name" },
+                new[] { "offer out", "offer", "" }, new[] { "joined", "joined", "" } };
             for (int hi = 0; hi < heads.Length; hi++)
             {
                 DeskKit.WallCol col = DeskKit.WallColumn(b, cx + hi * (colW + 16f), z2.Cursor,
-                    colW, colH, heads[hi][0], "");
+                    colW, colH, heads[hi][0], heads[hi][2]);
                 string stage = heads[hi][1];
                 int shown = 0;
                 List<Dictionary<string, object>> cands = CandidatesIn(state, new[] { stage });
@@ -188,6 +268,10 @@ namespace Runway.Game
                             if (off2 != null)
                                 facts.Add("$" + SimOwnership.Money(Di(off2, "cash_wk", 0)) + "/wk + "
                                     + Gd.F(Dd(off2, "options_pct", 0.0), 1) + "%");
+                            // S2b — the expiring offer's red row lands on its card
+                            if (shown == 0)
+                                b.MarkControl("offer_out", new Rect(col.ContentX,
+                                    col.Cursor, colW - 16f, 92f));
                             break;
                         default:
                             facts.Add("wk " + Di(cd, "arrived_wk", 0) + " — in");
@@ -202,22 +286,40 @@ namespace Runway.Game
                     b.L("+" + (cands.Count - shown) + " more wait behind", col.ContentX + 2f,
                         col.Y + colH + 4f, 16f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), colW - 20f);
             }
-            y += 272f + 10f;
+            y += 244f + 10f;
 
             // ── zone 3 · THE OFFER COMPOSER
-            DeskKit.CardBox z3 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 284f, 3, "the offer composer",
-                "comp is a mix, the pool is finite · signed -> TEAM grows a vesting bar · declined -> the market hears");
+            DeskKit.CardBox z3 = DeskKit.Zone(b, DeskKit.XId, y, 1120f, 222f, 3,
+                "the offer composer", "");
+            var actions = new List<DeskKit.DoAction>();
             Dictionary<string, object> cand2 = ComposerTarget(b, state);
             if (cand2 == null)
-                DeskKit.Empty(b, z3.ContentX, z3.Cursor + 8f, "nobody is at the offer stage.",
+                DeskKit.Empty(b, z3.ContentX, z3.Cursor + 6f, "nobody is at the offer stage.",
                     "interview a candidate — the composer opens on whoever you pick", true);
             else
-                Composer(b, state, z3, cand2);
+                Composer(b, state, z3, cand2, actions);
 
+            // ── S3 · the DO lane: send the offer when composing, grow always
+            actions.Add(new DeskKit.DoAction
+            {
+                Label = "open a seat",
+                Tier = "",
+                Cb = () => { b.Desk["mode"] = "seats"; },
+            });
+            DeskKit.DoLane(b, actions);
+
+            // ── the teaching foot (the composer zone's law, moved to the
+            // money desks' own slots when the zones compacted for the lane)
+            DeskKit.Footer(b,
+                "comp is a mix, the pool is finite · signed → TEAM grows a vesting bar · declined → the market hears",
+                "interviews cost the founder's week · every seat carries the market's band before you advertise",
+                "", YFoot, YRules);
         }
 
+        /// THE COMPOSER: steppers left, the WILL-SHE-SAY-YES ticket right.
+        /// The SEND beat rides the DO lane's own two-tap.
         static void Composer(BinderScreen b, GameState state, DeskKit.CardBox z3,
-            Dictionary<string, object> cand)
+            Dictionary<string, object> cand, List<DeskKit.DoAction> actions)
         {
             string cid = Ds(cand, "id", "");
             int ask = Di(cand, "ask", 0);
@@ -246,34 +348,90 @@ namespace Runway.Game
             double ratio = cash / Gd.Maxf(ask, 1.0);
             string reads = ratio >= 1.05 ? "rich" : ratio >= 0.97 ? "fair"
                 : ratio >= 0.85 ? "fair, cash-light" : "thin";
+            string totalTxt = "≈" + Gd.RoundToInt(odds) + "%";
+            string footTxt = "+$30 cash " + (dCash >= 0 ? "+" : "") + Gd.RoundToInt(dCash)
+                + "pts · +0.2% opt " + (dOpt >= 0 ? "+" : "") + Gd.RoundToInt(dOpt) + "pts";
             var lines = new List<DeskKit.TicketLine>
             {
-                new DeskKit.TicketLine { Label = "her ask", Value = "$" + SimOwnership.Money(ask)
-                    + " " + (mercenary ? "cash-leaning" : "mission-leaning") },
-                new DeskKit.TicketLine { Label = "this mix reads", Value = reads },
+                new DeskKit.TicketLine { Label = "her ask — "
+                    + (mercenary ? "cash-leaning" : "mission-leaning"),
+                    Value = "$" + SimOwnership.Money(ask) + " · reads " + reads },
             };
             DeskKit.Ticket(b, z3.ContentX + 510f, z3.Cursor - 2f, 380f,
                 "will " + Ds(cand, "name", "?").Split(' ')[0] + " say yes?", lines,
-                "acceptance odds", "≈" + Gd.RoundToInt(odds) + "%",
-                "+$30 cash " + (dCash >= 0 ? "+" : "") + Gd.RoundToInt(dCash)
-                + "pts · +0.2% opt " + (dOpt >= 0 ? "+" : "") + Gd.RoundToInt(dOpt) + "pts",
+                "acceptance odds", totalTxt, footTxt,
                 odds >= 60.0 ? DrawnUI.Sage : DrawnUI.Coral);
-            float armY = fr.Bottom + 10f;
+            // THE DIAL FEELS LIVE: on a stepper press the odds number ticks
+            // over ~0.25s and the marginal foot re-inks
+            AnimateOdds(b, Gd.RoundToInt(odds), totalTxt, footTxt);
             if (SimLabor.SeatsLeft(state) <= 0)
             {
-                b.L("the house is full — no desk to offer", z3.ContentX, armY,
+                b.L("the house is full — no desk to offer", z3.ContentX, z3.Cursor + 146f,
                     DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.45f), 360f);
+                return;
             }
-            else
+            actions.Add(new DeskKit.DoAction
             {
-                DeskKit.Arm(b, "send_offer", "SEND THE OFFER", "press again — the offer goes out",
-                    z3.ContentX, armY, () =>
-                    {
-                        SimOwnership.OpSendOffer(b.State, cid, cash, opt);
-                        b.Desk.Remove("cash");
-                        b.Desk.Remove("opt");
-                    }, 360f, DeskKit.Detail);
+                Label = "send the offer — " + Ds(cand, "name", "?").Split(' ')[0],
+                Tier = "two-tap",
+                Cb = () =>
+                {
+                    SimOwnership.OpSendOffer(b.State, cid, cash, opt);
+                    b.Desk.Remove("cash");
+                    b.Desk.Remove("opt");
+                },
+            });
+        }
+
+        /// The tick of the dial: lerp the total label's int between the last
+        /// shown odds and the new ones; wash the marginal foot back in.
+        static void AnimateOdds(BinderScreen b, int target, string totalTxt, string footTxt)
+        {
+            object po;
+            int prev = b.Desk.TryGetValue("odds_shown", out po) && po != null
+                ? Convert.ToInt32(po) : target;
+            b.Desk["odds_shown"] = target;
+            if (prev == target) return;
+            TextMeshProUGUI lbl = LabelWith(b, totalTxt);
+            if (lbl != null) b.StartCoroutine(TickOdds(lbl, prev, target));
+            TextMeshProUGUI foot = LabelWith(b, footTxt);
+            if (foot != null) b.StartCoroutine(ReInk(foot));
+        }
+
+        static System.Collections.IEnumerator TickOdds(TextMeshProUGUI lbl, int fromV, int toV)
+        {
+            float t = 0f;
+            while (t < 0.25f)
+            {
+                if (lbl == null) yield break;
+                t += Time.unscaledDeltaTime;
+                int v = Mathf.RoundToInt(Mathf.Lerp(fromV, toV, Mathf.Clamp01(t / 0.25f)));
+                lbl.text = "≈" + v + "%";
+                yield return null;
             }
+            if (lbl != null) lbl.text = "≈" + toV + "%";
+        }
+
+        static System.Collections.IEnumerator ReInk(TextMeshProUGUI lbl)
+        {
+            float t = 0f;
+            while (t < 0.3f)
+            {
+                if (lbl == null) yield break;
+                t += Time.unscaledDeltaTime;
+                lbl.alpha = Mathf.Lerp(0.15f, 1f, Mathf.Clamp01(t / 0.3f));
+                yield return null;
+            }
+            if (lbl != null) lbl.alpha = 1f;
+        }
+
+        /// The newest label wearing exactly this text (drawn this frame).
+        static TextMeshProUGUI LabelWith(BinderScreen b, string text)
+        {
+            TextMeshProUGUI[] all = b.Content.GetComponentsInChildren<TextMeshProUGUI>();
+            for (int i = all.Length - 1; i >= 0; i--)
+                if (all[i] != null && all[i].text == text) return all[i];
+            return null;
         }
 
         static void DrawSeatsPage(BinderScreen b, GameState state)

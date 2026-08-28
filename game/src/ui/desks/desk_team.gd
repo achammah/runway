@@ -20,6 +20,13 @@ extends RefCounted
 ## hiring flow lives there now. The vesting mini-bar renders from
 ## esop.granted with the 208/52 formula (SimSpendBook.vested_frac) until the
 ## ownership lane's own getter lands.
+##
+## DAG3 Wave B: S1 zero state (nobody yet), S2 ask strip + spotlit controls
+## (raise_first / raise_urgent / go_recruit / open_seat / poached), S3 DO
+## lane ([answer ask — name] else [open a seat → recruitment]), S4 the
+## payroll-total receipt, S5 the morale ▲/▼ beside the hero's morale read,
+## the vesting bar pressing through to the cap table (back pill free), S15
+## the ask as a jump suggestion, S8 headcount micro-status.
 
 const QUESTION := "who works here and who's asking?"
 
@@ -51,11 +58,70 @@ static func hero_summary(state) -> Dictionary:
 	return {"big": big,
 		"line": "$%s/wk on payroll" % _fmt(SimLabor.payroll_wk(s))}
 
+## S8 — the rail's micro-status: the headcount, plain.
+static func micro_status(state) -> String:
+	var s: GameState = state
+	return str(s.employees.size()) if s.employees.size() > 0 else ""
+
+## S8 — the payroll ledger never dims: the founder is always on this page.
+static func is_dormant(_state) -> bool:
+	return false
+
+## S15 — the loudest object on the desk speaks up: the first ask, as a jump.
+static func suggestions(state) -> Array:
+	var s: GameState = state
+	var fa := _first_asker(s)
+	if fa < 0:
+		return []
+	var e: Dictionary = s.employees[fa]
+	return [{"label": "answer the ask — %s wants market pay" % String(e.get("name", "someone")),
+		"kind": "jump", "payload": {"desk": "team", "control": "raise_first"}}]
+
+## The engine's own predicates, desk-side: the FIRST asker and the first
+## OVERDUE asker (asked ≥2 wks ago — the resignation clock). The attention
+## rows' `control` keys land on exactly these marks.
+static func _first_asker(state: GameState) -> int:
+	for i in state.employees.size():
+		if bool((state.employees[i] as Dictionary).get("wants_raise", false)):
+			return i
+	return -1
+
+static func _first_urgent(state: GameState) -> int:
+	for i in state.employees.size():
+		var e: Dictionary = state.employees[i]
+		if bool(e.get("wants_raise", false)) \
+				and state.week - int(e.get("asked_week", state.week)) >= 2:
+			return i
+	return -1
+
+## S5 — last week's morale, from the metric history the tick already keeps.
+static func _morale_prev(state: GameState) -> float:
+	for i in range(state.metric_history.size() - 1, -1, -1):
+		var m: Dictionary = state.metric_history[i]
+		if int(m.get("wk", -1)) != state.week:
+			return float(m.get("morale", state.morale))
+	return float(state.morale)
+
 static func draw(b) -> void:
 	var state: GameState = b.state
 	var payroll := SimLabor.payroll_wk(state)
 	var n := state.employees.size()
 	var rung := SimSpendBook.team_rung(n)
+
+	# ── S1 · the zero state: nobody yet — the page teaches what payroll IS
+	if state.employees.is_empty() and state.pipeline.is_empty() and state.open_roles.is_empty():
+		var band := SimOwnership.band_for(state, "engineer")
+		var zero_go := func() -> void:
+			b.focus_desk("recruitment")
+		DeskKit.zero_state(b, {
+			"will_show": "the payroll ledger — who works here, what they cost, who's asking",
+			"would_line": "a first engineer WOULD cost $%s–%s a week — and the roof rides every head" % [
+				SimOwnership.money(int(band.get("lo", 0))), SimOwnership.money(int(band.get("hi", 0)))],
+			"action_label": "open a seat → recruitment",
+			"action_cb": zero_go,
+			"wakes_hint": "wakes when the first offer is signed — hiring lives at recruitment",
+		})
+		return
 
 	# ── the hero — onboarding hires are paid, so the money line names them
 	var big: String = "%d people" % n
@@ -66,20 +132,30 @@ static func draw(b) -> void:
 		Vector2(SHEET_X + bw + 14.0, 22.0), DeskKit.ROW,
 		Color(DeskKit.INK, 0.7), 420.0)
 	b.label("payroll is the biggest bill in the building — and the easiest to grow carelessly.",
-		Vector2(SHEET_X, 62.0), DeskKit.DETAIL, Color(DeskKit.INK, 0.6), 720.0)
+		Vector2(SHEET_X, 62.0), DeskKit.DETAIL, Color(DeskKit.INK, 0.6), 700.0)
 	if state.applicants.size() > 0:
 		DeskKit.clock_chip(b, 848.0, 10.0, "%d applicant%s waiting" % [state.applicants.size(),
 			"" if state.applicants.size() == 1 else "s"])
-		var go_recruit := func() -> void:
-			b.focus_desk("recruitment")
-		DeskKit.word(b, "recruitment ▸", Vector2(848.0, 38.0), go_recruit, DeskKit.LAW,
-			Color(DeskKit.INK, 0.6), 200.0)
-	var meta: Label = b.label("morale %d · all figures $/week · rung %d" % [state.morale, rung],
-		Vector2(SHEET_X, 74.0), DeskKit.LAW, Color(DeskKit.INK, 0.42), SHEET_W)
-	meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	# the door to the hiring flow, always drawn — the red rows land on it
+	var go_recruit := func() -> void:
+		b.focus_desk("recruitment")
+	DeskKit.word(b, "recruitment ▸", Vector2(848.0, 38.0), go_recruit, DeskKit.LAW,
+		Color(DeskKit.INK, 0.6), 200.0)
+	b.mark_control("go_recruit", Rect2(840.0, 36.0, 216.0, 44.0))
+	# S5 — the morale read wears its week-over-week arrow (the meta line lost
+	# the sheet's own unit words; the sheet says them once)
+	var mtxt := "morale %d · rung %d" % [state.morale, rung]
+	var mw: float = b.font().get_string_size(mtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, DeskKit.LAW).x
+	var mx := SHEET_X + SHEET_W - mw - 4.0
+	b.label(mtxt, Vector2(mx, 64.0), DeskKit.LAW, Color(DeskKit.INK, 0.42), mw + 8.0)
+	DeskKit.delta_arrow(b, mx - 24.0, 66.0, float(state.morale), _morale_prev(state))
+	# S2a — red speaks on the page; the sheet drops 8px clear of the strip
+	var sheet_y := Y_SHEET
+	if DeskKit.ask_strip(b, "team", SHEET_X, 86.0, 1000.0, "answer the ask before it walks"):
+		sheet_y += 8.0
 
 	# ── the sheet
-	var sheet := DeskKit.ledger_sheet(b, SHEET_X, Y_SHEET, SHEET_W, {
+	var sheet := DeskKit.ledger_sheet(b, SHEET_X, sheet_y, SHEET_W, {
 		"columns": [{"label": "who", "w": 210.0}, {"label": "role", "w": 160.0},
 			{"label": "skill", "w": 140.0}, {"label": "$/wk", "w": 120.0, "align": "right"},
 			{"label": "note", "w": 330.0}],
@@ -102,10 +178,12 @@ static func draw(b) -> void:
 			String(hd.get("role", "")), "", "$" + b.fmt(int(hd.get("salary", 0))),
 			"onboarding — wk %d of 2" % clampi(int(hd.get("weeks_in", 0)) + 1, 1, 2)], {"dim": true})
 	# THE OPEN SEAT — an honest row; the flow lives at recruitment
+	var seat_marked := false
 	for r in state.open_roles:
 		var rd: Dictionary = r
 		var role := String(rd.get("role", "engineer"))
 		var waiting := SimLabor.waiting_for(state, role)
+		var seat_y := float(sheet.get("cursor", 0.0))
 		var go := func() -> void:
 			b.focus_desk("recruitment")
 		# Law 2 — the offered pay rides the money column; the rate is a fact
@@ -113,21 +191,60 @@ static func draw(b) -> void:
 			"≈%.1f apply/wk" % SimLabor.arrival_rate(state, rd),
 			"$" + b.fmt(int(rd.get("offered_salary", 0))),
 			"%d waiting -> recruitment ▸" % waiting], {"dim": true, "on_press": go})
-	if state.employees.is_empty() and state.pipeline.is_empty() and state.open_roles.is_empty():
-		var go_hire := func() -> void:
-			b.focus_desk("recruitment")
-		DeskKit.ledger_row(b, sheet, ["nobody yet", "the founder does everything", "", "$0",
-			"hiring starts at recruitment ▸"], {"dim": true, "on_press": go_hire})
+		# S2b — a silent advert's red row lands on its own seat
+		if not seat_marked:
+			b.mark_control("open_seat", Rect2(SHEET_X, seat_y, SHEET_W * 0.5, DeskKit.LG_ROW_H))
+			seat_marked = true
+	# S4 — PRESS THE TOTAL: the receipt that decomposes the payroll
+	var tot_y := float(sheet.get("cursor", 0.0))
 	DeskKit.ledger_total(b, sheet, "total payroll", "$" + b.fmt(payroll))
+	b.mark_control("payroll_total", Rect2(SHEET_X, tot_y, SHEET_W, DeskKit.LG_TOT_H))
+	DeskKit.press_receipt(b, "payroll_total", "payroll = every signed salary",
+		_payroll_lines(b, state))
 	DeskKit.ledger_memo(b, sheet, "fully loaded", "≈$" + b.fmt(SimLabor.loaded_payroll_wk(state)),
 		"with the roof's share · severance always owed")
 	DeskKit.ledger_end(b, sheet)
+
+	# ── S3 · the DO lane: answer the loudest ask, or grow the roster
+	var actions: Array = []
+	var fa := _first_asker(state)
+	if fa >= 0:
+		var ea: Dictionary = state.employees[fa]
+		var fair := SimLabor.fair_pay(state, ea)
+		var fi := fa
+		var lane_answer := func() -> void:
+			SimLabor.grant_raise(state, fi, fair)
+		actions.append({"label": "answer ask — %s · $%s/wk" % [
+			String(ea.get("name", "someone")).split(" ")[0], b.fmt(fair)],
+			"tier": "two-tap", "cb": lane_answer})
+	var lane_seat := func() -> void:
+		b.focus_desk("recruitment")
+	actions.append({"label": "open a seat → recruitment", "tier": "", "cb": lane_seat})
+	DeskKit.do_lane(b, actions)
 
 	# ── the teaching foot
 	b.label("a person costs more than their pay — the roof, the seats and the office share ride every head",
 		Vector2(SHEET_X, Y_FOOT), DeskKit.LAW, Binder.BLUE, 1100.0)
 	b.label("asks answered late become resignations · at 10 the rows group by function · at hundreds, by business unit — same sheet, folded",
 		Vector2(SHEET_X, Y_RULES), DeskKit.LAW, Color(DeskKit.INK, 0.5), 1100.0)
+
+## S4 — the payroll receipt's terms: signed salaries, the onboarding share,
+## and the loaded truth the memo whispers.
+static func _payroll_lines(b, state: GameState) -> Array:
+	var emp_sum := 0
+	for e in state.employees:
+		emp_sum += int((e as Dictionary).get("salary", 0))
+	var pipe_sum := 0
+	for h in state.pipeline:
+		pipe_sum += int((h as Dictionary).get("salary", 0))
+	var lines: Array = [{"label": "salaries — %d people" % state.employees.size(),
+		"value": "$%s/wk" % b.fmt(emp_sum)}]
+	if pipe_sum > 0:
+		lines.append({"label": "onboarding — %d hire%s" % [state.pipeline.size(),
+			"" if state.pipeline.size() == 1 else "s"], "value": "$%s/wk" % b.fmt(pipe_sum)})
+	lines.append({"label": "fully loaded", "value": "≈$%s/wk" % b.fmt(SimLabor.loaded_payroll_wk(state))})
+	lines.append({"label": "the law", "value": "severance always owed"})
+	return lines
 
 # ── the one person row every rung shares ─────────────────────────────────────
 
@@ -143,6 +260,10 @@ static func _person_row(b, sheet: Dictionary, state: GameState, i: int) -> void:
 	DeskKit.pips(b, Vector2(skill_x, row_y + 13.0), SimLabor.skill_of(e), 5)
 	var note_x := float((cols[4] as Dictionary).get("x", 0.0))
 	var note_w := float((cols[4] as Dictionary).get("w", 300.0))
+	# S2b — a courted colleague's red row lands on their own line
+	if int(state.get_meta("poach_wk", -99)) == state.week \
+			and String(e.get("name", "")) == String(state.get_meta("poach_name", "")):
+		b.mark_control("poached", Rect2(SHEET_X, row_y, SHEET_W * 0.5, DeskKit.LG_ROW_H))
 	if asking:
 		# the coral ask, answered ON the row via the existing raise op —
 		# the arm carries the price first (the receipt path)
@@ -152,6 +273,13 @@ static func _person_row(b, sheet: Dictionary, state: GameState, i: int) -> void:
 			SimLabor.grant_raise(state, idx, fair)
 		DeskKit.arm(b, "raise_%d" % i, "wants market pay — answer $%s" % b.fmt(fair),
 			"pay $%s/wk — sure?" % b.fmt(fair), Vector2(note_x, row_y + 4.0), fire, 300.0, 19)
+		# S2b — the red rows land on the arm that answers them
+		if i == _first_asker(state):
+			b.mark_control("raise_first", Rect2(note_x - 8.0, row_y + 2.0, 316.0,
+				DeskKit.LG_ROW_H))
+		if i == _first_urgent(state):
+			b.mark_control("raise_urgent", Rect2(note_x - 8.0, row_y + 2.0, 316.0,
+				DeskKit.LG_ROW_H))
 		return
 	var grant := SimSpendBook.grant_for(state, String(e.get("name", "")))
 	if not grant.is_empty():
@@ -162,6 +290,13 @@ static func _person_row(b, sheet: Dictionary, state: GameState, i: int) -> void:
 		b.label("%.1f%% · %d%% vested · %s" % [float(grant.get("pct", 0.0)), int(round(frac * 100.0)),
 			cliff_txt], Vector2(note_x, row_y + 8.0), 18, Color(DeskKit.INK, 0.7), note_w - 84.0)
 		DeskKit.meter(b, note_x + note_w - 76.0, row_y + 9.0, 66.0, frac, DeskKit.SAGE)
+		# S7 — the bar presses through to the ownership state; the back
+		# pill home is free (focus_desk carries the source)
+		var vest_jump := func() -> void:
+			b.focus_desk("cap table", "", "team")
+		var hit: Button = DeskKit.word(b, "", Vector2(note_x, row_y + 2.0), vest_jump,
+			18, DeskKit.INK, note_w)
+		hit.size = Vector2(note_w, DeskKit.LG_ROW_H - 4.0)
 		return
 	var quirk := String(e.get("quirk", ""))
 	b.label(quirk if quirk != "" else "—", Vector2(note_x, row_y + 8.0), 18,

@@ -1336,7 +1336,7 @@ static func attention(state: GameState) -> Array:
 		for off in state.recruitment.get("offers_out", []):
 			var od: Dictionary = off
 			var cand := cand_by_id(state, String(od.get("candidate_id", "")))
-			rows.append({"desk": "recruitment", "key": "offer_out", "severity": 2,
+			rows.append({"desk": "recruitment", "key": "offer_out", "severity": 2, "control": "offer_out",
 				"label": ("%s's offer expires in %d wk" % [String(cand.get("name", "someone")),
 					maxi(int(od.get("expires_wk", 0)) - state.week, 0)]).left(40)})
 			break

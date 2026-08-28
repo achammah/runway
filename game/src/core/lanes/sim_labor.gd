@@ -867,7 +867,7 @@ static func _poached_salary(state: GameState) -> int:
 static func attention(state: GameState) -> Array:
 	var out: Array = []
 	if state.applicants.size() > 0:
-		out.append({"desk": "crew", "key": "applicants_waiting", "severity": 1,
+		out.append({"desk": "crew", "key": "applicants_waiting", "severity": 1, "control": "go_recruit",
 			"label": ("%d waiting on your advert" % state.applicants.size()).left(40)})
 	var wanter := ""
 	var leaving := ""
@@ -880,25 +880,25 @@ static func attention(state: GameState) -> Array:
 		if leaving == "" and state.week - int(ed.get("asked_week", state.week)) >= 2:
 			leaving = String(ed.get("name", "someone"))
 	if wanter != "":
-		out.append({"desk": "crew", "key": "wants_raise", "severity": 2,
+		out.append({"desk": "crew", "key": "wants_raise", "severity": 2, "control": "raise_first",
 			"label": ("%s wants market pay" % wanter).left(40)})
 	if leaving != "":
-		out.append({"desk": "crew", "key": "quit_risk", "severity": 3,
+		out.append({"desk": "crew", "key": "quit_risk", "severity": 3, "control": "raise_urgent",
 			"label": ("%s resigns next week unpaid" % leaving).left(40)})
 	for row in state.open_roles:
 		var rd: Dictionary = row
 		var role := String(rd.get("role", "engineer"))
 		var age := state.week - int(rd.get("opened_week", state.week))
 		if age >= STALE_WEEKS and waiting_for(state, role) == 0:
-			out.append({"desk": "crew", "key": "silent_role", "severity": 2,
+			out.append({"desk": "crew", "key": "silent_role", "severity": 2, "control": "open_seat",
 				"label": ("%s open %d wks, nobody applied" % [role, age]).left(40)})
 			break
 	if span_mult(state) < 1.0:
-		out.append({"desk": "crew", "key": "span_thin", "severity": 2,
+		out.append({"desk": "crew", "key": "span_thin", "severity": 2, "control": "go_recruit",
 			"label": ("the floor runs at %d%% — too few managers"
 				% int(round(span_mult(state) * 100.0))).left(40)})
 	if int(state.get_meta("poach_wk", -99)) == state.week:
-		out.append({"desk": "crew", "key": "poach_attempt", "severity": 3,
+		out.append({"desk": "crew", "key": "poach_attempt", "severity": 3, "control": "poached",
 			"label": ("a rival is courting %s"
 				% String(state.get_meta("poach_name", "your best"))).left(40)})
 	return out

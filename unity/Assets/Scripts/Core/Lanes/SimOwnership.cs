@@ -1422,7 +1422,7 @@ namespace Runway.Core
                 foreach (var off in state.Recruitment.OffersOut)
                 {
                     Dictionary<string, object> cand = CandById(state, Ds(off, "candidate_id", ""));
-                    rows.Add(new AttentionItem { Desk = "recruitment", Key = "offer_out",
+                    rows.Add(new AttentionItem { Desk = "recruitment", Key = "offer_out", Control = "offer_out",
                         Severity = 2,
                         Label = Gd.Left((cand != null ? Ds(cand, "name", "someone") : "someone")
                             + "'s offer expires in "

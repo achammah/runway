@@ -14,6 +14,11 @@ namespace Runway.Game
     /// generated amt renders as a dim SUGGESTION; ADOPT copies it into live
     /// spend through the receipt path (coordinator ruling). Adding a line is
     /// free; stopping honors contract_notice — the notice bills through.
+    ///
+    /// DAG3 Wave B: S1 zero state (the bare keyless book), S4 subtotal
+    /// receipts with the MARGINAL line, S5 hero delta + pen circles on moved
+    /// lines, S3 DO lane, S15 adopt-the-book suggestion. The ask strip owns
+    /// its own y: when it draws, the sheet drops 8px clear.
     /// </summary>
     public static class DeskSpend
     {
@@ -32,6 +37,37 @@ namespace Runway.Game
             return new[] { "$" + GameUi.Money(total) + "/wk", "the org book feeds four levers" };
         }
 
+        /// S8 — the rail's micro-status: the book total, short form.
+        public static string MicroStatus(GameState s)
+        {
+            return SimOwnership.MoneyShort(SimSpendBook.BookLive(s));
+        }
+
+        /// S8 — the org ledger never sleeps: the founder's own coffee is a line.
+        public static bool IsDormant(GameState s)
+        {
+            return false;
+        }
+
+        /// S15 — the desk's one suggestion: adopt the book when it
+        /// out-suggests the live spend. A jump chip — the adopt arm stays
+        /// the only mutation door.
+        public static List<Dictionary<string, object>> Suggestions(GameState s)
+        {
+            int live = SimSpendBook.BookLive(s);
+            int sugg = SimSpendBook.BookSuggested(s);
+            var rows = new List<Dictionary<string, object>>();
+            if (sugg > 0 && sugg > live)
+                rows.Add(new Dictionary<string, object>
+                {
+                    { "label", "adopt the book — $" + GameUi.Money(sugg) + "/wk" },
+                    { "kind", "jump" },
+                    { "payload", new Dictionary<string, object>
+                        { { "desk", "spend" }, { "control", "adopt_book" } } },
+                });
+            return rows;
+        }
+
         public static void Draw(BinderScreen b)
         {
             GameState state = b.State;
@@ -43,25 +79,79 @@ namespace Runway.Game
             int total = SimSpendBook.BookLive(state);
             int suggested = SimSpendBook.BookSuggested(state);
 
+            // ── S1 · the zero state: the bare keyless book — nothing live,
+            // nothing suggested — teaches before it opens (the one action
+            // reveals the sheet; a generated book's suggestions ARE the
+            // designed week-1 state).
+            if (total == 0 && suggested == 0 && !b.Desk.ContainsKey("zero_off"))
+            {
+                DeskKit.ZeroState(b, new DeskKit.ZeroStateCfg
+                {
+                    WillShow = "the org ledger — closing, retention, building, people",
+                    WouldLine = "$600/wk into closing WOULD buy one closer of capacity — $1,200 into building WOULD ship +1 product a week",
+                    ActionLabel = "open the book — raise a line",
+                    ActionCb = () => { b.Desk["zero_off"] = true; },
+                    WakesHint = "lines bill only when you raise them — ink is free",
+                });
+                return;
+            }
+
+            // ── S5 · what changed since the last open: read the store ONCE
+            // per visit (a refresh must not eat the news), then circle.
+            HashSet<int> circled;
+            object co;
+            if (!b.Desk.TryGetValue("_circ", out co))
+            {
+                var set = new HashSet<int>();
+                string heroPrev = b.SeenPrev("spend", "book_total");
+                b.Seen("spend", "book_total", total.ToString());
+                for (int ci = 0; ci < state.SpendBook.Count; ci++)
+                {
+                    SpendLine cl = state.SpendBook[ci];
+                    string ck = "l" + ci + "_" + (cl.Name ?? "");
+                    string cv = SimSpendBook.LiveOf(cl) + "|"
+                                + (SimSpendBook.IsStopping(cl) ? "s" : "o");
+                    string was = b.SeenPrev("spend", ck);
+                    if (b.Seen("spend", ck, cv) && was != "") set.Add(ci);
+                }
+                b.Desk["_circ"] = set;
+                b.Desk["_hero_prev"] = heroPrev;
+                circled = set;
+            }
+            else circled = co as HashSet<int> ?? new HashSet<int>();
+
             // ── the hero: the book's total, which the double-ruled TOTAL equals
             string big = "$" + GameUi.Money(total);
             b.L(big, SheetX, 6f, DeskKit.HeroSize, DrawnUI.Ink, 460f);
             float bw = DrawnUI.MeasureWidth(big, DeskKit.HeroSize);
+            object hpv;
+            string hp = b.Desk.TryGetValue("_hero_prev", out hpv) && hpv != null
+                ? hpv.ToString() : "";
+            float hpF;
+            if (hp != "" && float.TryParse(hp, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out hpF))
+                DeskKit.DeltaArrow(b, SheetX + bw + 18f, 4f, total, hpF);
             b.L("a week feeds the org", SheetX + bw + 16f, 22f, DeskKit.Row,
                 Ink(0.7f), 420f);
             b.L("your book, written for YOUR business — every line sums into one of four engine buckets.",
                 SheetX, 62f, DeskKit.Detail, Ink(0.6f), 760f);
             // RED MEANS ACT, AND THE PAGE NAMES THE ASK — the kit's ask strip,
-            // born on this desk (S2a).
-            DeskKit.AskStrip(b, "spend", SheetX, 86f, 1000f, "adopt the book or fund a line");
+            // born on this desk (S2a). It owns its y: the sheet drops 8px clear.
+            float sheetY = YSheet;
+            if (DeskKit.AskStrip(b, "spend", SheetX, 86f, 1000f, "adopt the book or fund a line"))
+                sheetY += 8f;
             if (suggested > 0 && suggested != total)
+            {
                 DeskKit.Arm(b, "adopt_book",
                     "adopt the suggested book — $" + GameUi.Money(suggested) + "/wk",
                     "start billing $" + GameUi.Money(suggested) + "/wk — sure?", 790f, 56f,
                     () => SimSpendBook.AdoptBook(state), 340f, DeskKit.Detail);
+                // S2b — the suggestion chip and the red jump land HERE, spotlit
+                b.MarkControl("adopt_book", new Rect(782f, 54f, 356f, 46f));
+            }
 
             // ── the sheet
-            var sheet = DeskKit.LedgerSheet(b, SheetX, YSheet, SheetW, new List<DeskKit.LedgerCol>
+            var sheet = DeskKit.LedgerSheet(b, SheetX, sheetY, SheetW, new List<DeskKit.LedgerCol>
             {
                 new DeskKit.LedgerCol { Label = "line", W = 280f },
                 new DeskKit.LedgerCol { Label = "buys", W = 230f },
@@ -112,6 +202,11 @@ namespace Runway.Game
                     DeskKit.LedgerRow(b, sheet, new[] { line.Name ?? "",
                         FitBuys(line.Buys ?? ""),
                         "$" + GameUi.Money(live), "" }, cfg);
+                    // S5 — the pen circles a line that moved since the last
+                    // open (adopted, stopped, struck or re-levered)
+                    if (circled.Contains(i))
+                        DeskKit.PenCircle(b, new Rect(SheetX + 8f, rowY + 3f, 540f,
+                            DeskKit.LgRowH - 6f));
                     // the EFFECT cell carries the row's ONE control (mutation
                     // law: receipt-priced arm, two taps, Esc disarms)
                     if (stopping)
@@ -148,9 +243,15 @@ namespace Runway.Game
                         new DeskKit.LedgerRowCfg { Dim = true,
                             OnPress = () => { b.Desk["open_b"] = openBucket; } });
                 }
+                // S4 — PRESS THE SUBTOTAL: the effect receipt with the
+                // MARGINAL line, the number that teaches diminishing returns
+                float subY = sheet.Cursor;
                 DeskKit.LedgerSubtotal(b, sheet, "subtotal — " + SubWord(bucket),
                     "$" + GameUi.Money(SimSpendBook.BucketLive(state, bucket)),
                     EffectLine(state, bucket));
+                b.MarkControl("sub_" + bucket, new Rect(SheetX, subY, SheetW, DeskKit.LgRowH));
+                DeskKit.PressReceipt(b, "sub_" + bucket, ReceiptTitle(bucket),
+                    ReceiptLines(state, bucket));
             }
             DeskKit.LedgerTotal(b, sheet, "total org spend", "$" + GameUi.Money(total));
             if (suggested > 0 && suggested != total)
@@ -160,6 +261,28 @@ namespace Runway.Game
 
             // the door draws only when the sheet left it room
             if (yEnd + 44f <= YFoot - 8f) AddDoor(b, state, yEnd + 2f);
+
+            // ── S3 · the DO lane: the desk's primary actions in the kit's one
+            // slot (parked while the add door is mid-flow)
+            if (DStr(b, "mode") != "add")
+            {
+                var actions = new List<DeskKit.DoAction>();
+                if (suggested > 0 && suggested > total)
+                    actions.Add(new DeskKit.DoAction
+                    {
+                        Label = "adopt the book — $" + GameUi.Money(suggested) + "/wk",
+                        Tier = "two-tap",
+                        Cb = () => SimSpendBook.AdoptBook(state),
+                    });
+                if (state.SpendBook.Count < SimSpendBook.BookCap)
+                    actions.Add(new DeskKit.DoAction
+                    {
+                        Label = "add a line",
+                        Tier = "",
+                        Cb = () => { b.Desk["mode"] = "add"; b.Desk.Remove("staged"); },
+                    });
+                DeskKit.DoLane(b, actions);
+            }
 
             DeskKit.Footer(b,
                 "the subtotals ARE the engine's levers — closing, retention, building, people",
@@ -203,6 +326,76 @@ namespace Runway.Game
                     return v > 0 ? "+" + mg.ToString("0.0") + " morale/wk" : "instant coffee, cold room";
                 }
             }
+        }
+
+        // ── S4 · the subtotal's effect receipt: the terms, then THE MARGINAL
+        // line — "next $100 buys…" is the diminishing-returns lesson ─────────
+
+        static string ReceiptTitle(string bucket)
+        {
+            switch (bucket)
+            {
+                case "sales": return "closing — what sales spend buys";
+                case "care": return "retention — what care spend buys";
+                case "rnd": return "building — what R&D spend buys";
+                default: return "people — what office spend buys";
+            }
+        }
+
+        /// The receipt speaks the tick's own curves and derives the marginal
+        /// at the CURRENT spend (twin of desk_spend.gd `_receipt_lines`).
+        static List<DeskKit.TicketLine> ReceiptLines(GameState state, string bucket)
+        {
+            double v = SimSpendBook.BucketLive(state, bucket);
+            var lines = new List<DeskKit.TicketLine>
+            {
+                new DeskKit.TicketLine { Label = "live spend",
+                    Value = "$" + GameUi.Money((int)v) + "/wk" },
+            };
+            switch (bucket)
+            {
+                case "sales":
+                    lines.Add(new DeskKit.TicketLine { Label = "buys now",
+                        Value = "+" + (v / 600.0).ToString("0.0") + " closers of capacity" });
+                    lines.Add(new DeskKit.TicketLine { Label = "next $100 buys",
+                        Value = "+" + (100.0 / 600.0).ToString("0.00") + " closers" });
+                    lines.Add(new DeskKit.TicketLine { Label = "the curve",
+                        Value = "linear — $600 per closer" });
+                    break;
+                case "care":
+                {
+                    double cutNow = 30.0 * (1.0 - Math.Exp(-SimLabor.CareEff(state, (int)v) / 1500.0));
+                    double cutNext = 30.0 * (1.0 - Math.Exp(-SimLabor.CareEff(state, (int)v + 100) / 1500.0));
+                    lines.Add(new DeskKit.TicketLine { Label = "buys now",
+                        Value = "churn −" + Math.Round(cutNow) + "%" });
+                    lines.Add(new DeskKit.TicketLine { Label = "next $100 buys",
+                        Value = "churn −" + (cutNext - cutNow).ToString("0.0") + " pts more" });
+                    lines.Add(new DeskKit.TicketLine { Label = "the curve",
+                        Value = "diminishing — early dollars cut deepest" });
+                    break;
+                }
+                case "rnd":
+                    lines.Add(new DeskKit.TicketLine { Label = "buys now",
+                        Value = "+" + (v / 1200.0).ToString("0.00") + " product/wk" });
+                    lines.Add(new DeskKit.TicketLine { Label = "next $100 buys",
+                        Value = "+" + (100.0 / 1200.0).ToString("0.00") + " product/wk" });
+                    lines.Add(new DeskKit.TicketLine { Label = "the curve",
+                        Value = "linear · debt pays down while funded" });
+                    break;
+                default:
+                {
+                    double mgNow = 3.0 * (1.0 - Math.Exp(-v / 800.0));
+                    double mgNext = 3.0 * (1.0 - Math.Exp(-(v + 100.0) / 800.0));
+                    lines.Add(new DeskKit.TicketLine { Label = "buys now",
+                        Value = "+" + mgNow.ToString("0.0") + " morale/wk" });
+                    lines.Add(new DeskKit.TicketLine { Label = "next $100 buys",
+                        Value = "+" + (mgNext - mgNow).ToString("0.00") + " morale/wk" });
+                    lines.Add(new DeskKit.TicketLine { Label = "the curve",
+                        Value = "diminishing — comfort saturates" });
+                    break;
+                }
+            }
+            return lines;
         }
 
         /// The add-a-line door: bucket picker -> staged receipt -> the ADD arm.
