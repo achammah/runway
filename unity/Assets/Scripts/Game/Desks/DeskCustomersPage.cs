@@ -87,6 +87,17 @@ namespace Runway.Game
         // ── the score ──────────────────────────────────────────────────────
 
         /// This week's score, from the funnel and the binder's own history.
+        /// The fog hides COUNTS, never events: what the line claims tracks the
+        /// week's real arrivals, and only the precision is lost with the notebook.
+        static string FogLine(int won)
+        {
+            if (won == 1)
+                return "Someone signed up on Tuesday. The exact trail lives in a notebook you lost.";
+            if (won >= 2)
+                return "A handful of signups this week — the exact count lives in a notebook you lost.";
+            return "Traffic seems… quiet. Nobody new this week, as far as you can tell. The numbers live in a notebook you lost.";
+        }
+
         static string Score(GameState s, out int won, out int lost, out int kept)
         {
             Dictionary<string, double> f = SimFunnel.Funnel(s);
@@ -185,7 +196,7 @@ namespace Runway.Game
                 "the doors are on IN MOTION and GROWTH");
             if (an <= 0)
             {
-                b.L("Traffic seems… decent? Someone signed up on Tuesday. The numbers live in a notebook you lost.",
+                b.L(FogLine(won),
                     DeskKit.XId, DeskKit.ContentY0, DeskKit.Detail,
                     DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), 1100f);
                 // S2 — the fog sells its own unlock: one press lands on the

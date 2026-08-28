@@ -64,8 +64,8 @@ namespace Runway.Game
             if (st.AnalyticsLevel <= 0)
             {
                 b.L(st.Traction + " customers, give or take.", 100f, 10f, 46f);
-                b.L("Traffic seems… decent? Someone signed up on Tuesday. The numbers live in a "
-                    + "notebook you lost.", 10f, 110f, 30f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f));
+                b.L("Traffic seems… hard to read. The numbers live in a notebook you lost.",
+                    10f, 110f, 30f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f));
                 b.L("(invest in analytics to see the funnel)", 10f, 210f, 26f, DrawnUI.Coral);
                 Footer(b, st);
                 return;

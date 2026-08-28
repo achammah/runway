@@ -172,8 +172,48 @@ namespace Runway.Game
             _spreads = new JournalSpreads(this, _journal);
 
             SyncRoom(true);
+            RestoreRoom();
             BuildCoach();
             StartWeek();
+        }
+
+        /// THE ROOM SURVIVES A RELAUNCH — twin of the Godot room memo. Every
+        /// painting adopted into the room is remembered per run (seed + pivot);
+        /// a continued game re-mounts the last one instead of the blank stage.
+        string RoomMemoPath()
+        {
+            var s = State;
+            return RunwayPaths.User("room_last_" + (s != null ? s.SimSeed : 0)
+                + "_p" + (s != null ? s.Pivots : 0) + ".json");
+        }
+
+        void RememberRoom(string path)
+        {
+            // only real generated art in the user dir — never a stub or bundle plate
+            if (State == null || string.IsNullOrEmpty(path)) return;
+            if (!path.StartsWith(Application.persistentDataPath)
+                && !path.StartsWith(RunwayPaths.UserDir)) return;
+            try
+            {
+                var o = new JObject { ["path"] = path, ["wk"] = State.Week };
+                System.IO.File.WriteAllText(RoomMemoPath(), o.ToString());
+            }
+            catch (System.Exception) { }
+        }
+
+        void RestoreRoom()
+        {
+            // a warm prefetch that already adopted this session's painting wins
+            if (State == null || !string.IsNullOrEmpty(ComposedPath)) return;
+            try
+            {
+                string memo = RoomMemoPath();
+                if (!System.IO.File.Exists(memo)) return;
+                var o = JObject.Parse(System.IO.File.ReadAllText(memo));
+                string p = o.Value<string>("path") ?? "";
+                if (p.Length > 0 && System.IO.File.Exists(p)) AdoptComposed(p, false);
+            }
+            catch (System.Exception) { }
         }
 
         void OnDestroy()
@@ -398,6 +438,7 @@ namespace Runway.Game
                 HideDrawnRoom(true);
                 GarageInk.Apply(_composed, tex);
             }));
+            RememberRoom(path);
             return true;
         }
 

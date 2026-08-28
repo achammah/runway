@@ -51,7 +51,7 @@ static func draw(b) -> void:
 	# exists for a founder who never bought the means to see it.
 	if state.analytics_level <= 0:
 		b.label("%d customers, give or take." % state.traction, Vector2(100, 10), 46)
-		b.label("Traffic seems… decent? Someone signed up on Tuesday. The numbers live in a notebook you lost.",
+		b.label("Traffic seems… hard to read. The numbers live in a notebook you lost.",
 			Vector2(10, 110), 30, Color(Binder.INK, 0.7))
 		b.label("(invest in analytics to see the funnel)", Vector2(10, 210), 26, Binder.PEN)
 		_footer(b, state)

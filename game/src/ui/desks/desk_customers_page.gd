@@ -175,7 +175,7 @@ static func _hero(b, s: GameState, an: int, sc: Dictionary) -> void:
 	DeskKit.ask_strip(b, "customers", DeskKit.X_ID, 84.0, 1100.0,
 		"the doors are on IN MOTION and GROWTH")
 	if an <= 0:
-		b.label("Traffic seems… decent? Someone signed up on Tuesday. The numbers live in a notebook you lost.",
+		b.label(_fog_line(int(sc.get("won", -1))),
 			Vector2(DeskKit.X_ID, DeskKit.CONTENT_Y0), DeskKit.DETAIL,
 			Color(DeskKit.INK, 0.6), 1100.0)
 		# S2 — the fog sells its own unlock: one press lands on the spend book.
@@ -194,6 +194,16 @@ static func _hero(b, s: GameState, an: int, sc: Dictionary) -> void:
 		Color(DeskKit.INK, 0.45), 400.0)
 	DeskKit.pen_rule(b, 150.0)
 	b.spark(b.series("customers"), Vector2(10.0, 166.0), Vector2(1120.0, 148.0), DeskKit.SAGE)
+
+## The fog hides COUNTS, never events: what the line claims tracks the week's
+## real arrivals, and only the precision is lost with the notebook.
+static func _fog_line(won: int) -> String:
+	if won == 1:
+		return "Someone signed up on Tuesday. The exact trail lives in a notebook you lost."
+	if won >= 2:
+		return "A handful of signups this week — the exact count lives in a notebook you lost."
+	return "Traffic seems… quiet. Nobody new this week, as far as you can tell. The numbers live in a notebook you lost."
+
 
 # ─────────────────────────── the funnel, small ───────────────────────────────
 

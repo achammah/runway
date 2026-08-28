@@ -397,6 +397,7 @@ func _ready() -> void:
 	add_child(_journal)
 
 	_sync_room(true)
+	_restore_room()
 	var stub := OS.get_environment(ROOM_STUB_ENV)
 	if stub != "":
 		adopt_composed(stub, false)
@@ -1422,6 +1423,34 @@ func _mark_contract_surfaces(on: bool, tex: Texture2D = null) -> void:
 	_room.add_child(ink)
 	_contract_ink = ink
 
+## THE ROOM SURVIVES A RELAUNCH. Every painting adopted into the room is
+## remembered per run (seed + pivot), and a continued game re-mounts the last
+## one instead of the blank stage. aligned stays false on restore: a fresh
+## process cannot prove the stage under it, so the handwriting stands down.
+func _room_memo_path() -> String:
+	return "user://room_last_%d_p%d.json" % [state.sim_seed, state.pivots]
+
+func _remember_room(path: String) -> void:
+	# only real generated art (user://) — never an env stub or res:// plate
+	if state == null or not path.begins_with("user://") or _harness():
+		return
+	var f := FileAccess.open(_room_memo_path(), FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify({"path": path, "wk": state.week}))
+
+func _restore_room() -> void:
+	if state == null or _harness() or OS.get_environment("RUNWAY_NO_ART") != "":
+		return
+	var f := FileAccess.open(_room_memo_path(), FileAccess.READ)
+	if f == null:
+		return
+	var d = JSON.parse_string(f.get_as_text())
+	if not (d is Dictionary):
+		return
+	var p := String((d as Dictionary).get("path", ""))
+	if p != "" and FileAccess.file_exists(p):
+		adopt_composed(p, false)
+
 func adopt_composed(path: String, aligned: bool = false) -> bool:
 	var tex: Texture2D = null
 	if path.begins_with("res://"):
@@ -1462,6 +1491,7 @@ func adopt_composed(path: String, aligned: bool = false) -> bool:
 	_composed.modulate.a = 0.0
 	var tw := create_tween()
 	tw.tween_property(_composed, "modulate:a", 1.0, 0.4)
+	_remember_room(path)
 	return true
 
 ## THE HONEST ROOM (owner: the stock room read as a bug while day-one art
