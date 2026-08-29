@@ -109,6 +109,7 @@ namespace Runway.Game
             {
                 case "detail": Detail(b); break;
                 case "write": Write(b); break;
+                case "clarify": ClarifyState(b); break;
                 case "wait": WaitState(b); break;
                 case "review": ReviewState(b); break;
                 default: List(b); break;
@@ -556,38 +557,109 @@ namespace Runway.Game
                 b.Desk["f_desc"] = b.State.OfferDraft;
                 b.State.OfferDraft = "";
             }
-            DeskKit.Title(b, "what do you want to sell?");
-            FormField(b, 56f, "f_name", "its name (the street may tidy it)",
-                "\"Premium Package\", \"The Tuesday Box\"…", 34f, true);
-            FormField(b, 128f, "f_desc", "what it is — the full description",
+            // THE BINDER'S OWN STATIONERY (owner sign-off: shape C) — a
+            // pre-printed sheet, agnostic of the business.
+            b.L("NEW OFFER — INTAKE SHEET", DeskKit.XId, 8f, 30f, DrawnUI.Ink, 700f);
+            var stamp = b.L("RUNWAY! form 01-C", 920f, 12f, 16f, Ink(0.45f), 200f);
+            stamp.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 1.7f);
+            DeskKit.PenRule(b, 48f);
+            FormField(b, 56f, "f_name", "offer, called",
+                "its working name — the street may tidy it", 34f, true);
+            FormField(b, 128f, "f_desc", "in plain words, what it is",
                 "write it the way you would say it out loud…", 96f, false);
-            FormField(b, 262f, "f_includes", "what it includes — the pieces a buyer gets",
-                "the parts, the time, the materials, the follow-up…", 70f, false);
-            FormField(b, 370f, "f_audience", "who it is for (optional)",
-                "regulars? first-timers? the corporate accounts?", 34f, true);
-            string hint = Get(b, "f_unit");
-            if (hint.Length == 0) hint = UnitHints[0];
-            b.L("billed", DeskKit.XId, 446f, 18f, Ink(0.5f), 200f);
-            DeskKit.Word(b, hint + "  ->", DeskKit.XId, 468f, () =>
+            FormField(b, 262f, "f_includes", "a buyer walks away with",
+                "the pieces: the work, the time, the materials, the follow-up…", 70f, false);
+            FormField(b, 370f, "f_audience", "for (optional)",
+                "which of your customers this is aimed at", 34f, true);
+            // billed (circle one): every unit on one row, the chosen in the pen
+            b.L("billed (circle one)", DeskKit.XId, 446f, 18f, Ink(0.5f), 400f);
+            string chosen = Get(b, "f_unit");
+            if (chosen.Length == 0) chosen = UnitHints[0];
+            float ux = DeskKit.XId;
+            float uy = 470f;
+            foreach (string u in UnitHints)
             {
-                string cur = Get(b, "f_unit");
-                int idx = Array.IndexOf(UnitHints, cur.Length == 0 ? UnitHints[0] : cur);
-                b.Desk["f_unit"] = UnitHints[(idx + 1) % UnitHints.Length];
-            }, DeskKit.Detail, DrawnUI.Blue, 360f);
-            DeskKit.Word(b, "price it", DeskKit.XId, 530f, () => Submit(b),
-                DeskKit.Row, DrawnUI.Ink, 220f);
-            DeskKit.Word(b, "never mind", 260f, 530f, () =>
+                float uw = DrawnUI.MeasureWidth(u, 20f) + 26f;
+                if (ux + uw > 1130f) { ux = DeskKit.XId; uy += 34f; }
+                string uv = u;
+                DeskKit.Word(b, uv, ux, uy, () => b.Desk["f_unit"] = uv, 20f,
+                    uv == chosen ? DrawnUI.Coral : Ink(0.55f), uw);
+                if (uv == chosen) DeskKit.PenRule(b, uy + 26f, ux, uw - 20f);
+                ux += uw + 10f;
+            }
+            float by = uy + 44f;
+            DeskKit.Word(b, "send it to the street", DeskKit.XId, by, () => Submit(b),
+                DeskKit.Row, DrawnUI.Coral, 340f);
+            DeskKit.Word(b, "never mind", 380f, by, () =>
             {
                 b.Desk["mode"] = "";
-                foreach (string k in new[] { "f_name", "f_desc", "f_includes",
-                    "f_audience", "f_unit", "text" }) b.Desk.Remove(k);
+                ClearSheet(b);
             }, DeskKit.Row, Ink(0.7f), 200f);
             if (Get(b, "short").Length > 0)
                 b.L("a few words of description at least — the street can't price a shrug",
-                    DeskKit.XId, 590f, DeskKit.Status, DrawnUI.Coral, 900f);
+                    DeskKit.XId, by + 46f, DeskKit.Status, DrawnUI.Coral, 900f);
             DeskKit.Footer(b, "",
-                "the street writes the terms — costs are the world's; the price stays yours",
-                "");
+                "the street writes the terms — costs are the world's; the price stays yours", "");
+        }
+
+        static void ClearSheet(BinderScreen b)
+        {
+            foreach (string k in new[] { "text", "f_name", "f_desc", "f_includes",
+                "f_audience", "f_unit", "fields", "oq", "oa" }) b.Desk.Remove(k);
+        }
+
+        /// THE STREET'S FOLLOW-UP (owner: generated clarification, multiple
+        /// choice): each question offers its options as words; every answer
+        /// inked = pricing fires with the q/a pairs attached.
+        static void ClarifyState(BinderScreen b)
+        {
+            var oq = b.Desk.ContainsKey("oq") ? b.Desk["oq"] as JArray : null;
+            var oa = b.Desk.ContainsKey("oa") ? b.Desk["oa"] as Dictionary<string, string> : null;
+            if (oq == null) { b.Desk["mode"] = "write"; Write(b); return; }
+            if (oa == null) { oa = new Dictionary<string, string>(); b.Desk["oa"] = oa; }
+            b.L("THE STREET HAS QUESTIONS", DeskKit.XId, 8f, 30f, DrawnUI.Ink, 700f);
+            b.L("\"" + Get(b, "f_name") + "\" — " + Gd.Left(Get(b, "f_desc"), 90),
+                DeskKit.XId, 52f, 20f, Ink(0.55f), 1100f);
+            DeskKit.PenRule(b, 84f);
+            float y = 100f;
+            for (int i = 0; i < oq.Count; i++)
+            {
+                var qd = oq[i] as JObject;
+                string q = qd != null ? (string)qd["q"] ?? "" : "";
+                b.L(q, DeskKit.XId, y, 24f, DrawnUI.Ink, 1100f);
+                y += 36f;
+                string picked;
+                oa.TryGetValue(i.ToString(CultureInfo.InvariantCulture), out picked);
+                float ox = DeskKit.XId + 20f;
+                var opts = qd != null ? qd["options"] as JArray : null;
+                if (opts != null)
+                    foreach (var ov in opts)
+                    {
+                        string o = (string)ov ?? "";
+                        float ow = DrawnUI.MeasureWidth(o, 22f) + 28f;
+                        if (ox + ow > 1130f) { ox = DeskKit.XId + 20f; y += 36f; }
+                        int qi = i;
+                        string oval = o;
+                        DeskKit.Word(b, oval, ox, y, () =>
+                        {
+                            var oa2 = b.Desk["oa"] as Dictionary<string, string>;
+                            if (oa2 != null)
+                                oa2[qi.ToString(CultureInfo.InvariantCulture)] = oval;
+                        }, 22f, oval == picked ? DrawnUI.Coral : Ink(0.6f), ow);
+                        if (oval == picked) DeskKit.PenRule(b, y + 28f, ox, ow - 20f);
+                        ox += ow + 10f;
+                    }
+                y += 48f;
+            }
+            bool allIn = oa.Count >= oq.Count && oq.Count > 0;
+            if (allIn)
+                DeskKit.Word(b, "that's everything — price it", DeskKit.XId, y + 6f,
+                    () => FirePrice(b), DeskKit.Row, DrawnUI.Coral, 420f);
+            else
+                b.L("answer each — then the street prices it", DeskKit.XId, y + 6f,
+                    DeskKit.Detail, Ink(0.45f), 600f);
+            DeskKit.Word(b, "never mind", 500f, y + 6f, () => b.Desk["mode"] = "write",
+                DeskKit.Row, Ink(0.7f), 200f);
         }
 
         /// THE PAPER IS THE FIELD: no box, no fill, no chrome — the rule underneath
@@ -671,11 +743,25 @@ namespace Runway.Game
                 ["audience_note"] = Gd.Left(Get(b, "f_audience").Trim(), 120),
             };
             b.Desk["text"] = desc;   // the wait card + the house fallback read one line
+            b.Desk["fields"] = fields;
             EventGenerator gen = Street(b);
             if (gen != null)
             {
+                // UNDERSTAND FIRST, PRICE SECOND: the street may ask up to 3
+                // multiple-choice questions before it writes the terms
                 b.Desk["mode"] = "wait";
-                gen.PriceOfferIdea(OfferPayload(b.State, fields), res => Land(b, desc, res));
+                gen.ClarifyOfferIntake(OfferPayload(b.State, fields), cres =>
+                {
+                    if (b == null || b.gameObject == null) return;
+                    if (Get(b, "mode") != "wait") return;
+                    var qs = cres != null ? cres["questions"] as JArray : null;
+                    bool ready = cres == null || cres["ready"] == null || (bool)cres["ready"];
+                    if (ready || qs == null || qs.Count == 0) { FirePrice(b); return; }
+                    b.Desk["oq"] = qs;
+                    b.Desk["oa"] = new Dictionary<string, string>();
+                    b.Desk["mode"] = "clarify";
+                    b.Refresh();
+                });
                 b.Refresh();
                 return;
             }
@@ -720,6 +806,41 @@ namespace Runway.Game
         ///
         /// An empty answer is not a failure state, only a quieter one: the house
         /// numbers fill the same card, with the one dry footnote (01 section 8.4).
+        /// The priced call, with any clarify answers attached as binding facts.
+        static void FirePrice(BinderScreen b)
+        {
+            var fields = b.Desk.ContainsKey("fields") ? b.Desk["fields"] as JObject : new JObject();
+            var oq = b.Desk.ContainsKey("oq") ? b.Desk["oq"] as JArray : null;
+            var oa = b.Desk.ContainsKey("oa") ? b.Desk["oa"] as Dictionary<string, string> : null;
+            if (oq != null && oq.Count > 0 && fields != null)
+            {
+                var clar = new JArray();
+                for (int i = 0; i < oq.Count; i++)
+                {
+                    var qd = oq[i] as JObject;
+                    string a;
+                    if (oa == null || !oa.TryGetValue(i.ToString(CultureInfo.InvariantCulture), out a))
+                        a = "";
+                    clar.Add(new JObject { ["q"] = qd != null ? (string)qd["q"] ?? "" : "",
+                                           ["a"] = a });
+                }
+                fields["clarifications"] = clar;
+            }
+            string desc = Get(b, "text");
+            b.Desk["mode"] = "wait";
+            EventGenerator gen = Street(b);
+            if (gen == null)
+            {
+                b.Desk["pending"] = Proposal(b.State, SimCatalog.DraftTerms(b.State, desc));
+                b.Desk["house"] = "1";
+                b.Desk["mode"] = "review";
+                b.Refresh();
+                return;
+            }
+            gen.PriceOfferIdea(OfferPayload(b.State, fields), res => Land(b, desc, res));
+            b.Refresh();
+        }
+
         static void Land(BinderScreen b, string idea, JObject res)
         {
             if (b == null || b.gameObject == null) return;
@@ -891,7 +1012,7 @@ namespace Runway.Game
             }
             DeskKit.Review(b, new DeskKit.ReviewCard
             {
-                Banner = "the street's terms — read them, then shelve it or tear it up",
+                Banner = "THE INTAKE SHEET — the street's terms are in",
                 Read = ReviewRead(b, p, fair),
                 Groups = groups,
                 Verdict = SimCatalog.BreakEven(p, lc) >= 0 ? ""
@@ -904,7 +1025,7 @@ namespace Runway.Game
                 OnCancel = () =>
                 {
                     b.Desk["mode"] = "";
-                    b.Desk.Remove("text");
+                    ClearSheet(b);
                 },
             });
         }
@@ -928,7 +1049,7 @@ namespace Runway.Game
                 "NEW OFFER shelved: {0} ({1}) — street ${2}",
                 made.Name, made.Unit, Gd.RoundToInt(made.FairPrice)));
             b.Desk["mode"] = "";
-            b.Desk.Remove("text");
+            ClearSheet(b);
         }
 
         static List<DeskKit.StepRow> ReviewLines(Offer p, List<CostLine> lines,
@@ -991,13 +1112,28 @@ namespace Runway.Game
         /// reasoning, the labor reality, then the unpriced law.
         static List<string> ReviewRead(BinderScreen b, Offer p, double fair)
         {
-            var read = new List<string>
-            {
-                string.Format(CultureInfo.InvariantCulture,
-                    "{0} · {1} — the street charges ≈ ${2} · elasticity {3} · weight {4:0.0}",
-                    (p.Name ?? "an offer").ToUpper(), p.Unit ?? "", Money(fair),
-                    ElasticityWord(p.Elasticity), p.Weight),
-            };
+            var read = new List<string>();
+            // YOUR SIDE, condensed — the sheet's words stay visible above the terms
+            string yours = Gd.Left(Get(b, "f_desc"), 110);
+            if (yours.Length > 0) read.Add("you wrote: " + yours);
+            var oqR = b.Desk.ContainsKey("oq") ? b.Desk["oq"] as JArray : null;
+            var oaR = b.Desk.ContainsKey("oa") ? b.Desk["oa"] as Dictionary<string, string> : null;
+            if (oqR != null && oaR != null)
+                for (int i = 0; i < oqR.Count; i++)
+                {
+                    string a;
+                    if (oaR.TryGetValue(i.ToString(CultureInfo.InvariantCulture), out a)
+                        && a.Length > 0)
+                    {
+                        var qd = oqR[i] as JObject;
+                        read.Add("— " + (qd != null ? (string)qd["q"] ?? "" : "")
+                            + "  ->  " + a);
+                    }
+                }
+            read.Add(string.Format(CultureInfo.InvariantCulture,
+                "{0} · {1} — the street charges ≈ ${2} · elasticity {3} · weight {4:0.0}",
+                (p.Name ?? "an offer").ToUpper(), p.Unit ?? "", Money(fair),
+                ElasticityWord(p.Elasticity), p.Weight));
             if (!string.IsNullOrEmpty(p.Desc)) read.Add(p.Desc);
             if (!string.IsNullOrEmpty(p.StreetRead))
                 read.Add("the street's read: " + p.StreetRead);

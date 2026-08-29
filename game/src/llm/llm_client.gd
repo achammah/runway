@@ -175,6 +175,23 @@ const CLARIFY_SCHEMA := {
 }
 
 ## Schema for pricing a founder-written offer: the street answers with terms.
+## The intake's follow-up round: the street either understands the offer or
+## asks up to 3 multiple-choice questions about the FACTS that set its terms.
+const OFFER_CLARIFY_SCHEMA := {
+	"type": "object", "additionalProperties": false,
+	"required": ["ready", "questions"],
+	"properties": {
+		"ready": {"type": "boolean"},
+		"questions": {"type": "array", "minItems": 0, "maxItems": 3,
+			"items": {"type": "object", "additionalProperties": false,
+				"required": ["q", "options"],
+				"properties": {
+					"q": {"type": "string", "maxLength": 120},
+					"options": {"type": "array", "minItems": 2, "maxItems": 4,
+						"items": {"type": "string", "maxLength": 40}}}}},
+	},
+}
+
 const OFFER_SCHEMA := {
 	"type": "object", "additionalProperties": false,
 	"required": ["name", "desc", "unit", "fair_price", "elasticity", "weight",

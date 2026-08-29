@@ -66,6 +66,8 @@ static func draw(b) -> void:
 			_detail(b)
 		"write":
 			_write(b)
+		"clarify":
+			_clarify(b)
 		"wait":
 			_wait(b)
 		"review":
@@ -447,32 +449,96 @@ static func _write(b) -> void:
 	if String(b.desk.get("f_desc", "")) == "" and b.state.offer_draft != "":
 		b.desk["f_desc"] = b.state.offer_draft
 		b.state.offer_draft = ""
-	DeskKit.title(b, "what do you want to sell?")
-	_field(b, 56.0, "f_name", "its name (the street may tidy it)",
-		"\"Premium Package\", \"The Tuesday Box\"…", 34.0, true)
-	_field(b, 128.0, "f_desc", "what it is — the full description",
+	# THE BINDER'S OWN STATIONERY (owner sign-off: shape C) — a pre-printed
+	# sheet, agnostic of the business: the same five blanks price a massage,
+	# a seat, a kit or a marketplace listing.
+	b.label("NEW OFFER — INTAKE SHEET", Vector2(DeskKit.X_ID, 8.0), 30, DeskKit.INK, 700.0)
+	var stamp: Label = b.label("RUNWAY! form 01-C", Vector2(920.0, 12.0), 16,
+		Color(DeskKit.INK, 0.45), 200.0)
+	stamp.rotation = -0.03
+	DeskKit.pen_rule(b, 48.0)
+	_field(b, 56.0, "f_name", "offer, called", "its working name — the street may tidy it", 34.0, true)
+	_field(b, 128.0, "f_desc", "in plain words, what it is",
 		"write it the way you would say it out loud…", 96.0)
-	_field(b, 262.0, "f_includes", "what it includes — the pieces a buyer gets",
-		"the parts, the time, the materials, the follow-up…", 70.0)
-	_field(b, 370.0, "f_audience", "who it is for (optional)",
-		"regulars? first-timers? the corporate accounts?", 34.0, true)
-	# the unit wish cycles through the street's own units
-	var hint := String(b.desk.get("f_unit", UNIT_HINTS[0]))
-	b.label("billed", Vector2(DeskKit.X_ID, 446.0), 18, Color(DeskKit.INK, 0.5), 200.0)
-	DeskKit.word(b, hint + "  ->", Vector2(DeskKit.X_ID, 468.0), func() -> void:
-		var idx := UNIT_HINTS.find(String(b.desk.get("f_unit", UNIT_HINTS[0])))
-		b.desk["f_unit"] = UNIT_HINTS[(idx + 1) % UNIT_HINTS.size()],
-		DeskKit.DETAIL, DeskKit.BLUE, 360.0)
-	DeskKit.word(b, "price it", Vector2(DeskKit.X_ID, 530.0), func() -> void:
-		_submit(b), DeskKit.ROW, DeskKit.INK, 220.0)
-	DeskKit.word(b, "never mind", Vector2(260.0, 530.0), func() -> void:
+	_field(b, 262.0, "f_includes", "a buyer walks away with",
+		"the pieces: the work, the time, the materials, the follow-up…", 70.0)
+	_field(b, 370.0, "f_audience", "for (optional)",
+		"which of your customers this is aimed at", 34.0, true)
+	# billed (circle one): every unit on one row, the chosen one in the pen
+	b.label("billed (circle one)", Vector2(DeskKit.X_ID, 446.0), 18,
+		Color(DeskKit.INK, 0.5), 400.0)
+	var chosen := String(b.desk.get("f_unit", UNIT_HINTS[0]))
+	var ux := DeskKit.X_ID
+	var uy := 470.0
+	for u in UNIT_HINTS:
+		var uw: float = b.font().get_string_size(String(u),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x + 26.0
+		if ux + uw > 1130.0:
+			ux = DeskKit.X_ID
+			uy += 34.0
+		var uv := String(u)
+		DeskKit.word(b, uv, Vector2(ux, uy), func() -> void:
+			b.desk["f_unit"] = uv, 20,
+			DeskKit.PEN if uv == chosen else Color(DeskKit.INK, 0.55), uw)
+		if uv == chosen:
+			DeskKit.pen_rule(b, uy + 26.0, ux, ux + uw - 20.0)
+		ux += uw + 8.0
+	var by := uy + 44.0
+	DeskKit.word(b, "send it to the street", Vector2(DeskKit.X_ID, by), func() -> void:
+		_submit(b), DeskKit.ROW, DeskKit.PEN, 340.0)
+	DeskKit.word(b, "never mind", Vector2(380.0, by), func() -> void:
 		b.desk["mode"] = ""
-		for k in ["f_name", "f_desc", "f_includes", "f_audience", "f_unit", "text"]:
+		for k in ["f_name", "f_desc", "f_includes", "f_audience", "f_unit", "text", "oq", "oa"]:
 			b.desk.erase(k), DeskKit.ROW, Color(DeskKit.INK, 0.7), 200.0)
 	if bool(b.desk.get("short", false)):
 		b.label("a few words of description at least — the street can't price a shrug",
-			Vector2(DeskKit.X_ID, 590.0), DeskKit.STATUS, DeskKit.PEN, 900.0)
+			Vector2(DeskKit.X_ID, by + 46.0), DeskKit.STATUS, DeskKit.PEN, 900.0)
 	DeskKit.footer(b, {"rules": "the street writes the terms — costs are the world's; the price stays yours"})
+
+## THE STREET'S FOLLOW-UP (owner: generated clarification, multiple choice).
+## The sheet condenses at the top; each question offers its options as words;
+## every answer inked = the pricing fires with the q/a pairs attached.
+static func _clarify(b) -> void:
+	var oq: Array = b.desk.get("oq", [])
+	var oa: Dictionary = b.desk.get("oa", {})
+	b.label("THE STREET HAS QUESTIONS", Vector2(DeskKit.X_ID, 8.0), 30, DeskKit.INK, 700.0)
+	b.label("\"%s\" — %s" % [String(b.desk.get("f_name", "the new offer")),
+		String(b.desk.get("f_desc", "")).substr(0, 90)],
+		Vector2(DeskKit.X_ID, 52.0), 20, Color(DeskKit.INK, 0.55), 1100.0)
+	DeskKit.pen_rule(b, 84.0)
+	var y := 100.0
+	for i in oq.size():
+		var qd: Dictionary = oq[i]
+		b.label(String(qd.get("q", "")), Vector2(DeskKit.X_ID, y), 24, DeskKit.INK, 1100.0)
+		y += maxf(b.wrap_h(String(qd.get("q", "")), 24, 1100.0), 30.0) + 6.0
+		var picked := String(oa.get(str(i), ""))
+		var ox := DeskKit.X_ID + 20.0
+		for opt in qd.get("options", []):
+			var ov := String(opt)
+			var ow: float = b.font().get_string_size(ov,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x + 28.0
+			if ox + ow > 1130.0:
+				ox = DeskKit.X_ID + 20.0
+				y += 36.0
+			var qi := i
+			DeskKit.word(b, ov, Vector2(ox, y), func() -> void:
+				var oa2: Dictionary = b.desk.get("oa", {})
+				oa2[str(qi)] = ov
+				b.desk["oa"] = oa2, 22,
+				DeskKit.PEN if ov == picked else Color(DeskKit.INK, 0.6), ow)
+			if ov == picked:
+				DeskKit.pen_rule(b, y + 28.0, ox, ox + ow - 20.0)
+			ox += ow + 10.0
+		y += 48.0
+	var all_in := oa.size() >= oq.size() and oq.size() > 0
+	if all_in:
+		DeskKit.word(b, "that's everything — price it", Vector2(DeskKit.X_ID, y + 6.0),
+			func() -> void: _fire_price(b), DeskKit.ROW, DeskKit.PEN, 420.0)
+	else:
+		b.label("answer each — then the street prices it", Vector2(DeskKit.X_ID, y + 6.0),
+			DeskKit.DETAIL, Color(DeskKit.INK, 0.45), 600.0)
+	DeskKit.word(b, "never mind", Vector2(500.0, y + 6.0), func() -> void:
+		b.desk["mode"] = "write", DeskKit.ROW, Color(DeskKit.INK, 0.7), 200.0)
 
 ## The one road out of WRITE. Keyed: the street prices it and the reply lands on
 ## the review card. Keyless: the house numbers arrive instantly and the card is
@@ -493,15 +559,43 @@ static func _submit(b) -> void:
 		"audience_note": String(b.desk.get("f_audience", "")).strip_edges().substr(0, 120),
 	}
 	b.desk["text"] = desc   # the wait card + the house fallback read one line
+	b.desk["fields"] = fields
 	if _street_is_reachable(b):
+		# UNDERSTAND FIRST, PRICE SECOND: the street may ask up to 3
+		# multiple-choice questions before it writes the terms
 		b.desk["mode"] = "wait"
-		b.generator.price_offer_idea(b.state, fields, func(res: Dictionary) -> void:
-			_land(b, desc, res))
+		b.generator.clarify_offer_intake(b.state, fields, func(cres: Dictionary) -> void:
+			if not is_instance_valid(b) or String(b.desk.get("mode", "")) != "wait":
+				return
+			var qs: Array = cres.get("questions", [])
+			if bool(cres.get("ready", true)) or qs.is_empty():
+				_fire_price(b)
+				return
+			b.desk["oq"] = qs
+			b.desk["oa"] = {}
+			b.desk["mode"] = "clarify"
+			b.refresh())
 		b.refresh()
 		return
 	b.desk["pending"] = _proposal(b.state, SimCatalog.draft_terms(b.state, desc))
 	b.desk["house"] = true
 	b.desk["mode"] = "review"
+	b.refresh()
+
+## The priced call, with any clarify answers attached as binding facts.
+static func _fire_price(b) -> void:
+	var fields: Dictionary = b.desk.get("fields", {})
+	var oq: Array = b.desk.get("oq", [])
+	var oa: Dictionary = b.desk.get("oa", {})
+	if not oq.is_empty():
+		var clar: Array = []
+		for i in oq.size():
+			clar.append({"q": String((oq[i] as Dictionary).get("q", "")),
+				"a": String(oa.get(str(i), ""))})
+		fields["clarifications"] = clar
+	b.desk["mode"] = "wait"
+	b.generator.price_offer_idea(b.state, fields, func(res: Dictionary) -> void:
+		_land(b, String(b.desk.get("text", "")), res))
 	b.refresh()
 
 ## THE REPLY COMES BACK. CANCEL IS REAL, so this is the gate rather than the
@@ -600,7 +694,7 @@ static func _review(b) -> void:
 			"lines": _review_lines(b, p, p.get("fixed_lines", []), fair, lc, false),
 			"sum": _review_fixed_sum(b, p, lc)})
 	DeskKit.review(b, {
-		"banner": "the street's terms — read them, then shelve it or tear it up",
+		"banner": "THE INTAKE SHEET — the street's terms are in",
 		"read": _review_read(b, p, fair),
 		"groups": groups,
 		"verdict": "" if SimCatalog.break_even(p, lc) >= 0 else
@@ -611,7 +705,9 @@ static func _review(b) -> void:
 		"on_confirm": func() -> void: _shelve(b, p),
 		"on_cancel": func() -> void:
 			b.desk["mode"] = ""
-			b.desk.erase("text")})
+			for k in ["text", "f_name", "f_desc", "f_includes", "f_audience",
+					"f_unit", "fields", "oq", "oa"]:
+				b.desk.erase(k)})
 
 ## THE ONLY CALL TO `add_offer` ON THIS DESK. A raced cap comes back as a printed
 ## reason in the desk's own voice, never as a silently-dead button.
@@ -630,7 +726,9 @@ static func _shelve(b, p: Dictionary) -> void:
 		String(made.get("name", "")), String(made.get("unit", "")),
 		int(round(float(made.get("fair_price", 0.0))))])
 	b.desk["mode"] = ""
-	b.desk.erase("text")
+	for k in ["text", "f_name", "f_desc", "f_includes", "f_audience", "f_unit",
+			"fields", "oq", "oa"]:
+		b.desk.erase(k)
 
 static func _review_lines(b, p: Dictionary, lines: Array, fair: float, lc: float,
 		variable: bool) -> Array:
@@ -670,11 +768,21 @@ static func _review_fixed_sum(b, p: Dictionary, lc: float) -> String:
 ## The review's read block: identity, the world's own line, its visible
 ## reasoning (owner: stated and explained), then the unpriced law.
 static func _review_read(b, p: Dictionary, fair: float) -> Array:
-	var read: Array = [
-		"%s · %s — the street charges ≈ $%s · elasticity %s · weight %.1f" % [
-			String(p.get("name", "an offer")).to_upper(), String(p.get("unit", "")),
-			b.fmt(int(round(fair))), _elasticity_word(float(p.get("elasticity", 2.0))),
-			float(p.get("weight", 1.0))]]
+	var read: Array = []
+	# YOUR SIDE, condensed — the sheet's words stay visible above the terms
+	var yours := String(b.desk.get("f_desc", "")).substr(0, 110)
+	if yours != "":
+		read.append("you wrote: %s" % yours)
+	var oq: Array = b.desk.get("oq", [])
+	var oa: Dictionary = b.desk.get("oa", {})
+	for i in oq.size():
+		if String(oa.get(str(i), "")) != "":
+			read.append("— %s  ->  %s" % [String((oq[i] as Dictionary).get("q", "")),
+				String(oa.get(str(i), ""))])
+	read.append("%s · %s — the street charges ≈ $%s · elasticity %s · weight %.1f" % [
+		String(p.get("name", "an offer")).to_upper(), String(p.get("unit", "")),
+		b.fmt(int(round(fair))), _elasticity_word(float(p.get("elasticity", 2.0))),
+		float(p.get("weight", 1.0))])
 	if String(p.get("desc", "")) != "":
 		read.append(String(p.get("desc", "")))
 	if String(p.get("street_read", "")) != "":
