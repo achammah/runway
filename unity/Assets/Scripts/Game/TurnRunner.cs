@@ -195,6 +195,15 @@ namespace Runway.Game
                 string outName = string.Format("run{0}_wk{1:00}",
                     Driver != null && Driver.Record != null ? Driver.Record.SeedValue : 0,
                     State != null ? State.Week : 0);
+                // THE ASK SURVIVES A QUIT (owner: week-2 art never arrived —
+                // renders die with the process): the payload rides the save and
+                // a continued run re-fires it if the file never landed.
+                if (State != null)
+                    State.LastScenePayload = new JObject
+                    {
+                        ["scene"] = scene, ["cast"] = dm["cast"],
+                        ["out"] = outName, ["week"] = State.Week,
+                    }.ToString(Newtonsoft.Json.Formatting.None);
                 boot.Director.MakeSceneV2(scene, Driver.CastRoster(dm["cast"] as JArray),
                     new string[0], ContentDb.Str(scene, "beat"), outName, Driver.CompanyCtx());
             }
@@ -306,6 +315,7 @@ namespace Runway.Game
 
         void OnSceneReady(string path)
         {
+            if (State != null) State.LastScenePayload = "";
             if (Driver != null) Driver.NotifyPaintSettled();
             Debug.Log("TURN art landed: " + path);
             ScenePath = path;

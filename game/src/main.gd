@@ -770,6 +770,7 @@ func _start_run() -> void:
 			record = loaded["record"]
 			rng = SeededRng.new(record.seed_value + state.week)
 			generator.pool.clear()
+			_refire_lost_scene()
 			music.play("garage")
 			var g0 := GarageViewScreen.new()
 			g0.setup(state, content, rng, record, generator)
@@ -1114,6 +1115,32 @@ func _warm_scene(dm: Dictionary) -> void:
 	var cast_pack := _cast_pack(dm.get("cast", []))
 	var out_name := "run%d_wk%02d" % [record.seed_value if record != null else 0, state.week]
 	print("TURN art WARM start (%s)" % out_name)
+	_warm_status = "painting"
+	_warm_name = out_name
+	director.make_scene_v2(scene, cast_pack["cast"], cast_pack["urls"],
+			String(scene.get("beat", "")), out_name, _company_ctx())
+
+## A week's render that died with a quit is re-fired on continue: the saved
+## ask names its file; a present file clears it and nothing is spent.
+func _refire_lost_scene() -> void:
+	if state == null or state.last_scene_payload == "" or director == null:
+		return
+	if not _art_enabled():
+		return
+	var p = JSON.parse_string(state.last_scene_payload)
+	if not (p is Dictionary):
+		state.last_scene_payload = ""
+		return
+	var out_name := String((p as Dictionary).get("out", ""))
+	if out_name == "":
+		return
+	if FileAccess.file_exists("user://gen_scenes_v2/%s.png" % out_name):
+		state.last_scene_payload = ""
+		return
+	var scene: Dictionary = (p as Dictionary).get("scene", {})
+	if scene.is_empty():
+		return
+	var cast_pack := _cast_pack((p as Dictionary).get("cast", []))
 	_warm_status = "painting"
 	_warm_name = out_name
 	director.make_scene_v2(scene, cast_pack["cast"], cast_pack["urls"],
@@ -1710,6 +1737,11 @@ func _begin_turn(dm: Dictionary, stub_path: String = "") -> void:
 				_on_scene_ready(stub_path))
 	elif use_v2:
 		_last_stage_sig = stage_sig
+		# THE ASK SURVIVES A QUIT (owner: week-2 art never arrived — renders
+		# die with the process): the payload rides the save; a continued run
+		# re-fires it if the file never landed.
+		state.last_scene_payload = JSON.stringify({"scene": scene,
+			"cast": dm.get("cast", []), "out": out_name, "week": state.week})
 		director.make_scene_v2(scene, cast_pack["cast"], cast_pack["urls"],
 				String(scene.get("beat", "")), out_name, _company_ctx())
 	else:
@@ -1839,6 +1871,8 @@ func _on_scene_progress(f: float) -> void:
 func _on_scene_ready(path: String) -> void:
 	if _warm_status == "painting" and _warm_name != "" and path.contains(_warm_name):
 		_warm_status = "done"
+		if state != null:
+			state.last_scene_payload = ""
 		if _screen is BookIntroScreen:
 			(_screen as BookIntroScreen).set_paint_done()
 	if _scene_seq != _turn_seq:

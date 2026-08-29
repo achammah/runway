@@ -54,7 +54,7 @@ namespace Runway.Core
         public static readonly Dictionary<string, int> EraOfferCap =
             new Dictionary<string, int>
             {
-                { "garage", 2 }, { "coworking", 3 }, { "office", 5 },
+                { "garage", 3 }, { "coworking", 4 }, { "office", 5 },
                 { "floor", 8 }, { "hq", 8 },
             };
 

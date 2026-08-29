@@ -106,6 +106,7 @@ namespace Runway.Game
             _worldgenKey = State.CompanyName + "|" + State.CompanyIdea;
             _worldgenLanded = true;      // a resumed run already has its world
             _worldgenInflight = false;
+            RefireLostScene();
             Deck.LoadAll();
             Debug.Log(string.Format("RUNWAY! resumed {0}, week {1} ({2})",
                 State.CompanyName, State.Week, State.Era));
@@ -562,6 +563,28 @@ namespace Runway.Game
             _rewarmsLeft--;
             WarmScene(_foundingRes);
             return true;
+        }
+
+        /// A week's render that died with a quit is re-fired on continue: the
+        /// saved ask names its file; present file = nothing to do.
+        public void RefireLostScene()
+        {
+            if (State == null || string.IsNullOrEmpty(State.LastScenePayload)) return;
+            var boot = Boot.Instance;
+            if (boot == null || boot.Director == null || !boot.ArtEnabled) return;
+            try
+            {
+                var p = JObject.Parse(State.LastScenePayload);
+                string outName = (string)p["out"] ?? "";
+                if (outName.Length == 0) return;
+                string path = System.IO.Path.Combine(RunwayPaths.GenScenesDir, outName + ".png");
+                if (System.IO.File.Exists(path)) { State.LastScenePayload = ""; return; }
+                var scene = p["scene"] as JObject;
+                if (scene == null) return;
+                boot.Director.MakeSceneV2(scene, CastRoster(p["cast"] as JArray),
+                    new string[0], ContentDb.Str(scene, "beat"), outName, CompanyCtx());
+            }
+            catch (Exception) { State.LastScenePayload = ""; }
         }
 
         void WarmScene(JObject dm)

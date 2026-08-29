@@ -39,7 +39,10 @@ extends RefCounted
 ## THE SHELF (docs/design/DECISIONS.md, standing recommendation): how many offers
 ## a company of this stage can actually keep on the shelf, and how much of one
 ## customer's finite weekly wallet the whole catalog may claim.
-const ERA_OFFER_CAP := {"garage": 2, "coworking": 3, "office": 5, "floor": 8, "hq": 8}
+## The garage holds 3 (owner: the world births 2, so a born-full shelf made
+## adding an offer structurally impossible — one slot stays open for the
+## founder's own first launch).
+const ERA_OFFER_CAP := {"garage": 3, "coworking": 4, "office": 5, "floor": 8, "hq": 8}
 ## THE TOOLING A STAGE IS QUOTED (D2): era pressure enters at PROPOSAL time only.
 ## A floor-era founder is QUOTED heavier tooling; the quoted number then stays the
 ## number until they step it by hand. A receipt that silently grows with promotion

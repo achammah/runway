@@ -120,7 +120,7 @@ namespace Runway.CoreTests
             // ── P4 — HOSTILE NUMBERS CLAMP; THE ERA SHELF REFUSES THE OVERFLOW. The
             // door narrows before the engine's own clamps ever see the terms.
             GameState capS = NewState();
-            capS.Era = "coworking";                    // EraOfferCap 3
+            capS.Era = "coworking";                    // EraOfferCap 4
             Offer o1 = SimCatalog.AddOffer(capS, "big thing", "per unit",
                 900000.0, 900000.0, 99.0, 99.0);
             ok(o1 != null && o1.FairPrice == 50000.0 && o1.UnitCost <= 45000.0
@@ -128,9 +128,10 @@ namespace Runway.CoreTests
                 "hostile terms pass every clamp");
             SimCatalog.AddOffer(capS, "b", "per order", 40.0, 10.0, 2.0, 1.0);
             SimCatalog.AddOffer(capS, "c", "per order", 40.0, 10.0, 2.0, 1.0);
+            SimCatalog.AddOffer(capS, "c2", "per order", 40.0, 10.0, 2.0, 1.0);
             Offer o4 = SimCatalog.AddOffer(capS, "d", "per order", 40.0, 10.0, 2.0, 1.0);
-            ok(o4 == null && capS.Offers.Count == 3,
-                "coworking shelves three offers, the fourth is refused");
+            ok(o4 == null && capS.Offers.Count == 4,
+                "coworking shelves four offers, the fifth is refused");
 
             // ── P5 — THE KEYLESS DRAFT IS SEEDED, ITEMIZED, AND IN BAND. Same seed,
             // same week, same draft: a replay shelves the identical offer.

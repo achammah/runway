@@ -73,7 +73,7 @@ static func run(ok: Callable) -> void:
 	# ── P4 — HOSTILE NUMBERS CLAMP; THE ERA SHELF REFUSES THE OVERFLOW. The door
 	# narrows before the engine's own clamps ever see the terms.
 	var cap_s := _state()
-	cap_s.era = "coworking"                       # ERA_OFFER_CAP 3
+	cap_s.era = "coworking"                       # ERA_OFFER_CAP 4
 	var o1: Dictionary = SimCatalog.add_offer(cap_s, "big thing", "per unit",
 		900_000.0, 900_000.0, 99.0, 99.0)
 	ok.call(float(o1.get("fair_price", 0.0)) == 50_000.0
@@ -83,9 +83,10 @@ static func run(ok: Callable) -> void:
 		"hostile terms pass every clamp")
 	SimCatalog.add_offer(cap_s, "b", "per order", 40.0, 10.0, 2.0, 1.0)
 	SimCatalog.add_offer(cap_s, "c", "per order", 40.0, 10.0, 2.0, 1.0)
+	SimCatalog.add_offer(cap_s, "c2", "per order", 40.0, 10.0, 2.0, 1.0)
 	var o4: Dictionary = SimCatalog.add_offer(cap_s, "d", "per order", 40.0, 10.0, 2.0, 1.0)
-	ok.call(o4.is_empty() and cap_s.offers.size() == 3,
-		"coworking shelves three offers, the fourth is refused")
+	ok.call(o4.is_empty() and cap_s.offers.size() == 4,
+		"coworking shelves four offers, the fifth is refused")
 
 	# ── P5 — THE KEYLESS DRAFT IS SEEDED, ITEMIZED, AND IN BAND. Same seed, same
 	# week, same draft: a replay shelves the identical offer.

@@ -713,6 +713,7 @@ namespace Runway.Core
         [JsonProperty("funding_id")] public string FundingId = "bootstrap";
         [JsonProperty("pivots")] public int Pivots;
         [JsonProperty("offer_draft")] public string OfferDraft = ""; // the journal drafted an offer
+        [JsonProperty("last_scene_payload")] public string LastScenePayload = ""; // un-rendered scene ask, re-fired on continue
         [JsonProperty("last_outcome")] public Dictionary<string, object> LastOutcome = new Dictionary<string, object>();
         [JsonProperty("ceremony_payout")] public int CeremonyPayout;
         [JsonProperty("run_history")] public List<RunHistoryEntry> RunHistory = new List<RunHistoryEntry>();

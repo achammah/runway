@@ -83,6 +83,7 @@ static func state_to_dict(state: GameState) -> Dictionary:
 			"price_mult": state.price_mult, "marketing_budget": state.marketing_budget,
 			"budgets": state.budgets, "beliefs": state.beliefs, "offers": state.offers,
 			"offer_draft": state.offer_draft,
+			"last_scene_payload": state.last_scene_payload,
 			"analytics_level": state.analytics_level, "tech_debt": state.tech_debt,
 			"fatigue": state.fatigue, "exhaustion": state.exhaustion,
 			"loan_principal": state.loan_principal, "market_trend": state.market_trend,
