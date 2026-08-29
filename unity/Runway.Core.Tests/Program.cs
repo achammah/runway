@@ -717,7 +717,7 @@ namespace Runway.CoreTests
             List<AttentionItem> rows2 = SimEngine.AttentionItems(at2);
             Ok(rows2.Count >= 2, "losing money and open term sheets both register");
             Ok(rows2[0].Severity >= rows2[rows2.Count - 1].Severity, "the loudest item sorts first");
-            Ok(SimEngine.AttentionSeverity(at2, "cap table") == 3, "term sheets are an alarm");
+            Ok(SimEngine.AttentionSeverity(at2, "the raise") == 3, "term sheets are an alarm");
             Ok(SimEngine.AttentionSeverity(at2, "product") == 0, "a quiet desk wears no bang");
             // THE PRE-ROLL REVIEW: the engine half — what stops a roll
             Ok(SimEngine.PrerollItems(at0).Count == 0, "nothing outstanding = no review card");
@@ -942,24 +942,24 @@ namespace Runway.CoreTests
             GameState ag = NewState();
             ag.SetFlag("fundraising_open");   // a stable sev-3 registry row
             SimEngine.WeeklyTick(ag);
-            int born = ag.AttentionAges.ContainsKey("cap table/term_sheets")
-                ? ag.AttentionAges["cap table/term_sheets"] : -1;
+            int born = ag.AttentionAges.ContainsKey("the raise/term_sheets")
+                ? ag.AttentionAges["the raise/term_sheets"] : -1;
             Ok(born == ag.Week, "a new attention row is stamped with its first week");
             ag.Week += 1;
             SimEngine.WeeklyTick(ag);
-            Ok((ag.AttentionAges.ContainsKey("cap table/term_sheets")
-                ? ag.AttentionAges["cap table/term_sheets"] : -1) == born
+            Ok((ag.AttentionAges.ContainsKey("the raise/term_sheets")
+                ? ag.AttentionAges["the raise/term_sheets"] : -1) == born
                && ag.Week - born == 1,
                 "a stable attention item ages by 1 across two ticks");
             AttentionItem agedRow = null;
             foreach (AttentionItem rAg in SimEngine.AttentionItems(ag))
                 if (rAg.Key == "term_sheets") agedRow = rAg;
-            Ok(agedRow != null && agedRow.SinceWk == born && agedRow.Control == "",
+            Ok(agedRow != null && agedRow.SinceWk == born && agedRow.Control == "sign_terms",
                 "attention rows carry since_wk and a control key");
             ag.Flags.Remove("fundraising_open");
             ag.Week += 1;
             SimEngine.WeeklyTick(ag);
-            Ok(!ag.AttentionAges.ContainsKey("cap table/term_sheets"),
+            Ok(!ag.AttentionAges.ContainsKey("the raise/term_sheets"),
                 "a resolved attention item's key drops from the ages");
 
             // ── THE LANES: each suite runs its own pins after the engine's
