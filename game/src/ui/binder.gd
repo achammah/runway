@@ -122,6 +122,7 @@ var tour_enabled := true
 var _frame: Control
 var _rail: Control
 var _content: Control
+var _scroll: ScrollContainer
 var _close_btn: Button
 var _tour_demo_red := false
 ## ── THE UX SPINE (13-binder-ux, DAG3) — the binder half of the nine systems.
@@ -185,11 +186,20 @@ func _ready() -> void:
 	_rail.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_frame.add_child(_rail)
 
+	# THE PAGE SCROLLS (owner: a desk may outgrow the sheet — the wheel,
+	# never an overlap). The scroll region owns the content; a desk that
+	# fits sees no change, and extent is re-measured after every draw.
+	_scroll = ScrollContainer.new()
+	_scroll.position = CONTENT_POS
+	_scroll.set_deferred("size", CONTENT_SIZE)
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	_frame.add_child(_scroll)
 	_content = Control.new()
-	_content.position = CONTENT_POS
-	_content.set_deferred("size", CONTENT_SIZE)
+	_content.custom_minimum_size = CONTENT_SIZE
 	_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_frame.add_child(_content)
+	_scroll.add_child(_content)
 
 	_close_btn = Button.new()
 	_close_btn.flat = true
@@ -484,6 +494,24 @@ func _refresh() -> void:
 	_dispatch(_page)
 	DeskKit.render_marks(self)
 	_top_row()
+	_fit_extent()
+
+## The scroll region learns the page's true height after layout settles: a
+## desk that fits sees the fixed sheet; one that outgrows it earns the wheel.
+func _fit_extent() -> void:
+	if _scroll == null:
+		return
+	call_deferred("_measure_extent")
+
+func _measure_extent() -> void:
+	if _content == null or not is_instance_valid(_content):
+		return
+	var ext := 0.0
+	for c in _content.get_children():
+		if c is Control and (c as Control).visible:
+			ext = maxf(ext, (c as Control).position.y + (c as Control).size.y)
+	_content.custom_minimum_size = Vector2(CONTENT_SIZE.x,
+		maxf(CONTENT_SIZE.y, ext + 24.0))
 
 ## THE DESK DISPATCH (docs/design/HOOKS.md): every page drawn by its own file.
 func _dispatch(id: String) -> void:
@@ -722,13 +750,13 @@ func _animate_open(gi: int) -> void:
 
 ## The active sheet slides out from under its tab.
 func _slide_sheet() -> void:
-	if _content == null:
+	if _scroll == null:
 		return
-	_content.position = CONTENT_POS + Vector2(-26.0, 0)
+	_scroll.position = CONTENT_POS + Vector2(-26.0, 0)
 	_content.modulate.a = 0.35
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(_content, "position", CONTENT_POS, 0.22) \
+	tw.tween_property(_scroll, "position", CONTENT_POS, 0.22) \
 		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.tween_property(_content, "modulate:a", 1.0, 0.18)
 

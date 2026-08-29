@@ -52,7 +52,7 @@ namespace Runway.Game
             { 0.0, 0.02, 0.05, 0.08, 0.12, 0.16, 0.22, 0.30, 0.40, 0.50 };
         static readonly List<double> FixedSteps = new List<double>
             { 0, 5, 10, 15, 25, 40, 60, 90, 140, 220, 350, 550, 900, 1400, 2200, 3500, 5000 };
-        static readonly List<double> WeightSteps = new List<double>
+        internal static readonly List<double> WeightSteps = new List<double>
             { 0.2, 0.4, 0.6, 0.8, 1.0, 1.3, 1.6, 2.0, 2.5, 3.0 };
 
         const float RowPitch = 62f;

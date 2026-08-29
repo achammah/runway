@@ -227,14 +227,19 @@ namespace Runway.Game
             List<int> shown;
             int folded;
             VisibleRows(s, lc, out shown, out folded);
-            // THE UNWRAPPED ROW TAKES OVER (owner: every control HERE, no
-            // separate page): the open offer's row stays in the card, the
-            // others fold under it, and its whole ledger — price, the world's
-            // costs, the sprint, the drop — draws below on the same sheet.
+            // THE OPEN OFFER'S CARD (owner: the loose stack read as clutter —
+            // the shelf stays whole for context, the open ledger lives in ONE
+            // framed card below, in the kit's own grammar).
             int openI = b.Desk.ContainsKey("open_row") ? Convert.ToInt32(b.Desk["open_row"]) : -1;
             bool openVis = openI >= 0 && openI < s.Offers.Count;
-            List<int> rows = openVis ? new List<int> { openI } : shown;
-            int hidden = openVis ? shown.Count - 1 + folded : folded;
+            List<int> rows = shown;
+            int hidden = folded;
+            if (openVis && shown.Count > 4)
+            {
+                rows = shown.GetRange(0, 4);
+                if (!rows.Contains(openI)) rows[3] = openI;
+                hidden = folded + shown.Count - 4;
+            }
             float cardH = DeskKit.CardHead + 30f + rows.Count * RowH + 26f;
             DeskKit.CardBox frame = DeskKit.CardFrame(b, 10f, y, 1120f, cardH, "the rate card");
             float cy = frame.ContentY;
@@ -243,20 +248,18 @@ namespace Runway.Game
                 cy = Row(b, cy, rows[n], s, lc, fm);
             y = frame.Bottom + 10f;
             if (openVis)
-                y = OpenDetail(b, y, openI, s, lc, fm);
+                y = OpenCard(b, y, openI, s, lc, fm);
             if (hidden > 0)
-            {
-                bool ov = openVis;
-                y = DeskKit.FoldRow(b, DeskKit.XId, y, hidden,
-                    ov ? "offers behind the open one" : "offers, healthy",
-                    () => { if (ov) b.Desk["open_row"] = -1; else b.Desk["mode"] = "all"; });
-            }
+                y = DeskKit.FoldRow(b, DeskKit.XId, y, hidden, "offers, healthy",
+                    () => b.Desk["mode"] = "all");
             if (s.BizWho == "Enterprise")
                 y = NamedAccountsLine(b, s, y);
             DefineDoor(b, y + 6f);
-            DoLaneDraw(b, s);
+            // a tall page pushes its own lane and foot down and SCROLLS
+            float baseY = Mathf.Max(DeskKit.DoLaneY, y + 52f);
+            DoLaneDraw(b, s, baseY);
             FireSpot(b);
-            Foot(b, s);
+            Foot(b, s, baseY + 44f);
         }
 
         /// THE COLLAPSE LADDER: six rows face-up, the ones closest to money
@@ -371,31 +374,133 @@ namespace Runway.Game
             return y + RowH;
         }
 
-        /// THE OPEN LEDGER — the whole offer under its row, on the same sheet
-        /// (owner: all the control here, never a separate page): the price dial
-        /// (the founder's ONE dial on this side is price), the world's stated
-        /// costs, shelf weight where the era grants it, the sprint, the drop.
-        static float OpenDetail(BinderScreen b, float y, int i, GameState s,
-                                double lc, double fm)
+        /// THE OPEN OFFER'S CARD — the whole ledger in one frame, the kit's
+        /// grammar: the price dial, the world's itemised costs, the labor
+        /// line, and ONE lane holding the sprint and the drop.
+        static float OpenCard(BinderScreen b, float y, int i, GameState s,
+                              double lc, double fm)
         {
             Offer o = s.Offers[i];
             int era = s.EraIndex();
-            y = DeskCatalog.PriceRow(b, y + 4f, o, era, lc, fm);
-            y = DeskCatalog.CostStory(b, y, o, era, lc, fm);
-            y = DeskCatalog.SprintArm(b, y, o);
-            if (era >= 2) y = DeskCatalog.WeightRow(b, y, o);
-            if (era >= 3 && y + 30f <= DeskKit.DoLaneY - 40f)
-                y = DeskCatalog.MiniPnl(b, y, o, lc, fm);
+            double capl = Gd.Clampf(o.CapacityPerUnit, 0.1, 40.0);
+            bool svc = s.BizWhat == "Service";
+            var clines = era >= 1 && o.CostLines != null ? o.CostLines : new List<CostLine>();
+            var flines = era >= 1 && o.FixedLines != null ? o.FixedLines : new List<CostLine>();
+            float cardH = 250f + (era >= 2 ? 52f : 0f) + (svc ? 26f : 0f)
+                + (clines.Count + flines.Count) * 24f
+                + (clines.Count + flines.Count > 0 ? 24f : 0f);
+            DeskKit.CardBox frame = DeskKit.CardFrame(b, 10f, y, 1120f, cardH,
+                "the open offer — " + (o.Name ?? "?"), false,
+                1120f - DeskKit.CardPad * 2f);
+            float cx = frame.ContentX;
+            float cy = frame.ContentY;
+            List<double> steps = DeskCatalog.PriceSteps(o);
+            double cur = o.Price;
+            double fair = o.FairPrice * fm;
+            Offer oc = o;
             int idx = i;
+            cy = DeskKit.Stepper(b, cy, new DeskKit.StepRow
+            {
+                Name = "price", X = cx,
+                Why = "the going rate is $" + GameUi.Money(Gd.RoundToInt(fair))
+                    + " — you name what you charge",
+                Value = cur > 0.0 ? "$" + GameUi.Money(Gd.RoundToInt(cur)) + " per unit"
+                    : "unpriced — bills at $" + GameUi.Money(Gd.RoundToInt(fair)),
+                Effect = "margin $" + GameUi.Money(Gd.RoundToInt(SimCatalog.Contribution(o, lc, fm))) + "/unit",
+                XVal = DeskKit.XValue, Pitch = 64f,
+                AtMin = DeskKit.AtMin(steps, cur), AtMax = DeskKit.AtMax(steps, cur),
+                OnMinus = () => DeskCatalog.PriceStep(oc, -1),
+                OnPlus = () => DeskCatalog.PriceStep(oc, 1),
+            });
+            double fair0 = Math.Max(o.FairPrice, 1.0);
+            if (clines.Count + flines.Count > 0)
+            {
+                b.L("what one sale costs — the world set these when the offer was written:",
+                    cx, cy, DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 1060f);
+                cy += 24f;
+                foreach (CostLine ld in clines)
+                {
+                    b.L(string.Format(CultureInfo.InvariantCulture,
+                        "{0} — ${1}/unit ({2}% of the going rate)", ld.Label ?? "line",
+                        GameUi.Money(Gd.RoundToInt(ld.Amount)),
+                        Gd.RoundToInt(ld.Amount / fair0 * 100.0)),
+                        cx + 18f, cy, DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f), 1040f);
+                    cy += 24f;
+                }
+                foreach (CostLine fd in flines)
+                {
+                    b.L(string.Format(CultureInfo.InvariantCulture,
+                        "{0} — ${1}/wk, sold or not", fd.Label ?? "line",
+                        GameUi.Money(Gd.RoundToInt(fd.Amount))),
+                        cx + 18f, cy, DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.7f), 1040f);
+                    cy += 24f;
+                }
+            }
+            b.L(string.Format(CultureInfo.InvariantCulture,
+                "= serve ${0}/unit (×{1:0.00} today) · standing tools ${2}/wk",
+                GameUi.Money(Gd.RoundToInt(SimCatalog.ServedUnitCost(o, lc))), lc,
+                GameUi.Money(Gd.RoundToInt(o.FixedWk))),
+                cx, cy, DeskKit.Detail, DrawnUI.Blue, 1060f);
+            cy += 28f;
+            int be = SimCatalog.BreakEven(o, lc, fm);
+            b.L(be < 0
+                ? "every sale loses $" + GameUi.Money(Gd.RoundToInt(-SimCatalog.Contribution(o, lc, fm))) + " at this price"
+                : string.Format(CultureInfo.InvariantCulture,
+                    "break-even: {0} sales/wk pay the standing costs", be),
+                cx, cy, DeskKit.Detail,
+                be < 0 ? DrawnUI.Coral : DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), 1060f);
+            cy += 28f;
+            if (svc)
+            {
+                double slots = SimWorks.ServiceCapacity(s);
+                b.L(string.Format(CultureInfo.InvariantCulture,
+                    "one {0} = {1:0.0} hours of hands · today's crew: ≈ {2}/wk before hiring",
+                    (o.Unit ?? "unit").StartsWith("per ") ? o.Unit.Substring(4) : o.Unit,
+                    capl, capl > 0.0 ? (int)(slots / capl) : 0),
+                    cx, cy, DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), 1060f);
+                cy += 26f;
+            }
+            if (era >= 2)
+            {
+                double w = o.Weight;
+                cy = DeskKit.Stepper(b, cy, new DeskKit.StepRow
+                {
+                    Name = "weight", X = cx,
+                    Value = string.Format(CultureInfo.InvariantCulture, "{0:0.0} of the wallet", w),
+                    Effect = string.Format(CultureInfo.InvariantCulture, "shelf ∑{0:0.0} of {1:0.0}",
+                        SimCatalog.ShelfWeight(s), SimCatalog.ShelfWeightCap),
+                    XVal = DeskKit.XValue, Pitch = 52f,
+                    AtMin = DeskKit.AtMin(DeskCatalog.WeightSteps, w),
+                    AtMax = w >= SimCatalog.MaxWeight - 0.001,
+                    OnMinus = () => oc.Weight = Gd.Clampf(DeskKit.Ladder(DeskCatalog.WeightSteps, oc.Weight, -1),
+                        SimCatalog.MinWeight, SimCatalog.MaxWeight),
+                    OnPlus = () => oc.Weight = Gd.Clampf(DeskKit.Ladder(DeskCatalog.WeightSteps, oc.Weight, 1),
+                        SimCatalog.MinWeight, SimCatalog.MaxWeight),
+                });
+            }
             string nm = o.Name ?? idx.ToString(CultureInfo.InvariantCulture);
+            bool hasSprint = false;
+            for (int bi = 0; bi < s.Bets.Count; bi++)
+            {
+                Bet bd = s.Bets[bi];
+                if (bd.Kind == "cost_down" && (bd.Offer ?? "") == nm && !bd.Shipped)
+                    hasSprint = true;
+            }
+            if (hasSprint)
+                b.L("a cost sprint is on the roadmap — the team is on it",
+                    cx, cy + 6f, DeskKit.Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), 600f);
+            else
+                DeskKit.Arm(b, "sprint_" + nm, "cut the serve cost — a team sprint",
+                    "3 R&D-weeks of the team — sure?", cx, cy + 2f,
+                    () => SimRoadmap.AddCostDownBet(s, nm), 420f, 20f);
             DeskKit.Arm(b, "drop_" + nm, "drop this offer ×", "sure? it disappears ×",
-                820f, y + 2f, () =>
+                790f, cy + 2f, () =>
                 {
                     SimCatalog.RemoveOffer(s, idx);
                     s.LogAction("DROPPED the offer: " + nm);
                     b.Desk["open_row"] = -1;
-                }, 300f, 22f);
-            return y + 46f;
+                }, 300f, 20f);
+            return frame.Bottom + 10f;
         }
 
         /// THE DEMAND VERDICT — one colored word, the heat ramp, never a sentence.
@@ -444,7 +549,7 @@ namespace Runway.Game
         }
 
         /// The teaching foot. WARNINGS OUTRANK WISDOM.
-        static void Foot(BinderScreen b, GameState s)
+        static void Foot(BinderScreen b, GameState s, float baseY = 806f)
         {
             double lc = SimEngine.LearningCurve(s);
             double fm = SimEngine.StreetFairMult(s);
@@ -472,7 +577,7 @@ namespace Runway.Game
             }
             DeskKit.Footer(b, computed,
                 "price at the street's level and demand is fair · dropping an offer (open it, then drop) migrates its customers to the shelf — or churns them",
-                warning, 806f, 840f);
+                warning, baseY, baseY + 34f);
         }
 
         // ── the unfolded shelf ─────────────────────────────────────────────
@@ -492,9 +597,10 @@ namespace Runway.Game
             cy = HeadRow(b, cy);
             for (int i = 0; i < n; i++)
                 cy = Row(b, cy, i, s, lc, fm);
-            DoLaneDraw(b, s);
+            float base2 = Mathf.Max(DeskKit.DoLaneY, frame.Bottom + 16f);
+            DoLaneDraw(b, s, base2);
             FireSpot(b);
-            Foot(b, s);
+            Foot(b, s, base2 + 44f);
         }
 
         // ── S3 · the DO lane + the focus walk ──────────────────────────────
@@ -502,7 +608,7 @@ namespace Runway.Game
         /// The desk's primary acts in the ONE slot: price the row that needs
         /// it (first unpriced, else the flagship), or add to the shelf. The
         /// price press walks the hand to that row's own ADJUST squares.
-        static void DoLaneDraw(BinderScreen b, GameState s)
+        static void DoLaneDraw(BinderScreen b, GameState s, float baseY = -1f)
         {
             int t = PriceTarget(s);
             var actions = new List<DeskKit.DoAction>();
@@ -528,7 +634,7 @@ namespace Runway.Game
                     Tier = "",
                     Cb = () => b.Desk["mode"] = "write",
                 });
-            DeskKit.DoLane(b, actions);
+            DeskKit.DoLane(b, actions, baseY);
         }
 
         /// The DO lane's object: the first unpriced offer, else the flagship

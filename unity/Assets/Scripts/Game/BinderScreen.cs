@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -92,6 +93,7 @@ namespace Runway.Game
         RectTransform _frame;
         RectTransform _rail;
         RectTransform _content;
+        ScrollRect _scroll;
         int _openGroup = 3;                 // THE LOG opens first
         string _page = "this week";
         int _overview = -1;
@@ -250,8 +252,22 @@ namespace Runway.Game
             });
 
             _rail = DrawnUI.Rect(_frame, "rail", 0f, 0f, FrameW, FrameH);
-            _content = DrawnUI.Rect(_frame, "content", ContentX, ContentY, ContentW,
-                                    ContentH);
+            // THE PAGE SCROLLS (owner: a desk may outgrow the sheet — the
+            // wheel, never an overlap). Twin of the Godot ScrollContainer.
+            RectTransform scrollRt = DrawnUI.Rect(_frame, "scroll", ContentX, ContentY,
+                                                  ContentW, ContentH);
+            scrollRt.gameObject.AddComponent<RectMask2D>();
+            var scrollImg = scrollRt.gameObject.AddComponent<Image>();
+            scrollImg.color = new Color(0f, 0f, 0f, 0f);
+            scrollImg.raycastTarget = true;
+            _scroll = scrollRt.gameObject.AddComponent<ScrollRect>();
+            _scroll.horizontal = false;
+            _scroll.vertical = true;
+            _scroll.movementType = ScrollRect.MovementType.Clamped;
+            _scroll.scrollSensitivity = 30f;
+            _content = DrawnUI.Rect(scrollRt, "content", 0f, 0f, ContentW, ContentH);
+            _scroll.content = _content;
+            _scroll.viewport = scrollRt;
             GameUi.InkWord(_frame, "×", FrameW - 60f, 2f, 52f, 52f, 46f, DrawnUI.Coral,
                            Dismiss);
 
@@ -502,6 +518,30 @@ namespace Runway.Game
             Dispatch(_page);
             DeskKit.RenderMarks(this);
             TopRow();
+            FitExtent();
+        }
+
+        /// The scroll region learns the page's true height after layout: a desk
+        /// that fits sees the fixed sheet; one that outgrows it earns the wheel.
+        void FitExtent()
+        {
+            if (_scroll == null || _content == null) return;
+            StartCoroutine(MeasureExtent());
+        }
+
+        IEnumerator MeasureExtent()
+        {
+            yield return null;   // one frame so TMP text has sized itself
+            if (_content == null) yield break;
+            float ext = 0f;
+            foreach (Transform c in _content)
+            {
+                var rt = c as RectTransform;
+                if (rt == null || !c.gameObject.activeSelf) continue;
+                ext = Mathf.Max(ext, -rt.anchoredPosition.y + rt.sizeDelta.y);
+            }
+            _content.sizeDelta = new Vector2(ContentW,
+                Mathf.Max(ContentH, ext + 24f));
         }
 
         void Dispatch(string id)

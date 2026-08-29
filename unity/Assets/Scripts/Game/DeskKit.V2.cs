@@ -1062,8 +1062,10 @@ namespace Runway.Game
         /// grammar "verb — object", each saying its tier. The focused one
         /// wears the pen ring; ENTER presses it, TAB cycles (binder-side).
         /// Controls register as "do_0".."do_2".</summary>
-        public static void DoLane(BinderScreen b, IList<DoAction> actions)
+        public static void DoLane(BinderScreen b, IList<DoAction> actions,
+                                  float baseY = -1f)
         {
+            if (baseY < 0f) baseY = DoLaneY;
             int n = Mathf.Min(actions.Count, 3);
             if (n <= 0) return;
             b.ResetDoLane();
@@ -1115,7 +1117,7 @@ namespace Runway.Game
                         if (armedNow2)
                         {
                             b.Desk.Remove("armed");
-                            SignStroke(b, btn, capNow, bxNow, DoLaneY, () =>
+                            SignStroke(b, btn, capNow, bxNow, baseY, () =>
                             {
                                 if (cb != null) cb();
                                 b.Refresh();
@@ -1133,7 +1135,7 @@ namespace Runway.Game
                     press = () =>
                     {
                         b.Desk.Remove("armed");
-                        SignStroke(b, btn, capNow, bxNow, DoLaneY, () =>
+                        SignStroke(b, btn, capNow, bxNow, baseY, () =>
                         {
                             if (cb != null) cb();
                             b.Refresh();
@@ -1150,9 +1152,9 @@ namespace Runway.Game
                         b.Refresh();
                     };
                 }
-                btn = PaperWord(b, caps[i], notes[i], x, DoLaneY, Detail,
+                btn = PaperWord(b, caps[i], notes[i], x, baseY, Detail,
                     isArmed ? DrawnUI.Coral : DrawnUI.Ink, bw, isArmed, press, false);
-                var rect = new Rect(x - 8f, DoLaneY + 2f, bw + 16f, 44f);
+                var rect = new Rect(x - 8f, baseY + 2f, bw + 16f, 44f);
                 b.MarkControl(id, rect);
                 b.RegisterDo(btn);
                 if (i == focus)

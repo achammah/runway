@@ -112,10 +112,11 @@ static func stepper(b, y: float, cfg: Dictionary) -> float:
 	var pitch := float(cfg.get("pitch", 78.0))
 	var disabled := bool(cfg.get("disabled", false))
 	var body := Color(INK, 0.35) if disabled else INK
-	b.label(String(cfg.get("name", "")).to_upper(), Vector2(X_ID, y), 28, body)
+	var x0 := float(cfg.get("x", X_ID))
+	b.label(String(cfg.get("name", "")).to_upper(), Vector2(x0, y), 28, body)
 	var why := String(cfg.get("why", ""))
 	if why != "":
-		b.label(why, Vector2(X_ID, y + 34.0), LAW, Color(INK, 0.35 if disabled else 0.6), 480.0)
+		b.label(why, Vector2(x0, y + 34.0), LAW, Color(INK, 0.35 if disabled else 0.6), 480.0)
 	# THE BOUND PRINTS ITS REASON, and the two ways of saying it never overlap:
 	# the note rides the value line while it fits in that column, and drops into
 	# the effect column when it does not. (Unfitted, "$100,000  (era cap)" wrote
@@ -1810,7 +1811,7 @@ static func ask_strip(b, desk_id: String, x: float, _y_deprecated: float, w: flo
 ## pen ring; ENTER presses it, TAB cycles it (binder-side). Controls register
 ## as "do_0".."do_2" for the focus system.
 ## actions: Array[{label, cb, tier ("" | "two-tap" | "sign" | "type")}]
-static func do_lane(b, actions: Array) -> void:
+static func do_lane(b, actions: Array, base_y: float = DO_LANE_Y) -> void:
 	var n := mini(actions.size(), 3)
 	if n <= 0:
 		return
@@ -1844,7 +1845,7 @@ static func do_lane(b, actions: Array) -> void:
 		var bw := float(widths[i2])
 		var id := "do_%d" % i2
 		var is_armed := String(b.desk.get("armed", "")) == id
-		var btn := paper_word(b, String(caps[i2]), String(notes[i2]), Vector2(x, DO_LANE_Y),
+		var btn := paper_word(b, String(caps[i2]), String(notes[i2]), Vector2(x, base_y),
 			DETAIL, PEN if is_armed else INK, bw)
 		match tier2:
 			"two-tap":
@@ -1872,7 +1873,7 @@ static func do_lane(b, actions: Array) -> void:
 					if cb.is_valid():
 						cb.call()
 					b.refresh())
-		var rect := Rect2(x - 8.0, DO_LANE_Y + 2.0, bw + 16.0, 44.0)
+		var rect := Rect2(x - 8.0, base_y + 2.0, bw + 16.0, 44.0)
 		b.mark_control(id, rect)
 		b.register_do(btn)
 		if i2 == focus:

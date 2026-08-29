@@ -171,14 +171,24 @@ static func _rate_card(b) -> void:
 	var order := _visible_rows(s, lc)
 	var shown: Array = order[0]
 	var folded := int(order[1])
-	# THE UNWRAPPED ROW TAKES OVER (owner: every control HERE, no separate
-	# page): the open offer's row stays in the card, the others fold under
-	# it, and its whole ledger — price, the world's costs, the sprint, the
-	# drop — draws below on the same sheet.
+	# THE OPEN OFFER'S CARD (owner: the loose stack read as clutter — the
+	# shelf stays whole for context, and the open offer's whole ledger lives
+	# in ONE framed card below it, in the kit's own grammar).
 	var open_i := int(b.desk.get("open_row", -1))
 	var open_vis := open_i >= 0 and open_i < s.offers.size()
-	var rows: Array = [open_i] if open_vis else shown
-	var hidden := (shown.size() - 1 + folded) if open_vis else folded
+	var rows: Array = shown
+	var hidden := folded
+	if open_vis and shown.size() > 4:
+		# a card below needs air: deep shelves fold past four rows, and the
+		# open row is always among the four
+		rows = shown.slice(0, 4)
+		var present := false
+		for r in rows:
+			if int(r) == open_i:
+				present = true
+		if not present:
+			rows[3] = open_i
+		hidden = folded + shown.size() - 4
 	var card_h := DeskKit.CARD_HEAD + 30.0 + float(rows.size()) * ROW_H + 26.0
 	var frame := DeskKit.card_frame(b, 10.0, y, 1120.0, card_h, "the rate card")
 	var cy := float(frame.get("content_y", y)) + 0.0
@@ -187,18 +197,18 @@ static func _rate_card(b) -> void:
 		cy = _row(b, cy, int(i), s, lc, fm)
 	y = float(frame.get("bottom", cy)) + 10.0
 	if open_vis:
-		y = _open_detail(b, y, open_i, s, lc, fm)
+		y = _open_card(b, y, open_i, s, lc, fm)
 	if hidden > 0:
-		y = DeskKit.fold_row(b, DeskKit.X_ID, y, hidden,
-			"offers behind the open one" if open_vis else "offers, healthy",
-			(func() -> void: b.desk["open_row"] = -1) if open_vis
-			else func() -> void: b.desk["mode"] = "all")
+		y = DeskKit.fold_row(b, DeskKit.X_ID, y, hidden, "offers, healthy",
+			func() -> void: b.desk["mode"] = "all")
 	if String(s.biz_who) == "Enterprise":
 		y = _named_accounts_line(b, s, y)
 	_define_door(b, y + 6.0)
-	_do_lane(b, s)
+	# a tall page pushes its own lane and foot down and SCROLLS — never overlaps
+	var base := maxf(DeskKit.DO_LANE_Y, y + 52.0)
+	_do_lane(b, s, base)
 	_fire_spot(b)
-	_foot(b, s)
+	_foot(b, s, base + 44.0)
 
 ## THE COLLAPSE LADDER: six rows face-up, and the ones closest to money are
 ## never the hidden ones — unpriced or losing offers are promoted into view;
@@ -239,26 +249,110 @@ static func _head_row(b, y: float) -> float:
 	_right(b, "ADJUST", Vector2(COL_ADJUST_X - 8.0, y), 18, dim, 80.0)
 	return DeskKit.pen_rule(b, y + 24.0, COL_NAME_X, 1120.0 - 36.0, Color(DeskKit.INK, 0.25), 7) + 2.0
 
-## THE OPEN LEDGER — the whole offer under its row, on the same sheet
-## (owner: all the control here, never a separate page): the price dial (the
-## founder's ONE cost-side dial is price), the world's stated costs, the
-## shelf weight where the era grants it, the cost sprint, and the drop.
-static func _open_detail(b, y: float, i: int, s: GameState, lc: float, fm: float) -> float:
+## THE OPEN OFFER'S CARD — the whole ledger in one frame, the kit's grammar:
+## the price dial, the world's costs in two stated lines, the labor line, and
+## ONE lane holding the sprint and the drop. The row's mark closes it.
+static func _open_card(b, y: float, i: int, s: GameState, lc: float, fm: float) -> float:
 	var o: Dictionary = s.offers[i]
 	var era := s.era_index()
-	y = DeskCatalog._price_row(b, y + 4.0, o, i, era, lc, fm)
-	y = DeskCatalog.cost_story(b, y, o, era, lc, fm)
-	y = DeskCatalog.sprint_arm(b, y, o)
+	var capl := clampf(float(o.get("capacity_per_unit", 1.0)), 0.1, 40.0)
+	var svc := s.biz_what == "Service"
+	var clines: Array = o.get("cost_lines", []) if era >= 1 else []
+	var flines: Array = o.get("fixed_lines", []) if era >= 1 else []
+	var card_h := 250.0 + (52.0 if era >= 2 else 0.0) + (26.0 if svc else 0.0) \
+		+ float(clines.size() + flines.size()) * 24.0 \
+		+ (24.0 if not clines.is_empty() or not flines.is_empty() else 0.0)
+	var frame := DeskKit.card_frame(b, 10.0, y, 1120.0, card_h,
+		"the open offer — %s" % String(o.get("name", "?")), false,
+		1120.0 - DeskKit.CARD_PAD * 2.0)
+	var cx := float(frame.get("content_x", 28.0))
+	var cy := float(frame.get("content_y", y))
+	# the founder's one dial, on the kit's own stepper
+	var steps := DeskCatalog.price_steps(o)
+	var cur := float(o.get("price", 0.0))
+	var fair := float(o.get("fair_price", 0.0)) * fm
+	cy = DeskKit.stepper(b, cy, {
+		"name": "price", "x": cx,
+		"why": "the going rate is $%s — you name what you charge" % b.fmt(int(round(fair))),
+		"value": ("$%s per unit" % b.fmt(int(round(cur)))) if cur > 0.0
+			else "unpriced — bills at $%s" % b.fmt(int(round(fair))),
+		"effect": "margin $%s/unit" % b.fmt(int(round(SimCatalog.contribution(o, lc, fm)))),
+		"x_value": DeskKit.X_VALUE, "pitch": 64.0,
+		"at_min": DeskKit.at_min(steps, cur), "at_max": DeskKit.at_max(steps, cur),
+		"on_minus": func() -> void: DeskCatalog.price_step(b, i, -1),
+		"on_plus": func() -> void: DeskCatalog.price_step(b, i, 1)})
+	# the world's costs, stated line by line — never a dial
+	var fair0 := maxf(float(o.get("fair_price", 1.0)), 1.0)
+	if not clines.is_empty() or not flines.is_empty():
+		b.label("what one sale costs — the world set these when the offer was written:",
+			Vector2(cx, cy), DeskKit.DETAIL, Color(DeskKit.INK, 0.5), 1060.0)
+		cy += 24.0
+		for li in clines:
+			var ld: Dictionary = li
+			b.label("%s — $%s/unit (%d%% of the going rate)" % [
+				String(ld.get("label", "line")), b.fmt(int(round(float(ld.get("amount", 0.0))))),
+				int(round(float(ld.get("amount", 0.0)) / fair0 * 100.0))],
+				Vector2(cx + 18.0, cy), DeskKit.DETAIL, Color(DeskKit.INK, 0.7), 1040.0)
+			cy += 24.0
+		for fi in flines:
+			var fd: Dictionary = fi
+			b.label("%s — $%s/wk, sold or not" % [String(fd.get("label", "line")),
+				b.fmt(int(round(float(fd.get("amount", 0.0)))))],
+				Vector2(cx + 18.0, cy), DeskKit.DETAIL, Color(DeskKit.INK, 0.7), 1040.0)
+			cy += 24.0
+	b.label("= serve $%s/unit (×%.2f today) · standing tools $%s/wk" % [
+		b.fmt(int(round(SimCatalog.served_unit_cost(o, lc)))), lc,
+		b.fmt(int(round(float(o.get("fixed_wk", 0.0)))))],
+		Vector2(cx, cy), DeskKit.DETAIL, DeskKit.BLUE, 1060.0)
+	cy += 28.0
+	var be := SimCatalog.break_even(o, lc, fm)
+	b.label(("every sale loses $%s at this price" % b.fmt(int(round(-SimCatalog.contribution(o, lc, fm))))) if be < 0
+		else "break-even: %d sales/wk pay the standing costs" % be,
+		Vector2(cx, cy), DeskKit.DETAIL,
+		DeskKit.PEN if be < 0 else Color(DeskKit.INK, 0.55), 1060.0)
+	cy += 28.0
+	if svc:
+		b.label("one %s = %.1f hours of hands · today's crew: ≈ %d/wk before hiring" % [
+			String(o.get("unit", "unit")).trim_prefix("per "), capl,
+			int(SimWorks.service_capacity(s) / capl) if capl > 0.0 else 0],
+			Vector2(cx, cy), DeskKit.DETAIL, Color(DeskKit.INK, 0.55), 1060.0)
+		cy += 26.0
 	if era >= 2:
-		y = DeskCatalog._weight_row(b, y, o)
-	if era >= 3 and y + 30.0 <= DeskKit.DO_LANE_Y - 40.0:
-		y = DeskCatalog._mini_pnl(b, y, o, lc, fm)
-	DeskKit.arm(b, "drop_" + String(o.get("name", str(i))), "drop this offer ×",
-		"sure? it disappears ×", Vector2(820.0, y + 2.0), func() -> void:
+		cy = DeskKit.stepper(b, cy, {
+			"name": "weight", "x": cx,
+			"value": "%.1f of the wallet" % float(o.get("weight", 1.0)),
+			"effect": "shelf ∑%.1f of %.1f" % [SimCatalog.shelf_weight(s),
+				SimCatalog.SHELF_WEIGHT_CAP],
+			"x_value": DeskKit.X_VALUE, "pitch": 52.0,
+			"at_min": DeskKit.at_min(DeskCatalog.WEIGHT_STEPS, float(o.get("weight", 1.0))),
+			"at_max": float(o.get("weight", 1.0)) >= SimCatalog.MAX_WEIGHT - 0.001,
+			"on_minus": func() -> void:
+				o["weight"] = clampf(DeskKit.ladder(DeskCatalog.WEIGHT_STEPS,
+					float(o.get("weight", 1.0)), -1), SimCatalog.MIN_WEIGHT, SimCatalog.MAX_WEIGHT),
+			"on_plus": func() -> void:
+				o["weight"] = clampf(DeskKit.ladder(DeskCatalog.WEIGHT_STEPS,
+					float(o.get("weight", 1.0)), 1), SimCatalog.MIN_WEIGHT, SimCatalog.MAX_WEIGHT)})
+	# ONE lane: the sprint and the drop, side by side at the card's foot
+	var nm := String(o.get("name", str(i)))
+	var has_sprint := false
+	for bv in s.bets:
+		var bd: Dictionary = bv
+		if String(bd.get("kind", "")) == "cost_down" \
+				and String(bd.get("offer", "")) == nm and not bool(bd.get("shipped", false)):
+			has_sprint = true
+	if has_sprint:
+		b.label("a cost sprint is on the roadmap — the team is on it",
+			Vector2(cx, cy + 6.0), DeskKit.DETAIL, Color(DeskKit.INK, 0.55), 600.0)
+	else:
+		DeskKit.arm(b, "sprint_" + nm, "cut the serve cost — a team sprint",
+			"3 R&D-weeks of the team — sure?", Vector2(cx, cy + 2.0), func() -> void:
+				SimRoadmap.add_cost_down_bet(b.state, nm), 420.0, 20)
+	DeskKit.arm(b, "drop_" + nm, "drop this offer ×", "sure? it disappears ×",
+		Vector2(790.0, cy + 2.0), func() -> void:
 			SimCatalog.remove_offer(s, i)
-			s.log_action("DROPPED the offer: %s" % String(o.get("name", "?")))
-			b.desk["open_row"] = -1, 300.0, 22)
-	return y + 46.0
+			s.log_action("DROPPED the offer: %s" % nm)
+			b.desk["open_row"] = -1, 300.0, 20)
+	return float(frame.get("bottom", y)) + 10.0
 
 ## One offer, one row, one column per truth.
 static func _row(b, y: float, i: int, s: GameState, lc: float, fm: float) -> float:
@@ -364,7 +458,7 @@ static func _define_door(b, y: float) -> void:
 
 ## The teaching foot. WARNINGS OUTRANK WISDOM: an offer that loses money on
 ## every sale outranks the rules line; the drop's migration law rides the rules.
-static func _foot(b, s: GameState) -> void:
+static func _foot(b, s: GameState, base_y: float = 806.0) -> void:
 	var lc := SimEngine.learning_curve(s)
 	var fm := SimEngine.street_fair_mult(s)
 	var computed := ""
@@ -385,7 +479,7 @@ static func _foot(b, s: GameState) -> void:
 		"computed": computed,
 		"rules": "price at the street's level and demand is fair · dropping an offer (open it, then drop) migrates its customers to the shelf — or churns them",
 		"warning": warning,
-		"y": 806.0, "rules_y": 840.0,
+		"y": base_y, "rules_y": base_y + 34.0,
 	})
 
 # ─────────────────────────── the unfolded shelf ──────────────────────────────
@@ -404,16 +498,17 @@ static func _all_offers(b) -> void:
 	cy = _head_row(b, cy)
 	for i in n:
 		cy = _row(b, cy, i, s, lc, fm)
-	_do_lane(b, s)
+	var base2 := maxf(DeskKit.DO_LANE_Y, float(frame.get("bottom", cy)) + 16.0)
+	_do_lane(b, s, base2)
 	_fire_spot(b)
-	_foot(b, s)
+	_foot(b, s, base2 + 44.0)
 
 # ──────────────────── S3 · the DO lane + the focus walk ──────────────────────
 
 ## The desk's primary acts in the ONE slot: price the row that needs it (the
 ## first unpriced, else the flagship), or add to the shelf. The price press
 ## walks the hand to that row's own ADJUST squares.
-static func _do_lane(b, s: GameState) -> void:
+static func _do_lane(b, s: GameState, base_y: float = DeskKit.DO_LANE_Y) -> void:
 	var t := _price_target(s)
 	var actions: Array = []
 	if t >= 0:
@@ -425,7 +520,7 @@ static func _do_lane(b, s: GameState) -> void:
 	if SimCatalog.shelf_full_line(s) == "":
 		actions.append({"label": "add an offer", "tier": "", "cb": func() -> void:
 			b.desk["mode"] = "write"})
-	DeskKit.do_lane(b, actions)
+	DeskKit.do_lane(b, actions, base_y)
 
 ## The DO lane's object: the first unpriced offer, else the flagship (the
 ## heaviest weight on the shelf — the row most of the money walks through).

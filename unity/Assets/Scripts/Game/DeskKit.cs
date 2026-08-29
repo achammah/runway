@@ -134,6 +134,8 @@ namespace Runway.Game
             public Action OnPlus;
             /// a STATED line — the world's number, no squares to press
             public bool Static;
+            /// label column x (a card's content pad; default the pane edge)
+            public float X = XId;
         }
 
         /// <summary>
@@ -145,9 +147,9 @@ namespace Runway.Game
         public static float Stepper(BinderScreen b, float y, StepRow s)
         {
             Color body = s.Disabled ? Ink(0.35f) : DrawnUI.Ink;
-            b.L((s.Name ?? "").ToUpper(), XId, y, 28f, body);
+            b.L((s.Name ?? "").ToUpper(), s.X, y, 28f, body);
             if (!string.IsNullOrEmpty(s.Why))
-                b.L(s.Why, XId, y + 34f, Law, Ink(s.Disabled ? 0.35f : 0.6f), 480f);
+                b.L(s.Why, s.X, y + 34f, Law, Ink(s.Disabled ? 0.35f : 0.6f), 480f);
             // THE BOUND PRINTS ITS REASON, and the two ways of saying it never
             // overlap: the note rides the value line while it fits in that column,
             // and drops into the effect column when it does not. (Unfitted,
