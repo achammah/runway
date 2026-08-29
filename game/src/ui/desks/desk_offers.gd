@@ -360,6 +360,7 @@ static func _define_door(b, y: float) -> void:
 		return
 	DeskKit.word(b, "+ define a new offer", Vector2(DeskKit.X_ID, y), func() -> void:
 		b.desk["mode"] = "write", DeskKit.STATUS, DeskKit.INK, 340.0)
+	b.mark_control("offer_form", Rect2(DeskKit.X_ID, y, 340.0, 40.0))
 
 ## The teaching foot. WARNINGS OUTRANK WISDOM: an offer that loses money on
 ## every sale outranks the rules line; the drop's migration law rides the rules.

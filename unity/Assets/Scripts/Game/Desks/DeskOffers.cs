@@ -440,6 +440,7 @@ namespace Runway.Game
             }
             DeskKit.Word(b, "+ define a new offer", DeskKit.XId, y,
                 () => b.Desk["mode"] = "write", DeskKit.Status, DrawnUI.Ink, 340f);
+            b.MarkControl("offer_form", new Rect(DeskKit.XId, y, 340f, 40f));
         }
 
         /// The teaching foot. WARNINGS OUTRANK WISDOM.

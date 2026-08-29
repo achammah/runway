@@ -1316,6 +1316,9 @@ static func attention_items(state: GameState) -> Array:
 	if offers_any_unpriced(state):
 		rows.append({"desk": "pricing", "key": "unpriced", "severity": 2,
 			"label": "unpriced offer — billing at going rate", "control": "set_price"})
+	if state.offer_draft != "":
+		rows.append({"desk": "offers", "key": "offer_draft", "severity": 2,
+			"label": "the journal drafted an offer — finish the form", "control": "offer_form"})
 	var pnl: Dictionary = state.get_meta("pnl", {})
 	if not pnl.is_empty() and int(pnl.get("net", 0)) < 0:
 		rows.append({"desk": "the ledger", "key": "losing_week", "severity": 2,

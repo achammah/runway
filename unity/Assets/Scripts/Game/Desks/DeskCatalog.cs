@@ -526,41 +526,67 @@ namespace Runway.Game
 
         // ── 7.3  THE WRITE ─────────────────────────────────────────────────────
 
+        /// THE OFFER FORM (owner: a real interface — name, full description,
+        /// what it bundles, the unit wish, who it is for). Fields survive a
+        /// rebuild in b.Desk under f_*; the street reads them as structured input.
+        static readonly string[] UnitHints = { "let the street pick", "per session",
+            "per month", "per order", "per unit", "per year", "per hour",
+            "per package", "per kit" };
+
+        static void FormField(BinderScreen b, float y, string key, string label,
+                              string placeholder, float height, bool single)
+        {
+            b.L(label, DeskKit.XId, y, 18f, Ink(0.5f), 400f);
+            TMP_InputField te = WriteField(b, DeskKit.XId, y + 22f, 1140f, height,
+                placeholder, Get(b, key));
+            te.fontAsset = null;   // keep WriteField's own font path
+            if (single) te.lineType = TMP_InputField.LineType.SingleLine;
+            DeskKit.Rule(b, y + 22f + height + 4f);
+            string k = key;
+            te.onValueChanged.AddListener(v => b.Desk[k] = v);
+            if (key == "f_name") te.ActivateInputField();
+        }
+
         static void Write(BinderScreen b)
         {
-            DeskKit.Title(b, "what do you want to sell?");
-            b.L("plain words — \"a monthly meal-prep box\", \"API access for clinics\", \"a two-hour audit\"",
-                DeskKit.XId, 62f, 22f, Ink(0.55f), 1100f);
-            TMP_InputField te = WriteField(b, DeskKit.XId, 96f, 1140f, 150f,
-                "write it the way you would say it out loud…", Get(b, "text"));
-            DeskKit.Rule(b, 250f);
-            // the founder's words survive a rebuild; the proposal never does
-            te.onValueChanged.AddListener(t => b.Desk["text"] = t);
-            // ENTER SUBMITS, SHIFT+ENTER NEWLINES (MultiLineSubmit is exactly the
-            // Godot `KEY_ENTER and not shift` contract without a key handler)
-            te.onSubmit.AddListener(t =>
+            // a journal-drafted offer lands here pre-filled, once
+            if (Get(b, "f_desc").Length == 0
+                && !string.IsNullOrEmpty(b.State.OfferDraft))
             {
-                b.Desk["text"] = t;
-                Submit(b);
-            });
-            te.ActivateInputField();
-            te.stringPosition = (te.text ?? "").Length;
-            // THE SUBMIT IS ALWAYS LIVE. A field that rebuilt the pane on every
-            // keystroke would take the keyboard away mid-word, so the button
-            // cannot appear when the text gets long enough — it presses, and a
-            // press with nothing behind it ANSWERS instead of doing nothing.
-            DeskKit.Word(b, "price it", DeskKit.XId, 280f, () => Submit(b),
+                b.Desk["f_desc"] = b.State.OfferDraft;
+                b.State.OfferDraft = "";
+            }
+            DeskKit.Title(b, "what do you want to sell?");
+            FormField(b, 56f, "f_name", "its name (the street may tidy it)",
+                "\"Premium Package\", \"The Tuesday Box\"…", 34f, true);
+            FormField(b, 128f, "f_desc", "what it is — the full description",
+                "write it the way you would say it out loud…", 96f, false);
+            FormField(b, 262f, "f_includes", "what it includes — the pieces a buyer gets",
+                "the parts, the time, the materials, the follow-up…", 70f, false);
+            FormField(b, 370f, "f_audience", "who it is for (optional)",
+                "regulars? first-timers? the corporate accounts?", 34f, true);
+            string hint = Get(b, "f_unit");
+            if (hint.Length == 0) hint = UnitHints[0];
+            b.L("billed", DeskKit.XId, 446f, 18f, Ink(0.5f), 200f);
+            DeskKit.Word(b, hint + "  ->", DeskKit.XId, 468f, () =>
+            {
+                string cur = Get(b, "f_unit");
+                int idx = Array.IndexOf(UnitHints, cur.Length == 0 ? UnitHints[0] : cur);
+                b.Desk["f_unit"] = UnitHints[(idx + 1) % UnitHints.Length];
+            }, DeskKit.Detail, DrawnUI.Blue, 360f);
+            DeskKit.Word(b, "price it", DeskKit.XId, 530f, () => Submit(b),
                 DeskKit.Row, DrawnUI.Ink, 220f);
-            DeskKit.Word(b, "never mind", 260f, 280f, () =>
+            DeskKit.Word(b, "never mind", 260f, 530f, () =>
             {
                 b.Desk["mode"] = "";
-                b.Desk.Remove("text");
+                foreach (string k in new[] { "f_name", "f_desc", "f_includes",
+                    "f_audience", "f_unit", "text" }) b.Desk.Remove(k);
             }, DeskKit.Row, Ink(0.7f), 200f);
             if (Get(b, "short").Length > 0)
-                b.L("a few words at least — the street can't price a shrug",
-                    DeskKit.XId, 340f, DeskKit.Status, DrawnUI.Coral, 700f);
+                b.L("a few words of description at least — the street can't price a shrug",
+                    DeskKit.XId, 590f, DeskKit.Status, DrawnUI.Coral, 900f);
             DeskKit.Footer(b, "",
-                "whatever comes back is a PROPOSAL — you adjust every cost line before it reaches the books",
+                "the street writes the terms — costs are the world's; the price stays yours",
                 "");
         }
 
@@ -626,23 +652,34 @@ namespace Runway.Game
         /// and the card is identical, with one dry footnote (01 section 8.4).
         static void Submit(BinderScreen b)
         {
-            string idea = Get(b, "text").Trim();
-            if (idea.Length < 3)
+            string desc = Get(b, "f_desc").Trim();
+            if (desc.Length == 0) desc = Get(b, "text").Trim();
+            if (desc.Length < 3)
             {
                 b.Desk["short"] = "1";
                 b.Refresh();     // Enter has no rebuild of its own; the answer must still land
                 return;
             }
             b.Desk.Remove("short");
+            string hint = Get(b, "f_unit");
+            var fields = new JObject
+            {
+                ["name"] = Gd.Left(Get(b, "f_name").Trim(), 40),
+                ["description"] = Gd.Left(desc, 500),
+                ["includes"] = Gd.Left(Get(b, "f_includes").Trim(), 300),
+                ["unit_hint"] = hint.StartsWith("let the street") ? "" : hint,
+                ["audience_note"] = Gd.Left(Get(b, "f_audience").Trim(), 120),
+            };
+            b.Desk["text"] = desc;   // the wait card + the house fallback read one line
             EventGenerator gen = Street(b);
             if (gen != null)
             {
                 b.Desk["mode"] = "wait";
-                gen.PriceOfferIdea(OfferPayload(b.State, idea), res => Land(b, idea, res));
+                gen.PriceOfferIdea(OfferPayload(b.State, fields), res => Land(b, desc, res));
                 b.Refresh();
                 return;
             }
-            b.Desk["pending"] = Proposal(b.State, SimCatalog.DraftTerms(b.State, idea));
+            b.Desk["pending"] = Proposal(b.State, SimCatalog.DraftTerms(b.State, desc));
             b.Desk["house"] = "1";
             b.Desk["mode"] = "review";
             b.Refresh();
@@ -652,7 +689,7 @@ namespace Runway.Game
         /// (event_generator.gd price_offer_idea): the company, its stage, and the
         /// founder's own words. `era` is in there because stage-scaled tooling
         /// comes from the PROPOSAL, never from a runtime multiplier (01 D2).
-        static JObject OfferPayload(GameState st, string idea)
+        static JObject OfferPayload(GameState st, object ideaOrFields)
         {
             var company = new JObject
             {
@@ -662,10 +699,17 @@ namespace Runway.Game
                 ["who"] = st.BizWho ?? "",
                 ["era"] = st.Era ?? "",
             };
+            var fj = ideaOrFields as JObject;
+            JObject no = fj ?? new JObject
+            {
+                ["name"] = "",
+                ["description"] = Gd.Left((ideaOrFields as string) ?? "", 500),
+                ["includes"] = "", ["unit_hint"] = "", ["audience_note"] = "",
+            };
             return new JObject
             {
                 ["company"] = company,
-                ["new_offer"] = idea.Length > 200 ? idea.Substring(0, 200) : idea,
+                ["new_offer"] = no,
             };
         }
 
@@ -700,6 +744,10 @@ namespace Runway.Game
                 FairPrice = res["fair_price"] != null ? (double)res["fair_price"] : 1.0,
                 Elasticity = res["elasticity"] != null ? (double)res["elasticity"] : 2.0,
                 Weight = res["weight"] != null ? (double)res["weight"] : 1.0,
+                Desc = (string)res["desc"] ?? "",
+                StreetRead = (string)res["street_read"] ?? "",
+                CapacityPerUnit = res["capacity_per_unit"] != null
+                    ? (double)res["capacity_per_unit"] : 1.0,
                 Price = 0.0,
             };
             o.CostLines = LinesFromJson(res["variable_costs"] as JArray);
@@ -844,15 +892,7 @@ namespace Runway.Game
             DeskKit.Review(b, new DeskKit.ReviewCard
             {
                 Banner = "the street's terms — read them, then shelve it or tear it up",
-                Read = new List<string>
-                {
-                    string.Format(CultureInfo.InvariantCulture,
-                        "{0} · {1} — the street charges ≈ ${2} · elasticity {3} · weight {4:0.0}",
-                        (p.Name ?? "an offer").ToUpper(), p.Unit ?? "", Money(fair),
-                        ElasticityWord(p.Elasticity), p.Weight),
-                    "arrives unpriced — it bills at the going rate ≈ $" + Money(fair)
-                        + " until you price it",
-                },
+                Read = ReviewRead(b, p, fair),
                 Groups = groups,
                 Verdict = SimCatalog.BreakEven(p, lc) >= 0 ? ""
                     : "this price never pays for itself — every sale loses $"
@@ -947,6 +987,34 @@ namespace Runway.Game
                 "= ${0}/wk · break-even: {1} sales/wk pay for it", Money(p.FixedWk), be);
         }
 
+        /// The review's read block: identity, the world's own line, its visible
+        /// reasoning, the labor reality, then the unpriced law.
+        static List<string> ReviewRead(BinderScreen b, Offer p, double fair)
+        {
+            var read = new List<string>
+            {
+                string.Format(CultureInfo.InvariantCulture,
+                    "{0} · {1} — the street charges ≈ ${2} · elasticity {3} · weight {4:0.0}",
+                    (p.Name ?? "an offer").ToUpper(), p.Unit ?? "", Money(fair),
+                    ElasticityWord(p.Elasticity), p.Weight),
+            };
+            if (!string.IsNullOrEmpty(p.Desc)) read.Add(p.Desc);
+            if (!string.IsNullOrEmpty(p.StreetRead))
+                read.Add("the street's read: " + p.StreetRead);
+            if (b.State.BizWhat == "Service" && p.CapacityPerUnit > 0.0)
+            {
+                double slots = SimWorks.ServiceCapacity(b.State);
+                if (slots > 0.0)
+                    read.Add(string.Format(CultureInfo.InvariantCulture,
+                        "one {0} takes ≈ {1:0.0} hours of hands — today's crew serves ≈ {2}/wk before hiring",
+                        (p.Unit ?? "unit").StartsWith("per ") ? p.Unit.Substring(4) : p.Unit,
+                        p.CapacityPerUnit, (int)(slots / p.CapacityPerUnit)));
+            }
+            read.Add("arrives unpriced — it bills at the going rate ≈ $" + Money(fair)
+                + " until you price it");
+            return read;
+        }
+
         /// Elasticity in words: how hard demand punishes a price above the going
         /// rate. A raw engine float never prints (10-interface-language 3.8).
         static string ElasticityWord(double e)
@@ -973,6 +1041,9 @@ namespace Runway.Game
                     Gd.Minf(SimCatalog.MaxWeight,
                         Gd.Maxf(SimCatalog.WeightRoom(st), SimCatalog.MinWeight))),
                 UnitCost = terms.UnitCost,
+                Desc = Gd.Left(terms.Desc ?? "", 110),
+                StreetRead = Gd.Left(terms.StreetRead ?? "", 140),
+                CapacityPerUnit = Gd.Clampf(terms.CapacityPerUnit, 0.1, 40.0),
                 Price = 0.0,
             };
             List<CostLine> cl = SimCatalog.SanitizeLines(terms.CostLines, SimCatalog.MaxCostLines);

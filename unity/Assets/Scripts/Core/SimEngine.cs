@@ -1885,6 +1885,9 @@ namespace Runway.Core
             if (OffersAnyUnpriced(state))
                 rows.Add(new AttentionItem { Desk = "pricing", Key = "unpriced", Severity = 2,
                     Label = "unpriced offer — billing at going rate", Control = "set_price" });
+            if (!string.IsNullOrEmpty(state.OfferDraft))
+                rows.Add(new AttentionItem { Desk = "offers", Key = "offer_draft", Severity = 2,
+                    Label = "the journal drafted an offer — finish the form", Control = "offer_form" });
             if (state.LastPnl != null && state.LastPnl.Net < 0)
                 rows.Add(new AttentionItem { Desk = "the ledger", Key = "losing_week", Severity = 2,
                     Label = "losing week — burn beat revenue" });

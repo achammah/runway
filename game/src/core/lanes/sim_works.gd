@@ -170,8 +170,13 @@ static func demand_units(state: GameState) -> float:
 		var od: Dictionary = o
 		if SimEngine.offer_billed_price(od, fm) <= 0.0:
 			continue
+		# THE CAPACITY WEIGHT (owner: a sale eats the hours it really takes —
+		# a 2h session is 2 slots, a 15-min add-on 0.25; absent = 1.0, so every
+		# pre-existing offer and pin is untouched). Scaling an heavy offer past
+		# the crew's slots now MEANS hiring, structurally.
 		total += float(state.traction) * float(od.get("weight", 1.0)) \
-			* SimEngine.offer_cadence(String(od.get("unit", "")))
+			* SimEngine.offer_cadence(String(od.get("unit", ""))) \
+			* clampf(float(od.get("capacity_per_unit", 1.0)), 0.1, 40.0)
 	return total
 
 ## What one native unit bills — revenue over units, so the un-billing and the
@@ -195,7 +200,8 @@ static func base_unit_cost(state: GameState) -> float:
 		var od: Dictionary = o
 		if SimEngine.offer_billed_price(od, fm) <= 0.0:
 			continue
-		var u := float(od.get("weight", 1.0)) * SimEngine.offer_cadence(String(od.get("unit", "")))
+		var u := float(od.get("weight", 1.0)) * SimEngine.offer_cadence(String(od.get("unit", ""))) \
+			* clampf(float(od.get("capacity_per_unit", 1.0)), 0.1, 40.0)
 		units += u
 		cost += u * float(od.get("unit_cost", 0.0))
 	return (cost / units) if units > 0.0 else 0.0

@@ -141,7 +141,8 @@ const ADJUDICATE_SCHEMA := {
 							"open_site", "close_site", "reassign_employee", "move_machine",
 							"tag_offer", "tag_spend_line", "refinance_note", "fire_account",
 							"retire_product", "pivot_audience", "pivot_product",
-							"pitch_investor", "sign_instrument", "send_offer", "set_relief"]},
+							"pitch_investor", "sign_instrument", "send_offer", "set_relief",
+							"draft_offer"]},
 					"v": {"type": ["number", "string"]},
 					"why": {"type": "string", "maxLength": 90},
 					# status: duration · clock: weeks until it fires · all other ops: 1
@@ -176,10 +177,13 @@ const CLARIFY_SCHEMA := {
 ## Schema for pricing a founder-written offer: the street answers with terms.
 const OFFER_SCHEMA := {
 	"type": "object", "additionalProperties": false,
-	"required": ["name", "unit", "fair_price", "elasticity", "weight",
-		"variable_costs", "fixed_costs_wk"],
+	"required": ["name", "desc", "unit", "fair_price", "elasticity", "weight",
+		"street_read", "capacity_per_unit", "variable_costs", "fixed_costs_wk"],
 	"properties": {
 		"name": {"type": "string", "maxLength": 40},
+		"desc": {"type": "string", "maxLength": 110},
+		"street_read": {"type": "string", "maxLength": 140},
+		"capacity_per_unit": {"type": "number", "minimum": 0.1, "maximum": 40},
 		"unit": {"type": "string", "enum": ["per session", "per month", "per order",
 			"per unit", "per year", "per hour", "per package", "per kit"]},
 		"fair_price": {"type": "number", "minimum": 1, "maximum": 50000},

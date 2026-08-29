@@ -68,6 +68,12 @@ emit neither op.
   EXPLICITLY makes it free on purpose. The state lines show the catalog and
   which offers still bill at the going rate — a selling move that names its
   price MUST carry this op, or the going rate keeps billing.
+- `draft_offer` — the founder is LAUNCHING SOMETHING NEW TO SELL ("we start
+  offering couples' massages", "let's sell an annual plan"): v = their new
+  offer restated in their own words, <=300 chars. The binder's offer form
+  opens on it; the world prices it THERE. Never create, price or cost the
+  offer yourself — this op only drafts the paperwork. Not for pricing or
+  repricing something already on the shelf (that is price_offer).
 - `set_price` (v = multiplier 0.5-2.0), `set_marketing` (v = $/week),
   `hire` (v = role: engineer/sales/support/designer/ops — onboards for 2 weeks,
   paid immediately), `take_loan` (v = $, 18%/week compounds).

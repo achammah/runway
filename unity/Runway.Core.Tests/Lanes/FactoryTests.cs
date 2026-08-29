@@ -46,6 +46,15 @@ namespace Runway.CoreTests
 
         public static void Run(Action<bool, string> ok)
         {
+            // ── THE CAPACITY WEIGHT (owner: a sale eats the hours it takes).
+            // capacity 2.0 doubles demand units; absent = 1.0 (old saves hold).
+            var cw = new GameState { BizWhat = "Service", BizWho = "SMB", Traction = 10 };
+            cw.Offers = new List<Offer> { new Offer { Name = "flat", Unit = "per session",
+                Weight = 1.0, FairPrice = 40.0, Price = 30.0, UnitCost = 5.0 } };
+            double flat = SimWorks.DemandUnits(cw);
+            cw.Offers[0].CapacityPerUnit = 2.0;
+            ok(Gd.Absf(SimWorks.DemandUnits(cw) - flat * 2.0) < 0.0001,
+                "capacity 2.0 doubles the slots a sale eats; absent reads 1.0");
             // ── PIN 1 — STOCKOUT CAPS ADDS. You cannot sell what you did not
             // build: demand exists, the shelf is empty, and every new customer is
             // lost sales (consumer hardware does not backorder). Empty shelves

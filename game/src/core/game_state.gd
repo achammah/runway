@@ -51,6 +51,7 @@ var beliefs: Dictionary = {}
 # SALE), weight}. Revenue exists only for priced offers, through the demand
 # curve — a $500 massage sells to almost nobody.
 var offers: Array = []         # $ per week
+var offer_draft: String = ""   # the journal drafted an offer — the form opens on it
 var analytics_level: int = 0          # 0..3 — the binder's fog of war
 var tech_debt: float = 10.0
 var fatigue: float = 20.0

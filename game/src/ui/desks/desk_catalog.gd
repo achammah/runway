@@ -356,6 +356,14 @@ static func cost_story(b, y: float, o: Dictionary, era: int, lc: float,
 			b.fmt(int(round(-SimCatalog.contribution(o, lc, fm))))], DeskKit.PEN)
 	else:
 		y = _sum_line(b, y, "break-even: %d sales/wk pay the standing costs" % be, DeskKit.BLUE)
+	var capl := clampf(float(o.get("capacity_per_unit", 1.0)), 0.1, 40.0)
+	if b.state.biz_what == "Service" and capl != 1.0:
+		var slots2 := SimWorks.service_capacity(b.state)
+		b.label("one %s = %.1f hours of hands · today's crew: ≈ %d/wk" % [
+			String(o.get("unit", "unit")).trim_prefix("per "), capl,
+			int(slots2 / capl) if capl > 0.0 else 0],
+			Vector2(DeskKit.X_ID, y), DeskKit.DETAIL, Color(DeskKit.INK, 0.7), 900.0)
+		y += 26.0
 	b.label("costs only fall when the team rebuilds how this one is made — a cost sprint below",
 		Vector2(DeskKit.X_ID, y), DeskKit.LAW, Color(DeskKit.INK, 0.45), 1080.0)
 	return y + 26.0
@@ -404,70 +412,94 @@ static func _mini_pnl(b, y: float, o: Dictionary, lc: float, fm: float) -> float
 
 # ─────────────────────────────── 7.3  THE WRITE ──────────────────────────────
 
-static func _write(b) -> void:
-	DeskKit.title(b, "what do you want to sell?")
-	b.label("plain words — \"a monthly meal-prep box\", \"API access for clinics\", \"a two-hour audit\"",
-		Vector2(DeskKit.X_ID, 62.0), 22, Color(DeskKit.INK, 0.55), 1100.0)
+## THE OFFER FORM (owner: a real interface — name, full description, what it
+## bundles, the unit wish, who it is for). Every field survives a rebuild in
+## b.desk under f_*; the street reads them all as structured input.
+const UNIT_HINTS := ["let the street pick", "per session", "per month", "per order",
+	"per unit", "per year", "per hour", "per package", "per kit"]
+
+static func _field(b, y: float, key: String, label: String, placeholder: String,
+		height: float, single: bool = false) -> void:
+	b.label(label, Vector2(DeskKit.X_ID, y), 18, Color(DeskKit.INK, 0.5), 400.0)
 	var te := TextEdit.new()
-	te.position = Vector2(DeskKit.X_ID, 96.0)
-	te.size = Vector2(1140, 150)
+	te.position = Vector2(DeskKit.X_ID, y + 22.0)
+	te.size = Vector2(1140, height)
 	te.add_theme_font_override("font", b.font())
-	te.add_theme_font_size_override("font_size", 28)
+	te.add_theme_font_size_override("font_size", 26)
 	te.add_theme_color_override("font_color", DeskKit.INK)
 	te.add_theme_color_override("font_placeholder_color", Color(DeskKit.INK, 0.30))
 	te.add_theme_color_override("caret_color", DeskKit.PEN)
-	# THE PAPER IS THE FIELD: no box, no fill, no chrome — the rule underneath is
-	# the only thing that says "write here".
+	# THE PAPER IS THE FIELD: no box, no fill — the rule underneath says "write here"
 	for stn in ["normal", "focus", "read_only"]:
 		te.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
 	te.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-	te.placeholder_text = "write it the way you would say it out loud…"
-	te.text = String(b.desk.get("text", ""))
+	te.placeholder_text = placeholder
+	te.text = String(b.desk.get(key, ""))
 	b.pane().add_child(te)
-	DeskKit.rule(b, 250.0)
-	# the founder's words survive a rebuild; the proposal never does
-	te.text_changed.connect(func() -> void: b.desk["text"] = te.text)
-	# ENTER SUBMITS, SHIFT+ENTER NEWLINES (the journal's `_wire_free` contract)
-	te.gui_input.connect(func(ev: InputEvent) -> void:
-		if ev is InputEventKey and ev.pressed and ev.keycode == KEY_ENTER \
-				and not ev.shift_pressed:
-			te.accept_event()
-			b.desk["text"] = te.text
-			_submit(b))
-	te.grab_focus()
-	te.set_caret_line(te.get_line_count() - 1)
-	te.set_caret_column(te.get_line(te.get_line_count() - 1).length())
-	# THE SUBMIT IS ALWAYS LIVE. A field that rebuilt the pane on every keystroke
-	# would take the keyboard away mid-word, so the button cannot appear when the
-	# text gets long enough — it presses, and a press with nothing behind it
-	# ANSWERS instead of doing nothing.
-	DeskKit.word(b, "price it", Vector2(DeskKit.X_ID, 280.0), func() -> void:
+	DeskKit.rule(b, y + 22.0 + height + 4.0)
+	te.text_changed.connect(func() -> void:
+		b.desk[key] = te.text.replace("\n", " ") if single else te.text)
+	if key == "f_name":
+		te.grab_focus()
+
+static func _write(b) -> void:
+	# a journal-drafted offer lands here pre-filled, once
+	if String(b.desk.get("f_desc", "")) == "" and b.state.offer_draft != "":
+		b.desk["f_desc"] = b.state.offer_draft
+		b.state.offer_draft = ""
+	DeskKit.title(b, "what do you want to sell?")
+	_field(b, 56.0, "f_name", "its name (the street may tidy it)",
+		"\"Premium Package\", \"The Tuesday Box\"…", 34.0, true)
+	_field(b, 128.0, "f_desc", "what it is — the full description",
+		"write it the way you would say it out loud…", 96.0)
+	_field(b, 262.0, "f_includes", "what it includes — the pieces a buyer gets",
+		"the parts, the time, the materials, the follow-up…", 70.0)
+	_field(b, 370.0, "f_audience", "who it is for (optional)",
+		"regulars? first-timers? the corporate accounts?", 34.0, true)
+	# the unit wish cycles through the street's own units
+	var hint := String(b.desk.get("f_unit", UNIT_HINTS[0]))
+	b.label("billed", Vector2(DeskKit.X_ID, 446.0), 18, Color(DeskKit.INK, 0.5), 200.0)
+	DeskKit.word(b, hint + "  ->", Vector2(DeskKit.X_ID, 468.0), func() -> void:
+		var idx := UNIT_HINTS.find(String(b.desk.get("f_unit", UNIT_HINTS[0])))
+		b.desk["f_unit"] = UNIT_HINTS[(idx + 1) % UNIT_HINTS.size()],
+		DeskKit.DETAIL, DeskKit.BLUE, 360.0)
+	DeskKit.word(b, "price it", Vector2(DeskKit.X_ID, 530.0), func() -> void:
 		_submit(b), DeskKit.ROW, DeskKit.INK, 220.0)
-	DeskKit.word(b, "never mind", Vector2(260.0, 280.0), func() -> void:
+	DeskKit.word(b, "never mind", Vector2(260.0, 530.0), func() -> void:
 		b.desk["mode"] = ""
-		b.desk.erase("text"), DeskKit.ROW, Color(DeskKit.INK, 0.7), 200.0)
+		for k in ["f_name", "f_desc", "f_includes", "f_audience", "f_unit", "text"]:
+			b.desk.erase(k), DeskKit.ROW, Color(DeskKit.INK, 0.7), 200.0)
 	if bool(b.desk.get("short", false)):
-		b.label("a few words at least — the street can't price a shrug",
-			Vector2(DeskKit.X_ID, 340.0), DeskKit.STATUS, DeskKit.PEN, 700.0)
-	DeskKit.footer(b, {"rules": "whatever comes back is a PROPOSAL — you adjust every cost line before it reaches the books"})
+		b.label("a few words of description at least — the street can't price a shrug",
+			Vector2(DeskKit.X_ID, 590.0), DeskKit.STATUS, DeskKit.PEN, 900.0)
+	DeskKit.footer(b, {"rules": "the street writes the terms — costs are the world's; the price stays yours"})
 
 ## The one road out of WRITE. Keyed: the street prices it and the reply lands on
 ## the review card. Keyless: the house numbers arrive instantly and the card is
 ## identical, with one dry footnote (01 §8.4).
 static func _submit(b) -> void:
-	var idea := String(b.desk.get("text", "")).strip_edges()
-	if idea.length() < 3:
+	var desc := String(b.desk.get("f_desc", b.desk.get("text", ""))).strip_edges()
+	if desc.length() < 3:
 		b.desk["short"] = true
 		b.refresh()      # Enter has no rebuild of its own; the answer must still land
 		return
 	b.desk.erase("short")
+	var hint := String(b.desk.get("f_unit", ""))
+	var fields := {
+		"name": String(b.desk.get("f_name", "")).strip_edges().substr(0, 40),
+		"description": desc.substr(0, 500),
+		"includes": String(b.desk.get("f_includes", "")).strip_edges().substr(0, 300),
+		"unit_hint": "" if hint.begins_with("let the street") else hint,
+		"audience_note": String(b.desk.get("f_audience", "")).strip_edges().substr(0, 120),
+	}
+	b.desk["text"] = desc   # the wait card + the house fallback read one line
 	if _street_is_reachable(b):
 		b.desk["mode"] = "wait"
-		b.generator.price_offer_idea(b.state, idea, func(res: Dictionary) -> void:
-			_land(b, idea, res))
+		b.generator.price_offer_idea(b.state, fields, func(res: Dictionary) -> void:
+			_land(b, desc, res))
 		b.refresh()
 		return
-	b.desk["pending"] = _proposal(b.state, SimCatalog.draft_terms(b.state, idea))
+	b.desk["pending"] = _proposal(b.state, SimCatalog.draft_terms(b.state, desc))
 	b.desk["house"] = true
 	b.desk["mode"] = "review"
 	b.refresh()
@@ -569,12 +601,7 @@ static func _review(b) -> void:
 			"sum": _review_fixed_sum(b, p, lc)})
 	DeskKit.review(b, {
 		"banner": "the street's terms — read them, then shelve it or tear it up",
-		"read": [
-			"%s · %s — the street charges ≈ $%s · elasticity %s · weight %.1f" % [
-				String(p.get("name", "an offer")).to_upper(), String(p.get("unit", "")),
-				b.fmt(int(round(fair))), _elasticity_word(float(p.get("elasticity", 2.0))),
-				float(p.get("weight", 1.0))],
-			"arrives unpriced — it bills at the going rate ≈ $%s until you price it" % b.fmt(int(round(fair)))],
+		"read": _review_read(b, p, fair),
 		"groups": groups,
 		"verdict": "" if SimCatalog.break_even(p, lc) >= 0 else
 			"this price never pays for itself — every sale loses $%s" % b.fmt(int(round(-SimCatalog.contribution(p, lc)))),
@@ -640,6 +667,27 @@ static func _review_fixed_sum(b, p: Dictionary, lc: float) -> String:
 	return "= $%s/wk · break-even: %d sales/wk pay for it" % [
 		b.fmt(int(round(float(p.get("fixed_wk", 0.0))))), be]
 
+## The review's read block: identity, the world's own line, its visible
+## reasoning (owner: stated and explained), then the unpriced law.
+static func _review_read(b, p: Dictionary, fair: float) -> Array:
+	var read: Array = [
+		"%s · %s — the street charges ≈ $%s · elasticity %s · weight %.1f" % [
+			String(p.get("name", "an offer")).to_upper(), String(p.get("unit", "")),
+			b.fmt(int(round(fair))), _elasticity_word(float(p.get("elasticity", 2.0))),
+			float(p.get("weight", 1.0))]]
+	if String(p.get("desc", "")) != "":
+		read.append(String(p.get("desc", "")))
+	if String(p.get("street_read", "")) != "":
+		read.append("the street's read: " + String(p.get("street_read", "")))
+	var cap := float(p.get("capacity_per_unit", 1.0))
+	if b.state.biz_what == "Service" and cap > 0.0:
+		var slots := SimWorks.service_capacity(b.state)
+		if slots > 0.0:
+			read.append("one %s takes ≈ %.1f hours of hands — today's crew serves ≈ %d/wk before hiring" % [
+				String(p.get("unit", "unit")).trim_prefix("per "), cap, int(slots / cap)])
+	read.append("arrives unpriced — it bills at the going rate ≈ $%s until you price it" % b.fmt(int(round(fair))))
+	return read
+
 ## Elasticity in words: how hard demand punishes a price above the going rate.
 ## A raw engine float never prints (10-interface-language §3.8).
 static func _elasticity_word(e: float) -> String:
@@ -663,6 +711,9 @@ static func _proposal(state: GameState, terms: Dictionary) -> Dictionary:
 			minf(SimCatalog.MAX_WEIGHT, maxf(SimCatalog.weight_room(state), SimCatalog.MIN_WEIGHT))),
 		"unit_cost": float(terms.get("unit_cost", 0.0)),
 		"price": 0.0,
+		"desc": String(terms.get("desc", "")).substr(0, 110),
+		"street_read": String(terms.get("street_read", "")).substr(0, 140),
+		"capacity_per_unit": clampf(float(terms.get("capacity_per_unit", 1.0)), 0.1, 40.0),
 	}
 	var cl: Array = SimCatalog.sanitize_lines(terms.get("variable_costs", []),
 		SimCatalog.MAX_COST_LINES)

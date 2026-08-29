@@ -479,6 +479,13 @@ namespace Runway.Game
                         St.PriceMult = Gd.Clampf(ContentDb.Num(d, "v", 1.0), 0.5, 2.0);
                         outp.Add(string.Format("price set to ×{0:0.00} — {1}", St.PriceMult, why));
                         break;
+                    case "draft_offer":
+                        // THE JOURNAL DRAFTS THE FORM (owner): the binder's offer
+                        // form opens on these words; the DM never creates or
+                        // prices the offer itself.
+                        St.OfferDraft = Gd.Left(ContentDb.Str(d, "v"), 500);
+                        outp.Add("an offer drafted from the week's move — finish it in the binder");
+                        break;
                     case "price_offer":
                     {
                         // THE PRICE LANDS IN THE OFFER (owner: the world must

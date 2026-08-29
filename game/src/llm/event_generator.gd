@@ -225,14 +225,19 @@ const OFFER_PROMPT := """You itemize and price a new product or service for a st
 - fixed_costs_wk: 0-3 weekly standing costs this offer adds whether or not anything sells (a tool subscription, a license, storage, a rented machine). USD per week, scaled to the company's stage.
 Never invent revenue, discounts, or advice. Strict JSON only. No prose."""
 
-func price_offer_idea(state: GameState, idea: String, cb: Callable) -> void:
+## `fields` is the offer form's structured input: {name, description, includes,
+## unit_hint, audience_note} — a bare String still works (the journal's drafts).
+func price_offer_idea(state: GameState, fields, cb: Callable) -> void:
 	if not llm.enabled():
 		cb.call({})
 		return
+	var no: Dictionary = fields if fields is Dictionary \
+		else {"name": "", "description": String(fields).substr(0, 500),
+			"includes": "", "unit_hint": "", "audience_note": ""}
 	var user := JSON.stringify({
 		"company": {"name": state.company_name, "idea": state.company_idea,
 			"what": state.biz_what, "who": state.biz_who, "era": state.era},
-		"new_offer": idea.substr(0, 200)})
+		"new_offer": no})
 	llm.request_json(OFFER_PROMPT, user, LlmClient.OFFER_SCHEMA, func(res: Dictionary):
 		if cb.is_valid():
 			cb.call(res), {"tier": "clarify"})
@@ -489,7 +494,7 @@ func next_card(state: GameState, content: ContentDb, rng: SeededRng) -> Dictiona
 ## ONE list at three sites; a twin test pins them equal. `price_offer` was in
 ## the schema and the executor but missing HERE, so any DM reply that priced an
 ## offer was rejected wholesale — the bug this list's pin test now prevents.
-const ALLOWED_OPS := ["cash_delta", "product_delta", "traction_delta", "morale_delta", "hype_delta", "set_flag", "status", "clock", "set_price", "price_offer", "set_marketing", "hire", "take_loan", "spend", "set_budget", "push_lead", "open_site", "close_site", "reassign_employee", "move_machine", "tag_offer", "tag_spend_line", "refinance_note", "fire_account", "retire_product", "pivot_audience", "pivot_product", "pitch_investor", "sign_instrument", "send_offer", "set_relief"]
+const ALLOWED_OPS := ["cash_delta", "product_delta", "traction_delta", "morale_delta", "hype_delta", "set_flag", "status", "clock", "set_price", "price_offer", "set_marketing", "hire", "take_loan", "spend", "set_budget", "push_lead", "open_site", "close_site", "reassign_employee", "move_machine", "tag_offer", "tag_spend_line", "refinance_note", "fire_account", "retire_product", "pivot_audience", "pivot_product", "pitch_investor", "sign_instrument", "send_offer", "set_relief", "draft_offer"]
 
 func _validate_effects(effects, allow_empty: bool = false) -> bool:
 	if not (effects is Array):

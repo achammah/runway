@@ -3036,6 +3036,12 @@ func _apply_dm_effects(effects: Array) -> Array:
 			"set_price":
 				state.price_mult = clampf(float(d.get("v", 1.0)), 0.5, 2.0)
 				out.append("price set to ×%.2f — %s" % [state.price_mult, why])
+			"draft_offer":
+				# THE JOURNAL DRAFTS THE FORM (owner): the move described selling
+				# something new — the binder's offer form opens on these words.
+				# The DM never creates or prices the offer itself.
+				state.offer_draft = String(d.get("v", "")).substr(0, 500)
+				out.append("an offer drafted from the week's move — finish it in the binder")
 			"price_offer":
 				# THE PRICE LANDS IN THE OFFER (owner: the world must know what
 				# we sell and at how much). cat = offer name, v = $ per unit;

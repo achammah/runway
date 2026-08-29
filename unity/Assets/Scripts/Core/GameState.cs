@@ -510,6 +510,9 @@ namespace Runway.Core
         [JsonProperty("price")] public double Price;
         [JsonProperty("price_set")] public bool PriceSet;   // a CONSCIOUS price choice, $0 included
         [JsonProperty("weight")] public double Weight = 1.0;
+        [JsonProperty("desc")] public string Desc = "";              // the world's one-line restatement
+        [JsonProperty("street_read")] public string StreetRead = ""; // the world's visible reasoning
+        [JsonProperty("capacity_per_unit")] public double CapacityPerUnit = 1.0; // slots one unit eats
         // ── the itemized cost sheet (01-catalog). null = a legacy offer that
         // only ever had the scalar UnitCost; lines are never synthesized on load.
         [JsonProperty("cost_lines")] public List<CostLine> CostLines;    // variable, $ per unit
@@ -709,6 +712,7 @@ namespace Runway.Core
         [JsonProperty("biz_who")] public string BizWho = "Consumer";     // Enterprise | SMB | Consumer
         [JsonProperty("funding_id")] public string FundingId = "bootstrap";
         [JsonProperty("pivots")] public int Pivots;
+        [JsonProperty("offer_draft")] public string OfferDraft = ""; // the journal drafted an offer
         [JsonProperty("last_outcome")] public Dictionary<string, object> LastOutcome = new Dictionary<string, object>();
         [JsonProperty("ceremony_payout")] public int CeremonyPayout;
         [JsonProperty("run_history")] public List<RunHistoryEntry> RunHistory = new List<RunHistoryEntry>();

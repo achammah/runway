@@ -209,7 +209,10 @@ namespace Runway.Core
             {
                 Offer od = state.Offers[i];
                 if (SimEngine.OfferBilledPrice(od, fm) <= 0.0) continue;
-                total += state.Traction * od.Weight * SimEngine.OfferCadence(od.Unit);
+                // THE CAPACITY WEIGHT (owner: a sale eats the hours it really
+                // takes; default 1.0 keeps every pre-existing offer unchanged)
+                total += state.Traction * od.Weight * SimEngine.OfferCadence(od.Unit)
+                    * Gd.Clampf(od.CapacityPerUnit, 0.1, 40.0);
             }
             return total;
         }
@@ -235,7 +238,8 @@ namespace Runway.Core
             {
                 Offer od = state.Offers[i];
                 if (SimEngine.OfferBilledPrice(od, fm) <= 0.0) continue;
-                double u = od.Weight * SimEngine.OfferCadence(od.Unit);
+                double u = od.Weight * SimEngine.OfferCadence(od.Unit)
+                    * Gd.Clampf(od.CapacityPerUnit, 0.1, 40.0);
                 units += u;
                 cost += u * od.UnitCost;
             }

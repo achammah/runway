@@ -37,6 +37,7 @@ static func _pnl(s: GameState) -> Dictionary:
 	return p
 
 static func run(ok: Callable) -> void:
+	run_capacity_weight(ok)
 	# ── PIN 1 — STOCKOUT CAPS ADDS. You cannot sell what you did not build:
 	# demand exists, the shelf is empty, and every new customer is lost sales
 	# (consumer hardware does not backorder). Empty shelves also push the
@@ -219,3 +220,18 @@ static func run(ok: Callable) -> void:
 	hw9["stock"] = 0
 	ok.call(SimFactory.target_now(s9, 100.0, 20.0) == 2,
 		"AUTO: a quarter of $200 at $20 a unit is two units, and no more")
+
+## ── THE CAPACITY WEIGHT (owner: a sale eats the hours it takes) ─────────────
+## One offer at capacity_per_unit 2.0 doubles the works' demand units against
+## the flat default; absent = 1.0 so every pre-existing save reads unchanged.
+static func run_capacity_weight(ok: Callable) -> void:
+	var s := GameState.new()
+	s.biz_what = "Service"
+	s.biz_who = "SMB"
+	s.traction = 10
+	s.offers = [{"name": "flat", "unit": "per session", "weight": 1.0,
+		"fair_price": 40.0, "price": 30.0, "unit_cost": 5.0}]
+	var flat := SimWorks.demand_units(s)
+	(s.offers[0] as Dictionary)["capacity_per_unit"] = 2.0
+	ok.call(absf(SimWorks.demand_units(s) - flat * 2.0) < 0.0001,
+		"capacity 2.0 doubles the slots a sale eats; absent reads 1.0")
