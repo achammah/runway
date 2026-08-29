@@ -319,7 +319,8 @@ static func apply_llm_world(state: GameState, gen: Dictionary) -> bool:
 ##
 ## state.topics shape (the contract every desk reads):
 ##   {"identity": {"one_liner", "who_for"},
-##    "growth":   {"ads"|"content"|"referrals"|"outbound": {"name", "one_line"}},
+##    "growth":   {"ads"|"content"|"referrals"|"outbound":
+##                   {"name", "one_line", "buys", "why"}},
 ##    "works":    {"unit_word", "capacity_word", "relief_word"}}
 
 ## The garden set — the default plots. Each channel's ENGINE CHARACTER is in
@@ -327,13 +328,21 @@ static func apply_llm_world(state: GameState, gen: Dictionary) -> bool:
 ## stock that rots starved, referrals NPS-gated, outbound quota knocking.
 const GROWTH_DEFAULTS := {
 	"ads": {"name": "the paid plot",
-		"one_line": "watered, it blooms the same day; unwatered, it dies the same day — and every extra dollar buys a little less"},
+		"one_line": "watered, it blooms the same day; unwatered, it dies the same day — and every extra dollar buys a little less",
+		"buys": "paid placements in front of strangers — impressions the day the money lands",
+		"why": "strangers cannot buy what they have never seen; paying is the only same-week lever"},
 	"content": {"name": "the compost bed",
-		"one_line": "a stock that compounds while it is fed and rots the month it is starved"},
+		"one_line": "a stock that compounds while it is fed and rots the month it is starved",
+		"buys": "written and published pieces that keep pulling readers in long after the week they cost",
+		"why": "a library outlives its author's hours — each piece keeps working while you sleep"},
 	"referrals": {"name": "the cutting vine",
-		"one_line": "a multiplier gated on how much the regulars actually like the thing"},
+		"one_line": "a multiplier gated on how much the regulars actually like the thing",
+		"buys": "a standing thank-you deal for customers who bring a friend in the door",
+		"why": "a happy customer's word beats any ad — the deal just reminds them to say it"},
 	"outbound": {"name": "the knocking rows",
-		"one_line": "quota knocking — so many doors a week per person out knocking"},
+		"one_line": "quota knocking — so many doors a week per person out knocking",
+		"buys": "lists, hours and calls — somebody paid to knock on so many doors a week",
+		"why": "when the buyer will not come to you, the only path is going to the buyer"},
 }
 
 ## The works' native units when no key names better ones, by business type.
@@ -457,7 +466,9 @@ static func apply_birth(state: GameState, gen: Dictionary) -> bool:
 		if nm == "" or ln == "":
 			growth[ch] = (GROWTH_DEFAULTS[ch] as Dictionary).duplicate(true)
 		else:
-			growth[ch] = {"name": nm, "one_line": ln}
+			growth[ch] = {"name": nm, "one_line": ln,
+				"buys": _ascii(String(t.get("buys", ""))).left(120),
+				"why": _ascii(String(t.get("why", ""))).left(140)}
 	var works_def: Dictionary = WORKS_TERMS_DEFAULTS.get(state.biz_what,
 		WORKS_TERMS_DEFAULTS["Software"])
 	var one_liner := _ascii(String(identity_in.get("one_liner", ""))).left(140)

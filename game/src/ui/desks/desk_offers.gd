@@ -6,7 +6,8 @@ extends RefCounted
 ## One columned card of what we sell: a row per offer, a column per truth —
 ## price big, street, serve, margin, the demand verdict as ONE colored word —
 ## with the two SEPARATE −/+ squares in a dedicated ADJUST column (the stepper
-## law) and ▸ opening the shipped five-state detail machine unchanged.
+## law) and ▸ UNWRAPPING the row in place (the full five-state detail machine
+## stays one press away from the unwrapped band).
 ##
 ## THE MACHINE UNDERNEATH IS DeskCatalog's: detail / write / wait / review are
 ## delegated whole — the DEFINE-AN-OFFER door is the same write->wait->review
@@ -45,6 +46,7 @@ const COL_VERDICT_W := 150.0
 const COL_EXPAND_X := 986.0
 const COL_ADJUST_X := 1028.0
 const ROW_H := 52.0
+const EXPAND_H := 92.0    ## the unwrapped row's in-place band
 ## Six rows face-up, then the fold (collapse law); the shelf itself caps at 8.
 const LIST_SHOW := 6
 
@@ -169,12 +171,22 @@ static func _rate_card(b) -> void:
 	var order := _visible_rows(s, lc)
 	var shown: Array = order[0]
 	var folded := int(order[1])
-	var card_h := DeskKit.CARD_HEAD + 30.0 + float(shown.size()) * ROW_H + 10.0
+	# THE UNWRAPPED ROW (owner: details unroll in place, never a new screen):
+	# ▸ toggles one row open; the card grows by the band, rows below shift
+	var open_i := int(b.desk.get("open_row", -1))
+	var open_vis := false
+	for i in shown:
+		if int(i) == open_i:
+			open_vis = true
+	var card_h := DeskKit.CARD_HEAD + 30.0 + float(shown.size()) * ROW_H \
+		+ (EXPAND_H if open_vis else 0.0) + 26.0
 	var frame := DeskKit.card_frame(b, 10.0, y, 1120.0, card_h, "the rate card")
 	var cy := float(frame.get("content_y", y)) + 0.0
 	cy = _head_row(b, cy)
 	for i in shown:
 		cy = _row(b, cy, int(i), s, lc, fm)
+		if int(i) == open_i:
+			cy = _row_band(b, cy, int(i), s, lc, fm)
 	y = float(frame.get("bottom", cy)) + 10.0
 	if folded > 0:
 		y = DeskKit.fold_row(b, DeskKit.X_ID, y, folded, "offers, healthy", func() -> void:
@@ -225,6 +237,34 @@ static func _head_row(b, y: float) -> float:
 	_right(b, "ADJUST", Vector2(COL_ADJUST_X - 8.0, y), 18, dim, 80.0)
 	return DeskKit.pen_rule(b, y + 24.0, COL_NAME_X, 1120.0 - 36.0, Color(DeskKit.INK, 0.25), 7) + 2.0
 
+## THE UNWRAPPED BAND — the offer's read, unrolled in place under its row.
+## The full page (reprice, itemise, drop) stays one press away.
+static func _row_band(b, y: float, i: int, s: GameState, lc: float, fm: float) -> float:
+	var o: Dictionary = s.offers[i]
+	var bx := COL_NAME_X + 16.0
+	var price := float(o.get("price", 0.0))
+	var fair := float(o.get("fair_price", 0.0)) * fm
+	var billed := price if price > 0.0 else fair
+	var learned := (" (learning ×%.2f)" % lc) if lc < 0.995 else ""
+	var war := int(round((1.0 - fm) * 100.0))
+	b.label("the street charges ≈ $%s%s · a sale costs ≈ $%s to serve%s · fixed $%s/wk" % [
+		b.fmt(int(round(fair))),
+		(" (price war: −%d%%)" % war) if war > 0 else "",
+		b.fmt(int(round(SimCatalog.served_unit_cost(o, lc)))), learned,
+		b.fmt(int(round(float(o.get("fixed_wk", 0.0)))))],
+		Vector2(bx, y + 2.0), 19, Color(DeskKit.INK, 0.65), 1040.0)
+	b.label("%s $%s − the serve = $%s kept, per %s" % [
+		"you bill" if price > 0.0 else "unpriced — the street bills",
+		b.fmt(int(round(billed))),
+		b.fmt(int(round(SimCatalog.contribution(o, lc, fm)))),
+		String(o.get("unit", "unit"))],
+		Vector2(bx, y + 30.0), 19, Color(DeskKit.INK, 0.65), 700.0)
+	DeskKit.word(b, "open the full page — reprice, itemise, drop ->",
+		Vector2(bx, y + 58.0), func() -> void:
+			b.desk["mode"] = "detail"
+			b.desk["row"] = i, 19, DeskKit.PEN, 500.0)
+	return y + EXPAND_H
+
 ## One offer, one row, one column per truth.
 static func _row(b, y: float, i: int, s: GameState, lc: float, fm: float) -> float:
 	var o: Dictionary = s.offers[i]
@@ -266,8 +306,8 @@ static func _row(b, y: float, i: int, s: GameState, lc: float, fm: float) -> flo
 		DeskKit.pen_circle(b, Rect2(COL_VERDICT_X, y + 2.0, vtw, 24.0),
 			vd.get("col", DeskKit.INK) == DeskKit.PEN)
 	DeskKit.expand(b, Vector2(COL_EXPAND_X, y - 4.0), func() -> void:
-		b.desk["mode"] = "detail"
-		b.desk["row"] = i)
+		b.desk["open_row"] = -1 if int(b.desk.get("open_row", -1)) == i else i,
+		int(b.desk.get("open_row", -1)) == i)
 	var steps := DeskCatalog.price_steps(o)
 	DeskKit.adjust_pair(b, COL_ADJUST_X, y + 4.0,
 		func() -> void: DeskCatalog.price_step(b, i, -1),
@@ -362,7 +402,7 @@ static func _all_offers(b) -> void:
 	var lc := SimEngine.learning_curve(s)
 	var fm := SimEngine.street_fair_mult(s)
 	var n := s.offers.size()
-	var card_h := DeskKit.CARD_HEAD + 30.0 + float(n) * ROW_H + 10.0
+	var card_h := DeskKit.CARD_HEAD + 30.0 + float(n) * ROW_H + 26.0
 	var frame := DeskKit.card_frame(b, 10.0, 64.0, 1120.0, card_h, "the whole shelf — %d offers" % n)
 	var cy := float(frame.get("content_y", 64.0))
 	cy = _head_row(b, cy)

@@ -789,8 +789,10 @@ func _start_run() -> void:
 	record.seed_value = seed_value
 	generator.pool.clear()
 	music.play("selection")
-	# FIRST EVER RUN: the rules of the world, once, before anything is chosen
-	if not _harness() and OS.get_environment("RUNWAY_FIRSTFLOW") == "" and not HowToScreen.seen():
+	# EVERY FRESH RUN opens on the rules of the world — three pages, three
+	# clicks for a veteran; a continued game never sees them (owner: the
+	# mechanics explanation belongs at the start of the game, per run)
+	if not _harness() and OS.get_environment("RUNWAY_FIRSTFLOW") == "":
 		var ht := HowToScreen.new()
 		ht.done.connect(func() -> void:
 			var d2 := FounderDraftScreen.new()

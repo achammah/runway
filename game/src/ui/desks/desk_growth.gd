@@ -181,8 +181,10 @@ static func _hero_text(s: GameState) -> Dictionary:
 static func _plot(b, s: GameState, key: String, x: float, y: float,
 		split: Dictionary = {}) -> void:
 	var topic := _topic(s, key)
+	# the verdict word owns the title band's right 250px — the title stops short
 	var frame := DeskKit.card_frame(b, x, y, PLOT_W, PLOT_H,
-		"%s — %s" % [key, String(topic.get("name", ""))])
+		"%s — %s" % [key, String(topic.get("name", ""))], false,
+		PLOT_W - 250.0 - DeskKit.CARD_PAD - 8.0)
 	var cx := float(frame.get("content_x", x))
 	var cy := float(frame.get("content_y", y))
 	# S2b — the plot is a named landing: cross-desk jumps spotlight it whole
@@ -198,8 +200,10 @@ static func _plot(b, s: GameState, key: String, x: float, y: float,
 	_plot_art(b, key, cx, cy)
 	var tx := cx + 140.0
 	var tw := PLOT_W - DeskKit.CARD_PAD * 2.0 - 140.0
-	b.label(String(topic.get("line", "")), Vector2(tx, cy - 2.0), 16,
-		Color(DeskKit.INK, 0.55), tw)
+	# the generated one_line (the desk read "line" for a season — the birth
+	# writes "one_line", so the description never rendered)
+	DeskKit.fit_par(b, String(topic.get("one_line", topic.get("line", ""))),
+		Vector2(tx, cy - 2.0), 16, Color(DeskKit.INK, 0.55), tw, 2)
 	# the spend row: the amount in the pen, the two SEPARATE squares beside it
 	var cur := int(s.budgets.get(key, 0))
 	var shown_cur := cur + (int(s.marketing_budget) + int(s.budgets.get("marketing", 0))
@@ -231,6 +235,13 @@ static func _plot(b, s: GameState, key: String, x: float, y: float,
 			DeskKit.arm(b, "adopt_mix_" + key, "suggested $%s — adopt" % b.fmt(sug),
 				"set $%s/wk — sure?" % b.fmt(sug), Vector2(tx, cy + 74.0),
 				fire_adopt, 300.0, 17)
+	# WHAT THE MONEY BUYS (owner: "putting money in referrals" was opaque) —
+	# the birth writes the concrete mechanism for THIS business; the curve
+	# page carries its why
+	var buys := String(topic.get("buys", ""))
+	if buys != "":
+		DeskKit.fit_par(b, "the money buys: " + buys, Vector2(tx, cy + 104.0), 16,
+			Color(DeskKit.INK, 0.55), tw, 2)
 
 ## The topic for one plot: the world's own words, or the garden set.
 static func _topic(s: GameState, key: String) -> Dictionary:
@@ -448,7 +459,11 @@ static func _curve_card(b, s: GameState, key: String) -> void:
 	catcher.size = Vector2(1140.0, 880.0)
 	var spend := SimFunnel.spend_of(s, key)
 	var lines := _curve_lines(b, s, key, spend)
-	var card_h := 56.0 + 206.0 + float(lines.size()) * 30.0 + 18.0
+	# the birth's own reasoning for this channel rides the curve page (owner:
+	# each channel explained, fitted to the business, reasoning visible)
+	var why := String(_topic(s, key).get("why", ""))
+	var card_h := 56.0 + 206.0 + float(lines.size()) * 30.0 \
+		+ (44.0 if why != "" else 0.0) + 18.0
 	var title := ("%s — the curve" % key) if key != "outbound" \
 		else "outbound — the straight line"
 	var frame := DeskKit.card_frame(b, 250.0, 150.0, 640.0, card_h, title)
@@ -485,6 +500,9 @@ static func _curve_card(b, s: GameState, key: String) -> void:
 			Vector2(cx + 350.0, ly), 19, ld.get("col", DeskKit.INK), money_x - cx - 350.0)
 		v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		ly += 30.0
+	if why != "":
+		DeskKit.fit_par(b, "why this fits: " + why, Vector2(cx, ly + 4.0), 16,
+			Color(DeskKit.INK, 0.6), money_x - cx, 2)
 
 ## The receipt lines under the drawing — the funnel lane's own numbers only.
 static func _curve_lines(b, s: GameState, key: String, spend: float) -> Array:

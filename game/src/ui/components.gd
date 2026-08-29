@@ -202,9 +202,10 @@ static func at_max(steps: Array, cur: float) -> bool:
 # ───────────────────────────── 2.2 the ▸ affordance ──────────────────────────
 
 ## The expand mark: a drawn triangle, never a typed glyph (the hand font has
-## never carried ▸, and a tofu box is a shipped bug). One row expands, and the
-## expansion REPLACES the list with a full-pane DETAIL state.
-static func expand(b, pos: Vector2, on_press: Callable) -> void:
+## never carried ▸, and a tofu box is a shipped bug). `open` points it down —
+## the row is UNWRAPPED in place (owner: details unroll on the same screen,
+## never a new one).
+static func expand(b, pos: Vector2, on_press: Callable, open: bool = false) -> void:
 	var btn := Button.new()
 	btn.flat = true
 	btn.position = pos
@@ -212,6 +213,7 @@ static func expand(b, pos: Vector2, on_press: Callable) -> void:
 	for stn in ["normal", "hover", "pressed", "focus"]:
 		btn.add_theme_stylebox_override(stn, StyleBoxEmpty.new())
 	var tri := _Tri.new()
+	tri.down = open
 	tri.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tri.position = Vector2(14, 11)
 	tri.set_deferred("size", Vector2(24, 24))
@@ -663,8 +665,10 @@ static func hero_band(b, big_text: String, sentence: String, col: Color = INK,
 ##   cursor     the running y money_row advances (starts at content_y)
 ## `controls` reserves the ± gutter — pass it and the money column stays put
 ## whether or not a given row carries a stepper (Law 2: one column, always).
+## `title_w` > 0 caps the title's width (clipped w/ ellipsis) so a card whose
+## title band carries a right-aligned control never wears the two overlapped.
 static func card_frame(b, x: float, y: float, w: float, h: float, title: String,
-		controls: bool = false) -> Dictionary:
+		controls: bool = false, title_w: float = 0.0) -> Dictionary:
 	var c := _Card.new()
 	c.lean = int(x) % 5
 	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -674,8 +678,8 @@ static func card_frame(b, x: float, y: float, w: float, h: float, title: String,
 	if title != "":
 		# UPPERCASE IS THE BINDER'S BOLD (§1.3) — one hand, and emphasis is size,
 		# caps or the pen, never a second font.
-		b.label(title.to_upper(), Vector2(x + CARD_PAD, y + 12.0), CARD_TITLE, INK,
-			w - CARD_PAD * 2.0)
+		fit_line(b, title.to_upper(), Vector2(x + CARD_PAD, y + 12.0), CARD_TITLE, INK,
+			title_w if title_w > 0.0 else w - CARD_PAD * 2.0)
 	var money_x := x + w - CARD_PAD - (CARD_CTRL if controls else 0.0)
 	var content_y := y + (CARD_HEAD if title != "" else CARD_PAD)
 	return {
@@ -2069,9 +2073,14 @@ class _VRule:
 class _Tri:
 	extends Control
 	var col := DeskKit.INK
+	var down := false     # an OPEN row's mark points down
 	func _draw() -> void:
-		draw_colored_polygon(PackedVector2Array([Vector2(4, 2), Vector2(20, 12),
-			Vector2(4, 22)]), col)
+		if down:
+			draw_colored_polygon(PackedVector2Array([Vector2(2, 6), Vector2(22, 6),
+				Vector2(12, 20)]), col)
+		else:
+			draw_colored_polygon(PackedVector2Array([Vector2(4, 2), Vector2(20, 12),
+				Vector2(4, 22)]), col)
 
 ## The commit stroke: one underline in the founder's pen, left to right.
 class _Stroke:

@@ -386,6 +386,27 @@ namespace Runway.Game
                         portrait.GenerateLogo(birthCo, null);
                         portrait.GenerateMake(birthCo, null);
                         portrait.GeneratePitch(birthCo, null);
+                        // …and THE FOUR GARDEN PLOTS through the painter's own
+                        // path (Godot twin: make_birth_illustrations) — cached
+                        // per run key, silent-fail, the drawn instruments stand.
+                        if (Boot.Instance.Director != null)
+                        {
+                            object growthObj = null;
+                            if (State.Topics != null)
+                                State.Topics.TryGetValue("growth", out growthObj);
+                            JObject growthJ = growthObj as JObject;
+                            if (growthJ == null && growthObj != null)
+                                growthJ = JObject.FromObject(growthObj);
+                            var artCo = new JObject
+                            {
+                                ["name"] = State.CompanyName ?? "",
+                                ["idea"] = State.CompanyIdea ?? "",
+                                ["what"] = State.BizWhat ?? "",
+                                ["who"] = State.BizWho ?? "",
+                            };
+                            Boot.Instance.Director.MakeBirthIllustrations(
+                                State.SimSeed + "_p" + State.Pivots, growthJ, artCo);
+                        }
                     }
                     JObject market = _worldgenRes["market"] as JObject;
                     string oneLiner = ContentDb.Str(market, "one_liner");

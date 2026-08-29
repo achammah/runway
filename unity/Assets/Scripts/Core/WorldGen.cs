@@ -54,6 +54,8 @@ namespace Runway.Core
     {
         [JsonProperty("name")] public string Name = "";
         [JsonProperty("one_line")] public string OneLine = "";
+        [JsonProperty("buys")] public string Buys = "";
+        [JsonProperty("why")] public string Why = "";
     }
 
     public sealed class LlmGrowthTopics
@@ -649,12 +651,21 @@ namespace Runway.Core
         // draws from the rng.
 
         static readonly string[] GROWTH_CHANNELS = { "ads", "content", "referrals", "outbound" };
+        // name, one_line, buys, why
         static readonly Dictionary<string, string[]> GROWTH_DEFAULTS = new Dictionary<string, string[]>
         {
-            { "ads", new[] { "the paid plot", "watered, it blooms the same day; unwatered, it dies the same day — and every extra dollar buys a little less" } },
-            { "content", new[] { "the compost bed", "a stock that compounds while it is fed and rots the month it is starved" } },
-            { "referrals", new[] { "the cutting vine", "a multiplier gated on how much the regulars actually like the thing" } },
-            { "outbound", new[] { "the knocking rows", "quota knocking — so many doors a week per person out knocking" } },
+            { "ads", new[] { "the paid plot", "watered, it blooms the same day; unwatered, it dies the same day — and every extra dollar buys a little less",
+                "paid placements in front of strangers — impressions the day the money lands",
+                "strangers cannot buy what they have never seen; paying is the only same-week lever" } },
+            { "content", new[] { "the compost bed", "a stock that compounds while it is fed and rots the month it is starved",
+                "written and published pieces that keep pulling readers in long after the week they cost",
+                "a library outlives its author's hours — each piece keeps working while you sleep" } },
+            { "referrals", new[] { "the cutting vine", "a multiplier gated on how much the regulars actually like the thing",
+                "a standing thank-you deal for customers who bring a friend in the door",
+                "a happy customer's word beats any ad — the deal just reminds them to say it" } },
+            { "outbound", new[] { "the knocking rows", "quota knocking — so many doors a week per person out knocking",
+                "lists, hours and calls — somebody paid to knock on so many doors a week",
+                "when the buyer will not come to you, the only path is going to the buyer" } },
         };
         // unit_word, capacity_word, relief_word
         static readonly Dictionary<string, string[]> WORKS_TERMS_DEFAULTS = new Dictionary<string, string[]>
@@ -733,6 +744,7 @@ namespace Runway.Core
                     growth[ch] = new Dictionary<string, object>
                     {
                         { "name", GROWTH_DEFAULTS[ch][0] }, { "one_line", GROWTH_DEFAULTS[ch][1] },
+                        { "buys", GROWTH_DEFAULTS[ch][2] }, { "why", GROWTH_DEFAULTS[ch][3] },
                     };
                 string[] terms = WorksDefaultsFor(state.BizWhat);
                 state.Topics = new Dictionary<string, object>
@@ -810,9 +822,11 @@ namespace Runway.Core
                 string ln = t != null ? Gd.Left(Ascii(t.OneLine), 110) : "";
                 if (nm.Length == 0 || ln.Length == 0)
                     growth2[ch] = new Dictionary<string, object>
-                    { { "name", GROWTH_DEFAULTS[ch][0] }, { "one_line", GROWTH_DEFAULTS[ch][1] } };
+                    { { "name", GROWTH_DEFAULTS[ch][0] }, { "one_line", GROWTH_DEFAULTS[ch][1] },
+                      { "buys", GROWTH_DEFAULTS[ch][2] }, { "why", GROWTH_DEFAULTS[ch][3] } };
                 else
-                    growth2[ch] = new Dictionary<string, object> { { "name", nm }, { "one_line", ln } };
+                    growth2[ch] = new Dictionary<string, object> { { "name", nm }, { "one_line", ln },
+                        { "buys", Gd.Left(Ascii(t.Buys), 120) }, { "why", Gd.Left(Ascii(t.Why), 140) } };
             }
             string[] termsDef = WorksDefaultsFor(state.BizWhat);
             string oneLiner = gen.Identity != null ? Gd.Left(Ascii(gen.Identity.OneLiner), 140) : "";

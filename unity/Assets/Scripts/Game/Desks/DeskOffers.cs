@@ -57,6 +57,7 @@ namespace Runway.Game
         const float ColExpandX = 986f;
         const float ColAdjustX = 1028f;
         const float RowH = 52f;
+        const float ExpandH = 92f;    // the unwrapped row's in-place band
         const int ListShow = 6;
 
         static readonly Color Pos = DrawnUI.Hex("5D7A50");
@@ -227,12 +228,21 @@ namespace Runway.Game
             List<int> shown;
             int folded;
             VisibleRows(s, lc, out shown, out folded);
-            float cardH = DeskKit.CardHead + 30f + shown.Count * RowH + 10f;
+            // THE UNWRAPPED ROW (owner: details unroll in place, never a new
+            // screen): the mark toggles one row open; the card grows by the band
+            int openI = b.Desk.ContainsKey("open_row") ? Convert.ToInt32(b.Desk["open_row"]) : -1;
+            bool openVis = shown.Contains(openI);
+            float cardH = DeskKit.CardHead + 30f + shown.Count * RowH
+                + (openVis ? ExpandH : 0f) + 26f;
             DeskKit.CardBox frame = DeskKit.CardFrame(b, 10f, y, 1120f, cardH, "the rate card");
             float cy = frame.ContentY;
             cy = HeadRow(b, cy);
             for (int n = 0; n < shown.Count; n++)
+            {
                 cy = Row(b, cy, shown[n], s, lc, fm);
+                if (shown[n] == openI)
+                    cy = RowBand(b, cy, shown[n], s, lc, fm);
+            }
             y = frame.Bottom + 10f;
             if (folded > 0)
                 y = DeskKit.FoldRow(b, DeskKit.XId, y, folded, "offers, healthy",
@@ -334,11 +344,11 @@ namespace Runway.Game
                 DeskKit.PenCircle(b, new Rect(ColVerdictX, y + 2f, vtw, 24f),
                     vCol == DrawnUI.Coral);
             }
+            int nowOpen = b.Desk.ContainsKey("open_row") ? Convert.ToInt32(b.Desk["open_row"]) : -1;
             DeskKit.Expand(b, ColExpandX, y - 4f, () =>
-            {
-                b.Desk["mode"] = "detail";
-                b.Desk["row"] = idx;
-            });
+                b.Desk["open_row"] = (b.Desk.ContainsKey("open_row")
+                    ? Convert.ToInt32(b.Desk["open_row"]) : -1) == idx ? -1 : idx,
+                nowOpen == idx);
             List<double> steps = DeskCatalog.PriceSteps(o);
             Offer oc = o;
             DeskKit.AdjustPair(b, ColAdjustX, y + 4f,
@@ -355,6 +365,36 @@ namespace Runway.Game
             DeskKit.PenRule(b, y + RowH - 8f, ColNameX, 1120f - 36f,
                 DrawnUI.WithAlpha(DrawnUI.Ink, 0.12f), 11 + i);
             return y + RowH;
+        }
+
+        /// THE UNWRAPPED BAND — the offer's read, unrolled in place under its
+        /// row. The full page (reprice, itemise, drop) stays one press away.
+        static float RowBand(BinderScreen b, float y, int i, GameState s, double lc, double fm)
+        {
+            Offer o = s.Offers[i];
+            float bx = ColNameX + 16f;
+            double price = o.Price;
+            double fair = o.FairPrice * fm;
+            double billed = price > 0.0 ? price : fair;
+            string learned = lc < 0.995
+                ? " (learning ×" + lc.ToString("0.00", CultureInfo.InvariantCulture) + ")" : "";
+            int war = Gd.RoundToInt((1.0 - fm) * 100.0);
+            b.L("the street charges ≈ $" + GameUi.Money(Gd.RoundToInt(fair))
+                + (war > 0 ? " (price war: −" + war + "%)" : "")
+                + " · a sale costs ≈ $" + GameUi.Money(Gd.RoundToInt(SimCatalog.ServedUnitCost(o, lc)))
+                + " to serve" + learned
+                + " · fixed $" + GameUi.Money(Gd.RoundToInt(o.FixedWk)) + "/wk",
+                bx, y + 2f, 19f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.65f), 1040f);
+            b.L((price > 0.0 ? "you bill" : "unpriced — the street bills")
+                + " $" + GameUi.Money(Gd.RoundToInt(billed))
+                + " − the serve = $" + GameUi.Money(Gd.RoundToInt(SimCatalog.Contribution(o, lc, fm)))
+                + " kept, per " + (string.IsNullOrEmpty(o.Unit) ? "unit" : o.Unit),
+                bx, y + 30f, 19f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.65f), 700f);
+            int idx = i;
+            DeskKit.Word(b, "open the full page — reprice, itemise, drop ->", bx, y + 58f,
+                () => { b.Desk["mode"] = "detail"; b.Desk["row"] = idx; },
+                19f, DrawnUI.Coral, 500f);
+            return y + ExpandH;
         }
 
         /// THE DEMAND VERDICT — one colored word, the heat ramp, never a sentence.
@@ -443,7 +483,7 @@ namespace Runway.Game
             double lc = SimEngine.LearningCurve(s);
             double fm = SimEngine.StreetFairMult(s);
             int n = s.Offers.Count;
-            float cardH = DeskKit.CardHead + 30f + n * RowH + 10f;
+            float cardH = DeskKit.CardHead + 30f + n * RowH + 26f;
             DeskKit.CardBox frame = DeskKit.CardFrame(b, 10f, 64f, 1120f, cardH,
                 "the whole shelf — " + n + " offers");
             float cy = frame.ContentY;

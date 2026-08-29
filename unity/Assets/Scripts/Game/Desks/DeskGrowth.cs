@@ -46,6 +46,8 @@ namespace Runway.Game
         {
             public string Name = "";
             public string Line = "";
+            public string Buys = "";
+            public string Why = "";
         }
 
         /// THE FALLBACK TOPIC LIBRARY — the garden set.
@@ -237,8 +239,9 @@ namespace Runway.Game
                          Dictionary<string, int> split)
         {
             Topic topic = TopicOf(s, key);
+            // the verdict word owns the title band's right 250px — the title stops short
             DeskKit.CardBox frame = DeskKit.CardFrame(b, x, y, PlotW, PlotH,
-                key + " — " + topic.Name);
+                key + " — " + topic.Name, false, PlotW - 250f - DeskKit.CardPad - 8f);
             float cx = frame.ContentX;
             float cy = frame.ContentY;
             // S2b — the plot is a named landing: jumps spotlight it whole
@@ -254,7 +257,8 @@ namespace Runway.Game
             PlotArt(b, key, cx, cy);
             float tx = cx + 140f;
             float tw = PlotW - DeskKit.CardPad * 2f - 140f;
-            b.L(topic.Line, tx, cy - 2f, 16f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), tw);
+            DeskKit.FitPar(b, topic.Line, tx, cy - 2f, 16f,
+                DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), tw, 2);
             int cur = b.Budget(key);
             int shownCur = cur + (key == "ads" ? s.MarketingBudget + s.Budgets.Marketing : 0);
             b.L("$" + GameUi.Money(shownCur) + "/wk", tx, cy + 40f, 27f, DrawnUI.Coral, 180f);
@@ -292,6 +296,12 @@ namespace Runway.Game
                         () => b.SetBudget(cat, sugNow), 300f, 17f);
                 }
             }
+            // WHAT THE MONEY BUYS (owner: "putting money in referrals" was
+            // opaque) — the birth writes the concrete mechanism for THIS
+            // business; the curve page carries its why
+            if (topic.Buys.Length > 0)
+                DeskKit.FitPar(b, "the money buys: " + topic.Buys, tx, cy + 104f,
+                    16f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.55f), tw, 2);
         }
 
         /// The topic for one plot: the world's own words, or the garden set.
@@ -310,11 +320,16 @@ namespace Runway.Game
                     var td = t as IDictionary<string, object>;
                     if (td != null)
                     {
-                        object nm, ln;
+                        object nm, ln, by, wy;
                         td.TryGetValue("name", out nm);
-                        td.TryGetValue("line", out ln);
+                        if (!td.TryGetValue("one_line", out ln)) td.TryGetValue("line", out ln);
+                        td.TryGetValue("buys", out by);
+                        td.TryGetValue("why", out wy);
                         if (nm != null && nm.ToString().Length > 0)
-                            return new Topic { Name = nm.ToString(), Line = ln != null ? ln.ToString() : "" };
+                            return new Topic { Name = nm.ToString(),
+                                Line = ln != null ? ln.ToString() : "",
+                                Buys = by != null ? by.ToString() : "",
+                                Why = wy != null ? wy.ToString() : "" };
                     }
                 }
             }
@@ -326,7 +341,10 @@ namespace Runway.Game
                 {
                     string nm = (string)tj["name"] ?? "";
                     if (nm.Length > 0)
-                        return new Topic { Name = nm, Line = (string)tj["line"] ?? "" };
+                        return new Topic { Name = nm,
+                            Line = (string)tj["one_line"] ?? ((string)tj["line"] ?? ""),
+                            Buys = (string)tj["buys"] ?? "",
+                            Why = (string)tj["why"] ?? "" };
                 }
             }
             Topic dflt;
@@ -547,7 +565,11 @@ namespace Runway.Game
             catcher.GetComponent<RectTransform>().sizeDelta = new Vector2(1140f, 880f);
             double spend = SimFunnel.SpendOf(s, key);
             List<DeskKit.TicketLine> lines = CurveLines(b, s, key, spend);
-            float cardH = 56f + 206f + lines.Count * 30f + 18f;
+            // the birth's own reasoning for this channel rides the curve page
+            // (owner: each channel explained, fitted, reasoning visible)
+            string why = TopicOf(s, key).Why;
+            float cardH = 56f + 206f + lines.Count * 30f
+                + (why.Length > 0 ? 44f : 0f) + 18f;
             string title = key != "outbound" ? key + " — the curve"
                 : "outbound — the straight line";
             DeskKit.CardBox frame = DeskKit.CardFrame(b, 250f, 150f, 640f, cardH, title);
@@ -576,6 +598,9 @@ namespace Runway.Game
                 v.alignment = TextAlignmentOptions.TopRight;
                 ly += 30f;
             }
+            if (why.Length > 0)
+                DeskKit.FitPar(b, "why this fits: " + why, cx, ly + 4f, 16f,
+                    DrawnUI.WithAlpha(DrawnUI.Ink, 0.6f), moneyX - cx, 2);
         }
 
         /// THE CURVE, in dotted fills (the Godot twin draws it freehand —

@@ -261,8 +261,11 @@ namespace Runway.App
             }
             Driver.BeginFreshRun(DailyMode);
 
-            // FIRST EVER RUN: the rules of the world, once, before anything is chosen
-            if (!Harness && !Env.Flag("RUNWAY_FIRSTFLOW") && !Runway.Screens.HowToScreen.Seen)
+            // EVERY FRESH RUN opens on the rules of the world — three pages,
+            // three clicks for a veteran; a continued game never sees them
+            // (owner: the mechanics explanation belongs at the start of the
+            // game, per run)
+            if (!Harness && !Env.Flag("RUNWAY_FIRSTFLOW"))
             {
                 Go(AppState.HowTo, null, s => { s.Done += _ => ToDraft(); });
                 return;

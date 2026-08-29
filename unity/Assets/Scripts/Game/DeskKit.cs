@@ -258,10 +258,13 @@ namespace Runway.Game
         /// which is the same bug as a tofu box wearing a disguise. One row
         /// expands, and the expansion REPLACES the list with a full-pane DETAIL.
         /// </summary>
-        public static void Expand(BinderScreen b, float x, float y, Action onPress)
+        public static void Expand(BinderScreen b, float x, float y, Action onPress,
+                                  bool open = false)
         {
             var img = DrawnChart.Mount(b.Content, "expand", Tri(24, DrawnUI.Ink),
                                        x + 14f, y + 11f, 24f, 24f);
+            // an OPEN row's mark points down — the row is unwrapped in place
+            if (open) img.transform.localRotation = Quaternion.Euler(0f, 0f, -90f);
             GameUi.InkWord(b.Content, "", x, y, BtnW, BtnH, 40f, DrawnUI.Ink, () =>
             {
                 if (onPress != null) onPress();
@@ -881,8 +884,11 @@ namespace Runway.Game
         /// put whether or not a given row carries a stepper (Law 2: one column,
         /// always).
         /// </summary>
+        /// titleW > 0 caps the title's width (clipped, ellipsis) so a card whose
+        /// title band carries a right-aligned control never wears the two overlapped.
         public static CardBox CardFrame(BinderScreen b, float x, float y, float w, float h,
-                                           string title, bool controls = false)
+                                           string title, bool controls = false,
+                                           float titleW = 0f)
         {
             var root = DrawnUI.Rect(b.Content, "card", x, y, w, h);
             DrawnUI.Fill(root, "shadow", new Color(0f, 0f, 0f, 0.18f), 7f, 9f, w, h);
@@ -904,10 +910,14 @@ namespace Runway.Game
                 Seed = 17 + Mathf.Abs((int)x % 5),
             });
             if (!string.IsNullOrEmpty(title))
+            {
                 // UPPERCASE IS THE BINDER'S BOLD (1.3) — one hand, and emphasis is
                 // size, caps or the pen, never a second font.
-                b.L(title.ToUpper(), x + CardPad, y + 12f, CardTitle, DrawnUI.Ink,
-                    w - CardPad * 2f);
+                var tl = b.L(title.ToUpper(), x + CardPad, y + 12f, CardTitle, DrawnUI.Ink,
+                    titleW > 0f ? titleW : w - CardPad * 2f);
+                tl.enableWordWrapping = false;
+                tl.overflowMode = TextOverflowModes.Ellipsis;
+            }
             float contentY = y + (string.IsNullOrEmpty(title) ? CardPad : CardHead);
             return new CardBox
             {
