@@ -392,8 +392,9 @@ func _ask_strip() -> void:
 	b.label("the ask strip", Vector2(DeskKit.X_ID, 6.0), DeskKit.TITLE)
 	var drew := DeskKit.ask_strip(b, "cap table", DeskKit.X_ID, 86.0, 1000.0,
 		"answer the sheets before they expire")
-	b.label("drew: %s" % str(drew), Vector2(DeskKit.X_ID, 130.0), DeskKit.LAW,
-		Color(DeskKit.INK, 0.5))
+	DeskKit.render_marks(b)   # the bench is its own end-of-draw (R2)
+	b.label("drew: %s · renders at STRIP_Y, arbitrated" % str(drew),
+		Vector2(DeskKit.X_ID, 130.0), DeskKit.LAW, Color(DeskKit.INK, 0.5))
 	await _shot("kit_ask_strip")
 
 ## S3 — the DO lane: three actions, three tiers, the focus ring on the first.
@@ -440,15 +441,19 @@ func _delta_layer() -> void:
 	DeskKit.money_row(b, f, "payroll", "$3,950/wk")
 	DeskKit.money_row(b, f, "the shark", "-$2,232/wk", DeskKit.PEN)
 	DeskKit.pen_circle(b, Rect2(float(f["content_x"]), ry, 560.0, 30.0))
-	b.label("sage points up, coral points down · the pen circles what moved since last open",
+	DeskKit.render_marks(b)   # the bench is its own end-of-draw (R2)
+	b.label("one hero delta per pane (the second arrow is dropped) · the gutter dot marks the moved row",
 		Vector2(DeskKit.X_ID, 520.0), DeskKit.LAW, Color(DeskKit.INK, 0.5), 900.0)
 	await _shot("kit_delta_layer")
 
-## S7 — the back pill (a sourced jump) and the drill breadcrumb.
+## S7/R9 — the crumb and the back pill in their ONE top-left row.
 func _back_crumb() -> void:
 	var b := await _open()
-	b.focus_desk("the bank", "", "bills")   # a bills → the bank jump, sourced
-	b.push_crumb("Lyon")                    # what a drilled desk declares
+	# seed both AFTER the open's refresh, then lay the row once — the bench's
+	# own end-of-draw (a real desk declares these during its draw instead)
+	b._back_stack.append({"from_desk": "bills", "label": "bills"})
+	b.push_crumb("Lyon")
+	b._top_row()
 	await _shot("kit_back_crumb")
 
 ## S8 — era dim: a garage company's raise tab sleeps at 60%.

@@ -171,7 +171,7 @@ namespace Runway.Llm
                   ""op"": {""type"": ""string"", ""enum"": [""cash_delta"", ""product_delta"",
                     ""traction_delta"", ""morale_delta"", ""hype_delta"", ""set_flag"",
                     ""status"", ""clock"", ""set_price"", ""price_offer"", ""set_marketing"", ""hire"", ""take_loan"",
-                    ""spend"", ""set_budget"", ""push_lead"", ""open_site"", ""close_site"", ""reassign_employee"", ""move_machine"", ""tag_offer"", ""tag_spend_line"", ""refinance_note"", ""fire_account"", ""retire_product"", ""pivot_audience"", ""pivot_product"", ""pitch_investor"", ""sign_instrument"", ""send_offer"", ""set_relief""]},
+                    ""spend"", ""set_budget"", ""push_lead"", ""open_site"", ""close_site"", ""reassign_employee"", ""move_machine"", ""tag_offer"", ""tag_spend_line"", ""refinance_note"", ""fire_account"", ""retire_product"", ""pivot_audience"", ""pivot_product"", ""pitch_investor"", ""sign_instrument"", ""send_offer"", ""set_relief"", ""draft_offer""]},
                   ""v"": {""type"": [""number"", ""string""]},
                   ""why"": {""type"": ""string"", ""maxLength"": 90},
                   ""weeks"": {""type"": ""integer"", ""minimum"": 1, ""maximum"": 12},
@@ -208,11 +208,29 @@ namespace Runway.Llm
         }");
 
         /// Schema for pricing a founder-written offer: the street answers with terms.
+        /// The intake's follow-up round: the street either understands the offer
+        /// or asks up to 3 multiple-choice questions about the FACTS.
+        public static readonly JObject OfferClarifySchema = JObject.Parse(@"{
+          ""type"":""object"",""additionalProperties"":false,
+          ""required"":[""ready"",""questions""],
+          ""properties"":{
+            ""ready"":{""type"":""boolean""},
+            ""questions"":{""type"":""array"",""minItems"":0,""maxItems"":3,
+              ""items"":{""type"":""object"",""additionalProperties"":false,
+                ""required"":[""q"",""options""],
+                ""properties"":{
+                  ""q"":{""type"":""string"",""maxLength"":120},
+                  ""options"":{""type"":""array"",""minItems"":2,""maxItems"":4,
+                    ""items"":{""type"":""string"",""maxLength"":40}}}}}}}");
+
         public static readonly JObject OfferSchema = JObject.Parse(@"{
           ""type"":""object"",""additionalProperties"":false,
-          ""required"":[""name"",""unit"",""fair_price"",""elasticity"",""weight"",""variable_costs"",""fixed_costs_wk""],
+          ""required"":[""name"",""desc"",""unit"",""fair_price"",""elasticity"",""weight"",""street_read"",""capacity_per_unit"",""variable_costs"",""fixed_costs_wk""],
           ""properties"":{
             ""name"":{""type"":""string"",""maxLength"":40},
+            ""desc"":{""type"":""string"",""maxLength"":110},
+            ""street_read"":{""type"":""string"",""maxLength"":140},
+            ""capacity_per_unit"":{""type"":""number"",""minimum"":0.1,""maximum"":40},
             ""unit"":{""type"":""string"",""enum"":[""per session"",""per month"",""per order"",""per unit"",""per year"",""per hour"",""per package"",""per kit""]},
             ""fair_price"":{""type"":""number"",""minimum"":1,""maximum"":50000},
             ""elasticity"":{""type"":""number"",""minimum"":0.5,""maximum"":3.0},
@@ -277,21 +295,29 @@ namespace Runway.Llm
               ""required"": [""ads"", ""content"", ""referrals"", ""outbound""],
               ""properties"": {
                 ""ads"": {""type"": ""object"", ""additionalProperties"": false,
-                  ""required"": [""name"", ""one_line""],
+                  ""required"": [""name"", ""one_line"", ""buys"", ""why""],
                   ""properties"": {""name"": {""type"": ""string"", ""maxLength"": 28},
-                    ""one_line"": {""type"": ""string"", ""maxLength"": 110}}},
+                    ""one_line"": {""type"": ""string"", ""maxLength"": 110},
+                    ""buys"": {""type"": ""string"", ""maxLength"": 120},
+                    ""why"": {""type"": ""string"", ""maxLength"": 140}}},
                 ""content"": {""type"": ""object"", ""additionalProperties"": false,
-                  ""required"": [""name"", ""one_line""],
+                  ""required"": [""name"", ""one_line"", ""buys"", ""why""],
                   ""properties"": {""name"": {""type"": ""string"", ""maxLength"": 28},
-                    ""one_line"": {""type"": ""string"", ""maxLength"": 110}}},
+                    ""one_line"": {""type"": ""string"", ""maxLength"": 110},
+                    ""buys"": {""type"": ""string"", ""maxLength"": 120},
+                    ""why"": {""type"": ""string"", ""maxLength"": 140}}},
                 ""referrals"": {""type"": ""object"", ""additionalProperties"": false,
-                  ""required"": [""name"", ""one_line""],
+                  ""required"": [""name"", ""one_line"", ""buys"", ""why""],
                   ""properties"": {""name"": {""type"": ""string"", ""maxLength"": 28},
-                    ""one_line"": {""type"": ""string"", ""maxLength"": 110}}},
+                    ""one_line"": {""type"": ""string"", ""maxLength"": 110},
+                    ""buys"": {""type"": ""string"", ""maxLength"": 120},
+                    ""why"": {""type"": ""string"", ""maxLength"": 140}}},
                 ""outbound"": {""type"": ""object"", ""additionalProperties"": false,
-                  ""required"": [""name"", ""one_line""],
+                  ""required"": [""name"", ""one_line"", ""buys"", ""why""],
                   ""properties"": {""name"": {""type"": ""string"", ""maxLength"": 28},
-                    ""one_line"": {""type"": ""string"", ""maxLength"": 110}}}
+                    ""one_line"": {""type"": ""string"", ""maxLength"": 110},
+                    ""buys"": {""type"": ""string"", ""maxLength"": 120},
+                    ""why"": {""type"": ""string"", ""maxLength"": 140}}}
               }
             },
             ""works_terms"": {

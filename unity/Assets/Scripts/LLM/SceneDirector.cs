@@ -147,6 +147,87 @@ namespace Runway.Llm
             StartCoroutine(MakeSceneV2Routine(scene, cast, castUrls, beat, outName, company));
         }
 
+        // ── the birth vignettes (Godot twin: make_birth_illustrations) ─────────
+
+        /// THE FOUR GARDEN PLOTS, generated ONCE at run start (again only at a
+        /// pivot) — the growth desk's illustration slot reads
+        /// user://gen_illustrations/<runKey>/plot_<ch>.png; the drawn SVG
+        /// instrument is the instant placeholder and the permanent fallback.
+        /// Fire-and-forget, cached, silent-fail — numbers never wait on art.
+        public void MakeBirthIllustrations(string runKey, JObject growthTopics, JObject company)
+        {
+            string[] channels = { "ads", "content", "referrals", "outbound" };
+            foreach (string ch in channels)
+            {
+                JObject topic = growthTopics != null ? growthTopics[ch] as JObject : null;
+                StartCoroutine(OneBirthIllustration(runKey, "plot_" + ch,
+                    PlotPrompt(topic, company)));
+            }
+        }
+
+        static string TradeLine(JObject company)
+        {
+            if (company == null || company.Count == 0) return "";
+            return string.Format(
+                " The business it belongs to: {0} — {1} ({2} for {3}); its trade shows in the props.",
+                EventGenerator.Str(company, "name"), EventGenerator.Str(company, "idea"),
+                EventGenerator.Str(company, "what"), EventGenerator.Str(company, "who"));
+        }
+
+        static string PlotPrompt(JObject topic, JObject company)
+        {
+            string nm = topic != null ? EventGenerator.Str(topic, "name", "a garden plot")
+                                      : "a garden plot";
+            string line = topic != null ? EventGenerator.Str(topic, "one_line") : "";
+            return "A small square vignette for a game ledger: one tended garden plot called \""
+                + nm + "\"" + (line.Length > 0 ? " — " + line + "." : ".")
+                + " One raised bed seen slightly from above, a hand-painted wooden sign "
+                + "with NO writing on it, a watering can, neat soil rows with small "
+                + "stylized growth." + TradeLine(company)
+                + " COMPLETELY EMPTY OF PEOPLE: no characters, no figures, no creatures. "
+                + "Simple calm composition on a plain cream ground, generous margins. "
+                + StyleLaw + " No text, numbers or letters anywhere in the image.";
+        }
+
+        /// One cached, coalesced, silent generation: the file either appears
+        /// under gen_illustrations/<runKey>/ or the drawn fallback stands.
+        IEnumerator OneBirthIllustration(string runKey, string kind, string prompt)
+        {
+            string dir = RunwayPaths.User("gen_illustrations/" + runKey);
+            string target = Path.Combine(dir, kind + ".png");
+            if (File.Exists(target)) yield break;
+            string ikey = runKey + "/" + kind;
+            if (_inflight.Contains(ikey)) yield break;
+            _inflight.Add(ikey);
+            var body = new JObject
+            {
+                ["prompt"] = prompt,
+                ["quality"] = "low",
+                ["size"] = "1024x1024",
+                ["output_format"] = "png",
+            };
+            string outName = "birth_" + runKey + "_" + kind;
+            string path = "";
+            yield return MiddlewareCall(MiddlewareGen, body, outName, p => path = p);
+            _inflight.Remove(ikey);
+            if (path.Length == 0)
+            {
+                Debug.Log("SceneDirector: birth illustration '" + kind
+                          + "' failed — drawn fallback stands");
+                yield break;
+            }
+            try
+            {
+                Directory.CreateDirectory(dir);
+                if (File.Exists(target)) File.Delete(target);
+                File.Move(path, target);
+            }
+            catch (Exception e)
+            {
+                Debug.Log("SceneDirector: birth illustration move failed — " + e.Message);
+            }
+        }
+
         IEnumerator MakeSceneV2Routine(JObject scene, JArray cast, string[] castUrls,
                                        string beat, string outName, JObject company)
         {

@@ -593,7 +593,7 @@ func _go() -> void:
 	_ok(rows2.size() >= 2, "losing money and open term sheets both register")
 	_ok(int((rows2[0] as Dictionary).get("severity", 0)) >= int((rows2[rows2.size() - 1] as Dictionary).get("severity", 0)),
 		"the loudest item sorts first")
-	_ok(SimEngine.attention_severity(at2, "cap table") == 3, "term sheets are an alarm")
+	_ok(SimEngine.attention_severity(at2, "the raise") == 3, "term sheets are an alarm")
 	_ok(SimEngine.attention_severity(at2, "product") == 0, "a quiet desk wears no bang")
 	# THE PRE-ROLL REVIEW: the engine half — what is worth stopping a roll for
 	_ok(SimEngine.preroll_items(at0).is_empty(), "nothing outstanding = no review card")
@@ -788,11 +788,11 @@ func _go() -> void:
 	var ag := _state()
 	ag.set_flag("fundraising_open")   # a stable sev-3 registry row
 	SimEngine.weekly_tick(ag)
-	var born := int(ag.attention_ages.get("cap table/term_sheets", -1))
+	var born := int(ag.attention_ages.get("the raise/term_sheets", -1))
 	_ok(born == ag.week, "a new attention row is stamped with its first week")
 	ag.week += 1
 	SimEngine.weekly_tick(ag)
-	_ok(int(ag.attention_ages.get("cap table/term_sheets", -1)) == born
+	_ok(int(ag.attention_ages.get("the raise/term_sheets", -1)) == born
 		and ag.week - born == 1,
 		"a stable attention item ages by 1 across two ticks")
 	var aged_row := {}
@@ -800,12 +800,12 @@ func _go() -> void:
 		if String((r_ag as Dictionary).get("key", "")) == "term_sheets":
 			aged_row = r_ag
 	_ok(int(aged_row.get("since_wk", -1)) == born
-		and String(aged_row.get("control", "?")) == "",
+		and String(aged_row.get("control", "?")) == "sign_terms",
 		"attention rows carry since_wk and a control key")
 	ag.flags.erase("fundraising_open")
 	ag.week += 1
 	SimEngine.weekly_tick(ag)
-	_ok(not ag.attention_ages.has("cap table/term_sheets"),
+	_ok(not ag.attention_ages.has("the raise/term_sheets"),
 		"a resolved attention item's key drops from the ages")
 
 	# ── THE LANES: each suite runs its own pins after the engine's
