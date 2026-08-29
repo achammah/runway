@@ -94,6 +94,7 @@ namespace Runway.Game
         RectTransform _rail;
         RectTransform _content;
         ScrollRect _scroll;
+        string _scrolledPage = "";   // a page switch rewinds the wheel
         int _openGroup = 3;                 // THE LOG opens first
         string _page = "this week";
         int _overview = -1;
@@ -518,6 +519,11 @@ namespace Runway.Game
             Dispatch(_page);
             DeskKit.RenderMarks(this);
             TopRow();
+            if (_page != _scrolledPage)
+            {
+                _scrolledPage = _page;
+                if (_scroll != null) _scroll.verticalNormalizedPosition = 1f;
+            }
             FitExtent();
         }
 

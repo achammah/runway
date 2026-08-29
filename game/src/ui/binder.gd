@@ -123,6 +123,7 @@ var _frame: Control
 var _rail: Control
 var _content: Control
 var _scroll: ScrollContainer
+var _scrolled_page := ""   # a page switch rewinds the wheel; a refresh keeps it
 var _close_btn: Button
 var _tour_demo_red := false
 ## ── THE UX SPINE (13-binder-ux, DAG3) — the binder half of the nine systems.
@@ -494,6 +495,10 @@ func _refresh() -> void:
 	_dispatch(_page)
 	DeskKit.render_marks(self)
 	_top_row()
+	if _page != _scrolled_page:
+		_scrolled_page = _page
+		if _scroll != null:
+			_scroll.scroll_vertical = 0
 	_fit_extent()
 
 ## The scroll region learns the page's true height after layout settles: a

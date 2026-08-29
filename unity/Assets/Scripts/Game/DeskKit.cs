@@ -164,10 +164,16 @@ namespace Runway.Game
                 if (DrawnUI.MeasureWidth(joined, Row) <= valW) valText = joined;
                 else effect = effect.Length == 0 ? s.Bound : s.Bound + " · " + effect;
             }
-            b.L(valText, s.XVal, y + 4f, Row, s.Disabled ? Ink(0.35f) : DrawnUI.Coral, valW);
+            // STRICT SINGLE LINE (owner: a wrapped value wrote itself through
+            // the line below) — value and effect clip with an ellipsis
+            var vl = b.L(valText, s.XVal, y + 4f, Row, s.Disabled ? Ink(0.35f) : DrawnUI.Coral, valW);
+            vl.enableWordWrapping = false;
+            vl.overflowMode = TextOverflowModes.Ellipsis;
             // WHAT THIS NUMBER IS DOING RIGHT NOW, in the engine's own formula, or
             // — at a bound, disabled, or honestly zero — why it is doing nothing.
-            b.L(effect, XEffect, y + 12f, Detail, Ink(s.Disabled ? 0.35f : 0.75f), 300f);
+            var el = b.L(effect, XEffect, y + 12f, Detail, Ink(s.Disabled ? 0.35f : 0.75f), 300f);
+            el.enableWordWrapping = false;
+            el.overflowMode = TextOverflowModes.Ellipsis;
             Glyph(b, "−", XMinus, y, s.Disabled || s.AtMin, s.OnMinus);
             Glyph(b, "+", XPlus, y, s.Disabled || s.AtMax, s.OnPlus);
             return y + s.Pitch;

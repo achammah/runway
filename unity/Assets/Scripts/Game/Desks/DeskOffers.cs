@@ -405,7 +405,7 @@ namespace Runway.Game
                 Why = "the going rate is $" + GameUi.Money(Gd.RoundToInt(fair))
                     + " — you name what you charge",
                 Value = cur > 0.0 ? "$" + GameUi.Money(Gd.RoundToInt(cur)) + " per unit"
-                    : "unpriced — bills at $" + GameUi.Money(Gd.RoundToInt(fair)),
+                    : "bills at $" + GameUi.Money(Gd.RoundToInt(fair)),
                 Effect = "margin $" + GameUi.Money(Gd.RoundToInt(SimCatalog.Contribution(o, lc, fm))) + "/unit",
                 XVal = DeskKit.XValue, Pitch = 64f,
                 AtMin = DeskKit.AtMin(steps, cur), AtMax = DeskKit.AtMax(steps, cur),

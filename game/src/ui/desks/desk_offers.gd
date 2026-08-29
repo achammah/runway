@@ -275,7 +275,7 @@ static func _open_card(b, y: float, i: int, s: GameState, lc: float, fm: float) 
 		"name": "price", "x": cx,
 		"why": "the going rate is $%s — you name what you charge" % b.fmt(int(round(fair))),
 		"value": ("$%s per unit" % b.fmt(int(round(cur)))) if cur > 0.0
-			else "unpriced — bills at $%s" % b.fmt(int(round(fair))),
+			else "bills at $%s" % b.fmt(int(round(fair))),
 		"effect": "margin $%s/unit" % b.fmt(int(round(SimCatalog.contribution(o, lc, fm)))),
 		"x_value": DeskKit.X_VALUE, "pitch": 64.0,
 		"at_min": DeskKit.at_min(steps, cur), "at_max": DeskKit.at_max(steps, cur),

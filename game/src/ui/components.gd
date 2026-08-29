@@ -132,11 +132,13 @@ static func stepper(b, y: float, cfg: Dictionary) -> float:
 			val_text = joined
 		else:
 			effect = bound if effect == "" else bound + " · " + effect
-	b.label(val_text, Vector2(x_value, y + 4.0), ROW,
+	# STRICT SINGLE LINE (owner: a wrapped value wrote itself through the
+	# line below) — the value and the effect clip with an ellipsis, never wrap
+	fit_line(b, val_text, Vector2(x_value, y + 4.0), ROW,
 		Color(INK, 0.35) if disabled else PEN, val_w)
 	# WHAT THIS NUMBER IS DOING RIGHT NOW, in the engine's own formula, or —
 	# at a bound, disabled, or honestly zero — why it is doing nothing.
-	b.label(effect, Vector2(X_EFFECT, y + 12.0), DETAIL,
+	fit_line(b, effect, Vector2(X_EFFECT, y + 12.0), DETAIL,
 		Color(INK, 0.35 if disabled else 0.75), 300.0)
 	var at_min := disabled or bool(cfg.get("at_min", false))
 	var at_max := disabled or bool(cfg.get("at_max", false))
