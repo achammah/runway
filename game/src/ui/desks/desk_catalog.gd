@@ -309,66 +309,6 @@ static func _price_row(b, y: float, o: Dictionary, i: int, era: int, lc: float,
 		"on_minus": func() -> void: price_step(b, i, -1),
 		"on_plus": func() -> void: price_step(b, i, 1)})
 
-## THE FINE PRINT (coworking+): what one sale costs, line by line, and what the
-## week costs whether or not anything sells. The garage gets the same two totals
-## on one stepper each — the LINES ARE STILL THE STORED TRUTH underneath, so
-## nothing is lost when coworking reveals them (01 §5).
-static func _cost_groups(b, y: float, o: Dictionary, era: int, lc: float,
-		fm: float = 1.0) -> float:
-	var fair := maxf(float(o.get("fair_price", 1.0)), 1.0)
-	var totals := era < 1
-	b.label("what one sale costs — variable" if not totals else "what one sale costs to serve",
-		Vector2(DeskKit.X_ID, y), DeskKit.DETAIL, Color(DeskKit.INK, 0.55), 900.0)
-	y += 30.0
-	if totals:
-		var cur := float(o.get("unit_cost", 0.0))
-		var vsteps := var_steps(fair)
-		y = DeskKit.stepper(b, y, {
-			"name": "serve cost", "value": "$%s/unit" % b.fmt(int(round(cur))),
-			"effect": "%d%% of fair" % int(round(cur / fair * 100.0)),
-			"x_value": DeskKit.X_VALUE, "pitch": 56.0,
-			"at_min": DeskKit.at_min(vsteps, cur), "at_max": DeskKit.at_max(vsteps, cur),
-			"on_minus": func() -> void: scale_variable(o, -1),
-			"on_plus": func() -> void: scale_variable(o, 1)})
-	else:
-		var lines: Array = o.get("cost_lines", [])
-		if lines.is_empty():
-			b.label("this one arrived as a single number — no itemised receipts behind it",
-				Vector2(40.0, y), DeskKit.DETAIL, Color(DeskKit.INK, 0.45), 900.0)
-			y += 30.0
-		for li in lines.size():
-			y = _line_row(b, y, o, lines[li], fair, lc, true, fm)
-	y = _sum_line(b, y, "= variable cost $%s/unit · served at ×%.2f today" % [
-		b.fmt(int(round(float(o.get("unit_cost", 0.0))))), lc], DeskKit.BLUE)
-	b.label("standing costs — every week, sold or not", Vector2(DeskKit.X_ID, y),
-		DeskKit.DETAIL, Color(DeskKit.INK, 0.55), 900.0)
-	y += 30.0
-	if totals:
-		var curf := float(o.get("fixed_wk", 0.0))
-		y = DeskKit.stepper(b, y, {
-			"name": "tools", "value": "$%s/wk" % b.fmt(int(round(curf))),
-			"effect": "billed sold or not",
-			"x_value": DeskKit.X_VALUE, "pitch": 56.0,
-			"at_min": DeskKit.at_min(FIXED_STEPS, curf), "at_max": DeskKit.at_max(FIXED_STEPS, curf),
-			"on_minus": func() -> void: scale_fixed(o, -1),
-			"on_plus": func() -> void: scale_fixed(o, 1)})
-	else:
-		var flines: Array = o.get("fixed_lines", [])
-		if flines.is_empty():
-			b.label("nothing standing — this one costs nothing in a week it sells nothing",
-				Vector2(40.0, y), DeskKit.DETAIL, Color(DeskKit.INK, 0.45), 900.0)
-			y += 30.0
-		for fi in flines.size():
-			y = _line_row(b, y, o, flines[fi], fair, lc, false, fm)
-	# THE LESSON LINE: break-even, or the one mistake a founder must not miss.
-	var be := SimCatalog.break_even(o, lc, fm)
-	if be < 0:
-		return _sum_line(b, y, "= $%s/wk · this price never pays for itself — every sale loses $%s" % [
-			b.fmt(int(round(float(o.get("fixed_wk", 0.0))))),
-			b.fmt(int(round(-SimCatalog.contribution(o, lc, fm))))], DeskKit.PEN)
-	return _sum_line(b, y, "= $%s/wk · break-even: %d sales/wk pay for it" % [
-		b.fmt(int(round(float(o.get("fixed_wk", 0.0))))), be], DeskKit.BLUE)
-
 ## THE SPRINT ARM — the one road to a cheaper serve: a real roadmap bet the
 ## team builds (R&D capacity, the dice at ship). Two-tap, like every commitment.
 static func sprint_arm(b, y: float, o: Dictionary) -> float:
@@ -424,31 +364,6 @@ static func cost_story(b, y: float, o: Dictionary, era: int, lc: float,
 static func _sum_line(b, y: float, text: String, col: Color) -> float:
 	b.label(text, Vector2(DeskKit.X_ID + 18.0, y), 22, col, 1080.0)
 	return y + maxf(b.wrap_h(text, 22, 1080.0), 26.0) + 6.0
-
-## One cost line on its own stepper. `variable` walks the fair-relative ladder,
-## fixed walks absolute dollars; every press re-syncs, so the totals can never
-## drift from the receipts that explain them.
-static func _line_row(b, y: float, o: Dictionary, line, fair: float, lc: float,
-		variable: bool, fm: float = 1.0) -> float:
-	var ld: Dictionary = line
-	var amount := float(ld.get("amount", 0.0))
-	var steps := var_steps(fair) if variable else FIXED_STEPS
-	var effect := "%d%% of fair" % int(round(amount / fair * 100.0))
-	if not variable:
-		var margin := SimCatalog.contribution(o, lc, fm)
-		effect = ("%d sales/wk pays it" % int(ceil(amount / margin))) if margin > 0.0 \
-			else "no margin to pay it"
-	return DeskKit.stepper(b, y, {
-		"name": String(ld.get("label", "line")),
-		"value": ("$%s" % b.fmt(int(round(amount)))) if variable else ("$%s/wk" % b.fmt(int(round(amount)))),
-		"effect": effect, "x_value": DeskKit.X_VALUE, "pitch": 46.0,
-		"at_min": DeskKit.at_min(steps, amount), "at_max": DeskKit.at_max(steps, amount),
-		"on_minus": func() -> void:
-			ld["amount"] = DeskKit.ladder(steps, float(ld.get("amount", 0.0)), -1)
-			SimEngine.sync_offer_costs(o),
-		"on_plus": func() -> void:
-			ld["amount"] = DeskKit.ladder(steps, float(ld.get("amount", 0.0)), 1)
-			SimEngine.sync_offer_costs(o)})
 
 ## THE SHELF METER (office+): weight is share-of-wallet, and the wallet is
 ## finite. The bound prints its own reason, which IS the lesson.
@@ -653,7 +568,7 @@ static func _review(b) -> void:
 			"lines": _review_lines(b, p, p.get("fixed_lines", []), fair, lc, false),
 			"sum": _review_fixed_sum(b, p, lc)})
 	DeskKit.review(b, {
-		"banner": "the street's terms — adjust the lines, then shelve it",
+		"banner": "the street's terms — read them, then shelve it or tear it up",
 		"read": [
 			"%s · %s — the street charges ≈ $%s · elasticity %s · weight %.1f" % [
 				String(p.get("name", "an offer")).to_upper(), String(p.get("unit", "")),
@@ -702,34 +617,21 @@ static func _review_lines(b, p: Dictionary, lines: Array, fair: float, lc: float
 			var margin := SimCatalog.contribution(p, lc)
 			effect = ("%d sales/wk pays it" % int(ceil(amount / margin))) if margin > 0.0 \
 				else "no margin to pay it"
+		# READ-ONLY (owner: the world sets an offer's costs — a founder who
+		# could dial them would dial them to zero); steps stay for the pitch
 		out.append({
 			"name": String(ld.get("label", "line")),
 			"value": ("$%s" % b.fmt(int(round(amount)))) if variable else ("$%s/wk" % b.fmt(int(round(amount)))),
-			"effect": effect, "pitch": 46.0,
-			"at_min": DeskKit.at_min(steps, amount), "at_max": DeskKit.at_max(steps, amount),
-			"on_minus": func() -> void:
-				ld["amount"] = DeskKit.ladder(steps, float(ld.get("amount", 0.0)), -1)
-				SimEngine.sync_offer_costs(p),
-			"on_plus": func() -> void:
-				ld["amount"] = DeskKit.ladder(steps, float(ld.get("amount", 0.0)), 1)
-				SimEngine.sync_offer_costs(p)})
+			"effect": effect, "pitch": 34.0, "static": true})
 	return out
 
 ## GARAGE TOTALS MODE (01 §5): one stepper for the whole variable sheet, one for
 ## the whole standing sheet. The lines behind them are scaled proportionally and
 ## kept, so nothing the street itemised is lost when coworking reveals it.
-static func _review_total(p: Dictionary, nm: String, value: String, effect: String,
-		steps: Array, cur: float, variable: bool) -> Dictionary:
-	return {"name": nm, "value": value, "effect": effect, "pitch": 52.0,
-		"at_min": DeskKit.at_min(steps, cur), "at_max": DeskKit.at_max(steps, cur),
-		"on_minus": func() -> void: _scale_total(p, variable, -1),
-		"on_plus": func() -> void: _scale_total(p, variable, 1)}
-
-static func _scale_total(o: Dictionary, variable: bool, dir: int) -> void:
-	if variable:
-		scale_variable(o, dir)
-	else:
-		scale_fixed(o, dir)
+static func _review_total(_p: Dictionary, nm: String, value: String, effect: String,
+		_steps: Array, _cur: float, _variable: bool) -> Dictionary:
+	# READ-ONLY (owner: the world's costs, stated — never a founder's dial)
+	return {"name": nm, "value": value, "effect": effect, "pitch": 34.0, "static": true}
 
 static func _review_fixed_sum(b, p: Dictionary, lc: float) -> String:
 	var be := SimCatalog.break_even(p, lc)
@@ -808,45 +710,6 @@ static func price_step(b, oi: int, dir: int) -> void:
 	var o: Dictionary = b.state.offers[oi]
 	o["price"] = DeskKit.ladder(price_steps(o), float(o.get("price", 0.0)), dir)
 	o["price_set"] = true
-
-## Step the VARIABLE TOTAL and let the lines follow proportionally (garage totals
-## mode). A sheet with no lines yet gets the total as its one line, so the next
-## era still has receipts to reveal.
-static func scale_variable(o: Dictionary, dir: int) -> void:
-	var fair := maxf(float(o.get("fair_price", 1.0)), 1.0)
-	var cur := float(o.get("unit_cost", 0.0))
-	var target := DeskKit.ladder(var_steps(fair), cur, dir)
-	var lines: Array = o.get("cost_lines", [])
-	if lines.is_empty():
-		o["cost_lines"] = [{"label": "cost to serve", "amount": target}]
-	elif cur <= 0.001:
-		var each := target / float(lines.size())
-		for l in lines:
-			(l as Dictionary)["amount"] = each
-	else:
-		var k := target / cur
-		for l2 in lines:
-			var ld: Dictionary = l2
-			ld["amount"] = float(ld.get("amount", 0.0)) * k
-	SimEngine.sync_offer_costs(o)
-
-## The same move on the standing sheet.
-static func scale_fixed(o: Dictionary, dir: int) -> void:
-	var cur := float(o.get("fixed_wk", 0.0))
-	var target := DeskKit.ladder(FIXED_STEPS, cur, dir)
-	var lines: Array = o.get("fixed_lines", [])
-	if lines.is_empty():
-		o["fixed_lines"] = [{"label": "tools & subscriptions", "amount": target}]
-	elif cur <= 0.001:
-		var each := target / float(lines.size())
-		for l in lines:
-			(l as Dictionary)["amount"] = each
-	else:
-		var k := target / cur
-		for l2 in lines:
-			var ld: Dictionary = l2
-			ld["amount"] = float(ld.get("amount", 0.0)) * k
-	SimEngine.sync_offer_costs(o)
 
 ## The row-inline stepper glyph. The kit's own glyph belongs to its 78px stepper
 ## row; a 62px list row cannot host one, so the two live side by side — same

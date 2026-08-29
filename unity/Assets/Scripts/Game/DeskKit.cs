@@ -132,6 +132,8 @@ namespace Runway.Game
             public bool Disabled;
             public Action OnMinus;
             public Action OnPlus;
+            /// a STATED line — the world's number, no squares to press
+            public bool Static;
         }
 
         /// <summary>
@@ -338,6 +340,16 @@ namespace Runway.Game
                 for (int i = 0; i < grp.Lines.Count; i++)
                 {
                     StepRow ln = grp.Lines[i];
+                    if (ln.Static)
+                    {
+                        // a STATED line — the world's number, no squares
+                        b.L(ln.Name, XId + 18f, y, Detail, DrawnUI.WithAlpha(DrawnUI.Ink, 0.8f), 360f);
+                        b.L(ln.Value, XValue, y, Detail, DrawnUI.Ink, 240f);
+                        b.L(ln.Effect, XValue + 250f, y, Detail,
+                            DrawnUI.WithAlpha(DrawnUI.Ink, 0.5f), 400f);
+                        y += ln.Pitch > 0f && ln.Pitch < 78f ? ln.Pitch : 34f;
+                        continue;
+                    }
                     if (ln.Pitch >= 78f) ln.Pitch = 52f;
                     if (ln.XVal == XLever) ln.XVal = XValue;
                     y = Stepper(b, y, ln);

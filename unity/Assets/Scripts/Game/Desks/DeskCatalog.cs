@@ -408,87 +408,7 @@ namespace Runway.Game
         /// the week costs whether or not anything sells. The garage gets the same
         /// two totals on one stepper each — the LINES ARE STILL THE STORED TRUTH
         /// underneath, so nothing is lost when coworking reveals them (01 section 5).
-        static float CostGroups(BinderScreen b, float y, Offer o, int era, double lc,
-                                double fm = 1.0)
-        {
-            double fair = Gd.Maxf(o.FairPrice, 1.0);
-            bool totals = era < 1;
-            b.L(totals ? "what one sale costs to serve" : "what one sale costs — variable",
-                DeskKit.XId, y, DeskKit.Detail, Ink(0.55f), 900f);
-            y += 30f;
-            if (totals)
-            {
-                List<double> vsteps = VarSteps(fair);
-                double cur = o.UnitCost;
-                y = DeskKit.Stepper(b, y, new DeskKit.StepRow
-                {
-                    Name = "serve cost", Value = "$" + Money(cur) + "/unit",
-                    Effect = string.Format(CultureInfo.InvariantCulture, "{0}% of fair",
-                        Gd.RoundToInt(cur / fair * 100.0)),
-                    XVal = DeskKit.XValue, Pitch = 56f,
-                    AtMin = DeskKit.AtMin(vsteps, cur), AtMax = DeskKit.AtMax(vsteps, cur),
-                    OnMinus = () => ScaleVariable(o, -1),
-                    OnPlus = () => ScaleVariable(o, 1),
-                });
-            }
-            else
-            {
-                if (o.CostLines == null || o.CostLines.Count == 0)
-                {
-                    b.L("this one arrived as a single number — no itemised receipts behind it",
-                        40f, y, DeskKit.Detail, Ink(0.45f), 900f);
-                    y += 30f;
-                }
-                else
-                {
-                    foreach (CostLine cl in o.CostLines)
-                        y = LineRow(b, y, o, cl, fair, lc, true, fm);
-                }
-            }
-            y = SumLine(b, y, string.Format(CultureInfo.InvariantCulture,
-                "= variable cost ${0}/unit · served at ×{1:0.00} today", Money(o.UnitCost), lc),
-                DrawnUI.Blue);
-            b.L("standing costs — every week, sold or not", DeskKit.XId, y,
-                DeskKit.Detail, Ink(0.55f), 900f);
-            y += 30f;
-            if (totals)
-            {
-                double curf = o.FixedWk;
-                y = DeskKit.Stepper(b, y, new DeskKit.StepRow
-                {
-                    Name = "tools", Value = "$" + Money(curf) + "/wk",
-                    Effect = "billed sold or not",
-                    XVal = DeskKit.XValue, Pitch = 56f,
-                    AtMin = DeskKit.AtMin(FixedSteps, curf), AtMax = DeskKit.AtMax(FixedSteps, curf),
-                    OnMinus = () => ScaleFixed(o, -1),
-                    OnPlus = () => ScaleFixed(o, 1),
-                });
-            }
-            else
-            {
-                if (o.FixedLines == null || o.FixedLines.Count == 0)
-                {
-                    b.L("nothing standing — this one costs nothing in a week it sells nothing",
-                        40f, y, DeskKit.Detail, Ink(0.45f), 900f);
-                    y += 30f;
-                }
-                else
-                {
-                    foreach (CostLine fl in o.FixedLines)
-                        y = LineRow(b, y, o, fl, fair, lc, false, fm);
-                }
-            }
-            // THE LESSON LINE: break-even, or the one mistake a founder must not miss.
-            int be = SimCatalog.BreakEven(o, lc, fm);
-            if (be < 0)
-                return SumLine(b, y, string.Format(CultureInfo.InvariantCulture,
-                    "= ${0}/wk · this price never pays for itself — every sale loses ${1}",
-                    Money(o.FixedWk), Money(-SimCatalog.Contribution(o, lc, fm))), DrawnUI.Coral);
-            return SumLine(b, y, string.Format(CultureInfo.InvariantCulture,
-                "= ${0}/wk · break-even: {1} sales/wk pay for it", Money(o.FixedWk), be),
-                DrawnUI.Blue);
-        }
-
+        
         /// THE BLUE LINE DOES THE ARITHMETIC OUT LOUD — the patient accountant.
         /// THE COST STORY — READ-ONLY (owner: the player never dials a cost;
         /// the world set this service's costs, stated and explained; cutting
@@ -562,33 +482,7 @@ namespace Runway.Game
         /// One cost line on its own stepper. `variable` walks the fair-relative
         /// ladder, fixed walks absolute dollars; every press re-syncs, so the
         /// totals can never drift from the receipts that explain them.
-        static float LineRow(BinderScreen b, float y, Offer o, CostLine line,
-                             double fair, double lc, bool variable, double fm = 1.0)
-        {
-            CostLine ld = line;
-            double amount = ld.Amount;
-            List<double> steps = variable ? VarSteps(fair) : FixedSteps;
-            string effect = string.Format(CultureInfo.InvariantCulture, "{0}% of fair",
-                Gd.RoundToInt(amount / fair * 100.0));
-            if (!variable)
-            {
-                double margin = SimCatalog.Contribution(o, lc, fm);
-                effect = margin > 0.0
-                    ? string.Format(CultureInfo.InvariantCulture, "{0} sales/wk pays it",
-                        (int)Math.Ceiling(amount / margin))
-                    : "no margin to pay it";
-            }
-            return DeskKit.Stepper(b, y, new DeskKit.StepRow
-            {
-                Name = ld.Label ?? "line",
-                Value = variable ? "$" + Money(amount) : "$" + Money(amount) + "/wk",
-                Effect = effect, XVal = DeskKit.XValue, Pitch = 46f,
-                AtMin = DeskKit.AtMin(steps, amount), AtMax = DeskKit.AtMax(steps, amount),
-                OnMinus = () => { ld.Amount = DeskKit.Ladder(steps, ld.Amount, -1); SimEngine.SyncOfferCosts(o); },
-                OnPlus = () => { ld.Amount = DeskKit.Ladder(steps, ld.Amount, 1); SimEngine.SyncOfferCosts(o); },
-            });
-        }
-
+        
         /// THE SHELF METER (office+): weight is share-of-wallet, and the wallet is
         /// finite. The bound prints its own reason, which IS the lesson.
         internal static float WeightRow(BinderScreen b, float y, Offer o)
@@ -949,7 +843,7 @@ namespace Runway.Game
             }
             DeskKit.Review(b, new DeskKit.ReviewCard
             {
-                Banner = "the street's terms — adjust the lines, then shelve it",
+                Banner = "the street's terms — read them, then shelve it or tear it up",
                 Read = new List<string>
                 {
                     string.Format(CultureInfo.InvariantCulture,
@@ -1017,14 +911,13 @@ namespace Runway.Game
                             (int)Math.Ceiling(amount / margin))
                         : "no margin to pay it";
                 }
+                // READ-ONLY (owner: the world sets an offer's costs — a founder
+                // who could dial them would dial them to zero)
                 outp.Add(new DeskKit.StepRow
                 {
                     Name = ld.Label ?? "line",
                     Value = variable ? "$" + Money(amount) : "$" + Money(amount) + "/wk",
-                    Effect = effect, Pitch = 46f,
-                    AtMin = DeskKit.AtMin(steps, amount), AtMax = DeskKit.AtMax(steps, amount),
-                    OnMinus = () => { ld.Amount = DeskKit.Ladder(steps, ld.Amount, -1); SimEngine.SyncOfferCosts(p); },
-                    OnPlus = () => { ld.Amount = DeskKit.Ladder(steps, ld.Amount, 1); SimEngine.SyncOfferCosts(p); },
+                    Effect = effect, Pitch = 34f, Static = true,
                 });
             }
             return outp;
@@ -1037,21 +930,14 @@ namespace Runway.Game
         static DeskKit.StepRow ReviewTotal(Offer p, string nm, string value, string effect,
                                            List<double> steps, double cur, bool variable)
         {
+            // READ-ONLY (owner: the world's costs, stated — never a founder's dial)
             return new DeskKit.StepRow
             {
-                Name = nm, Value = value, Effect = effect, Pitch = 52f,
-                AtMin = DeskKit.AtMin(steps, cur), AtMax = DeskKit.AtMax(steps, cur),
-                OnMinus = () => ScaleTotal(p, variable, -1),
-                OnPlus = () => ScaleTotal(p, variable, 1),
+                Name = nm, Value = value, Effect = effect, Pitch = 34f, Static = true,
             };
         }
 
-        static void ScaleTotal(Offer o, bool variable, int dir)
-        {
-            if (variable) ScaleVariable(o, dir);
-            else ScaleFixed(o, dir);
-        }
-
+        
         static string ReviewFixedSum(Offer p, double lc)
         {
             int be = SimCatalog.BreakEven(p, lc);

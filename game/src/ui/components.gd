@@ -269,6 +269,16 @@ static func review(b, cfg: Dictionary, y: float = 6.0) -> float:
 			y += 32.0
 		for ln in g.get("lines", []):
 			var l: Dictionary = ln
+			if bool(l.get("static", false)):
+				# a STATED line — the world's number, no squares to press
+				b.label(String(l.get("name", "")), Vector2(X_ID + 18.0, y),
+					DETAIL, Color(INK, 0.8), 360.0)
+				b.label(String(l.get("value", "")), Vector2(X_VALUE, y),
+					DETAIL, INK, 240.0)
+				b.label(String(l.get("effect", "")), Vector2(X_VALUE + 250.0, y),
+					DETAIL, Color(INK, 0.5), 400.0)
+				y += float(l.get("pitch", 34.0))
+				continue
 			l["pitch"] = float(l.get("pitch", 52.0))
 			l["x_value"] = float(l.get("x_value", X_VALUE))
 			y = stepper(b, y, l)
