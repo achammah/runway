@@ -711,6 +711,92 @@ namespace Runway.Game
             _g.WeekPrev["morale"] = St.Morale;
             var outcomeLog = new List<string>();
 
+            // THE PIVOT resolves at LOCK IN (DECISIONS § THE PIVOT; twin of
+            // garage_view_screen._apply_lock — this seam was MISSING here: an
+            // armed pivot never resolved in this engine). The armed flag dies
+            // with the resolution; the receipt narrates through the outcome log.
+            PivotReceipt pivotRes = SimPivot.ResolveArmed(St);
+            if (pivotRes != null && pivotRes.Ok)
+            {
+                foreach (string pvl in pivotRes.Lines)
+                    outcomeLog.Add("THE PIVOT: " + pvl);
+                // the regeneration recipe (coordinator ruling): a nature-changing
+                // pivot re-dresses the run — one GenerateWorld applied through
+                // the BIRTH applier, then the birth illustrations + the three
+                // identity images re-fire under the pivot-suffixed key, all
+                // forced. Keyless runs skip cleanly; numbers never wait on art.
+                var bootP = Boot.Instance;
+                if (bootP != null && bootP.Generator != null
+                    && bootP.Llm != null && bootP.Llm.Enabled)
+                {
+                    var scratch = new Runway.Llm.RunSnapshot
+                    {
+                        CompanyName = St.CompanyName ?? "",
+                        CompanyIdea = St.CompanyIdea ?? "",
+                        BizWhat = St.BizWhat ?? "Software",
+                        BizWho = St.BizWho ?? "Consumer",
+                    };
+                    bootP.Generator.GenerateWorld(scratch, gen =>
+                    {
+                        if (gen == null || gen.Count == 0) return;
+                        try
+                        {
+                            LlmWorld world = gen.ToObject<LlmWorld>();
+                            if (!WorldGen.ApplyBirth(St, world)) return;
+                            if (bootP.Director != null)
+                            {
+                                object growthObj = null;
+                                if (St.Topics != null)
+                                    St.Topics.TryGetValue("growth", out growthObj);
+                                var growthJ = growthObj as Newtonsoft.Json.Linq.JObject;
+                                if (growthJ == null && growthObj != null)
+                                    growthJ = Newtonsoft.Json.Linq.JObject.FromObject(growthObj);
+                                bootP.Director.MakeBirthIllustrations(
+                                    St.SimSeed + "_p" + St.Pivots, growthJ,
+                                    new Newtonsoft.Json.Linq.JObject
+                                    {
+                                        ["name"] = St.CompanyName ?? "",
+                                        ["idea"] = St.CompanyIdea ?? "",
+                                        ["what"] = St.BizWhat ?? "",
+                                        ["who"] = St.BizWho ?? "",
+                                    });
+                            }
+                            var pc = bootP.gameObject.GetComponent<Runway.Llm.PortraitClient>();
+                            if (pc == null)
+                                pc = bootP.gameObject.AddComponent<Runway.Llm.PortraitClient>();
+                            string unitWord = "";
+                            object worksObj;
+                            if (St.Topics != null && St.Topics.TryGetValue("works", out worksObj))
+                            {
+                                var wd = worksObj as System.Collections.Generic.Dictionary<string, object>;
+                                if (wd != null && wd.ContainsKey("unit_word"))
+                                    unitWord = wd["unit_word"] as string ?? "";
+                                var wj = worksObj as Newtonsoft.Json.Linq.JObject;
+                                if (wj != null)
+                                    unitWord = wj.Value<string>("unit_word") ?? "";
+                            }
+                            var co = new Newtonsoft.Json.Linq.JObject
+                            {
+                                ["idea"] = St.CompanyIdea ?? "",
+                                ["what"] = St.BizWhat ?? "",
+                                ["who"] = St.BizWho ?? "",
+                                ["unit"] = unitWord,
+                                ["force"] = true,
+                            };
+                            pc.Generate(new Newtonsoft.Json.Linq.JObject { ["force"] = true }, null);
+                            pc.GenerateLogo(co, null);
+                            pc.GenerateMake(co, null);
+                            pc.GeneratePitch(co, null);
+                        }
+                        catch (System.Exception e)
+                        {
+                            Debug.LogWarning("PIVOT regen would not apply ("
+                                + e.Message + ") — the run keeps its old dressing.");
+                        }
+                    });
+                }
+            }
+
             // THE WORLD ACTS FIRST (plan A1): the hostile weekly tick runs before the
             // founder's move lands, and its receipts open the week's ledger.
             WeeklyReport tick = SimEngine.WeeklyTick(St);
