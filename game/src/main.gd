@@ -976,11 +976,10 @@ func _finish_worldgen(g: GarageViewScreen, birth: BirthScreen = null) -> void:
 	# ever sees is the finished entry.
 	_prefetch_founding(g)
 	if birth != null and is_instance_valid(birth):
-		# THE LOOP HOLDS UNTIL THE BOOK IS TRULY READY (owner, #175: "the
-		# world building animated video loop staying until the log AND the
-		# image painted is fully done"). First the words — three watchdogged
-		# attempts get ~160s; a 60s ceiling used to hand the reader an empty
-		# page while a wedged request was still nominally in flight.
+		# THE WORDS ARE THE GATE (supersedes #175's paint-too rule — owner:
+		# text first, paint in the background while reading). Three
+		# watchdogged attempts get ~160s; a 60s ceiling used to hand the
+		# reader an empty page while a wedged request was still in flight.
 		birth.status_line = "writing day one"
 		var fwait := 0.0
 		while _founding_inflight and _founding_res.is_empty() and fwait < 160.0:
@@ -992,18 +991,17 @@ func _finish_worldgen(g: GarageViewScreen, birth: BirthScreen = null) -> void:
 			# empty page every time. The DM takes over again from week one.
 			print("FOUNDING dead after %.0fs — the engine writes day one" % fwait)
 			_founding_res = _authored_founding()
-		# then the paint: day one's room, started at the signature. The book
-		# only opens on a painted world (idle = keyless/authored: no wait).
-		birth.status_line = "painting the room"
-		var pwait := 0.0
-		while _warm_status == "painting" and pwait < 240.0:
-			await get_tree().create_timer(0.25).timeout
-			pwait += 0.25
+	# THE WORDS OPEN THE BOOK; THE PAINT RIDES BEHIND THEM (owner: "show the
+	# text first and paint the image while the user reads"). The book's own
+	# hold takes over: SETTLE appears when the room lands (or the paint
+	# fails), so reading and rendering overlap instead of queueing.
 	var bk := BookIntroScreen.new()
 	bk.setup(state)
 	if not _founding_res.is_empty():
 		bk.feed_entry(String(_founding_res.get("narration", "")))
 		_book_showed_entry = true
+		if _warm_status == "painting":
+			bk.hold_for_paint()
 	bk.done.connect(func() -> void:
 		var t0 := Time.get_ticks_msec()
 		print("SETTLE pressed")

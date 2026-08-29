@@ -311,10 +311,10 @@ namespace Runway.App
                 waited += 0.25f;
             }
 
-            // The bible lands (or the ceiling fired): apply it, then THE LOOP
-            // HOLDS UNTIL THE BOOK IS TRULY READY (#175, ported from Godot):
-            // first the words — three watchdogged attempts get ~160s; then the
-            // paint — the reader never meets an empty page or an unpainted room.
+            // The bible lands (or the ceiling fired): apply it, then THE
+            // WORDS ARE THE GATE (supersedes #175's paint-too rule — owner:
+            // text first, paint in the background while reading): three
+            // watchdogged attempts get ~160s to write day one.
             string entry = Driver.FinishWorldgen();
             var birthScreen = CurrentScreen as Runway.Game.BirthScreen;
             if (entry.Length == 0)
@@ -333,14 +333,11 @@ namespace Runway.App
                     birthScreen.StatusLine = "the network is down — writing day one myself";
                 entry = Driver.AdoptAuthoredFounding();
             }
-            if (birthScreen != null) birthScreen.StatusLine = "painting the room";
-            float pwait = 0f;
-            while (Director != null && Director.WarmStatus == Runway.Llm.PaintStatus.Painting
-                   && pwait < 240f)
-            {
-                yield return new WaitForSecondsRealtime(0.25f);
-                pwait += 0.25f;
-            }
+            // THE WORDS OPEN THE BOOK; THE PAINT RIDES BEHIND THEM (owner:
+            // "show the text first and paint the image while the user reads").
+            // The book self-arms its own hold (WarmPaint == Painting →
+            // HoldForPaint; PaintSettled releases SETTLE), so reading and
+            // rendering overlap instead of queueing.
             Go(AppState.Book, entry, s =>
             {
                 s.Done += _ =>
