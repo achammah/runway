@@ -74,7 +74,13 @@ namespace Runway.Core
         };
 
         public static readonly string[] BANDS = { "brilliant", "fine", "risky", "backfired" };
-        public static readonly string[] KINDS = { "quality", "retention", "reach", "debt", "platform" };
+        public static readonly string[] KINDS = { "quality", "retention", "reach", "debt", "platform", "cost_down" };
+        /// THE COST SPRINT (owner: the player never dials a cost — cutting one
+        /// is a BUILD with the team). 3% off the offer's variable cost per
+        /// payoff unit, capped at 40% per sprint, floored at 20% of fair.
+        public const double COST_DOWN_PCT_PER_UNIT = 3.0;
+        public const double COST_DOWN_CAP_PCT = 40.0;
+        public const double COST_DOWN_FLOOR_OF_FAIR = 0.2;
 
         public const double RND_PER_WEEK = 1200.0;   // one loaded engineer-week of money
         public const double ENG_PER_SKILL = 0.25;    // skill 1-5 → 0.25-1.25 wk/wk
@@ -384,6 +390,34 @@ namespace Runway.Core
 
         /// <summary>Stand a bet down. The team carries a quarter of the build out the
         /// door with them (DECISIONS.md — context-switching is priced, not free).</summary>
+        /// THE PLAYER STARTS A COST SPRINT from the offers desk: a real bet on
+        /// the roadmap — it eats R&D capacity like any build, ships on the dice.
+        public static JObject AddCostDownBet(GameState state, string offerName)
+        {
+            for (int i = 0; i < state.Bets.Count; i++)
+            {
+                Bet bd = state.Bets[i];
+                if (bd.Kind == "cost_down" && (bd.Offer ?? "") == (offerName ?? "")
+                    && !bd.Shipped)
+                    return new JObject { ["ok"] = false,
+                        ["why"] = "a cost sprint for this offer is already on the board" };
+            }
+            var bet = new Bet
+            {
+                Id = "costdown_" + (offerName ?? "").ToLowerInvariant().Replace(" ", "_")
+                     + "_" + state.Week,
+                Name = "Cost sprint — " + offerName,
+                Desc = "The team rebuilds how one gets made and served. Cheaper, or nothing.",
+                Kind = "cost_down", Ambition = 1, Offer = offerName ?? "",
+                CostRndWeeks = COST_BY_AMBITION[0],
+            };
+            state.Bets.Add(bet);
+            bool went = CommitBet(state, bet.Id);
+            state.LogAction("cost sprint opened on '" + offerName + "'"
+                + (went ? "" : " (parked — the team is full; commit it on the roadmap)"));
+            return new JObject { ["ok"] = true, ["committed"] = went };
+        }
+
         public static bool UncommitBet(GameState state, string id)
         {
             Bet bet = BetById(state, id);
@@ -632,6 +666,25 @@ namespace Runway.Core
                         lines.Add(string.Format(CultureInfo.InvariantCulture,
                             "  → the platform compounds: all builds ×{0} from here",
                             Gd.F(PlatformMult(state), 2)));
+                    }
+                    break;
+                case "cost_down":
+                    if (units > 0)
+                    {
+                        for (int oi = 0; oi < state.Offers.Count; oi++)
+                        {
+                            Offer od = state.Offers[oi];
+                            if ((od.Name ?? "") != (bet.Offer ?? "")) continue;
+                            double cut = Math.Min(units * COST_DOWN_PCT_PER_UNIT, COST_DOWN_CAP_PCT);
+                            double floorC = Math.Max(od.FairPrice * COST_DOWN_FLOOR_OF_FAIR, 0.0);
+                            double before = od.UnitCost;
+                            od.UnitCost = Math.Max(before * (1.0 - cut / 100.0), floorC);
+                            lines.Add(string.Format(CultureInfo.InvariantCulture,
+                                "  → '{0}' serves cheaper: ${1} -> ${2}/unit (−{3}%)",
+                                bet.Offer, (int)Math.Round(before),
+                                (int)Math.Round(od.UnitCost), (int)Math.Round(cut)));
+                            break;
+                        }
                     }
                     break;
             }

@@ -268,7 +268,8 @@ namespace Runway.Core
         [JsonProperty("id")] public string Id = "";
         [JsonProperty("name")] public string Name = "";
         [JsonProperty("desc")] public string Desc = "";
-        [JsonProperty("kind")] public string Kind = "";        // quality|retention|reach|debt|platform
+        [JsonProperty("kind")] public string Kind = "";        // quality|retention|reach|debt|platform|cost_down
+        [JsonProperty("offer")] public string Offer = "";      // cost_down: the target offer's name
         [JsonProperty("ambition")] public int Ambition = 1;    // 1-3
         [JsonProperty("cost_rnd_weeks")] public double CostRndWeeks;
         [JsonProperty("progress")] public double Progress;

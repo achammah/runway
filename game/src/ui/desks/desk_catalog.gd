@@ -278,7 +278,8 @@ static func _detail(b) -> void:
 		Vector2(DeskKit.X_ID, y), 24, Color(DeskKit.INK, 0.6), 1100.0)
 	y += 32.0
 	y = _price_row(b, y, o, i, era, lc, fm)
-	y = _cost_groups(b, y, o, era, lc, fm)
+	y = cost_story(b, y, o, era, lc, fm)
+	y = sprint_arm(b, y, o)
 	if era >= 2:
 		y = _weight_row(b, y, o)
 	# THE FLOOR UNLOCK, whenever a line still fits on the sheet. Every pitch above
@@ -367,6 +368,57 @@ static func _cost_groups(b, y: float, o: Dictionary, era: int, lc: float,
 			b.fmt(int(round(-SimCatalog.contribution(o, lc, fm))))], DeskKit.PEN)
 	return _sum_line(b, y, "= $%s/wk · break-even: %d sales/wk pay for it" % [
 		b.fmt(int(round(float(o.get("fixed_wk", 0.0))))), be], DeskKit.BLUE)
+
+## THE SPRINT ARM — the one road to a cheaper serve: a real roadmap bet the
+## team builds (R&D capacity, the dice at ship). Two-tap, like every commitment.
+static func sprint_arm(b, y: float, o: Dictionary) -> float:
+	var nm := String(o.get("name", ""))
+	var has := false
+	for bv in b.state.bets:
+		var bd: Dictionary = bv
+		if String(bd.get("kind", "")) == "cost_down" \
+				and String(bd.get("offer", "")) == nm and not bool(bd.get("shipped", false)):
+			has = true
+	if has:
+		b.label("a cost sprint for this offer is on the roadmap — the team is on it",
+			Vector2(DeskKit.X_ID, y), DeskKit.DETAIL, Color(DeskKit.INK, 0.55), 900.0)
+		return y + 30.0
+	DeskKit.arm(b, "sprint_" + nm, "start a cost sprint — the team rebuilds it",
+		"3 R&D-weeks of the team — sure?", Vector2(DeskKit.X_ID, y), func() -> void:
+			SimRoadmap.add_cost_down_bet(b.state, nm),
+		560.0, 22)
+	return y + 44.0
+
+## THE COST STORY — READ-ONLY (owner: the player never dials a cost; the world
+## set this service's costs, stated and explained; cutting them is a BUILD).
+## Both the full page and the rate card's open row draw this same block.
+static func cost_story(b, y: float, o: Dictionary, era: int, lc: float,
+		fm: float = 1.0) -> float:
+	var fair := maxf(float(o.get("fair_price", 1.0)), 1.0)
+	b.label("what one sale costs — the world set these when the offer was written",
+		Vector2(DeskKit.X_ID, y), DeskKit.DETAIL, Color(DeskKit.INK, 0.55), 900.0)
+	y += 30.0
+	var lines: Array = o.get("cost_lines", [])
+	if era >= 1 and not lines.is_empty():
+		for li in lines:
+			var ld: Dictionary = li
+			var amt := float(ld.get("amount", 0.0))
+			b.label("%s — $%s (%d%% of the going rate)" % [String(ld.get("label", "line")),
+				b.fmt(int(round(amt))), int(round(amt / fair * 100.0))],
+				Vector2(40.0, y), DeskKit.DETAIL, Color(DeskKit.INK, 0.7), 900.0)
+			y += 26.0
+	y = _sum_line(b, y, "= serve cost $%s/unit (served at ×%.2f today) · standing tools $%s/wk" % [
+		b.fmt(int(round(float(o.get("unit_cost", 0.0))))), lc,
+		b.fmt(int(round(float(o.get("fixed_wk", 0.0)))))], DeskKit.BLUE)
+	var be := SimCatalog.break_even(o, lc, fm)
+	if be < 0:
+		y = _sum_line(b, y, "this price never pays for itself — every sale loses $%s" % [
+			b.fmt(int(round(-SimCatalog.contribution(o, lc, fm))))], DeskKit.PEN)
+	else:
+		y = _sum_line(b, y, "break-even: %d sales/wk pay the standing costs" % be, DeskKit.BLUE)
+	b.label("costs only fall when the team rebuilds how this one is made — a cost sprint below",
+		Vector2(DeskKit.X_ID, y), DeskKit.LAW, Color(DeskKit.INK, 0.45), 1080.0)
+	return y + 26.0
 
 ## THE BLUE LINE DOES THE ARITHMETIC OUT LOUD — the patient accountant.
 static func _sum_line(b, y: float, text: String, col: Color) -> float:

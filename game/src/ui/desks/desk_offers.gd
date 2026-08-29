@@ -6,8 +6,9 @@ extends RefCounted
 ## One columned card of what we sell: a row per offer, a column per truth —
 ## price big, street, serve, margin, the demand verdict as ONE colored word —
 ## with the two SEPARATE −/+ squares in a dedicated ADJUST column (the stepper
-## law) and ▸ UNWRAPPING the row in place (the full five-state detail machine
-## stays one press away from the unwrapped band).
+## law) and ▸ UNWRAPPING the row in place: the open offer's whole ledger —
+## price dial, the world's stated costs, the cost sprint, weight, the drop —
+## draws on this same sheet (owner: all the control here, no separate page).
 ##
 ## THE MACHINE UNDERNEATH IS DeskCatalog's: detail / write / wait / review are
 ## delegated whole — the DEFINE-AN-OFFER door is the same write->wait->review
@@ -46,7 +47,6 @@ const COL_VERDICT_W := 150.0
 const COL_EXPAND_X := 986.0
 const COL_ADJUST_X := 1028.0
 const ROW_H := 52.0
-const EXPAND_H := 92.0    ## the unwrapped row's in-place band
 ## Six rows face-up, then the fold (collapse law); the shelf itself caps at 8.
 const LIST_SHOW := 6
 
@@ -171,26 +171,28 @@ static func _rate_card(b) -> void:
 	var order := _visible_rows(s, lc)
 	var shown: Array = order[0]
 	var folded := int(order[1])
-	# THE UNWRAPPED ROW (owner: details unroll in place, never a new screen):
-	# ▸ toggles one row open; the card grows by the band, rows below shift
+	# THE UNWRAPPED ROW TAKES OVER (owner: every control HERE, no separate
+	# page): the open offer's row stays in the card, the others fold under
+	# it, and its whole ledger — price, the world's costs, the sprint, the
+	# drop — draws below on the same sheet.
 	var open_i := int(b.desk.get("open_row", -1))
-	var open_vis := false
-	for i in shown:
-		if int(i) == open_i:
-			open_vis = true
-	var card_h := DeskKit.CARD_HEAD + 30.0 + float(shown.size()) * ROW_H \
-		+ (EXPAND_H if open_vis else 0.0) + 26.0
+	var open_vis := open_i >= 0 and open_i < s.offers.size()
+	var rows: Array = [open_i] if open_vis else shown
+	var hidden := (shown.size() - 1 + folded) if open_vis else folded
+	var card_h := DeskKit.CARD_HEAD + 30.0 + float(rows.size()) * ROW_H + 26.0
 	var frame := DeskKit.card_frame(b, 10.0, y, 1120.0, card_h, "the rate card")
 	var cy := float(frame.get("content_y", y)) + 0.0
 	cy = _head_row(b, cy)
-	for i in shown:
+	for i in rows:
 		cy = _row(b, cy, int(i), s, lc, fm)
-		if int(i) == open_i:
-			cy = _row_band(b, cy, int(i), s, lc, fm)
 	y = float(frame.get("bottom", cy)) + 10.0
-	if folded > 0:
-		y = DeskKit.fold_row(b, DeskKit.X_ID, y, folded, "offers, healthy", func() -> void:
-			b.desk["mode"] = "all")
+	if open_vis:
+		y = _open_detail(b, y, open_i, s, lc, fm)
+	if hidden > 0:
+		y = DeskKit.fold_row(b, DeskKit.X_ID, y, hidden,
+			"offers behind the open one" if open_vis else "offers, healthy",
+			(func() -> void: b.desk["open_row"] = -1) if open_vis
+			else func() -> void: b.desk["mode"] = "all")
 	if String(s.biz_who) == "Enterprise":
 		y = _named_accounts_line(b, s, y)
 	_define_door(b, y + 6.0)
@@ -237,33 +239,26 @@ static func _head_row(b, y: float) -> float:
 	_right(b, "ADJUST", Vector2(COL_ADJUST_X - 8.0, y), 18, dim, 80.0)
 	return DeskKit.pen_rule(b, y + 24.0, COL_NAME_X, 1120.0 - 36.0, Color(DeskKit.INK, 0.25), 7) + 2.0
 
-## THE UNWRAPPED BAND — the offer's read, unrolled in place under its row.
-## The full page (reprice, itemise, drop) stays one press away.
-static func _row_band(b, y: float, i: int, s: GameState, lc: float, fm: float) -> float:
+## THE OPEN LEDGER — the whole offer under its row, on the same sheet
+## (owner: all the control here, never a separate page): the price dial (the
+## founder's ONE cost-side dial is price), the world's stated costs, the
+## shelf weight where the era grants it, the cost sprint, and the drop.
+static func _open_detail(b, y: float, i: int, s: GameState, lc: float, fm: float) -> float:
 	var o: Dictionary = s.offers[i]
-	var bx := COL_NAME_X + 16.0
-	var price := float(o.get("price", 0.0))
-	var fair := float(o.get("fair_price", 0.0)) * fm
-	var billed := price if price > 0.0 else fair
-	var learned := (" (learning ×%.2f)" % lc) if lc < 0.995 else ""
-	var war := int(round((1.0 - fm) * 100.0))
-	b.label("the street charges ≈ $%s%s · a sale costs ≈ $%s to serve%s · fixed $%s/wk" % [
-		b.fmt(int(round(fair))),
-		(" (price war: −%d%%)" % war) if war > 0 else "",
-		b.fmt(int(round(SimCatalog.served_unit_cost(o, lc)))), learned,
-		b.fmt(int(round(float(o.get("fixed_wk", 0.0)))))],
-		Vector2(bx, y + 2.0), 19, Color(DeskKit.INK, 0.65), 1040.0)
-	b.label("%s $%s − the serve = $%s kept, per %s" % [
-		"you bill" if price > 0.0 else "unpriced — the street bills",
-		b.fmt(int(round(billed))),
-		b.fmt(int(round(SimCatalog.contribution(o, lc, fm)))),
-		String(o.get("unit", "unit"))],
-		Vector2(bx, y + 30.0), 19, Color(DeskKit.INK, 0.65), 700.0)
-	DeskKit.word(b, "open the full page — reprice, itemise, drop ->",
-		Vector2(bx, y + 58.0), func() -> void:
-			b.desk["mode"] = "detail"
-			b.desk["row"] = i, 19, DeskKit.PEN, 500.0)
-	return y + EXPAND_H
+	var era := s.era_index()
+	y = DeskCatalog._price_row(b, y + 4.0, o, i, era, lc, fm)
+	y = DeskCatalog.cost_story(b, y, o, era, lc, fm)
+	y = DeskCatalog.sprint_arm(b, y, o)
+	if era >= 2:
+		y = DeskCatalog._weight_row(b, y, o)
+	if era >= 3 and y + 30.0 <= DeskKit.DO_LANE_Y - 40.0:
+		y = DeskCatalog._mini_pnl(b, y, o, lc, fm)
+	DeskKit.arm(b, "drop_" + String(o.get("name", str(i))), "drop this offer ×",
+		"sure? it disappears ×", Vector2(820.0, y + 2.0), func() -> void:
+			SimCatalog.remove_offer(s, i)
+			s.log_action("DROPPED the offer: %s" % String(o.get("name", "?")))
+			b.desk["open_row"] = -1, 300.0, 22)
+	return y + 46.0
 
 ## One offer, one row, one column per truth.
 static func _row(b, y: float, i: int, s: GameState, lc: float, fm: float) -> float:

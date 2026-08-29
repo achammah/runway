@@ -714,7 +714,14 @@ namespace Runway.Game
                 _spreads.PrerollEscape();
                 return;
             }
-            if (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.B)) OpenBinder();
+            // TYPING NEVER OPENS THE BINDER (owner: it popped open mid-answer —
+            // every "b" in the journal was a hotkey). The binder's own keys
+            // carry the same writing guard.
+            var selG = UnityEngine.EventSystems.EventSystem.current != null
+                ? UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject : null;
+            bool writingG = selG != null && selG.GetComponent<TMP_InputField>() != null;
+            if (!writingG && (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.B)))
+                OpenBinder();
             // THE BADGE AND THE TICKER read ONE list (00-spine section 4): the
             // engine's attention registry. The old hardcoded OR-chain could only
             // ever know about three conditions; every desk can raise a hand now.

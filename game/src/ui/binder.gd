@@ -95,7 +95,7 @@ const PORTRAIT_PATH := "user://binder_portrait.png"
 const LABEL_RECT := Rect2(0.26, 0.42, 0.48, 0.13)
 const LABEL_FONT_SIZE := 46
 const LABEL_MIN_PX := 10
-const TOUR_FLAG := "user://seen_binder_tour"
+const TOUR_FLAG := "user://seen_binder_tour"   # legacy per-install mark (pre per-run)
 
 var state: GameState
 var generator: EventGenerator = null   # the street's pricing road (01 WAIT state)
@@ -440,8 +440,9 @@ func _refresh() -> void:
 				_open_group = gi
 				_page = want
 		_legacy_applied = _tab
-	# the first open of an install: the tour
-	if tour_enabled and _tour < 0 and not FileAccess.file_exists(TOUR_FLAG) \
+	# the first binder open of EVERY RUN tours (owner: the binder tutorial
+	# belongs to each new game, like the howto pages)
+	if tour_enabled and _tour < 0 and not FileAccess.file_exists(_tour_flag()) \
 			and _legacy_applied < 0:
 		_tour = 0
 		_tour_apply()
@@ -910,7 +911,7 @@ func _tour_apply() -> void:
 func _tour_finish() -> void:
 	_tour = -1
 	_tour_demo_red = false
-	var f := FileAccess.open(TOUR_FLAG, FileAccess.WRITE)
+	var f := FileAccess.open(_tour_flag(), FileAccess.WRITE)
 	if f != null:
 		f.store_string("1")
 		f.close()
@@ -919,13 +920,22 @@ func _tour_finish() -> void:
 	desk.clear()
 	_refresh()
 
-static func tour_seen() -> bool:
-	return FileAccess.file_exists(TOUR_FLAG)
+## The tour's mark is PER RUN (seed-keyed): a fresh game tours its binder once.
+func _tour_flag() -> String:
+	return "user://seen_binder_tour_%d" % (state.sim_seed if state != null else 0)
 
-## The how-to screen's replay: clear the mark; the next binder open tours.
+func tour_seen() -> bool:
+	return FileAccess.file_exists(_tour_flag())
+
+## The how-to screen's replay: clear EVERY tour mark (legacy + per-run);
+## the next binder open tours, whatever run is live.
 static func reset_tour() -> void:
-	if FileAccess.file_exists(TOUR_FLAG):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(TOUR_FLAG))
+	var d := DirAccess.open("user://")
+	if d == null:
+		return
+	for f in d.get_files():
+		if f.begins_with("seen_binder_tour"):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path("user://" + f))
 
 # ───────────────────────── what a desk may touch ─────────────────────────────
 ## The public half of this node: the drawing hand every desk file and the

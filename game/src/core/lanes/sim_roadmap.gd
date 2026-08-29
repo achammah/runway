@@ -53,7 +53,13 @@ const PLATFORM_DC := 12
 ## BET_PAYOFF[ambition − 1][band] · band index: brilliant 0, fine 1, risky 2, backfired 3
 const BET_PAYOFF := [[6, 4, 2, 0], [11, 7, 4, 0], [15, 10, 5, 0]]
 const BANDS := ["brilliant", "fine", "risky", "backfired"]
-const KINDS := ["quality", "retention", "reach", "debt", "platform"]
+const KINDS := ["quality", "retention", "reach", "debt", "platform", "cost_down"]
+## THE COST SPRINT (owner: the player never dials a cost — cutting one is a
+## BUILD, a sprint with the team). 3% off the offer's variable cost per payoff
+## unit, capped at 40% per sprint, floored at 20% of the fair price.
+const COST_DOWN_PCT_PER_UNIT := 3.0
+const COST_DOWN_CAP_PCT := 40.0
+const COST_DOWN_FLOOR_OF_FAIR := 0.2
 
 ## $1,200 ≈ one loaded junior-engineer week in this economy — the constant the
 ## rnd lever already prices itself in, so the desk can speak in WEEKS.
@@ -292,6 +298,29 @@ static func commit_bet(state: GameState, id: String) -> bool:
 	state.log_action("roadmap: pointed the team at '%s'" % String(bet.get("name", "")))
 	return true
 
+## THE PLAYER STARTS A COST SPRINT from the offers desk: a real bet on the
+## roadmap — it eats R&D capacity like any build and ships on the same dice.
+static func add_cost_down_bet(state: GameState, offer_name: String) -> Dictionary:
+	for bv in state.bets:
+		var bd: Dictionary = bv
+		if String(bd.get("kind", "")) == "cost_down" \
+				and String(bd.get("offer", "")) == offer_name \
+				and not bool(bd.get("shipped", false)):
+			return {"ok": false, "why": "a cost sprint for this offer is already on the board"}
+	var bet := {
+		"id": "costdown_%s_%d" % [offer_name.to_snake_case(), state.week],
+		"name": "Cost sprint — %s" % offer_name,
+		"desc": "The team rebuilds how one gets made and served. Cheaper, or nothing.",
+		"kind": "cost_down", "ambition": 1, "offer": offer_name,
+		"cost_rnd_weeks": COST_BY_AMBITION[0],
+		"committed": false, "ready": false, "shipped": false, "progress": 0.0,
+	}
+	state.bets.append(bet)
+	var went := commit_bet(state, String(bet["id"]))
+	state.log_action("cost sprint opened on '%s'%s" % [offer_name,
+		"" if went else " (parked — the team is full; commit it on the roadmap)"])
+	return {"ok": true, "committed": went}
+
 ## Stand a bet down. The team carries a quarter of the build out the door with
 ## them (docs/design/DECISIONS.md — context-switching is priced, not free).
 static func uncommit_bet(state: GameState, id: String) -> bool:
@@ -495,6 +524,22 @@ static func _apply_payoff(state: GameState, bet: Dictionary, band: String,
 				state.platform_level = mini(state.platform_level + 1, PLATFORM_MAX)
 				lines.append("  → the platform compounds: all builds ×%.2f from here"
 					% platform_mult(state))
+		"cost_down":
+			if units > 0:
+				var oname := String(bet.get("offer", ""))
+				for ov in state.offers:
+					var od: Dictionary = ov
+					if String(od.get("name", "")) != oname:
+						continue
+					var cut := minf(float(units) * COST_DOWN_PCT_PER_UNIT, COST_DOWN_CAP_PCT)
+					var floor_c := maxf(float(od.get("fair_price", 1.0))
+						* COST_DOWN_FLOOR_OF_FAIR, 0.0)
+					var before := float(od.get("unit_cost", 0.0))
+					od["unit_cost"] = maxf(before * (1.0 - cut / 100.0), floor_c)
+					lines.append("  → '%s' serves cheaper: $%d -> $%d/unit (−%d%%)" % [
+						oname, int(round(before)), int(round(float(od["unit_cost"]))),
+						int(round(cut))])
+					break
 	return units
 
 ## What the launch did to the room, and to the codebase. A refactor is never

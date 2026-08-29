@@ -214,7 +214,25 @@ static func run(ok: Callable) -> void:
 	ok.call(absf(SimRoadmap.capacity_pool(pl) - 2.5875) < 0.0001,
 		"a platform level compounds the whole pool: 2.25 x 1.15 = 2.5875")
 
+	run_cost_sprint(ok)
+
 static func _debt(v: float) -> GameState:
 	var s := _st()
 	s.tech_debt = v
 	return s
+
+## ── 7 ── THE COST SPRINT (owner: the player never dials a cost — cutting one
+## is a build with the team; brilliant amb-1 = 6 units x 3% = −18%) ──────────
+static func run_cost_sprint(ok: Callable) -> void:
+	var cs := _st()
+	cs.offers = [{"name": "Standard Session", "unit": "per session",
+		"fair_price": 40.0, "unit_cost": 10.0, "fixed_wk": 4.0, "price": 30.0,
+		"weight": 1.0}]
+	var ares := SimRoadmap.add_cost_down_bet(cs, "Standard Session")
+	ok.call(bool(ares.get("ok", false)) and bool(ares.get("committed", false))
+		and cs.bets.size() == 1,
+		"a cost sprint files as a committed roadmap bet")
+	var csb: Dictionary = cs.bets[0]
+	SimRoadmap.ship_bet(cs, csb, _roller([20]))
+	ok.call(absf(float((cs.offers[0] as Dictionary).get("unit_cost", 0.0)) - 8.2) < 0.001,
+		"a brilliant sprint cuts the serve cost 18% and respects the fair floor")

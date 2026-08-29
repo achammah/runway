@@ -233,6 +233,19 @@ namespace Runway.CoreTests
             pl.PlatformLevel = 1;
             ok(Gd.Absf(SimRoadmap.CapacityPool(pl) - 2.5875) < 0.0001,
                 "a platform level compounds the whole pool: 2.25 x 1.15 = 2.5875");
+
+            // ── 7 ── THE COST SPRINT (owner: the player never dials a cost —
+            // cutting one is a build; brilliant amb-1 = 6 units x 3% = −18%) ──
+            GameState cs = St();
+            cs.Offers = new List<Offer> { new Offer { Name = "Standard Session",
+                Unit = "per session", FairPrice = 40.0, UnitCost = 10.0,
+                FixedWk = 4.0, Price = 30.0, Weight = 1.0 } };
+            var ares = SimRoadmap.AddCostDownBet(cs, "Standard Session");
+            ok((bool)ares["ok"] && (bool)ares["committed"] && cs.Bets.Count == 1,
+                "a cost sprint files as a committed roadmap bet");
+            SimRoadmap.ShipBet(cs, cs.Bets[0], Roller(20));
+            ok(Gd.Absf(cs.Offers[0].UnitCost - 8.2) < 0.001,
+                "a brilliant sprint cuts the serve cost 18% and respects the fair floor");
         }
     }
 }

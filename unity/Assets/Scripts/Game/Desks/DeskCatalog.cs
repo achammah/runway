@@ -369,7 +369,8 @@ namespace Runway.Game
                 DeskKit.XId, y, 24f, Ink(0.6f), 1100f);
             y += 32f;
             y = PriceRow(b, y, o, era, lc, fm);
-            y = CostGroups(b, y, o, era, lc, fm);
+            y = CostStory(b, y, o, era, lc, fm);
+            y = SprintArm(b, y, o);
             if (era >= 2) y = WeightRow(b, y, o);
             // THE FLOOR UNLOCK, whenever a line still fits on the sheet. Every
             // pitch above was tightened so the densest offer the engine allows — 4
@@ -380,7 +381,7 @@ namespace Runway.Game
         }
 
         /// THE PRICE ROW — the founder's one strategic dial, with the margin it makes.
-        static float PriceRow(BinderScreen b, float y, Offer o, int era, double lc, double fm)
+        internal static float PriceRow(BinderScreen b, float y, Offer o, int era, double lc, double fm)
         {
             List<double> steps = PriceSteps(o);
             double cur = o.Price;
@@ -489,6 +490,69 @@ namespace Runway.Game
         }
 
         /// THE BLUE LINE DOES THE ARITHMETIC OUT LOUD — the patient accountant.
+        /// THE COST STORY — READ-ONLY (owner: the player never dials a cost;
+        /// the world set this service's costs, stated and explained; cutting
+        /// them is a BUILD). The full page and the open row draw this block.
+        internal static float CostStory(BinderScreen b, float y, Offer o, int era,
+                                        double lc, double fm)
+        {
+            double fair = Math.Max(o.FairPrice, 1.0);
+            b.L("what one sale costs — the world set these when the offer was written",
+                DeskKit.XId, y, DeskKit.Detail, Ink(0.55f), 900f);
+            y += 30f;
+            if (era >= 1 && o.CostLines != null && o.CostLines.Count > 0)
+            {
+                for (int li = 0; li < o.CostLines.Count; li++)
+                {
+                    CostLine ld = o.CostLines[li];
+                    b.L(string.Format(CultureInfo.InvariantCulture,
+                        "{0} — ${1} ({2}% of the going rate)", ld.Label ?? "line",
+                        Money(ld.Amount), (int)Math.Round(ld.Amount / fair * 100.0)),
+                        40f, y, DeskKit.Detail, Ink(0.7f), 900f);
+                    y += 26f;
+                }
+            }
+            y = SumLine(b, y, string.Format(CultureInfo.InvariantCulture,
+                "= serve cost ${0}/unit (served at ×{1:0.00} today) · standing tools ${2}/wk",
+                Money(o.UnitCost), lc, Money(o.FixedWk)), DrawnUI.Blue);
+            int be = SimCatalog.BreakEven(o, lc, fm);
+            if (be < 0)
+                y = SumLine(b, y, string.Format(CultureInfo.InvariantCulture,
+                    "this price never pays for itself — every sale loses ${0}",
+                    Money(-SimCatalog.Contribution(o, lc, fm))), DrawnUI.Coral);
+            else
+                y = SumLine(b, y, string.Format(CultureInfo.InvariantCulture,
+                    "break-even: {0} sales/wk pay the standing costs", be), DrawnUI.Blue);
+            b.L("costs only fall when the team rebuilds how this one is made — a cost sprint below",
+                DeskKit.XId, y, DeskKit.Law, Ink(0.45f), 1080f);
+            return y + 26f;
+        }
+
+        /// THE SPRINT ARM — the one road to a cheaper serve: a real roadmap bet
+        /// the team builds (R&D capacity, the dice at ship). Two-tap.
+        internal static float SprintArm(BinderScreen b, float y, Offer o)
+        {
+            string nm = o.Name ?? "";
+            bool has = false;
+            for (int i = 0; i < b.State.Bets.Count; i++)
+            {
+                Bet bd = b.State.Bets[i];
+                if (bd.Kind == "cost_down" && (bd.Offer ?? "") == nm && !bd.Shipped)
+                    has = true;
+            }
+            if (has)
+            {
+                b.L("a cost sprint for this offer is on the roadmap — the team is on it",
+                    DeskKit.XId, y, DeskKit.Detail, Ink(0.55f), 900f);
+                return y + 30f;
+            }
+            GameState stS = b.State;
+            DeskKit.Arm(b, "sprint_" + nm, "start a cost sprint — the team rebuilds it",
+                "3 R&D-weeks of the team — sure?", DeskKit.XId, y,
+                () => SimRoadmap.AddCostDownBet(stS, nm), 560f, 22f);
+            return y + 44f;
+        }
+
         static float SumLine(BinderScreen b, float y, string text, Color col)
         {
             TextMeshProUGUI l = b.L(text, DeskKit.XId + 18f, y, 22f, col, 1080f);
@@ -527,7 +591,7 @@ namespace Runway.Game
 
         /// THE SHELF METER (office+): weight is share-of-wallet, and the wallet is
         /// finite. The bound prints its own reason, which IS the lesson.
-        static float WeightRow(BinderScreen b, float y, Offer o)
+        internal static float WeightRow(BinderScreen b, float y, Offer o)
         {
             GameState st = b.State;
             double cur = o.Weight;
@@ -551,7 +615,7 @@ namespace Runway.Game
         }
 
         /// THE OFFER'S OWN P&L (floor+): a product line reads like a small company.
-        static float MiniPnl(BinderScreen b, float y, Offer o, double lc, double fm)
+        internal static float MiniPnl(BinderScreen b, float y, Offer o, double lc, double fm)
         {
             GameState st = b.State;
             double sales = st.Traction * o.Weight * SimEngine.OfferCadence(o.Unit);

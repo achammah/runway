@@ -57,7 +57,6 @@ namespace Runway.Game
         const float ColExpandX = 986f;
         const float ColAdjustX = 1028f;
         const float RowH = 52f;
-        const float ExpandH = 92f;    // the unwrapped row's in-place band
         const int ListShow = 6;
 
         static readonly Color Pos = DrawnUI.Hex("5D7A50");
@@ -228,25 +227,30 @@ namespace Runway.Game
             List<int> shown;
             int folded;
             VisibleRows(s, lc, out shown, out folded);
-            // THE UNWRAPPED ROW (owner: details unroll in place, never a new
-            // screen): the mark toggles one row open; the card grows by the band
+            // THE UNWRAPPED ROW TAKES OVER (owner: every control HERE, no
+            // separate page): the open offer's row stays in the card, the
+            // others fold under it, and its whole ledger — price, the world's
+            // costs, the sprint, the drop — draws below on the same sheet.
             int openI = b.Desk.ContainsKey("open_row") ? Convert.ToInt32(b.Desk["open_row"]) : -1;
-            bool openVis = shown.Contains(openI);
-            float cardH = DeskKit.CardHead + 30f + shown.Count * RowH
-                + (openVis ? ExpandH : 0f) + 26f;
+            bool openVis = openI >= 0 && openI < s.Offers.Count;
+            List<int> rows = openVis ? new List<int> { openI } : shown;
+            int hidden = openVis ? shown.Count - 1 + folded : folded;
+            float cardH = DeskKit.CardHead + 30f + rows.Count * RowH + 26f;
             DeskKit.CardBox frame = DeskKit.CardFrame(b, 10f, y, 1120f, cardH, "the rate card");
             float cy = frame.ContentY;
             cy = HeadRow(b, cy);
-            for (int n = 0; n < shown.Count; n++)
-            {
-                cy = Row(b, cy, shown[n], s, lc, fm);
-                if (shown[n] == openI)
-                    cy = RowBand(b, cy, shown[n], s, lc, fm);
-            }
+            for (int n = 0; n < rows.Count; n++)
+                cy = Row(b, cy, rows[n], s, lc, fm);
             y = frame.Bottom + 10f;
-            if (folded > 0)
-                y = DeskKit.FoldRow(b, DeskKit.XId, y, folded, "offers, healthy",
-                    () => b.Desk["mode"] = "all");
+            if (openVis)
+                y = OpenDetail(b, y, openI, s, lc, fm);
+            if (hidden > 0)
+            {
+                bool ov = openVis;
+                y = DeskKit.FoldRow(b, DeskKit.XId, y, hidden,
+                    ov ? "offers behind the open one" : "offers, healthy",
+                    () => { if (ov) b.Desk["open_row"] = -1; else b.Desk["mode"] = "all"; });
+            }
             if (s.BizWho == "Enterprise")
                 y = NamedAccountsLine(b, s, y);
             DefineDoor(b, y + 6f);
@@ -367,34 +371,31 @@ namespace Runway.Game
             return y + RowH;
         }
 
-        /// THE UNWRAPPED BAND — the offer's read, unrolled in place under its
-        /// row. The full page (reprice, itemise, drop) stays one press away.
-        static float RowBand(BinderScreen b, float y, int i, GameState s, double lc, double fm)
+        /// THE OPEN LEDGER — the whole offer under its row, on the same sheet
+        /// (owner: all the control here, never a separate page): the price dial
+        /// (the founder's ONE dial on this side is price), the world's stated
+        /// costs, shelf weight where the era grants it, the sprint, the drop.
+        static float OpenDetail(BinderScreen b, float y, int i, GameState s,
+                                double lc, double fm)
         {
             Offer o = s.Offers[i];
-            float bx = ColNameX + 16f;
-            double price = o.Price;
-            double fair = o.FairPrice * fm;
-            double billed = price > 0.0 ? price : fair;
-            string learned = lc < 0.995
-                ? " (learning ×" + lc.ToString("0.00", CultureInfo.InvariantCulture) + ")" : "";
-            int war = Gd.RoundToInt((1.0 - fm) * 100.0);
-            b.L("the street charges ≈ $" + GameUi.Money(Gd.RoundToInt(fair))
-                + (war > 0 ? " (price war: −" + war + "%)" : "")
-                + " · a sale costs ≈ $" + GameUi.Money(Gd.RoundToInt(SimCatalog.ServedUnitCost(o, lc)))
-                + " to serve" + learned
-                + " · fixed $" + GameUi.Money(Gd.RoundToInt(o.FixedWk)) + "/wk",
-                bx, y + 2f, 19f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.65f), 1040f);
-            b.L((price > 0.0 ? "you bill" : "unpriced — the street bills")
-                + " $" + GameUi.Money(Gd.RoundToInt(billed))
-                + " − the serve = $" + GameUi.Money(Gd.RoundToInt(SimCatalog.Contribution(o, lc, fm)))
-                + " kept, per " + (string.IsNullOrEmpty(o.Unit) ? "unit" : o.Unit),
-                bx, y + 30f, 19f, DrawnUI.WithAlpha(DrawnUI.Ink, 0.65f), 700f);
+            int era = s.EraIndex();
+            y = DeskCatalog.PriceRow(b, y + 4f, o, era, lc, fm);
+            y = DeskCatalog.CostStory(b, y, o, era, lc, fm);
+            y = DeskCatalog.SprintArm(b, y, o);
+            if (era >= 2) y = DeskCatalog.WeightRow(b, y, o);
+            if (era >= 3 && y + 30f <= DeskKit.DoLaneY - 40f)
+                y = DeskCatalog.MiniPnl(b, y, o, lc, fm);
             int idx = i;
-            DeskKit.Word(b, "open the full page — reprice, itemise, drop ->", bx, y + 58f,
-                () => { b.Desk["mode"] = "detail"; b.Desk["row"] = idx; },
-                19f, DrawnUI.Coral, 500f);
-            return y + ExpandH;
+            string nm = o.Name ?? idx.ToString(CultureInfo.InvariantCulture);
+            DeskKit.Arm(b, "drop_" + nm, "drop this offer ×", "sure? it disappears ×",
+                820f, y + 2f, () =>
+                {
+                    SimCatalog.RemoveOffer(s, idx);
+                    s.LogAction("DROPPED the offer: " + nm);
+                    b.Desk["open_row"] = -1;
+                }, 300f, 22f);
+            return y + 46f;
         }
 
         /// THE DEMAND VERDICT — one colored word, the heat ramp, never a sentence.

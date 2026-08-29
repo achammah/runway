@@ -78,7 +78,13 @@ namespace Runway.Game
         public static readonly Rect LabelRect = new Rect(0.26f, 0.42f, 0.48f, 0.13f);
         public const float LabelFontSize = 46f;
         public const float LabelMinPx = 10f;
-        const string TourFlagFile = "seen_binder_tour.unity";
+        const string TourFlagFile = "seen_binder_tour.unity";   // legacy per-install mark
+
+        /// The tour's mark is PER RUN (seed-keyed): a fresh game tours its binder once.
+        string TourFlag()
+        {
+            return "seen_binder_tour_" + (_st != null ? _st.SimSeed : 0) + ".unity";
+        }
 
         public static readonly int[] LeverSteps = { 0, 250, 500, 1000, 2000, 4000, 8000 };
 
@@ -254,7 +260,8 @@ namespace Runway.Game
             StartCoroutine(DrawnUI.FadeTo(g, 1f, 0.2f));
 
             // the first open of an install: the tour
-            if (TourEnabled && _tourStep < 0 && !TourSeen() && _legacyApplied < 0)
+            if (TourEnabled && _tourStep < 0
+                && !System.IO.File.Exists(RunwayPaths.User(TourFlag())) && _legacyApplied < 0)
             {
                 _tourStep = 0;
                 TourApply();
@@ -907,7 +914,7 @@ namespace Runway.Game
         {
             _tourStep = -1;
             _tourDemoRed = false;
-            try { System.IO.File.WriteAllText(RunwayPaths.User(TourFlagFile), "1"); }
+            try { System.IO.File.WriteAllText(RunwayPaths.User(TourFlag()), "1"); }
             catch (Exception) { }
             _openGroup = 3;
             _page = "this week";
