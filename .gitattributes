@@ -4,3 +4,4 @@ game/assets/**/*.mp4 filter=lfs diff=lfs merge=lfs -text
 game/assets/**/*.wav filter=lfs diff=lfs merge=lfs -text
 music/** filter=lfs diff=lfs merge=lfs -text
 game/*.mp4 filter=lfs diff=lfs merge=lfs -text
+game/stage_new_loop.mp4 filter=lfs diff=lfs merge=lfs -text

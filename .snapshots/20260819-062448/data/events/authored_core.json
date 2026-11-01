@@ -1,0 +1,134 @@
+{
+  "events": [
+    {
+      "id": "evt_ramen_week",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 3,
+      "requires": {"cash_lte": 3000},
+      "title": "Ramen Math",
+      "body": "You've computed it: 41 more days of ramen, 38 if you keep buying the good kind. The spreadsheet is named runway_final_FINAL.xlsx.",
+      "choices": [
+        {"label": "Cheap ramen. Extend runway.", "effects": [{"op": "cash_delta", "v": 300}, {"op": "morale_delta", "v": -8}]},
+        {"label": "Good ramen. Morale matters.", "effects": [{"op": "cash_delta", "v": -200}, {"op": "morale_delta", "v": 6}]}
+      ]
+    },
+    {
+      "id": "evt_cofounder_pitch",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 4,
+      "requires": {"items_any": ["itm_roommate"], "flags_none": ["has_cofounder"]},
+      "title": "The Roommate Talk",
+      "body": "Your roommate finally asks what you actually do all day. This is either the pitch of your life or the end of cheap rent.",
+      "choices": [
+        {"label": "Pitch them. Offer 30%.", "effects": [{"op": "set_flag", "v": "has_cofounder"}, {"op": "equity_delta", "v": -30}, {"op": "product_delta", "v": 10}]},
+        {"label": "Stay solo. Stay whole.", "effects": [{"op": "morale_delta", "v": -5}, {"op": "set_flag", "v": "lone_wolf"}]}
+      ]
+    },
+    {
+      "id": "evt_server_overheats",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 3,
+      "requires": {"items_any": ["itm_dads_server"]},
+      "title": "The Server Smells Like Toast",
+      "body": "Dad's old server is doing its best. Its best involves a smell you last encountered at a house fire. It hosts everything.",
+      "choices": [
+        {"label": "Buy fans. Boring. Works.", "effects": [{"op": "cash_delta", "v": -150}]},
+        {"label": "Open window. Pray.", "effects": [{"op": "arm_timebomb", "weeks": 3, "event": "evt_laptop_dies"}, {"op": "morale_delta", "v": 2}]}
+      ]
+    },
+    {
+      "id": "evt_laptop_dies",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 0,
+      "requires": {},
+      "title": "Everything Is On Fire (Locally)",
+      "body": "The hardware gave out mid-deploy, exactly as foreshadowed. The backup strategy was 'be lucky'.",
+      "choices": [
+        {"label": "Emergency replacement. Ouch.", "effects": [{"op": "cash_delta", "v": -900}, {"op": "product_delta", "v": -5}]},
+        {"label": "Rebuild from memory.", "effects": [{"op": "product_delta", "v": -15}, {"op": "morale_delta", "v": -10}]}
+      ]
+    },
+    {
+      "id": "evt_energy_crash",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 2,
+      "requires": {"items_any": ["itm_energy_drinks"]},
+      "title": "The Fourth Can",
+      "body": "You can hear colors. The code you wrote at 4am is either genius or a war crime. You'll know tomorrow.",
+      "choices": [
+        {"label": "Ship it tonight.", "effects": [{"op": "product_delta", "v": 8}, {"op": "arm_timebomb", "weeks": 2, "event": "evt_bug_avalanche"}]},
+        {"label": "Sleep. Review tomorrow.", "effects": [{"op": "product_delta", "v": 3}, {"op": "morale_delta", "v": 4}]}
+      ]
+    },
+    {
+      "id": "evt_bug_avalanche",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 0,
+      "requires": {},
+      "title": "The 4am Code Awakens",
+      "body": "Users found the code you shipped at 4am. All of them found it. Simultaneously. It was a war crime.",
+      "choices": [
+        {"label": "Hotfix weekend. No sleep.", "effects": [{"op": "product_delta", "v": -3}, {"op": "morale_delta", "v": -8}]},
+        {"label": "Call it a feature.", "effects": [{"op": "hype_delta", "v": 5}, {"op": "traction_mult", "v": 0.9}]}
+      ]
+    },
+    {
+      "id": "evt_first_user",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 3,
+      "requires": {"product_gte": 30, "flags_none": ["first_user"]},
+      "title": "Someone Signed Up",
+      "body": "A real human made an account. Voluntarily. You've checked six times that it isn't your mom. It isn't. Probably.",
+      "choices": [
+        {"label": "Email them personally.", "effects": [{"op": "set_flag", "v": "first_user"}, {"op": "traction_delta", "v": 5}, {"op": "morale_delta", "v": 10}]},
+        {"label": "Screenshot. Tweet. Celebrate.", "effects": [{"op": "set_flag", "v": "first_user"}, {"op": "hype_delta", "v": 8}, {"op": "morale_delta", "v": 6}]}
+      ]
+    },
+    {
+      "id": "evt_guitar_solace",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 2,
+      "requires": {"items_any": ["itm_guitar"], "morale_lte": 40},
+      "title": "Wonderwall, Obviously",
+      "body": "It's 2am and you're playing the four chords you know to an audience of one houseplant. It helps. Somehow it helps.",
+      "choices": [
+        {"label": "Play until it's fine.", "effects": [{"op": "morale_delta", "v": 12}, {"op": "product_delta", "v": -2}]},
+        {"label": "Back to work.", "effects": [{"op": "morale_delta", "v": 2}]}
+      ]
+    },
+    {
+      "id": "evt_gym_cancel",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 2,
+      "requires": {"items_any": ["itm_gym_card"], "cash_lte": 2000},
+      "title": "The Membership Question",
+      "body": "You haven't gone in seven weeks but cancelling feels like admitting something. The founder body is a temple. A condemned one.",
+      "choices": [
+        {"label": "Cancel. It's $40/week.", "effects": [{"op": "cash_delta", "v": 160}, {"op": "destroy_item", "v": "itm_gym_card"}]},
+        {"label": "Keep it. Future you exists.", "effects": [{"op": "morale_delta", "v": 3}]}
+      ]
+    },
+    {
+      "id": "evt_plant_talk",
+      "tier": "authored",
+      "era": ["garage"],
+      "weight": 2,
+      "requires": {"items_any": ["itm_houseplant"], "morale_lte": 35},
+      "title": "The Plant Gets It",
+      "body": "You've explained your caching architecture to the houseplant. It nodded, in a plant way. Best meeting this quarter.",
+      "choices": [
+        {"label": "Continue the standup.", "effects": [{"op": "morale_delta", "v": 8}]},
+        {"label": "Question your sanity.", "effects": [{"op": "morale_delta", "v": 3}, {"op": "product_delta", "v": 2}]}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,612 @@
+{
+	"events": [
+		{
+			"id": "evt_seed_termsheet",
+			"tier": "authored",
+			"era": [
+				"coworking",
+				"office"
+			],
+			"weight": 7,
+			"requires": {
+				"traction_gte": 15,
+				"flags_none": [
+					"seed_raised"
+				]
+			},
+			"title": "The Term Sheet",
+			"body": "It's real. $600k at a number that made you sit down. Page four, clause three: a 15% option pool, carved out before their money lands. 'Standard,' says their associate, who is 24 and wearing a vest.",
+			"choices": [
+				{
+					"label": "Sign as-is. Money now.",
+					"effects": [
+						{
+							"op": "raise_round",
+							"v": "seed"
+						},
+						{
+							"op": "cash_delta",
+							"v": 120000
+						},
+						{
+							"op": "dilute_pct",
+							"v": 18
+						},
+						{
+							"op": "dilute_pct",
+							"v": 15
+						},
+						{
+							"op": "set_flag",
+							"v": "took_standard_pool"
+						},
+						{
+							"op": "hype_delta",
+							"v": 8
+						}
+					]
+				},
+				{
+					"label": "Negotiate the pool down.",
+					"effects": [
+						{
+							"op": "raise_round",
+							"v": "seed"
+						},
+						{
+							"op": "cash_delta",
+							"v": 110000
+						},
+						{
+							"op": "dilute_pct",
+							"v": 18
+						},
+						{
+							"op": "dilute_pct",
+							"v": 8
+						},
+						{
+							"op": "morale_delta",
+							"v": 5
+						},
+						{
+							"op": "hype_delta",
+							"v": 5
+						}
+					]
+				},
+				{
+					"label": "Walk. Bootstrap harder.",
+					"effects": [
+						{
+							"op": "morale_delta",
+							"v": -5
+						},
+						{
+							"op": "set_flag",
+							"v": "walked_from_seed"
+						},
+						{
+							"op": "hype_delta",
+							"v": 3
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_office_lease",
+			"tier": "authored",
+			"era": [
+				"office"
+			],
+			"weight": 5,
+			"requires": {
+				"flags_none": [
+					"office_furnished"
+				]
+			},
+			"title": "Four Walls, One Door",
+			"body": "An actual office. The door has a lock and, soon, your logo. The landlord calls the mold 'character.' Your cofounder is measuring where the couch from the coworking era would go. You did not take the couch.",
+			"choices": [
+				{
+					"label": "Furnish it properly.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": -18000
+						},
+						{
+							"op": "set_flag",
+							"v": "office_furnished"
+						},
+						{
+							"op": "morale_delta",
+							"v": 8
+						}
+					]
+				},
+				{
+					"label": "Folding tables. Ship product.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": -2500
+						},
+						{
+							"op": "set_flag",
+							"v": "office_furnished"
+						},
+						{
+							"op": "set_flag",
+							"v": "scrappy_office"
+						},
+						{
+							"op": "product_delta",
+							"v": 4
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_server_closet",
+			"tier": "authored",
+			"era": [
+				"office"
+			],
+			"weight": 4,
+			"requires": {
+				"flags_all": [
+					"office_furnished"
+				],
+				"flags_none": [
+					"closet_resolved"
+				]
+			},
+			"title": "The Closet That Hums",
+			"body": "Your infra lives in a closet next to the mop. It hums. Lately it also clicks. An engineer describes the cooling as 'a fan I bought with my own money.' The click is getting faster.",
+			"choices": [
+				{
+					"label": "Migrate to real cloud infra.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": -22000
+						},
+						{
+							"op": "set_flag",
+							"v": "closet_resolved"
+						},
+						{
+							"op": "product_delta",
+							"v": 5
+						}
+					]
+				},
+				{
+					"label": "It's held so far. Ship features.",
+					"effects": [
+						{
+							"op": "product_delta",
+							"v": 6
+						},
+						{
+							"op": "arm_timebomb",
+							"weeks": 5,
+							"event": "evt_server_fire"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_server_fire",
+			"tier": "authored",
+			"era": [
+				"office",
+				"floor"
+			],
+			"weight": 0,
+			"title": "The Closet Stops Humming",
+			"body": "At 3:14am the closet achieves silence, then smoke. The mop is fine. The database is not. Somewhere, seventeen thousand user sessions become an anecdote.",
+			"choices": [
+				{
+					"label": "All hands. Rebuild from backups.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": -30000
+						},
+						{
+							"op": "traction_mult",
+							"v": 0.75
+						},
+						{
+							"op": "morale_delta",
+							"v": -10
+						},
+						{
+							"op": "set_flag",
+							"v": "closet_resolved"
+						}
+					]
+				},
+				{
+					"label": "Honest postmortem, public.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": -40000
+						},
+						{
+							"op": "traction_mult",
+							"v": 0.85
+						},
+						{
+							"op": "hype_delta",
+							"v": 6
+						},
+						{
+							"op": "set_flag",
+							"v": "closet_resolved"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_hiring_spree",
+			"tier": "authored",
+			"era": [
+				"office"
+			],
+			"weight": 4,
+			"requires": {
+				"flags_all": [
+					"seed_raised"
+				],
+				"cash_gte": 60000
+			},
+			"title": "Everyone Is Hiring, So",
+			"body": "The seed is in the bank and the bank keeps showing you the balance. Recruiters have found you. One candidate is excellent and expensive. One is cheap and 'coachable.' Your calendar is now only interviews.",
+			"choices": [
+				{
+					"label": "The excellent one. Pay up.",
+					"effects": [
+						{
+							"op": "hire",
+							"name": "Marcus",
+							"role": "senior engineer",
+							"salary": 4200,
+							"quirk": "rewrites everything once"
+						},
+						{
+							"op": "product_delta",
+							"v": 6
+						}
+					]
+				},
+				{
+					"label": "Two coachable ones instead.",
+					"effects": [
+						{
+							"op": "hire",
+							"name": "Dee",
+							"role": "junior engineer",
+							"salary": 1900,
+							"quirk": "asks great dumb questions"
+						},
+						{
+							"op": "hire",
+							"name": "Tomas",
+							"role": "support",
+							"salary": 1600,
+							"quirk": "types in lowercase only"
+						},
+						{
+							"op": "morale_delta",
+							"v": 4
+						}
+					]
+				},
+				{
+					"label": "Freeze hiring. Runway first.",
+					"effects": [
+						{
+							"op": "morale_delta",
+							"v": -3
+						},
+						{
+							"op": "set_flag",
+							"v": "lean_team"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_pmf_signal",
+			"tier": "authored",
+			"era": [
+				"office"
+			],
+			"weight": 6,
+			"requires": {
+				"traction_gte": 45,
+				"flags_none": [
+					"pmf"
+				]
+			},
+			"title": "The Graph Does the Thing",
+			"body": "Retention curve: flat. Flat is the dream — the cohort that came, stayed. Users complain when you're down, which is what love looks like in this business. Your support inbox says 'please never shut down' twice.",
+			"choices": [
+				{
+					"label": "Call it: product-market fit.",
+					"effects": [
+						{
+							"op": "set_flag",
+							"v": "pmf"
+						},
+						{
+							"op": "morale_delta",
+							"v": 10
+						},
+						{
+							"op": "hype_delta",
+							"v": 6
+						}
+					]
+				},
+				{
+					"label": "One more cohort to be sure.",
+					"effects": [
+						{
+							"op": "product_delta",
+							"v": 4
+						},
+						{
+							"op": "weight_future",
+							"v": "evt_pmf_signal"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_enterprise_pilot",
+			"tier": "authored",
+			"era": [
+				"office"
+			],
+			"weight": 6,
+			"requires": {
+				"traction_gte": 40
+			},
+			"title": "The Whale Wants a Pilot",
+			"body": "A company with a lobby wants a pilot. Their security questionnaire is 214 questions. Question 41 asks about your 'disaster recovery site.' You have a closet. Their budget has more digits than your ARR.",
+			"choices": [
+				{
+					"label": "Say yes. Answer all 214.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": 45000
+						},
+						{
+							"op": "product_delta",
+							"v": -6
+						},
+						{
+							"op": "morale_delta",
+							"v": -4
+						},
+						{
+							"op": "set_flag",
+							"v": "enterprise_logo"
+						}
+					]
+				},
+				{
+					"label": "Stay self-serve. Politely no.",
+					"effects": [
+						{
+							"op": "traction_delta",
+							"v": 8
+						},
+						{
+							"op": "morale_delta",
+							"v": 3
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_pilot_renewal",
+			"tier": "authored",
+			"era": [
+				"office",
+				"floor"
+			],
+			"weight": 4,
+			"requires": {
+				"flags_all": [
+					"enterprise_logo"
+				]
+			},
+			"title": "The Whale Re-Signs",
+			"body": "The pilot worked. Procurement sends the renewal with a straight face and a 12% 'partnership discount' they awarded themselves. Legal redlined your logo. Still: it's an annual contract, and annual means money.",
+			"choices": [
+				{
+					"label": "Sign. Revenue is revenue.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": 40000
+						},
+						{
+							"op": "product_delta",
+							"v": -3
+						}
+					]
+				},
+				{
+					"label": "Push back on the discount.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": 30000
+						},
+						{
+							"op": "morale_delta",
+							"v": 4
+						},
+						{
+							"op": "traction_delta",
+							"v": 8
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_acquisition_office",
+			"tier": "authored",
+			"era": [
+				"office"
+			],
+			"weight": 1,
+			"requires": {
+				"traction_gte": 60,
+				"hype_gte": 25,
+				"week_gte": 20,
+				"flags_none": [
+					"acquired_exit",
+					"offer_cooldown",
+					"no_more_offers"
+				]
+			},
+			"title": "Lunch With the Corp Dev Guy",
+			"body": "A large company's 'corporate development' team invites you to lunch. Corp dev is the department that eats startups. The offer arrives with dessert: real money, your team absorbed, your product 'sunset eventually, probably.'",
+			"choices": [
+				{
+					"label": "Take the exit. Bank it.",
+					"effects": [
+						{
+							"op": "accept_acquisition",
+							"v": 0.6
+						}
+					]
+				},
+				{
+					"label": "Decline. Leak it for hype.",
+					"effects": [
+						{
+							"op": "hype_delta",
+							"v": 9
+						},
+						{
+							"op": "set_flag",
+							"v": "turned_down_offer"
+						},
+						{
+							"op": "morale_delta",
+							"v": 4
+						},
+						{
+							"op": "set_flag",
+							"v": "offer_cooldown"
+						},
+						{
+							"op": "arm_timebomb",
+							"weeks": 6,
+							"event": "evt_suitors_return"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_journalist_profile",
+			"tier": "authored",
+			"era": [
+				"office"
+			],
+			"weight": 3,
+			"requires": {
+				"hype_gte": 15
+			},
+			"title": "The Profile Piece",
+			"body": "A journalist wants to profile you. 'A day in the life.' They will notice the mold. They will ask about the time you called your competitor 'a lavender-scented photocopier' and whether you regret it.",
+			"choices": [
+				{
+					"label": "Full access. Be charming.",
+					"effects": [
+						{
+							"op": "hype_delta",
+							"v": 10
+						},
+						{
+							"op": "traction_delta",
+							"v": 10
+						},
+						{
+							"op": "arm_timebomb",
+							"weeks": 3,
+							"event": "evt_profile_lands"
+						}
+					]
+				},
+				{
+					"label": "Email interview only.",
+					"effects": [
+						{
+							"op": "hype_delta",
+							"v": 4
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_profile_lands",
+			"tier": "authored",
+			"era": [
+				"office",
+				"floor"
+			],
+			"weight": 0,
+			"title": "The Piece Is Out",
+			"body": "Headline: 'The Founder Who Sleeps Under a Desk (and Says It's a Strategy).' It's 60% flattering, 40% the mold. Your inbox splits evenly between investors and a mattress sponsorship.",
+			"choices": [
+				{
+					"label": "Ride the wave. Post through it.",
+					"effects": [
+						{
+							"op": "traction_delta",
+							"v": 14
+						},
+						{
+							"op": "hype_delta",
+							"v": 6
+						}
+					]
+				},
+				{
+					"label": "Lie low. Let it pass.",
+					"effects": [
+						{
+							"op": "morale_delta",
+							"v": 4
+						},
+						{
+							"op": "product_delta",
+							"v": 3
+						}
+					]
+				}
+			]
+		}
+	]
+}

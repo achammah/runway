@@ -1,0 +1,763 @@
+{
+	"events": [
+		{
+			"id": "evt_desk_47",
+			"tier": "authored",
+			"era": [
+				"coworking"
+			],
+			"weight": 5,
+			"requires": {
+				"flags_none": [
+					"settled_in"
+				]
+			},
+			"title": "Desk 47",
+			"body": "You have a desk now. It wobbles. The startup to your left does dropshipping. The one to your right meditates loudly at 10am. The wifi password is 'synergy2024'. This is progress, technically.",
+			"choices": [
+				{
+					"label": "Settle in. Ship from here.",
+					"effects": [
+						{
+							"op": "set_flag",
+							"v": "settled_in"
+						},
+						{
+							"op": "product_delta",
+							"v": 4
+						}
+					]
+				},
+				{
+					"label": "Befriend the neighbors first.",
+					"effects": [
+						{
+							"op": "set_flag",
+							"v": "settled_in"
+						},
+						{
+							"op": "set_flag",
+							"v": "coworking_allies"
+						},
+						{
+							"op": "morale_delta",
+							"v": 5
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_community_manager",
+			"tier": "authored",
+			"era": [
+				"coworking"
+			],
+			"weight": 4,
+			"title": "The Community Manager",
+			"body": "Bex from the front desk wants you to present at Community Pizza Thursday. 'Just five minutes! Everyone does it!' Everyone has not done it. The dropshippers have done it twice.",
+			"choices": [
+				{
+					"label": "Present. Free pizza, free reps.",
+					"effects": [
+						{
+							"op": "hype_delta",
+							"v": 6
+						},
+						{
+							"op": "set_flag",
+							"v": "did_demos"
+						},
+						{
+							"op": "morale_delta",
+							"v": 3
+						}
+					]
+				},
+				{
+					"label": "Decline. Headphones on.",
+					"effects": [
+						{
+							"op": "product_delta",
+							"v": 5
+						},
+						{
+							"op": "morale_delta",
+							"v": -2
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_launch_day",
+			"tier": "authored",
+			"era": [
+				"coworking"
+			],
+			"weight": 6,
+			"requires": {
+				"product_gte": 55,
+				"flags_none": [
+					"launched"
+				]
+			},
+			"title": "Launch Day",
+			"body": "The button says LAUNCH. You wrote the button. You've rewritten the announcement post nine times. Your cofounder is holding a phone, filming you for reasons neither of you can explain.",
+			"choices": [
+				{
+					"label": "Push it. Ready is a myth.",
+					"effects": [
+						{
+							"op": "set_flag",
+							"v": "launched"
+						},
+						{
+							"op": "traction_delta",
+							"v": 12
+						},
+						{
+							"op": "hype_delta",
+							"v": 8
+						},
+						{
+							"op": "morale_delta",
+							"v": 8
+						}
+					]
+				},
+				{
+					"label": "One more week of polish.",
+					"effects": [
+						{
+							"op": "product_delta",
+							"v": 6
+						},
+						{
+							"op": "morale_delta",
+							"v": -4
+						},
+						{
+							"op": "weight_future",
+							"v": "evt_launch_day"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_first_hire",
+			"tier": "authored",
+			"era": [
+				"coworking"
+			],
+			"weight": 5,
+			"requires": {
+				"cash_gte": 4000,
+				"flags_none": [
+					"hired_once"
+				]
+			},
+			"title": "The First Hire",
+			"body": "Priya answered your janky job post. She's better than both of you at the thing you're worst at, and she knows it. She'll take below-market for 'a real title and no meetings before ten.'",
+			"choices": [
+				{
+					"label": "Hire her. Head of Everything.",
+					"effects": [
+						{
+							"op": "hire",
+							"name": "Priya",
+							"role": "engineer",
+							"salary": 1400,
+							"quirk": "no meetings before ten"
+						},
+						{
+							"op": "set_flag",
+							"v": "hired_once"
+						},
+						{
+							"op": "morale_delta",
+							"v": 5
+						}
+					]
+				},
+				{
+					"label": "Not yet. Payroll is forever.",
+					"effects": [
+						{
+							"op": "morale_delta",
+							"v": -3
+						},
+						{
+							"op": "weight_future",
+							"v": "evt_first_hire"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_pricing_fight",
+			"tier": "authored",
+			"era": [
+				"coworking"
+			],
+			"weight": 4,
+			"requires": {
+				"flags_all": [
+					"launched"
+				]
+			},
+			"title": "The Pricing Page War",
+			"body": "Your cofounder wants $9/mo, 'accessible.' You want $49, 'serious.' The whiteboard now has a graph neither of you understands. Bex has started charging you for markers.",
+			"choices": [
+				{
+					"label": "$49. Charge like you mean it.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": 1800
+						},
+						{
+							"op": "traction_delta",
+							"v": -4
+						},
+						{
+							"op": "set_flag",
+							"v": "premium_pricing"
+						}
+					]
+				},
+				{
+					"label": "$9. Volume will save us.",
+					"effects": [
+						{
+							"op": "traction_delta",
+							"v": 10
+						},
+						{
+							"op": "cash_delta",
+							"v": 400
+						},
+						{
+							"op": "set_flag",
+							"v": "cheap_pricing"
+						}
+					]
+				},
+				{
+					"label": "Free tier. Worry later.",
+					"effects": [
+						{
+							"op": "traction_delta",
+							"v": 18
+						},
+						{
+							"op": "morale_delta",
+							"v": -3
+						},
+						{
+							"op": "arm_timebomb",
+							"weeks": 4,
+							"event": "evt_free_tier_bill"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_free_tier_bill",
+			"tier": "authored",
+			"era": [
+				"coworking",
+				"office"
+			],
+			"weight": 0,
+			"title": "The Free Tier Sends Its Regards",
+			"body": "Four thousand free users. Zero dollars. One hosting invoice with a comma in it. The 'worry later' era has ended; it is later.",
+			"choices": [
+				{
+					"label": "Add a paywall overnight.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": 1200
+						},
+						{
+							"op": "traction_mult",
+							"v": 0.8
+						},
+						{
+							"op": "hype_delta",
+							"v": -5
+						}
+					]
+				},
+				{
+					"label": "Eat the bill. Ride the growth.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": -2600
+						},
+						{
+							"op": "traction_delta",
+							"v": 8
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_press_mention",
+			"tier": "authored",
+			"era": [
+				"coworking"
+			],
+			"weight": 4,
+			"requires": {
+				"flags_all": [
+					"launched"
+				],
+				"hype_gte": 10
+			},
+			"title": "Paragraph Nine",
+			"body": "A tech blog covered your space. You're in paragraph nine: 'other tenants include a promising if unpolished tool.' Your mother has already framed it. The dropshippers are in paragraph two.",
+			"choices": [
+				{
+					"label": "Milk it. 'As seen in—'",
+					"effects": [
+						{
+							"op": "hype_delta",
+							"v": 7
+						},
+						{
+							"op": "traction_delta",
+							"v": 6
+						},
+						{
+							"op": "set_flag",
+							"v": "posted_publicly"
+						}
+					]
+				},
+				{
+					"label": "Unpolished? Fix the product.",
+					"effects": [
+						{
+							"op": "product_delta",
+							"v": 6
+						},
+						{
+							"op": "morale_delta",
+							"v": 2
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_scout_coffee",
+			"tier": "authored",
+			"era": [
+				"coworking"
+			],
+			"weight": 4,
+			"requires": {
+				"traction_gte": 15,
+				"flags_none": [
+					"seed_scout_met"
+				]
+			},
+			"title": "A Coffee That Is Not About Coffee",
+			"body": "Someone who 'angels a little' wants to grab coffee. They say 'no agenda' twice, which is one more time than people with no agenda say it. They pay. They ask about your numbers very casually.",
+			"choices": [
+				{
+					"label": "Show the real numbers.",
+					"effects": [
+						{
+							"op": "set_flag",
+							"v": "seed_scout_met"
+						},
+						{
+							"op": "weight_future",
+							"v": "evt_seed_termsheet"
+						},
+						{
+							"op": "morale_delta",
+							"v": 3
+						}
+					]
+				},
+				{
+					"label": "Stay vague. Keep leverage.",
+					"effects": [
+						{
+							"op": "set_flag",
+							"v": "seed_scout_met"
+						},
+						{
+							"op": "hype_delta",
+							"v": 3
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_wifi_outage",
+			"tier": "authored",
+			"era": [
+				"coworking"
+			],
+			"weight": 3,
+			"title": "synergy2024 Is Down",
+			"body": "The wifi died mid-deploy. The whole floor stands up at once like startled meerkats. Bex announces it's 'an us problem.' Your demo is in forty minutes.",
+			"choices": [
+				{
+					"label": "Hotspot. Burn the data plan.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": -120
+						},
+						{
+							"op": "product_delta",
+							"v": 2
+						},
+						{
+							"op": "morale_delta",
+							"v": 2
+						}
+					]
+				},
+				{
+					"label": "Reschedule the demo.",
+					"effects": [
+						{
+							"op": "traction_delta",
+							"v": -3
+						},
+						{
+							"op": "morale_delta",
+							"v": -4
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_idea_thief",
+			"tier": "authored",
+			"era": [
+				"coworking"
+			],
+			"weight": 3,
+			"requires": {
+				"flags_all": [
+					"settled_in"
+				]
+			},
+			"title": "The Whiteboard Has Been Photographed",
+			"body": "The meditation startup pivoted yesterday. Their new landing page is your roadmap with a lavender gradient. Their tagline is your tagline, but calmer.",
+			"choices": [
+				{
+					"label": "Outship them. Heads down.",
+					"effects": [
+						{
+							"op": "product_delta",
+							"v": 7
+						},
+						{
+							"op": "morale_delta",
+							"v": -2
+						}
+					]
+				},
+				{
+					"label": "Call it out publicly.",
+					"effects": [
+						{
+							"op": "hype_delta",
+							"v": 6
+						},
+						{
+							"op": "morale_delta",
+							"v": 3
+						},
+						{
+							"op": "arm_timebomb",
+							"weeks": 3,
+							"event": "evt_feud_escalates"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_feud_escalates",
+			"tier": "authored",
+			"era": [
+				"coworking",
+				"office"
+			],
+			"weight": 0,
+			"title": "The Feud Gets a Hashtag",
+			"body": "Their founder posted a 'response video.' Eleven minutes. Soft piano. The comments have chosen sides and one of the sides is not yours. Bex has declared the kitchen a neutral zone.",
+			"choices": [
+				{
+					"label": "Post receipts. End it.",
+					"effects": [
+						{
+							"op": "hype_delta",
+							"v": 8
+						},
+						{
+							"op": "morale_delta",
+							"v": -4
+						}
+					]
+				},
+				{
+					"label": "Go silent. Let it die.",
+					"effects": [
+						{
+							"op": "hype_delta",
+							"v": -4
+						},
+						{
+							"op": "morale_delta",
+							"v": 4
+						},
+						{
+							"op": "product_delta",
+							"v": 3
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_first_churn",
+			"tier": "authored",
+			"era": [
+				"coworking"
+			],
+			"weight": 4,
+			"requires": {
+				"flags_all": [
+					"launched"
+				],
+				"traction_gte": 10
+			},
+			"title": "Seventeen People Left",
+			"body": "The churn email digest arrives at 7am like a tiny funeral notice. Seventeen gone. One wrote feedback on the way out: 'good idea, feels held together with tape.' It is held together with tape.",
+			"choices": [
+				{
+					"label": "Call the leavers. Ask why.",
+					"effects": [
+						{
+							"op": "product_delta",
+							"v": 5
+						},
+						{
+							"op": "traction_delta",
+							"v": 3
+						},
+						{
+							"op": "morale_delta",
+							"v": -2
+						}
+					]
+				},
+				{
+					"label": "Growth fixes churn. Push ads.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": -900
+						},
+						{
+							"op": "traction_delta",
+							"v": 9
+						},
+						{
+							"op": "set_flag",
+							"v": "leaky_bucket"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_conference_pass",
+			"tier": "authored",
+			"era": [
+				"coworking"
+			],
+			"weight": 3,
+			"requires": {
+				"cash_gte": 1500
+			},
+			"title": "TechWeek Wants $800",
+			"body": "A conference pass costs $800. The startups that go come back with lanyards, tote bags, and stories about 'energy.' Occasionally one comes back with a customer.",
+			"choices": [
+				{
+					"label": "Go. Work the hallway track.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": -800
+						},
+						{
+							"op": "traction_delta",
+							"v": 7
+						},
+						{
+							"op": "hype_delta",
+							"v": 4
+						},
+						{
+							"op": "set_flag",
+							"v": "did_demos"
+						}
+					]
+				},
+				{
+					"label": "Skip it. Ship instead.",
+					"effects": [
+						{
+							"op": "product_delta",
+							"v": 6
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_invoice_cleared",
+			"tier": "authored",
+			"era": [
+				"coworking"
+			],
+			"weight": 3,
+			"requires": {
+				"flags_all": [
+					"launched"
+				],
+				"traction_gte": 12
+			},
+			"title": "The Invoice Actually Cleared",
+			"body": "A customer's finance department paid net-30 in only fifty days, which their email describes as 'expedited.' The money is real and in the account. You and your cofounder look at the balance like it might flinch.",
+			"choices": [
+				{
+					"label": "Bank it. Runway is oxygen.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": 2400
+						}
+					]
+				},
+				{
+					"label": "Real chairs. Morale is oxygen.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": 1200
+						},
+						{
+							"op": "morale_delta",
+							"v": 6
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_cofounder_couch",
+			"tier": "authored",
+			"era": [
+				"coworking"
+			],
+			"weight": 3,
+			"requires": {
+				"morale_lte": 45
+			},
+			"title": "The Couch Conversation",
+			"body": "Your cofounder is on the community couch at 11pm, staring at the ceiling. 'Do you ever think about how the dropshippers are profitable?' This is not really a question about dropshipping.",
+			"choices": [
+				{
+					"label": "Talk it out. Order food.",
+					"effects": [
+						{
+							"op": "cash_delta",
+							"v": -60
+						},
+						{
+							"op": "morale_delta",
+							"v": 10
+						}
+					]
+				},
+				{
+					"label": "'We're fine.' Back to work.",
+					"effects": [
+						{
+							"op": "product_delta",
+							"v": 3
+						},
+						{
+							"op": "morale_delta",
+							"v": -6
+						},
+						{
+							"op": "arm_timebomb",
+							"weeks": 4,
+							"event": "evt_cofounder_drift"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "evt_cofounder_drift",
+			"tier": "authored",
+			"era": [
+				"coworking",
+				"office"
+			],
+			"weight": 0,
+			"title": "The Drift",
+			"body": "Your cofounder started 'a small side thing, just weekends.' It has a logo. It has a Discord. It has, you learn from the Discord, a waitlist.",
+			"choices": [
+				{
+					"label": "Demand full focus. Now.",
+					"effects": [
+						{
+							"op": "morale_delta",
+							"v": -8
+						},
+						{
+							"op": "product_delta",
+							"v": 4
+						}
+					]
+				},
+				{
+					"label": "Let it breathe. Trust them.",
+					"effects": [
+						{
+							"op": "morale_delta",
+							"v": 4
+						},
+						{
+							"op": "product_delta",
+							"v": -4
+						}
+					]
+				}
+			]
+		}
+	]
+}
